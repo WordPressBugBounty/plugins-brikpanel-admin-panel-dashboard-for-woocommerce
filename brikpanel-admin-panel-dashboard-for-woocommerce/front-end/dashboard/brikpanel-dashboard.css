@@ -1,0 +1,2876 @@
+/* =============================================================================
+   BrikPanel Dashboard - Shopify-Inspired Analytics
+   ============================================================================= */
+
+:root {
+    --bp-bg: #f1f1f1;
+    --bp-card: #ffffff;
+    --bp-text: #303030;
+    --bp-text-secondary: #616161;
+    --bp-text-muted: #8a8a8a;
+    --bp-border: #e3e3e3;
+    --bp-input-border: #8a8a8a;
+    --bp-input-focus: #303030;
+    --bp-primary: #303030;
+    --bp-primary-hover: #1a1a1a;
+    --bp-success: #1a8917;
+    --bp-error: #d72c0d;
+}
+
+/* Layout */
+.brikpanel-dashboard {
+    padding: 1.5rem 1rem 3rem;
+    max-width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: var(--bp-text);
+    line-height: 1.5;
+    /* The help-hint tooltips are position:absolute and, while hidden, still sit
+       in their default rightward position (left:-8px, up to 300px wide). On a
+       phone the tooltips anchored to right-column cards spilled past the
+       viewport and gave the whole page a horizontal scroll ("sağ kayma").
+       `clip` removes that overflow on the X axis only — vertical content still
+       flows into the page scroll, and a tooltip the user actually opens flips
+       leftward (brikpanel-dashboard.js) so it stays inside this box and fully
+       readable. `clip` (not `hidden`) is required so it does NOT turn the
+       dashboard into its own scroll container. */
+    overflow-x: clip;
+}
+
+/* Header */
+.brikpanel-dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.brikpanel-dash-header h1 {
+    font-size: 1.375rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--bp-text);
+}
+
+.brikpanel-dash-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.brikpanel-dash-range-wrap {
+    position: relative;
+}
+
+.brikpanel-dash-presets {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--bp-border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: var(--bp-card);
+}
+
+.brikpanel-dash-preset {
+    padding: 0.4375rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: none;
+    border-right: 1px solid var(--bp-border);
+    background: transparent;
+    color: var(--bp-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.brikpanel-dash-preset:last-child {
+    border-right: none;
+}
+
+.brikpanel-dash-preset:hover {
+    background: #f7f7f7;
+    color: var(--bp-text);
+}
+
+.brikpanel-dash-preset.active {
+    background: var(--bp-primary);
+    color: #fff;
+}
+
+.brikpanel-dash-custom-range {
+    position: absolute;
+    top: calc(100% + 0.375rem);
+    right: 0;
+    z-index: 100;
+}
+
+.brikpanel-dash-custom-range input {
+    padding: 0.4375rem 0.75rem;
+    font-size: 0.8125rem;
+    border: 1px solid var(--bp-input-border);
+    border-radius: 0.5rem;
+    color: var(--bp-text);
+    background: var(--bp-card);
+    min-width: 220px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.brikpanel-dash-custom-range input:focus {
+    outline: none;
+    border-color: var(--bp-input-focus);
+    box-shadow: 0 0 0 1px var(--bp-input-focus);
+}
+
+/* ===== Summary Cards ===== */
+.brikpanel-dash-cards {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.875rem;
+    margin-bottom: 1.25rem;
+}
+
+.brikpanel-dash-card {
+    background: var(--bp-card);
+    border: 1px solid var(--bp-border);
+    border-radius: 0.75rem;
+    padding: 1.125rem 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: box-shadow 0.15s ease;
+}
+
+.brikpanel-dash-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.brikpanel-dash-card-label {
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: var(--bp-text-secondary);
+}
+
+.brikpanel-dash-card-value {
+    font-size: 1.5rem;
+    font-weight: 650;
+    color: var(--bp-text);
+    line-height: 1.2;
+}
+
+.brikpanel-dash-card-value .woocommerce-Price-amount {
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.brikpanel-dash-card-delta {
+    font-size: 0.75rem;
+    font-weight: 550;
+    min-height: 1.125rem;
+}
+
+.brikpanel-dash-card-delta.positive {
+    color: var(--bp-success);
+}
+
+.brikpanel-dash-card-delta.negative {
+    color: var(--bp-error);
+}
+
+.brikpanel-dash-card-delta.neutral {
+    color: var(--bp-text-muted);
+}
+
+/* No-baseline period ("New"): distinct from a flat "--" but not styled as
+   growth, since there's nothing to compare against. */
+.brikpanel-dash-card-delta.is-new {
+    color: var(--bp-text-secondary);
+    font-weight: 600;
+}
+
+/* Data-quality caution on the Cost of Goods card — missing costs make the
+   Net profit optimistic, so flag it in the error tone (the only accent the
+   monochrome palette allows) without an arrow. */
+.brikpanel-dash-card-delta.warn {
+    color: var(--bp-error);
+    font-weight: 600;
+}
+
+/* Compact catalog-size line under the Low Stock heading: quiet, monochrome
+   reference info (products / variations / sellable items), not a headline
+   metric — it sits right below the panel title without its own card. */
+.brikpanel-dash-inv-line {
+    margin: -0.25rem 0 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--bp-text-muted);
+    line-height: 1.4;
+    cursor: default;
+}
+
+/* Net profit shown while some sold items have no cost on file: a quiet,
+   monochrome "!" next to the label instead of a loud card border. It
+   reveals what to fix on hover/focus. */
+.brikpanel-dash-flag {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 0.375rem;
+    border-radius: 50%;
+    border: 1px solid var(--bp-text-muted);
+    color: var(--bp-text-secondary);
+    cursor: help;
+    vertical-align: middle;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.brikpanel-dash-flag:hover,
+.brikpanel-dash-flag:focus-visible {
+    border-color: var(--bp-text);
+    color: var(--bp-text);
+    outline: none;
+}
+
+.brikpanel-dash-flag-mark {
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.brikpanel-dash-flag-tip {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    width: max-content;
+    max-width: 220px;
+    padding: 0.5rem 0.625rem;
+    background: var(--bp-card);
+    color: var(--bp-text-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.45;
+    text-align: left;
+    white-space: normal;
+    border: 1px solid var(--bp-border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 20;
+}
+
+/* Small arrow above the tooltip pointing up at the "!" */
+.brikpanel-dash-flag-tip::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: var(--bp-border);
+}
+
+.brikpanel-dash-flag:hover .brikpanel-dash-flag-tip,
+.brikpanel-dash-flag:focus-visible .brikpanel-dash-flag-tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* "Cost missing on N items" tooltip — same anchor as the simple one but
+   wider, with a heading + scrollable list of product names so the merchant
+   can see exactly which products to fix without leaving the dashboard.
+   Width covers typical product names (incl. variant suffixes and the
+   "no longer in catalog" tag) without forcing the merchant to read an
+   ellipsis. Caps at viewport-32 so it never overflows on narrow screens. */
+.brikpanel-dash-flag-tip-list {
+    width: 340px;
+    max-width: min(420px, calc(100vw - 32px));
+    padding: 0.625rem 0.75rem;
+    /* The simple tooltip is read-only, but this one has a scrollable product
+       list, so the cursor must be able to enter it and spin the wheel. */
+    pointer-events: auto;
+}
+
+/* Invisible bridge spanning the 8px gap between the "!" and the tooltip. The
+   bridge is a descendant of the flag, so while the cursor travels down across
+   it the flag stays `:hover` and the tooltip never closes mid-trip — without
+   it the merchant loses hover in the gap and can't reach the list to scroll.
+   Only shown while the tooltip is, since the hidden tooltip has no pointer
+   events (visibility: hidden), keeping the bridge inert when not needed. */
+.brikpanel-dash-flag-tip-list::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    height: 10px;
+}
+
+.brikpanel-dash-flag-tip-title {
+    display: block;
+    margin-bottom: 0.375rem;
+    color: var(--bp-text);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.brikpanel-dash-flag-tip-items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.brikpanel-dash-flag-tip-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border-top: 1px solid var(--bp-border);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--bp-text-secondary);
+}
+
+.brikpanel-dash-flag-tip-items > .brikpanel-dash-flag-tip-item:first-child {
+    border-top: 0;
+}
+
+.brikpanel-dash-flag-tip-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--bp-text);
+    font-weight: 500;
+}
+
+.brikpanel-dash-flag-tip-item-meta {
+    flex-shrink: 0;
+    color: var(--bp-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.brikpanel-dash-flag-tip-item-meta .woocommerce-Price-amount,
+.brikpanel-dash-flag-tip-item-meta bdi {
+    color: inherit;
+    font-size: inherit;
+}
+
+.brikpanel-dash-flag-tip-item-unlinked {
+    color: var(--bp-text-muted);
+    font-style: normal;
+    font-weight: 400;
+    font-size: 0.6875rem;
+}
+
+/* ===== Profit section ===== */
+.brikpanel-dash-profit {
+    margin-bottom: 1.25rem;
+}
+
+/* Higher specificity (.brikpanel-dash-profit .…) so this always wins over the
+   shared `.brikpanel-dash-cards` responsive rules regardless of source order.
+   align-items:start so expanding the Expenses breakdown grows only that card
+   downward — the other three stay compact and top-aligned. */
+.brikpanel-dash-profit .brikpanel-dash-cards-profit {
+    grid-template-columns: repeat(4, 1fr);
+    margin-bottom: 0;
+    align-items: start;
+}
+
+/* The Cost of Goods and Expenses cards are optional (Settings ▸ Dashboard ▸
+   Profit section fields), so the row can hold 2, 3 or 4 cards. Match the
+   column count to what actually renders so hidden cards never leave a gap. */
+.brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+.brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+.brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.brikpanel-dash-cards-profit .brikpanel-dash-card-delta-static {
+    color: var(--bp-text-muted);
+    font-weight: 500;
+}
+
+/* Keep every profit sub-label to a single line. Long deltas — the COGS
+   warning ("cost missing on N items — profit overstated") and the Net profit
+   trend ("↑ 507% · 64.4% of revenue") — otherwise wrap to two lines in the
+   4-column range (≤1500px), growing only that one card and breaking the row's
+   top alignment (the row uses align-items:start so the Expenses breakdown can
+   expand alone, so cards do NOT auto-equalize). Clamping to one line keeps all
+   four cards the same height at any width; the COGS detail still lives in the
+   "!" tooltip next to its label. */
+.brikpanel-dash-cards-profit .brikpanel-dash-card-delta {
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---- Breakdown: collapsible list inside the Expenses and Revenue cards ---- */
+.brikpanel-dash-card[data-metric="profit_expenses"],
+.brikpanel-dash-card[data-metric="profit_revenue"] {
+    position: relative;
+}
+
+/* Icon-only affordance in the card's top-right corner. Absolutely
+   positioned so it adds NO flow height — all four cards stay identical
+   when collapsed; only expanding grows the Expenses card. */
+.brikpanel-dash-bd-toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: 0;
+    padding: 0.2rem;
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--bp-text-muted);
+    line-height: 0;
+    border-radius: 0.375rem;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.brikpanel-dash-bd-toggle:hover {
+    color: var(--bp-text);
+    background: var(--bp-bg);
+}
+
+.brikpanel-dash-bd-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bp-text);
+}
+
+.brikpanel-dash-bd-toggle[hidden] {
+    display: none;
+}
+
+/* "+" quick add-expense button — sits just left of the breakdown chevron,
+   absolutely positioned so it adds no flow height (cards stay uniform). */
+.brikpanel-dash-bd-add {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: 0;
+    padding: 0.2rem;
+    position: absolute;
+    top: 0.7rem;
+    right: 2.3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--bp-text-muted);
+    line-height: 0;
+    border-radius: 0.375rem;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.brikpanel-dash-bd-add:hover {
+    color: var(--bp-text);
+    background: var(--bp-bg);
+}
+
+.brikpanel-dash-bd-add:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bp-text);
+}
+
+.brikpanel-dash-bd-chevron {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brikpanel-dash-card.is-bd-open .brikpanel-dash-bd-chevron {
+    transform: rotate(180deg);
+}
+
+/* Grid-rows 0fr → 1fr collapse (BrikPanel design-system technique) */
+.brikpanel-dash-bd-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    /* Cancel the parent card's flex `gap` while collapsed so the Expenses
+       card stays pixel-identical to the other three. */
+    margin-top: -0.25rem;
+    transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brikpanel-dash-card.is-bd-open .brikpanel-dash-bd-collapse {
+    margin-top: 0;
+}
+
+.brikpanel-dash-card.is-bd-open .brikpanel-dash-bd-collapse {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.brikpanel-dash-bd-inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.brikpanel-dash-bd-list {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bp-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.brikpanel-dash-bd-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+/* Expenses filed under another one. Both lines carry their own amount because
+   nesting never merges money, so the ONLY job of this styling is to make the
+   belonging obvious — indentation alone was too quiet to read at this size, so
+   the children hang off a connector drawn down their left edge, ending in a
+   short tick into each label. The literal fallbacks matter because an
+   unresolved var() computes to nothing, which would erase the colour. */
+.brikpanel-dash-bd-row.is-parent {
+    margin-top: 0.4375rem;
+}
+
+.brikpanel-dash-bd-row.is-parent:first-child {
+    margin-top: 0;
+}
+
+.brikpanel-dash-bd-row.is-parent .brikpanel-dash-bd-k {
+    color: var(--bp-text, #303030);
+    font-weight: 600;
+}
+
+.brikpanel-dash-bd-row.is-child .brikpanel-dash-bd-k {
+    position: relative;
+    padding-inline-start: 1rem;
+    color: var(--bp-text-muted, #8a8a8a);
+    font-weight: 400;
+}
+
+/* The spine. It starts above the row so it bridges the list's row gap and meets
+   the line above, and runs to the bottom so consecutive children share one
+   unbroken rule. */
+.brikpanel-dash-bd-row.is-child .brikpanel-dash-bd-k::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.25rem;
+    top: -0.5rem;
+    bottom: 0;
+    border-inline-start: 1px solid var(--bp-border, #e3e3e3);
+}
+
+/* Last of a run: stop the spine at the tick instead of letting it dangle. */
+.brikpanel-dash-bd-row.is-child-last .brikpanel-dash-bd-k::before {
+    bottom: 50%;
+}
+
+/* The tick from the spine into the label. */
+.brikpanel-dash-bd-row.is-child .brikpanel-dash-bd-k::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.25rem;
+    top: 50%;
+    width: 0.375rem;
+    border-top: 1px solid var(--bp-border, #e3e3e3);
+}
+
+/* A parent name that has no expense of its own in the viewed window: a heading
+   with nothing to show on the right. Muted so it never reads as a zero cost. */
+.brikpanel-dash-bd-row.is-label .brikpanel-dash-bd-k {
+    color: var(--bp-text-muted, #8a8a8a);
+    font-weight: 600;
+}
+
+.brikpanel-dash-bd-k {
+    color: var(--bp-text-secondary);
+    font-weight: 550;
+    min-width: 0;
+}
+
+/* Remove control on a breakdown line. Always in the layout so hovering never
+   nudges the row; only its opacity changes. Kept reachable by keyboard, where
+   it becomes visible on focus. */
+.brikpanel-dash-bd-x {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-inline-start: 0.125rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--bp-text-muted, #8a8a8a);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.brikpanel-dash-bd-row:hover .brikpanel-dash-bd-x,
+.brikpanel-dash-bd-x:focus-visible {
+    opacity: 1;
+}
+
+.brikpanel-dash-bd-x:hover {
+    color: var(--bp-error, #d72c0d);
+    background: var(--bp-bg, #f1f1f1);
+}
+
+.brikpanel-dash-bd-x:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--bp-text, #303030);
+}
+
+.brikpanel-dash-bd-x.is-busy {
+    opacity: 1;
+    cursor: default;
+    animation: brikpanel-dash-x-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes brikpanel-dash-x-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+}
+
+/* Touch and coarse pointers have no hover, so the control must stay visible. */
+@media (hover: none) {
+    .brikpanel-dash-bd-x { opacity: 1; }
+}
+
+.brikpanel-dash-bd-v {
+    color: var(--bp-text);
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.brikpanel-dash-bd-v .woocommerce-Price-amount {
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.brikpanel-dash-bd-pct {
+    color: var(--bp-text-muted);
+    font-weight: 550;
+    margin-left: 0.25rem;
+}
+
+/* Revenue breakdown row variants: a deduction (Returns) reads in the error
+   tone, the Net revenue line is the bold total, and informational rows
+   (Coupons, already inside the order totals) sit quietly below a hairline. */
+.brikpanel-dash-bd-row-deduct .brikpanel-dash-bd-v {
+    color: var(--bp-error);
+}
+
+.brikpanel-dash-bd-row-total {
+    margin-top: 0.125rem;
+    padding-top: 0.375rem;
+    border-top: 1px solid var(--bp-border);
+}
+
+.brikpanel-dash-bd-row-total .brikpanel-dash-bd-k,
+.brikpanel-dash-bd-row-total .brikpanel-dash-bd-v {
+    color: var(--bp-text);
+    font-weight: 700;
+}
+
+.brikpanel-dash-bd-row-info .brikpanel-dash-bd-k,
+.brikpanel-dash-bd-row-info .brikpanel-dash-bd-v {
+    color: var(--bp-text-muted);
+    font-weight: 550;
+}
+
+/* ===== Add-expense modal ===== */
+.brikpanel-exp-modal[hidden] { display: none; }
+.brikpanel-exp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.brikpanel-exp-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+}
+.brikpanel-exp-modal-card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    background: var(--bp-card, #fff);
+    border: 1px solid var(--bp-border, #e3e3e3);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    animation: brikpanel-exp-pop 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes brikpanel-exp-pop {
+    from { transform: translateY(8px) scale(0.98); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+}
+.brikpanel-exp-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--bp-border, #e3e3e3);
+}
+.brikpanel-exp-modal-head h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--bp-text, #303030);
+}
+.brikpanel-exp-modal-x {
+    background: none;
+    border: 0;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: var(--bp-text-muted, #8a8a8a);
+    line-height: 0;
+    border-radius: 0.375rem;
+}
+.brikpanel-exp-modal-x:hover { color: var(--bp-text, #303030); background: var(--bp-bg, #f1f1f1); }
+.brikpanel-exp-modal-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.brikpanel-exp-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+/* An explicit display on the grid/flex rows beats the UA `[hidden]{display:none}`
+   rule, so the JS `.hidden = true` (used to drop Date+Repeats for a percentage
+   cost) would otherwise leave them visible. Re-assert display:none for [hidden]. */
+.brikpanel-exp-row2[hidden], .brikpanel-exp-field[hidden] { display: none; }
+.brikpanel-exp-field { display: flex; flex-direction: column; gap: 0.375rem; }
+.brikpanel-exp-field label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bp-text, #303030);
+}
+.brikpanel-exp-field input,
+.brikpanel-exp-field select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--bp-text, #303030);
+    background: #fff;
+    border: 1px solid var(--bp-input-border, #8a8a8a);
+    border-radius: 0.5rem;
+    line-height: 1.4;
+}
+/* One quiet line under the "Part of" picker. It carries the only thing the
+   label cannot say on its own — that filing a cost under another one does not
+   merge the two amounts. */
+.brikpanel-exp-hint {
+    margin: 0.375rem 0 0;
+    color: var(--bp-text-muted, #8a8a8a);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    line-height: 1.4;
+}
+.brikpanel-exp-optional {
+    color: var(--bp-text-muted, #8a8a8a);
+    font-size: 0.6875rem;
+    font-weight: 400;
+}
+.brikpanel-exp-field input:focus,
+.brikpanel-exp-field select:focus {
+    outline: none;
+    border-color: var(--bp-input-focus, #303030);
+    box-shadow: 0 0 0 1px var(--bp-input-focus, #303030);
+}
+.brikpanel-exp-input-group {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--bp-input-border, #8a8a8a);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+.brikpanel-exp-input-group:focus-within {
+    border-color: var(--bp-input-focus, #303030);
+    box-shadow: 0 0 0 1px var(--bp-input-focus, #303030);
+}
+.brikpanel-exp-prefix,
+.brikpanel-exp-suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 0.625rem;
+    background: #f7f7f7;
+    color: var(--bp-text-secondary, #616161);
+    font-size: 0.875rem;
+}
+.brikpanel-exp-prefix { border-right: 1px solid var(--bp-border, #e3e3e3); }
+.brikpanel-exp-suffix { border-left: 1px solid var(--bp-border, #e3e3e3); }
+.brikpanel-exp-prefix[hidden],
+.brikpanel-exp-suffix[hidden] { display: none; }
+.brikpanel-exp-input-group input {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    flex: 1;
+    min-width: 0;
+}
+.brikpanel-exp-recurring-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--bp-text-secondary, #616161);
+}
+.brikpanel-exp-recurring-hint[hidden] { display: none; }
+.brikpanel-exp-msg {
+    font-size: 0.8125rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    line-height: 1.4;
+}
+.brikpanel-exp-msg[hidden] { display: none; }
+.brikpanel-exp-msg.is-error { background: #fce4e4; color: #c62828; border: 1px solid #f1b0b0; }
+.brikpanel-exp-msg.is-ok { background: #e4f5e1; color: #1a6b15; border: 1px solid #b7e1b0; }
+.brikpanel-exp-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--bp-border, #e3e3e3);
+}
+.brikpanel-exp-btn {
+    font-size: 0.8125rem;
+    font-weight: 550;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    border: 0;
+    transition: background-color 0.15s ease;
+}
+.brikpanel-exp-btn-primary {
+    background: var(--bp-primary, #303030);
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.brikpanel-exp-btn-primary:hover { background: var(--bp-primary-hover, #1a1a1a); }
+.brikpanel-exp-btn-primary:disabled { opacity: 0.6; cursor: default; }
+.brikpanel-exp-btn-secondary {
+    background: #fff;
+    color: var(--bp-text, #303030);
+    box-shadow: inset 0 0 0 1px var(--bp-border, #e3e3e3), 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+.brikpanel-exp-btn-secondary:hover { background: #f7f7f7; }
+/* Removing is destructive and cannot be undone, so its button says so. */
+.brikpanel-exp-btn-danger {
+    background: var(--bp-error, #d72c0d);
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.brikpanel-exp-btn-danger:hover { background: #b8250b; }
+.brikpanel-exp-btn-danger:disabled { opacity: 0.6; cursor: default; }
+body.brikpanel-exp-modal-open { overflow: hidden; }
+
+/* ---- Remove-expense confirmation ------------------------------------- */
+.brikpanel-expdel-card { max-width: 26rem; }
+
+.brikpanel-expdel-body {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--bp-text, #303030);
+}
+
+.brikpanel-expdel-note {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--bp-text-secondary, #616161);
+}
+.brikpanel-expdel-note[hidden] { display: none; }
+
+.brikpanel-expdel-only {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--bp-text-secondary, #616161);
+}
+
+.brikpanel-expdel-scopes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.brikpanel-expdel-scope {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--bp-border, #e3e3e3);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.brikpanel-expdel-scope:hover { background: #f7f7f7; }
+
+.brikpanel-expdel-scope input { margin-top: 0.2rem; }
+
+/* The class is set by the script; :has() is kept as well so the highlight is
+   right even before the first change event. */
+.brikpanel-expdel-scope.is-selected,
+.brikpanel-expdel-scope:has(input:checked) {
+    border-color: var(--bp-text, #303030);
+    box-shadow: 0 0 0 1px var(--bp-text, #303030);
+}
+
+.brikpanel-expdel-scope-detail {
+    display: block;
+    color: var(--bp-text-secondary, #616161);
+    font-size: 0.75rem;
+}
+
+/* ---- Toast ------------------------------------------------------------ */
+.brikpanel-dash-toast {
+    position: fixed;
+    top: 44px;
+    inset-inline-end: 20px;
+    z-index: 100050;
+    max-width: 22rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    line-height: 1.4;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    /* The 20px inset has to be cleared as well, or a short message peeks in
+       from the edge while it is supposed to be hidden. */
+    transform: translateX(calc(100% + 24px));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brikpanel-dash-toast.is-visible { transform: translateX(0); }
+
+/* Anchored to the inline end, so it has to slide out towards the other side
+   when the admin is right-to-left. */
+[dir="rtl"] .brikpanel-dash-toast { transform: translateX(calc(-100% - 24px)); }
+[dir="rtl"] .brikpanel-dash-toast.is-visible { transform: translateX(0); }
+
+.brikpanel-dash-toast--success {
+    background: #e4f5e1;
+    color: #1a6b15;
+    border: 1px solid #b7e1b0;
+}
+
+.brikpanel-dash-toast--error {
+    background: #fce4e4;
+    color: #c62828;
+    border: 1px solid #f1b0b0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brikpanel-dash-toast { transition: none; transform: translateX(0); }
+    .brikpanel-dash-bd-x.is-busy { animation: none; }
+}
+
+.brikpanel-dash-card[data-metric="profit_net"].is-profit .brikpanel-dash-card-value {
+    color: var(--bp-success);
+}
+
+.brikpanel-dash-card[data-metric="profit_net"].is-loss .brikpanel-dash-card-value {
+    color: var(--bp-error);
+}
+
+/* The `.bp-profit-cols-N` classes above carry an extra class of specificity
+   (0,3,0), so the responsive collapse must repeat them or it loses the tie and
+   the row stays 3-4 columns — on a phone that crushed each card until "$0.00"
+   wrapped to two lines. List every variant so 2 columns always wins on small
+   screens. */
+@media (max-width: 960px) {
+    .brikpanel-dash-profit .brikpanel-dash-cards-profit,
+    .brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-3,
+    .brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .brikpanel-dash-profit .brikpanel-dash-cards-profit,
+    .brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-2,
+    .brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-3,
+    .brikpanel-dash-profit .brikpanel-dash-cards-profit.bp-profit-cols-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ===== Panels / Rows ===== */
+.brikpanel-dash-row {
+    display: grid;
+    gap: 0.875rem;
+    margin-bottom: 1.25rem;
+}
+
+.brikpanel-dash-row-2-1 {
+    grid-template-columns: 2fr 1fr;
+}
+
+.brikpanel-dash-row-1-1 {
+    grid-template-columns: 1fr 1fr;
+}
+
+
+.brikpanel-dash-panel {
+    background: var(--bp-card);
+    border: 1px solid var(--bp-border);
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    min-width: 0;
+}
+
+.brikpanel-dash-panel h2 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    margin: 0 0 1rem;
+    padding: 0;
+}
+
+/* Charts */
+.brikpanel-dash-chart-wrap {
+    position: relative;
+    height: 280px;
+    width: 100%;
+}
+
+.brikpanel-dash-chart-short {
+    height: 240px;
+}
+
+/* ===== Live Visitors ===== */
+.brikpanel-dash-live {
+    display: flex;
+    flex-direction: column;
+}
+
+.brikpanel-dash-live-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.brikpanel-dash-live-header h2 {
+    margin: 0;
+}
+
+.brikpanel-dash-live-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+    background: var(--bp-success);
+    color: #fff;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.brikpanel-dash-live-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 260px;
+}
+
+.brikpanel-dash-live-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--bp-border);
+    font-size: 0.8125rem;
+    cursor: default;
+    position: relative;
+}
+
+.brikpanel-dash-live-item:last-child {
+    border-bottom: none;
+}
+
+/* Device icon column. Fixed width so rows with no device recorded (entries
+   written before the feature shipped, up to one transient cycle) keep the
+   same alignment as the rest. */
+.brikpanel-dash-live-device {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: var(--bp-text-muted, #8a8a8a);
+}
+
+.brikpanel-dash-live-device svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+.brikpanel-dash-live-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    overflow: hidden;
+    flex: 1;
+    min-width: 0;
+}
+
+.brikpanel-dash-live-name {
+    font-weight: 600;
+    color: var(--bp-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.brikpanel-dash-live-ip {
+    font-size: 0.6875rem;
+    color: var(--bp-text-muted);
+    font-family: monospace;
+    margin-left: 0.375rem;
+    font-weight: 400;
+}
+
+.brikpanel-dash-live-page {
+    color: var(--bp-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+.brikpanel-dash-live-badge {
+    display: inline-block;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.6875rem;
+    font-weight: 550;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.brikpanel-dash-live-badge.browsing {
+    background: #f1f1f1;
+    color: var(--bp-text-muted);
+}
+
+.brikpanel-dash-live-badge.added-to-cart {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.brikpanel-dash-live-badge.order-received {
+    background: #e4f5e1;
+    color: #1a6b15;
+}
+
+/* Live visitor tooltip */
+.brikpanel-dash-tooltip {
+    position: absolute;
+    z-index: 99999;
+    background: var(--bp-primary);
+    color: #fff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-width: 300px;
+    word-break: break-all;
+    pointer-events: none;
+}
+
+/* ===== Tables ===== */
+.brikpanel-dash-table-wrap {
+    min-height: 100px;
+}
+
+.brikpanel-dash-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.brikpanel-dash-table th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--bp-text-muted);
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--bp-border);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.brikpanel-dash-table th:last-child {
+    text-align: right;
+}
+
+.brikpanel-dash-table td {
+    font-size: 0.8125rem;
+    color: var(--bp-text);
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--bp-border);
+}
+
+.brikpanel-dash-table td:last-child {
+    text-align: right;
+    font-weight: 550;
+}
+
+.brikpanel-dash-table tr:last-child td {
+    border-bottom: none;
+}
+
+.brikpanel-dash-table tr.brikpanel-dash-row-link {
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.brikpanel-dash-table tr.brikpanel-dash-row-link:hover td,
+.brikpanel-dash-table tr.brikpanel-dash-row-link:focus-visible td {
+    background-color: #f7f7f7;
+}
+
+.brikpanel-dash-table tr.brikpanel-dash-row-link:focus {
+    outline: none;
+}
+
+.brikpanel-dash-table tr.brikpanel-dash-row-link:focus-visible {
+    outline: 2px solid var(--bp-input-focus);
+    outline-offset: -2px;
+}
+
+.brikpanel-dash-table .rank {
+    color: var(--bp-text-muted);
+    font-weight: 550;
+    width: 2rem;
+}
+
+/* Order status badges */
+.brikpanel-dash-status {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.6875rem;
+    font-weight: 550;
+    text-transform: capitalize;
+}
+
+.brikpanel-dash-total-base {
+    margin-top: 0.125rem;
+    font-size: 0.6875rem;
+    color: #8a8a8a;
+    white-space: nowrap;
+}
+
+.brikpanel-dash-status.completed,
+.brikpanel-dash-status.processing {
+    background: #e4f5e1;
+    color: #1a6b15;
+}
+
+.brikpanel-dash-status.on-hold,
+.brikpanel-dash-status.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.brikpanel-dash-status.cancelled,
+.brikpanel-dash-status.failed {
+    background: #fce4e4;
+    color: #c62828;
+}
+
+.brikpanel-dash-status.refunded {
+    background: #f1f1f1;
+    color: var(--bp-text-secondary);
+}
+
+/* ===== Globe - Order Locations ===== */
+.brikpanel-dash-globe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.brikpanel-dash-globe-header h2 {
+    margin: 0;
+}
+
+.brikpanel-dash-globe-theme-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--bp-border);
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--bp-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.brikpanel-dash-globe-theme-btn:hover {
+    background: #f7f7f7;
+    color: var(--bp-text);
+}
+
+.brikpanel-dash-globe-wrap {
+    position: relative;
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: background 0.3s ease;
+}
+
+.brikpanel-dash-globe-wrap canvas {
+    display: block;
+}
+
+/* Dark theme */
+.brikpanel-globe-dark {
+    background: #1a1a1a;
+    border-color: #333;
+}
+
+.brikpanel-globe-dark .brikpanel-dash-globe-header h2 {
+    color: #e0e0e0;
+}
+
+.brikpanel-globe-dark .brikpanel-dash-globe-theme-btn {
+    border-color: #444;
+    color: #999;
+}
+
+.brikpanel-globe-dark .brikpanel-dash-globe-theme-btn:hover {
+    background: #333;
+    color: #fff;
+}
+
+.brikpanel-globe-dark .brikpanel-dash-globe-wrap {
+    background: #111;
+}
+
+/* Light theme */
+.brikpanel-globe-light .brikpanel-dash-globe-wrap {
+    background: #fafafa;
+}
+
+/* Locations panel */
+.brikpanel-dash-locations-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.brikpanel-dash-locations-h2 {
+    margin-top: 1.25rem !important;
+}
+
+/* Order source badges */
+.brikpanel-dash-source {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* Empty state */
+.brikpanel-dash-empty {
+    text-align: center;
+    color: var(--bp-text-muted);
+    font-size: 0.8125rem;
+    padding: 2rem 0;
+    margin: 0;
+}
+
+/* Loading skeleton */
+.brikpanel-dash-card-value.loading,
+.brikpanel-dash-loading {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: brikpanel-shimmer 1.5s infinite;
+    border-radius: 0.25rem;
+    color: transparent !important;
+    user-select: none;
+}
+
+@keyframes brikpanel-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ===== Device breakdown widget ===== */
+.brikpanel-device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.5rem 0;
+}
+
+.brikpanel-device-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 40px 56px;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.brikpanel-device-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--bp-text);
+}
+
+.brikpanel-device-bar-wrap {
+    background: var(--bp-border);
+    border-radius: 999px;
+    height: 6px;
+    overflow: hidden;
+}
+
+.brikpanel-device-bar {
+    background: var(--bp-text);
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+    min-width: 2px;
+}
+
+.brikpanel-device-pct {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    text-align: right;
+}
+
+.brikpanel-device-count {
+    font-size: 0.75rem;
+    text-align: right;
+}
+
+/* ===== Traffic Sources (third tab in the Visitors-by-Device panel) ===== */
+.brikpanel-source-referrers {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--bp-border, #e3e3e3);
+}
+
+.brikpanel-sources-subhead {
+    margin: 0 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bp-text-muted, #8a8a8a);
+}
+
+.brikpanel-referrer-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.brikpanel-referrer-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--bp-border, #e3e3e3);
+}
+
+.brikpanel-referrer-row:last-child {
+    border-bottom: none;
+}
+
+.brikpanel-referrer-host {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--bp-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.brikpanel-referrer-channel {
+    font-size: 0.6875rem;
+    font-weight: 550;
+    color: var(--bp-text-secondary, #616161);
+    background: var(--bp-bg, #f1f1f1);
+    border: 1px solid var(--bp-border, #e3e3e3);
+    border-radius: 999px;
+    padding: 0.0625rem 0.5rem;
+    white-space: nowrap;
+}
+
+.brikpanel-referrer-hits {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-align: right;
+    min-width: 2.5rem;
+}
+
+/* ===== Returns & Refunds widget ===== */
+.brikpanel-dash-returns {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.brikpanel-dash-returns-kpi {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.brikpanel-dash-returns-rate {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.brikpanel-dash-returns-label {
+    font-size: 0.8125rem;
+    color: var(--bp-text-secondary);
+}
+
+.brikpanel-dash-badge-ok      { color: var(--bp-success, #1a8917); }
+.brikpanel-dash-badge-warning  { color: #d07000; }
+.brikpanel-dash-badge-danger   { color: var(--bp-error, #d72c0d); }
+
+/* ===== Customer LTV widget (replaces Returns & Refunds panel) ===== */
+.brikpanel-dash-ltv {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.brikpanel-dash-ltv-headline {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.brikpanel-dash-ltv-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #303030;
+}
+
+.brikpanel-dash-ltv-label {
+    font-size: 0.8125rem;
+    color: var(--bp-text-secondary, #616161);
+}
+
+/* ===== Globe location view tabs ===== */
+.brikpanel-dash-globe-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.brikpanel-loc-tabs {
+    display: inline-flex;
+    background: var(--bp-bg, #f1f1f1);
+    border: 1px solid var(--bp-border);
+    border-radius: 0.375rem;
+    padding: 2px;
+    gap: 2px;
+}
+
+.brikpanel-loc-tab {
+    font-size: 0.75rem;
+    font-weight: 550;
+    padding: 0.25rem 0.625rem;
+    border: none;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--bp-text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1.4;
+}
+
+.brikpanel-loc-tab:hover {
+    background: var(--bp-card, #fff);
+    color: var(--bp-text);
+}
+
+.brikpanel-loc-tab--active {
+    background: var(--bp-card, #fff);
+    color: var(--bp-text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* ===== Panel head row (h2 + inline tabs/actions) ===== */
+.brikpanel-dash-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 0 1rem;
+    flex-wrap: wrap;
+}
+
+.brikpanel-dash-panel-head h2 {
+    margin: 0;
+}
+
+/* ===== Subscriptions widget ===== */
+.brikpanel-subs-total {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.25rem 0 0.875rem;
+    border-bottom: 1px solid var(--bp-border);
+    margin-bottom: 0.875rem;
+}
+
+.brikpanel-subs-total-num {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--bp-text);
+    line-height: 1;
+}
+
+.brikpanel-subs-total-label {
+    font-size: 0.8125rem;
+    color: var(--bp-text-secondary);
+}
+
+.brikpanel-subs-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.brikpanel-subs-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+    background: var(--bp-bg, #f7f7f7);
+    border: 1px solid var(--bp-border);
+    border-radius: 0.5rem;
+    padding: 0.625rem 0.75rem;
+}
+
+.brikpanel-subs-card-icon {
+    font-size: 0.75rem;
+    color: var(--bp-text-muted, #8a8a8a);
+    line-height: 1;
+    margin-bottom: 0.125rem;
+}
+
+.brikpanel-subs-card-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--bp-text);
+    line-height: 1;
+}
+
+.brikpanel-subs-card-label {
+    font-size: 0.75rem;
+    color: var(--bp-text-secondary);
+    line-height: 1.3;
+}
+
+.brikpanel-subs-card-pct {
+    font-size: 0.75rem;
+    color: var(--bp-text-muted, #8a8a8a);
+    margin-top: 0.125rem;
+}
+
+/* Status accent — left border only */
+.brikpanel-subs-card--active         { border-left: 3px solid #1a8917; }
+.brikpanel-subs-card--hold           { border-left: 3px solid #d07000; }
+.brikpanel-subs-card--cancelled      { border-left: 3px solid #d72c0d; }
+.brikpanel-subs-card--expired        { border-left: 3px solid #8a8a8a; }
+.brikpanel-subs-card--pending        { border-left: 3px solid #616161; }
+.brikpanel-subs-card--pending-cancel { border-left: 3px solid #c0392b; }
+
+@media (max-width: 600px) {
+    .brikpanel-subs-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1200px) {
+    .brikpanel-dash-cards {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 960px) {
+    .brikpanel-dash-row-2-1,
+    .brikpanel-dash-row-1-1 {
+        grid-template-columns: 1fr;
+    }
+
+    .brikpanel-dash-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Drop the filter bar onto its own full-width row beneath the title so the
+       controls have room to breathe instead of fighting the heading for space. */
+    .brikpanel-dash-filters {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    .brikpanel-dash-range-wrap {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+
+    /* The joined segmented control turns ragged the moment it wraps (stray
+       internal dividers, a chopped border-radius). Below tablet width, recast
+       the presets as individual rounded pills that wrap cleanly and stretch to
+       fill each row. */
+    .brikpanel-dash-presets {
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        border: 0;
+        background: transparent;
+        border-radius: 0;
+        overflow: visible;
+    }
+
+    .brikpanel-dash-preset {
+        flex: 1 1 auto;
+        justify-content: center;
+        text-align: center;
+        border: 1px solid var(--bp-border);
+        border-radius: 0.5rem;
+        background: var(--bp-card);
+    }
+
+    .brikpanel-dash-preset.active {
+        border-color: var(--bp-primary);
+    }
+}
+
+/* WordPress' mobile #wpcontent padding is 10px-left / 0-right (it kicks in
+   at 782px, where the admin menu collapses), which shoves the whole dashboard
+   off-centre on BOTH tablet and phone. Zero it and let the wrapper's own
+   symmetric padding be the gutter. */
+@media (max-width: 782px) {
+    body.admin_page_brikpanel-dashboard #wpcontent {
+        padding-left: 0 !important;
+    }
+}
+
+@media (max-width: 600px) {
+    .brikpanel-dashboard {
+        padding: 1rem;
+    }
+
+    /* Keep help tooltips inside the viewport on phones: a fixed 300px tip is
+       almost the full screen width and, once flipped, could clip against the
+       dashboard's clip box. Cap it to the viewport minus a small gutter so the
+       whole tip stays readable whichever way it opens. */
+    /* `.brikpanel-dashboard` prefix lifts specificity above the base tooltip
+       rule, which sits later in the file and would otherwise win the tie. */
+    .brikpanel-dashboard .brikpanel-dash-hint-tip,
+    .brikpanel-dashboard .brikpanel-dash-copy-help-tip {
+        max-width: min(270px, calc(100vw - 32px));
+    }
+
+    .brikpanel-dash-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    /* Stack the action buttons full-width so each is a comfortable tap target
+       instead of three controls crammed onto one squeezed row. */
+    .brikpanel-dash-filters {
+        gap: 0.5rem;
+    }
+
+    .brikpanel-dash-copy-wrap {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .brikpanel-dash-copy-summary {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    .brikpanel-dash-ads-cta {
+        flex: 1 1 auto;
+        margin-left: 0;
+        justify-content: center;
+    }
+
+    /* Keep KPI cards two-up on phones — a single column wastes half the
+       screen and turns ~10 metrics into an endless scroll. min-width:0 lets
+       each card shrink to its grid track instead of overflowing on long
+       values/sub-labels. */
+    .brikpanel-dash-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.625rem;
+    }
+
+    .brikpanel-dash-cards .brikpanel-dash-card {
+        min-width: 0;
+        overflow: hidden;
+        padding: 0.875rem 1rem;
+    }
+
+    /* Long currency totals (e.g. "$436,392.61") overflow a half-width card at
+       the desktop value size, so step it down a touch on phones. */
+    .brikpanel-dash-card-value {
+        font-size: 1.25rem;
+    }
+
+    .brikpanel-dash-card-value,
+    .brikpanel-dash-card-sub,
+    .brikpanel-dash-card-label {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    /* Hide Source column in Recent Orders on mobile */
+    #recent-orders-table .brikpanel-dash-table th:nth-child(3),
+    #recent-orders-table .brikpanel-dash-table td:nth-child(3) {
+        display: none;
+    }
+
+    .brikpanel-dash-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    .brikpanel-dash-table-wrap::-webkit-scrollbar { height: 6px; }
+    .brikpanel-dash-table-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+    /* Keep cells from wrapping awkwardly so the table reads cleanly when scrolled. */
+    .brikpanel-dash-table th,
+    .brikpanel-dash-table td { white-space: nowrap; }
+
+    .brikpanel-dash-globe-wrap {
+        min-height: 300px;
+    }
+}
+
+/* ===== Globe Theme Toggle (Hidden) ===== */
+#globe-theme-toggle {
+    display: none;
+}
+
+/* ===== Globe Container ===== */
+.brikpanel-dash-globe-wrap {
+    min-height: 450px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brikpanel-dash-globe-wrap canvas {
+    display: block;
+}
+
+/* Static globe fallback for slow WebGL devices */
+.brikpanel-globe-static-wrap {
+    position: relative;
+    border-radius: 50%;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.brikpanel-globe-static {
+    display: block;
+    animation: brikpanel-globe-spin 90s linear infinite;
+}
+
+/* Fixed lighting overlay — stays still while image rotates, creating 3D illusion */
+.brikpanel-globe-static-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 38%, rgba(255,255,255,0.12) 0%, transparent 40%, rgba(0,0,0,0.18) 100%);
+    pointer-events: none;
+}
+
+@keyframes brikpanel-globe-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brikpanel-globe-static {
+        animation: none;
+    }
+}
+
+.globe-code-tag {
+    position: absolute;
+    left: 6px;
+    top: -10px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    letter-spacing: 0.3px;
+    pointer-events: none;
+    white-space: nowrap;
+    background: var(--bp-card);
+    border: 1px solid var(--bp-border);
+    border-radius: 0.375rem;
+    padding: 1px 5px;
+    /* Fade in/out + shadow */
+    opacity: 0;
+    transform: translateY(3px) scale(0.92);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.35s ease;
+}
+
+.globe-code-tag--visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* ===== Country List (rich panel) ===== */
+.brikpanel-country-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.brikpanel-country-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+}
+
+.country-flag {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.country-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.country-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.country-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.country-total {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.country-bar-wrap {
+    height: 4px;
+    background: var(--bp-bg);
+    border-radius: 2px;
+    margin: 0.25rem 0;
+    overflow: hidden;
+}
+
+.country-bar {
+    height: 100%;
+    background: var(--bp-text);
+    border-radius: 2px;
+    min-width: 2px;
+    transition: width 0.4s ease;
+}
+
+.country-meta {
+    font-size: 0.6875rem;
+    color: var(--bp-text-muted);
+}
+
+/* =============================================================================
+   Embedded WordPress Dashboard Widgets
+   ============================================================================= */
+.brikpanel-dash-wp-widgets-section {
+    margin-top: 1rem;
+}
+
+.brikpanel-dash-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    margin: 0 0 1rem;
+    padding: 0;
+}
+
+.brikpanel-dash-wp-widgets-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+@media (max-width: 1100px) {
+    .brikpanel-dash-wp-widgets-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .brikpanel-dash-wp-widgets-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.brikpanel-dash-wp-widget {
+    min-width: 0;
+}
+
+.brikpanel-dash-wp-widget > h2 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    margin: 0 0 0.875rem;
+}
+
+.brikpanel-dash-wp-widget-body {
+    font-size: 0.8125rem;
+    color: var(--bp-text);
+    line-height: 1.5;
+    overflow-x: auto;
+}
+
+/* Neutralise WP admin styles that clash with the BrikPanel card look */
+.brikpanel-dash-wp-widget-body .hndle,
+.brikpanel-dash-wp-widget-body .handlediv,
+.brikpanel-dash-wp-widget-body .postbox-header,
+.brikpanel-dash-wp-widget-body .inside > .main > ul,
+.brikpanel-dash-wp-widget-body .rss-widget cite {
+    /* keep cite visible, but normalise */
+}
+
+.brikpanel-dash-wp-widget-body .inside {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.brikpanel-dash-wp-widget-body ul,
+.brikpanel-dash-wp-widget-body ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.brikpanel-dash-wp-widget-body ul li,
+.brikpanel-dash-wp-widget-body ol li {
+    padding: 0.375rem 0;
+    border-bottom: 1px solid #f1f1f1;
+    font-size: 0.8125rem;
+    color: var(--bp-text-secondary);
+}
+
+.brikpanel-dash-wp-widget-body ul li:last-child,
+.brikpanel-dash-wp-widget-body ol li:last-child {
+    border-bottom: none;
+}
+
+.brikpanel-dash-wp-widget-body a {
+    color: var(--bp-text);
+    text-decoration: none;
+    font-weight: 550;
+}
+
+.brikpanel-dash-wp-widget-body a:hover {
+    text-decoration: underline;
+}
+
+.brikpanel-dash-wp-widget-body p {
+    margin: 0 0 0.5rem;
+    color: var(--bp-text-secondary);
+}
+
+.brikpanel-dash-wp-widget-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.brikpanel-dash-wp-widget-body table td,
+.brikpanel-dash-wp-widget-body table th {
+    padding: 0.375rem 0.5rem;
+    border-bottom: 1px solid #f1f1f1;
+    text-align: left;
+}
+
+.brikpanel-dash-wp-widget-body h3,
+.brikpanel-dash-wp-widget-body h4 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bp-text);
+    margin: 0.75rem 0 0.375rem;
+}
+
+.brikpanel-dash-wp-widget-body input[type="text"],
+.brikpanel-dash-wp-widget-body input[type="url"],
+.brikpanel-dash-wp-widget-body input[type="email"],
+.brikpanel-dash-wp-widget-body textarea {
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid var(--bp-input-border);
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--bp-text);
+    background: #fff;
+    box-sizing: border-box;
+    margin-bottom: 0.5rem;
+    font-family: inherit;
+}
+
+.brikpanel-dash-wp-widget-body input[type="text"]:focus,
+.brikpanel-dash-wp-widget-body input[type="url"]:focus,
+.brikpanel-dash-wp-widget-body input[type="email"]:focus,
+.brikpanel-dash-wp-widget-body textarea:focus {
+    outline: none;
+    border-color: var(--bp-input-focus);
+    box-shadow: 0 0 0 1px var(--bp-input-focus);
+}
+
+.brikpanel-dash-wp-widget-body .button,
+.brikpanel-dash-wp-widget-body button.button-primary,
+.brikpanel-dash-wp-widget-body input[type="submit"] {
+    background: var(--bp-primary);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    cursor: pointer;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    text-decoration: none;
+    display: inline-block;
+    line-height: 1.4;
+    height: auto;
+    text-shadow: none;
+}
+
+.brikpanel-dash-wp-widget-body .button:hover,
+.brikpanel-dash-wp-widget-body button.button-primary:hover,
+.brikpanel-dash-wp-widget-body input[type="submit"]:hover {
+    background: var(--bp-primary-hover);
+    color: #fff;
+}
+
+/* At-a-Glance specific */
+.brikpanel-dash-wp-widget-body #dashboard_right_now .main ul {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.375rem;
+}
+
+.brikpanel-dash-wp-widget-body #dashboard_right_now .main ul li {
+    padding: 0.375rem 0;
+    border: none;
+}
+
+/* Activity widget */
+.brikpanel-dash-wp-widget-body #activity-widget h3 {
+    border-bottom: 1px solid #f1f1f1;
+    padding-bottom: 0.375rem;
+}
+
+
+/* =============================================================================
+   Marketplace Analytics (BrikMarket integration)
+   ============================================================================= */
+
+.brikpanel-dash-marketplace {
+    margin-bottom: 1.25rem;
+}
+
+/* Render the marketplace qualifier as a muted sub-line beneath the title
+   instead of inline. Inline, it widened the <h1> by ~130px, which — at common
+   laptop widths (~1478-1610px) — was enough to tip the toolbar onto a second
+   row only when BrikMarket was active, so enabling the marketplace appeared to
+   "shift" the filters. As a block sub-line the heading keeps the title's narrow
+   footprint, so the toolbar wraps identically whether or not BrikMarket is on. */
+.brikpanel-dash-header-suffix {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--bp-text-muted);
+    margin-top: 0.125rem;
+    letter-spacing: 0.005em;
+}
+
+.brikpanel-dash-mp-cards {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.brikpanel-dash-card-delta-static {
+    color: var(--bp-text-muted);
+    font-weight: 500;
+}
+
+/* Per-marketplace list */
+.brikpanel-dash-mp-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.brikpanel-dash-mp-item {
+    border: 1px solid var(--bp-border);
+    border-radius: 0.625rem;
+    padding: 0.75rem 0.875rem;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.brikpanel-dash-mp-item:hover {
+    background: #ffffff;
+    border-color: #cfcfcf;
+}
+
+.brikpanel-dash-mp-item-head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.brikpanel-dash-mp-badge {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 0.5rem;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.18);
+}
+
+.brikpanel-dash-mp-name {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--bp-text);
+}
+
+.brikpanel-dash-mp-share {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--bp-text-secondary);
+    background: #ffffff;
+    border: 1px solid var(--bp-border);
+    padding: 0.125rem 0.4375rem;
+    border-radius: 999px;
+}
+
+.brikpanel-dash-mp-bar {
+    width: 100%;
+    height: 6px;
+    background: #ececec;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.brikpanel-dash-mp-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s cubic-bezier(.4,0,.2,1);
+}
+
+.brikpanel-dash-mp-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.brikpanel-dash-mp-stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.brikpanel-dash-mp-stats span {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--bp-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.brikpanel-dash-mp-stats strong {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bp-text);
+}
+
+.brikpanel-dash-mp-stats strong .woocommerce-Price-amount {
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.brikpanel-dash-mp-delta.positive {
+    color: var(--bp-success);
+}
+
+.brikpanel-dash-mp-delta.negative {
+    color: var(--bp-error);
+}
+
+.brikpanel-dash-mp-delta.neutral {
+    color: var(--bp-text-muted);
+}
+
+.brikpanel-dash-mp-cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3125rem;
+    margin-top: 0.125rem;
+}
+
+.brikpanel-dash-mp-cat {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--bp-text-secondary);
+    background: #ffffff;
+    border: 1px solid var(--bp-border);
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+}
+
+@media (max-width: 1100px) {
+    .brikpanel-dash-mp-cards { grid-template-columns: repeat(2, 1fr); }
+    .brikpanel-dash-mp-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 782px) {
+    .brikpanel-dash-mp-cards { grid-template-columns: 1fr; }
+    .brikpanel-dash-mp-stats { grid-template-columns: 1fr 1fr; }
+}
+
+/* =========================================================================
+   COPY EVERYTHING BUTTON (store summary)
+   ========================================================================= */
+.brikpanel-dash-copy-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.brikpanel-dash-copy-summary {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    line-height: 1;
+    color: #fff;
+    background: var(--bp-primary, #303030);
+    border: 0;
+    border-radius: 0.5rem;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+    overflow: hidden;
+    white-space: nowrap;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Help icon — sits next to the Copy everything button */
+.brikpanel-dash-copy-help {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--bp-text-muted, #8a8a8a);
+    border-radius: 50%;
+    cursor: help;
+    transition: color 0.15s ease, background 0.15s ease;
+    outline: none;
+}
+
+.brikpanel-dash-copy-help:hover,
+.brikpanel-dash-copy-help:focus-visible {
+    color: var(--bp-text, #303030);
+    background: rgba(48,48,48,0.08);
+}
+
+.brikpanel-dash-copy-help:focus-visible {
+    box-shadow: 0 0 0 2px var(--bp-primary, #303030);
+}
+
+.brikpanel-dash-copy-help-icon {
+    display: block;
+    pointer-events: none;
+}
+
+.brikpanel-dash-copy-help-tip {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    z-index: 100;
+    display: block;
+    width: max-content;
+    max-width: 280px;
+    padding: 0.625rem 0.75rem;
+    background: #303030;
+    color: #fff;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.12);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+}
+
+/* Arrow */
+.brikpanel-dash-copy-help-tip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 8px;
+    height: 8px;
+    background: #303030;
+    border-radius: 1px;
+}
+
+.brikpanel-dash-copy-help:hover .brikpanel-dash-copy-help-tip,
+.brikpanel-dash-copy-help:focus-visible .brikpanel-dash-copy-help-tip,
+.brikpanel-dash-copy-help:focus-within .brikpanel-dash-copy-help-tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.brikpanel-dash-copy-help-title {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 0.1875rem;
+    color: #fff;
+}
+
+.brikpanel-dash-copy-help-body {
+    display: block;
+    color: rgba(255,255,255,0.85);
+}
+
+/* When the wrapper is near the right edge of the viewport on smaller screens,
+   anchor the tooltip to the right so it doesn't get clipped. */
+@media (max-width: 900px) {
+    .brikpanel-dash-copy-help-tip {
+        left: auto;
+        right: -4px;
+        transform: translateY(-4px);
+    }
+    .brikpanel-dash-copy-help-tip::before {
+        left: auto;
+        right: 8px;
+        transform: rotate(45deg);
+    }
+    .brikpanel-dash-copy-help:hover .brikpanel-dash-copy-help-tip,
+    .brikpanel-dash-copy-help:focus-visible .brikpanel-dash-copy-help-tip,
+    .brikpanel-dash-copy-help:focus-within .brikpanel-dash-copy-help-tip {
+        transform: translateY(0);
+    }
+}
+
+/* Generic inline help hint — a small "?" with a dark tooltip, reused next to
+   metric labels and panel headings to explain where a figure comes from. */
+.brikpanel-dash-hint {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+    color: var(--bp-text-muted, #8a8a8a);
+    border-radius: 50%;
+    cursor: help;
+    transition: color 0.15s ease, background 0.15s ease;
+    outline: none;
+}
+
+.brikpanel-dash-hint:hover,
+.brikpanel-dash-hint:focus-visible {
+    color: var(--bp-text, #303030);
+    background: rgba(48,48,48,0.08);
+}
+
+.brikpanel-dash-hint:focus-visible {
+    box-shadow: 0 0 0 2px var(--bp-primary, #303030);
+}
+
+.brikpanel-dash-hint-icon {
+    display: block;
+    pointer-events: none;
+}
+
+/* Opens rightward from the icon by default. The icon sits to the left of (or
+   centred in) almost every label, so opening right keeps the box on screen.
+   The --end modifier flips it for the right-most card (Conversion rate). */
+.brikpanel-dash-hint-tip {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: -8px;
+    right: auto;
+    transform: translateY(-4px);
+    z-index: 100;
+    display: block;
+    width: max-content;
+    max-width: 300px;
+    padding: 0.625rem 0.75rem;
+    background: #303030;
+    color: #fff;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.12);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.45;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+}
+
+.brikpanel-dash-hint-tip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 12px;
+    right: auto;
+    transform: rotate(45deg);
+    width: 8px;
+    height: 8px;
+    background: #303030;
+    border-radius: 1px;
+}
+
+.brikpanel-dash-hint--end .brikpanel-dash-hint-tip {
+    left: auto;
+    right: -8px;
+}
+
+.brikpanel-dash-hint--end .brikpanel-dash-hint-tip::before {
+    left: auto;
+    right: 12px;
+}
+
+.brikpanel-dash-hint:hover .brikpanel-dash-hint-tip,
+.brikpanel-dash-hint:focus-visible .brikpanel-dash-hint-tip,
+.brikpanel-dash-hint:focus-within .brikpanel-dash-hint-tip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.brikpanel-dash-hint-title {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 0.1875rem;
+    color: #fff;
+}
+
+.brikpanel-dash-hint-body {
+    display: block;
+    color: rgba(255,255,255,0.85);
+}
+
+.brikpanel-dash-copy-summary:hover:not(:disabled) {
+    background: var(--bp-primary-hover, #1a1a1a);
+}
+
+.brikpanel-dash-copy-summary:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.brikpanel-dash-copy-summary:focus-visible {
+    outline: 2px solid var(--bp-primary, #303030);
+    outline-offset: 2px;
+}
+
+.brikpanel-dash-copy-summary:disabled {
+    cursor: progress;
+    opacity: 0.95;
+}
+
+.brikpanel-dash-copy-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: rgba(255,255,255,0.95);
+}
+
+.brikpanel-dash-copy-icon svg {
+    display: block;
+}
+
+.brikpanel-dash-copy-label {
+    pointer-events: none;
+}
+
+/* Progress bar — sits at the bottom edge, only visible while loading */
+.brikpanel-dash-copy-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background: transparent;
+    pointer-events: none;
+}
+
+.brikpanel-dash-copy-progress > span {
+    display: block;
+    width: 0%;
+    height: 100%;
+    background: rgba(255,255,255,0.85);
+    transition: width 0.25s ease;
+}
+
+/* Loading: swap icon for a spinner */
+.brikpanel-dash-copy-summary.is-loading .brikpanel-dash-copy-icon svg {
+    display: none;
+}
+
+.brikpanel-dash-copy-summary.is-loading .brikpanel-dash-copy-icon::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: brikpanel-summary-spin 0.7s linear infinite;
+}
+
+@keyframes brikpanel-summary-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Success state — green flash, hides spinner */
+.brikpanel-dash-copy-summary.is-success {
+    background: var(--bp-success, #1a8917);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.brikpanel-dash-copy-summary.is-success .brikpanel-dash-copy-icon::before {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat;
+    animation: none;
+    border-radius: 0;
+}
+
+.brikpanel-dash-copy-summary.is-success .brikpanel-dash-copy-icon svg {
+    display: none;
+}
+
+/* Error state */
+.brikpanel-dash-copy-summary.is-error {
+    background: var(--bp-error, #d72c0d);
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.brikpanel-dash-copy-summary.is-error .brikpanel-dash-copy-icon::before {
+    content: '!';
+    width: 14px;
+    height: 14px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 14px;
+    text-align: center;
+    border: 0;
+    animation: none;
+    border-radius: 0;
+}
+
+.brikpanel-dash-copy-summary.is-error .brikpanel-dash-copy-icon svg {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .brikpanel-dash-copy-wrap {
+        order: -1;
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+    .brikpanel-dash-copy-summary {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
+/* =========================================================================
+   EXPORT CSV BUTTON  (secondary style — mirrors the design system)
+   ========================================================================= */
+.brikpanel-dash-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    line-height: 1;
+    color: var(--bp-text, #303030);
+    background: var(--bp-card, #fff);
+    border: 0;
+    border-radius: 0.5rem;
+    box-shadow: inset 0 0 0 1px var(--bp-border, #e3e3e3), 0 1px 0 rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+    white-space: nowrap;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.brikpanel-dash-export:hover:not(:disabled) {
+    background: #f7f7f7;
+}
+
+.brikpanel-dash-export:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.brikpanel-dash-export:focus-visible {
+    outline: 2px solid var(--bp-primary, #303030);
+    outline-offset: 1px;
+}
+
+.brikpanel-dash-export:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.brikpanel-dash-export-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--bp-text-secondary, #616161);
+}
+
+/* =========================================================================
+   PERIOD SUBTITLE  (which dates / how long the report covers)
+   ========================================================================= */
+.brikpanel-dash-period {
+    display: flex;
+    align-items: center;
+    gap: 0.4375rem;
+    margin: -0.5rem 0 1.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--bp-text-secondary, #616161);
+}
+
+.brikpanel-dash-period-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--bp-text-muted, #8a8a8a);
+}
+
+@media (max-width: 600px) {
+    .brikpanel-dash-export {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}

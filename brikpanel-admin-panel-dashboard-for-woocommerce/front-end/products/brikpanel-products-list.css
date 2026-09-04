@@ -1,0 +1,3228 @@
+/* ==========================================================================
+   BrikPanel – Products List
+   Modern, AJAX-powered product management interface
+   ========================================================================== */
+
+/* ---------- Variables ---------- */
+.brikpanel-pl {
+    --bg: #f1f1f1;
+    --card: #ffffff;
+    --text: #303030;
+    --text-secondary: #616161;
+    --text-muted: #8a8a8a;
+    --border: #e3e3e3;
+    --input-border: #8a8a8a;
+    --input-focus: #303030;
+    --primary: #303030;
+    --primary-hover: #1a1a1a;
+    --success: #1a8917;
+    --error: #d72c0d;
+    --hover-bg: #f7f7f7;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    color: var(--text);
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* ---------- Header ---------- */
+.brikpanel-pl-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 0;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.brikpanel-pl-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.brikpanel-pl-header-left h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+    color: var(--text);
+}
+
+.brikpanel-pl-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.375rem;
+    padding: 0 0.5rem;
+    border-radius: 1rem;
+    background: var(--border);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.brikpanel-pl-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+/* ---------- Search ---------- */
+.brikpanel-pl-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.brikpanel-pl-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.brikpanel-pl input[type="text"].brikpanel-pl-search {
+    width: 240px;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text);
+    background: var(--card);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    height: auto;
+    line-height: 1.4;
+}
+
+.brikpanel-pl input[type="text"].brikpanel-pl-search:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+/* ---------- Buttons ---------- */
+.brikpanel-pl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+.brikpanel-pl-btn.primary {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.brikpanel-pl-btn.primary:hover {
+    background: var(--primary-hover);
+}
+
+.brikpanel-pl-btn.secondary {
+    background: var(--card);
+    color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--border), 0 1px 0 rgba(0,0,0,0.05);
+}
+
+.brikpanel-pl-btn.secondary:hover {
+    background: var(--hover-bg);
+}
+
+.brikpanel-pl-btn.danger {
+    background: var(--card);
+    color: var(--error);
+    box-shadow: inset 0 0 0 1px var(--border), 0 1px 0 rgba(0,0,0,0.05);
+}
+
+.brikpanel-pl-btn.danger:hover {
+    background: #fef2f2;
+}
+
+.brikpanel-pl-btn.small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+}
+
+.brikpanel-pl-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ---------- Filters Bar ---------- */
+.brikpanel-pl-filters {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+/* ---------- Status Tabs ---------- */
+.brikpanel-pl-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.brikpanel-pl-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.brikpanel-pl-tab:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+.brikpanel-pl-tab.active {
+    background: rgba(0,0,0,0.08);
+    color: var(--text);
+    font-weight: 600;
+}
+
+.brikpanel-pl-tab-count {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ---------- Filter Selects ---------- */
+.brikpanel-pl-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.brikpanel-pl-select {
+    padding: 0.375rem 2rem 0.375rem 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text);
+    background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23616161' stroke-width='2'%3E%3Cpolyline points='6,9 12,15 18,9'/%3E%3C/svg%3E") no-repeat right 0.5rem center;
+    background-size: 12px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s;
+    max-width: 180px;
+}
+
+.brikpanel-pl-select:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+/* ---------- Active Filter Chips ---------- */
+.brikpanel-pl-filter-chips {
+    flex-basis: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.brikpanel-pl-filter-chips[hidden] {
+    display: none;
+}
+
+.brikpanel-pl-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.375rem 0.25rem 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--card);
+    font-size: 0.75rem;
+    font-weight: 550;
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.brikpanel-pl-filter-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.brikpanel-pl-filter-chip-remove:hover {
+    background: rgba(0,0,0,0.08);
+    color: var(--text);
+}
+
+/* ---------- Bulk Bar ---------- */
+.brikpanel-pl-bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 1rem;
+    background: #f0f4ff;
+    border: 1px solid #d0daf7;
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.brikpanel-pl-bulk-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: var(--text);
+}
+
+.brikpanel-pl-bulk-link {
+    background: none;
+    border: none;
+    color: #4a6cf7;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.brikpanel-pl-bulk-link:hover {
+    color: #3451d1;
+}
+
+.brikpanel-pl-bulk-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ---------- Products Card ---------- */
+.brikpanel-pl-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+    position: relative;
+}
+
+/* ---------- Progress Bar ---------- */
+.brikpanel-pl-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    overflow: hidden;
+    border-radius: 0.75rem 0.75rem 0 0;
+}
+
+.brikpanel-pl-progress.active {
+    opacity: 1;
+}
+
+.brikpanel-pl-progress::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40%;
+    height: 100%;
+    background: var(--primary);
+    border-radius: 2px;
+    animation: bpl-progress-slide 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes bpl-progress-slide {
+    0% { left: -40%; }
+    100% { left: 100%; }
+}
+
+/* Bulk bar loading state */
+.brikpanel-pl-bulk-bar.is-loading .brikpanel-pl-bulk-right .brikpanel-pl-btn {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.brikpanel-pl-btn .bpl-btn-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: bpl-spin 0.6s linear infinite;
+    flex-shrink: 0;
+}
+
+/* ---------- Table ---------- */
+.brikpanel-pl-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.brikpanel-pl-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.brikpanel-pl-table thead {
+    background: var(--hover-bg);
+    border-bottom: 1px solid var(--border);
+}
+
+.brikpanel-pl-table thead th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.brikpanel-pl-table thead th:first-child {
+    padding-left: 1.25rem;
+}
+
+.brikpanel-pl-th-check {
+    width: 40px;
+}
+
+.brikpanel-pl-th-image {
+    width: 50px;
+}
+
+.brikpanel-pl-th-actions {
+    width: 100px;
+}
+
+/* ---------- Table Rows ---------- */
+.brikpanel-pl-row {
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.1s;
+}
+
+.brikpanel-pl-row:last-child {
+    border-bottom: none;
+}
+
+.brikpanel-pl-row:hover {
+    background: var(--hover-bg);
+}
+
+.brikpanel-pl-row td {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    vertical-align: middle;
+    color: var(--text);
+}
+
+.brikpanel-pl-row td:first-child {
+    padding-left: 1.25rem;
+}
+
+.brikpanel-pl-row-deleting {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* ---------- Checkbox ---------- */
+.brikpanel-pl-checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+/* ---------- Product Image ---------- */
+.brikpanel-pl-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.375rem;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: var(--hover-bg);
+}
+
+/* ---------- Product Name ---------- */
+.brikpanel-pl-cell-name {
+    font-weight: 550;
+    max-width: 280px;
+}
+
+.brikpanel-pl-featured-star {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    margin-right: .375rem;
+    border: none;
+    background: transparent;
+    color: #8a8a8a;
+    border-radius: .375rem;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: color .15s ease, background .15s ease, transform .08s ease;
+}
+.brikpanel-pl-featured-star:hover {
+    background: #f1f1f1;
+    color: #303030;
+}
+.brikpanel-pl-featured-star:active {
+    transform: scale(.9);
+}
+.brikpanel-pl-featured-star:focus-visible {
+    outline: 2px solid #303030;
+    outline-offset: 1px;
+}
+.brikpanel-pl-featured-star.is-on {
+    color: #eab308;
+}
+.brikpanel-pl-featured-star.is-on:hover {
+    color: #ca8a04;
+    background: #fef9c3;
+}
+.brikpanel-pl-featured-star:disabled {
+    cursor: wait;
+    opacity: .6;
+}
+
+.brikpanel-pl-product-name-link {
+    display: inline-block;
+    max-width: 280px;
+    color: #303030;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.brikpanel-pl-product-name-link:hover .brikpanel-pl-product-name-text,
+.brikpanel-pl-product-name-link:focus-visible .brikpanel-pl-product-name-text {
+    text-decoration: underline;
+    text-decoration-color: #8a8a8a;
+    text-underline-offset: 2px;
+}
+
+.brikpanel-pl-product-name-link:focus {
+    outline: none;
+}
+
+.brikpanel-pl-product-name-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 280px;
+}
+
+.brikpanel-pl-type-badge {
+    display: inline-block;
+    margin-top: 0.125rem;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 0.25rem;
+    background: #f0f0f0;
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+    font-weight: 500;
+}
+
+/* Variation count, nested inside the "Variable" badge. A hairline divider
+   rather than a second chip, so the pair reads as one control — including on
+   mobile, where the badge itself becomes a block. */
+.brikpanel-pl-type-badge .brikpanel-pl-type-count {
+    margin-left: 0.3125rem;
+    padding-left: 0.3125rem;
+    border-left: 1px solid #d5d5d5;
+    color: #616161;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: default;
+}
+
+/* ---------- SKU ---------- */
+.brikpanel-pl-cell-sku {
+    white-space: nowrap;
+}
+
+.brikpanel-pl-sku-cell {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 0.8125rem;
+}
+
+/* ---------- Price Cell ---------- */
+.brikpanel-pl-cell-price {
+    white-space: nowrap;
+}
+
+/* ---------- Cost of goods cell ---------- */
+.brikpanel-pl-cell-cogs {
+    white-space: nowrap;
+    color: var(--text-secondary, #616161);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.brikpanel-pl-cogs-flag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    margin-left: 0.25rem;
+    border-radius: 50%;
+    border: 1px solid #d72c0d;
+    background: #fef3f2;
+    color: #d72c0d;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.brikpanel-pl-cogs-flag:focus-visible {
+    outline: 2px solid #303030;
+    outline-offset: 1px;
+}
+
+/* ---------- Profit cell (derived: price minus cost, read-only) ---------- */
+.brikpanel-pl-cell-profit {
+    white-space: nowrap;
+    color: var(--text-secondary, #616161);
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Loss is the one thing in this column worth a colour. */
+.brikpanel-pl-profit-value.is-negative,
+.brikpanel-pl-profit-value.is-negative .woocommerce-Price-amount {
+    color: #d72c0d;
+}
+
+.brikpanel-pl-profit-pct {
+    color: #8a8a8a;
+    font-size: 0.75rem;
+}
+
+.brikpanel-pl-price-display ins {
+    text-decoration: none;
+}
+
+.brikpanel-pl-price-cell del {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+.brikpanel-pl-price-cell ins {
+    text-decoration: none;
+    color: var(--success);
+    font-weight: 550;
+}
+
+/* ---------- Stock Badge ---------- */
+.brikpanel-pl-stock-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    background: #e8f5e9;
+    color: #1b5e20;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.brikpanel-pl-stock-badge:hover {
+    box-shadow: 0 0 0 2px var(--primary);
+}
+
+.brikpanel-pl-stock-badge.low {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.brikpanel-pl-stock-badge.out {
+    background: #fce4e4;
+    color: #c62828;
+}
+
+.brikpanel-pl-stock-na {
+    color: var(--text-muted);
+}
+
+/* ---------- Inline stock-status toggle (sits next to the qty badge) ---------- */
+.brikpanel-pl-stock-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.brikpanel-pl-ss-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+    color: var(--text);
+}
+
+.brikpanel-pl-ss-toggle:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 20px;
+}
+
+.brikpanel-pl-ss-toggle[disabled] {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.brikpanel-pl-ss-track {
+    position: relative;
+    display: inline-block;
+    width: 28px;
+    height: 16px;
+    background: #cfcfcf;
+    border-radius: 16px;
+    flex: none;
+    transition: background 0.15s ease;
+}
+
+.brikpanel-pl-ss-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s ease;
+}
+
+.brikpanel-pl-ss-toggle.is-on .brikpanel-pl-ss-track {
+    background: var(--primary);
+}
+
+.brikpanel-pl-ss-toggle.is-on .brikpanel-pl-ss-thumb {
+    transform: translateX(12px);
+}
+
+/* ---------- Status Badge ---------- */
+.brikpanel-pl-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 550;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.brikpanel-pl-status-badge.published {
+    background: #e8f5e9;
+    color: #1b5e20;
+}
+
+.brikpanel-pl-status-badge.draft {
+    background: #f5f5f5;
+    color: var(--text-muted);
+}
+
+.brikpanel-pl-status-badge.trashed {
+    background: #fce4e4;
+    color: #c62828;
+}
+
+.brikpanel-pl-status-badge.private {
+    background: #e7e7f5;
+    color: #3b3b7a;
+}
+
+.brikpanel-pl-status-badge.scheduled {
+    background: #e6effd;
+    color: #1d4ed8;
+}
+
+.brikpanel-pl-status-badge:hover {
+    box-shadow: 0 0 0 2px var(--primary);
+}
+
+.brikpanel-pl-status-saving {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* ---------- Actions ---------- */
+.brikpanel-pl-actions-cell {
+    text-align: right;
+    padding-right: 1.25rem !important;
+}
+
+.brikpanel-pl-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem;
+}
+
+.brikpanel-pl-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.1s;
+}
+
+.brikpanel-pl-actions button:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.brikpanel-pl-action-delete:hover {
+    color: var(--error) !important;
+    background: #fef2f2 !important;
+}
+
+.brikpanel-pl-action-view {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.1s;
+    text-decoration: none;
+}
+
+.brikpanel-pl-action-view:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+/* ---------- Editable Cells ---------- */
+.brikpanel-pl-editable {
+    cursor: text;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+}
+
+.brikpanel-pl-editable:hover {
+    background: rgba(0,0,0,0.04);
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+.brikpanel-pl-editable.saving {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.brikpanel-pl-inline-input {
+    width: 80px;
+    padding: 0.25rem 0.375rem;
+    border: 1px solid var(--input-focus);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--text);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--input-focus);
+    background: var(--card);
+}
+
+.brikpanel-pl-inline-input:focus {
+    border-color: var(--input-focus);
+}
+
+/* ---------- Pagination ---------- */
+.brikpanel-pl-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid var(--border);
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.brikpanel-pl-showing {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.brikpanel-pl-page-btns {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.brikpanel-pl-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.brikpanel-pl-page-btn:hover:not(.disabled):not(.active) {
+    background: var(--hover-bg);
+    border-color: var(--text-muted);
+}
+
+.brikpanel-pl-page-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.brikpanel-pl-page-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.brikpanel-pl-page-dots {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+/* ---------- Empty State ---------- */
+.brikpanel-pl-empty {
+    text-align: center;
+    padding: 3rem 1rem !important;
+}
+
+.brikpanel-pl-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.brikpanel-pl-empty-state p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* ---------- Loading Spinner ---------- */
+.brikpanel-pl-loading-row td {
+    text-align: center;
+    padding: 3rem 1rem !important;
+}
+
+.brikpanel-pl-spinner {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: bpl-spin 0.6s linear infinite;
+}
+
+@keyframes bpl-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---------- Drawer Overlay ---------- */
+.brikpanel-pl-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 99999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, visibility 0.25s;
+}
+
+.brikpanel-pl-drawer-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ---------- Quick Edit Drawer ---------- */
+.brikpanel-pl-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 420px;
+    max-width: 90vw;
+    background: var(--card);
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brikpanel-pl-drawer.open {
+    transform: translateX(0);
+}
+
+.brikpanel-pl-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.brikpanel-pl-drawer-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.brikpanel-pl-drawer-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.brikpanel-pl-qe-featured-star {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #8a8a8a;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: color .15s ease, background .15s ease, transform .08s ease;
+}
+
+.brikpanel-pl-qe-featured-star:hover {
+    background: #f1f1f1;
+    color: #303030;
+}
+
+.brikpanel-pl-qe-featured-star:active {
+    transform: scale(.9);
+}
+
+.brikpanel-pl-qe-featured-star:focus-visible {
+    outline: 2px solid #303030;
+    outline-offset: 1px;
+}
+
+.brikpanel-pl-qe-featured-star.is-on {
+    color: #eab308;
+}
+
+.brikpanel-pl-qe-featured-star.is-on:hover {
+    color: #ca8a04;
+    background: #fef9c3;
+}
+
+.brikpanel-pl-qe-featured-star:disabled {
+    cursor: wait;
+    opacity: .6;
+}
+
+.brikpanel-pl-drawer-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.brikpanel-pl-drawer-close:hover {
+    background: var(--hover-bg);
+    color: var(--text);
+}
+
+.brikpanel-pl-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.brikpanel-pl-drawer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+/* ---------- Quick Edit Fields ---------- */
+.brikpanel-pl-qe-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.brikpanel-pl-qe-field label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.brikpanel-pl-qe-field input[type="text"],
+.brikpanel-pl-qe-field input[type="number"],
+.brikpanel-pl-qe-field select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--input-border);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+    background: var(--card);
+}
+
+.brikpanel-pl-qe-field input:focus,
+.brikpanel-pl-qe-field select:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+.brikpanel-pl-qe-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.brikpanel-pl-qe-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+}
+
+@media (max-width: 560px) {
+    .brikpanel-pl-qe-row-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Input Group */
+.brikpanel-pl-input-group {
+    display: flex;
+    border: 1px solid var(--input-border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.brikpanel-pl-input-group:focus-within {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+.brikpanel-pl-input-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 0.625rem;
+    background: #f7f7f7;
+    border-right: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.brikpanel-pl-input-group input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 0.875rem;
+    outline: none;
+    min-width: 0;
+}
+
+.brikpanel-pl-input-suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 0.625rem;
+    background: #f7f7f7;
+    border-left: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* ---------- Bulk taxonomy term picker ---------- */
+#bpl-bulk-term-region {
+    margin-top: 0.75rem;
+}
+
+.bpl-bulk-term-picker {
+    margin-top: 0.375rem;
+}
+
+.bpl-bulk-term-picker .brikpanel-pl-qe-term-wrap {
+    border: 1px solid var(--input-border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.bpl-bulk-term-picker .brikpanel-pl-qe-term-list {
+    max-height: 220px;
+}
+
+/* ---------- Toast Notifications ---------- */
+.brikpanel-pl-toast-container {
+    position: fixed;
+    top: 44px;
+    right: 20px;
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+.brikpanel-pl-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: translateX(110%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: auto;
+    max-width: 360px;
+}
+
+.brikpanel-pl-toast.show {
+    transform: translateX(0);
+}
+
+.brikpanel-pl-toast.success {
+    background: #e4f5e1;
+    color: #1a6b15;
+    border: 1px solid #b7e1b0;
+}
+
+.brikpanel-pl-toast.error {
+    background: #fce4e4;
+    color: #c62828;
+    border: 1px solid #f1b0b0;
+}
+
+.brikpanel-pl-toast.info {
+    background: #e8f0fe;
+    color: #1a56db;
+    border: 1px solid #bdd3f7;
+}
+
+.brikpanel-pl-toast-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 1.125rem;
+    cursor: pointer;
+    opacity: 0.6;
+    padding: 0;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.brikpanel-pl-toast-close:hover {
+    opacity: 1;
+}
+
+.brikpanel-pl-text-muted {
+    color: var(--text-muted);
+}
+
+/* ---------- Responsive ---------- */
+@media screen and (max-width: 782px) {
+    /* WordPress gives #wpcontent an asymmetric 10px-left / 0-right padding on
+       mobile, which shoves the whole panel off-centre (extra space always ends
+       up on one side). Zero it and apply a single symmetric gutter on the panel
+       itself so the left and right margins always match. */
+    body.admin_page_brikpanel-products #wpcontent {
+        padding-left: 0 !important;
+    }
+    .brikpanel-pl {
+        padding-left: 14px;
+        padding-right: 14px;
+        box-sizing: border-box;
+    }
+
+    .brikpanel-pl-header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem 0 0.75rem;
+        gap: 0.625rem;
+    }
+
+    /* Search bar full width on its own row, then action buttons share the row
+       below it (wrap as needed). Without flex-wrap the secondary buttons and
+       "Add product" CTA fall off-screen on mobile. */
+    .brikpanel-pl-header-right {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .brikpanel-pl-search-wrap {
+        flex: 1 1 100%;
+        order: -1;
+    }
+
+    .brikpanel-pl input[type="text"].brikpanel-pl-search {
+        width: 100%;
+    }
+
+    /* All header buttons: equal-share the second row, primary CTA goes last
+       so "Add product" is the most prominent. */
+    .brikpanel-pl-header-right .brikpanel-pl-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-width: 0;
+    }
+    .brikpanel-pl-header-right .brikpanel-pl-btn.primary {
+        flex-basis: 100%;
+        order: 99;
+    }
+
+    .brikpanel-pl-filters {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .brikpanel-pl-tabs {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+        scrollbar-width: thin;
+    }
+
+    .brikpanel-pl-filter-group {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .brikpanel-pl-select {
+        flex: 1;
+        max-width: none;
+        width: 100%;
+    }
+    /* Categories filter spans the full first row so the long option labels
+       (e.g. "Apparel Display On Website (12)") don't get truncated to ~3 chars. */
+    .brikpanel-pl-filter-group #bpl-cat-filter {
+        grid-column: 1 / -1;
+    }
+    .brikpanel-pl-columns-menu .brikpanel-pl-columns-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    /* Sort + Columns buttons share the final row (2-up on tablet, stacked on
+       phone), both centred so they read as a matched action pair. */
+    .brikpanel-pl-filter-group > .brikpanel-pl-btn {
+        justify-content: center;
+    }
+
+    .brikpanel-pl-bulk-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .brikpanel-pl-bulk-right {
+        width: 100%;
+    }
+
+    .brikpanel-pl-bulk-right .brikpanel-pl-btn {
+        flex: 1;
+    }
+
+    .brikpanel-pl-pagination {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* Hide secondary columns to make room for actions on small screens. The
+       remaining columns are: select / image / product (name+meta) / actions. */
+    .brikpanel-pl-th-sku,
+    .brikpanel-pl-cell-sku,
+    .brikpanel-pl-th-cat,
+    .brikpanel-pl-cell-cat,
+    .brikpanel-pl-th-price,
+    .brikpanel-pl-cell-price,
+    .brikpanel-pl-th-cogs,
+    .brikpanel-pl-cell-cogs,
+    .brikpanel-pl-th-profit,
+    .brikpanel-pl-cell-profit,
+    .brikpanel-pl-th-stock,
+    .brikpanel-pl-cell-stock,
+    .brikpanel-pl-th-status,
+    .brikpanel-pl-cell-status {
+        display: none;
+    }
+
+    .brikpanel-pl-table-wrap {
+        overflow-x: hidden;
+    }
+    /* Drop the desktop min-width so the 4 visible columns (check / image /
+       name / actions) fit within the viewport instead of pushing the
+       actions column off-screen. `table-layout: fixed` distributes width
+       per the explicit column rules below; the name column absorbs whatever
+       is left and truncates with an ellipsis. */
+    .brikpanel-pl-table {
+        min-width: 0;
+        width: 100%;
+        table-layout: fixed;
+    }
+    .brikpanel-pl-table thead th,
+    .brikpanel-pl-row td {
+        padding-left: 0.375rem;
+        padding-right: 0.375rem;
+    }
+    .brikpanel-pl-table thead th:first-child,
+    .brikpanel-pl-row td:first-child {
+        padding-left: 0.625rem;
+    }
+    .brikpanel-pl-th-check,
+    .brikpanel-pl-row td:first-child { width: 32px; }
+    .brikpanel-pl-th-image,
+    .brikpanel-pl-cell-image { width: 44px; }
+    .brikpanel-pl-th-actions,
+    .brikpanel-pl-actions-cell { width: 124px; }
+
+    /* Action buttons: there's no hover on touch devices, so the per-row
+       actions (view / edit / duplicate / delete) must be permanently
+       visible. Pack them tighter so they fit beside the product name. */
+    .brikpanel-pl-actions {
+        opacity: 1 !important;
+        gap: 0;
+    }
+    .brikpanel-pl-actions-cell {
+        padding-right: 0.5rem !important;
+        width: 1%;             /* shrink-to-fit */
+        white-space: nowrap;
+    }
+    .brikpanel-pl-actions button,
+    .brikpanel-pl-actions .brikpanel-pl-action-view {
+        width: 1.875rem;
+        height: 1.875rem;
+    }
+
+    /* Name column: relax the desktop 280px max-width and let the cell take
+       whatever the table assigns, so long names truncate cleanly with an
+       ellipsis instead of pushing the type badge off-screen. */
+    .brikpanel-pl-cell-name { max-width: none; min-width: 0; }
+    .brikpanel-pl-product-name-link,
+    .brikpanel-pl-product-name-text { max-width: 100%; }
+    /* Stack the type badge ("Variable", "Grouped", …) under the name so it
+       doesn't share the limited horizontal space. */
+    .brikpanel-pl-type-badge {
+        display: block;
+        width: max-content;
+        margin-top: 0.25rem;
+    }
+
+    /* Full-screen sheet below whichever bar is on top. The hardcoded 46px was
+       WP's mobile admin-bar height; under the 52px BrikPanel top bar it left a
+       6px strip of the page showing above the drawer and tucked the drawer's
+       own header into the bar's shadow. Fallback keeps the top-bar-off case
+       (real 46px WP admin bar at this breakpoint) correct. */
+    .brikpanel-pl-drawer {
+        width: 100vw;
+        max-width: 100vw;
+        top: var(--bp-topbar-height, 46px);
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    .brikpanel-pl-drawer-overlay.open ~ .brikpanel-pl-wrap {
+        pointer-events: none;
+    }
+}
+
+/* Phones (<=600px): stack every filter full width in a single column. The
+   2-column grid leaves an odd item (Sort) alone on its own row and pushes the
+   selects hard against the right edge — a single column is cleaner, perfectly
+   symmetric and matches native mobile form pickers. */
+@media screen and (max-width: 600px) {
+    .brikpanel-pl-filter-group {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Very small phones (<=480px): drop button labels in the header so the icons
+   alone fit cleanly on a single row without wrapping. */
+@media screen and (max-width: 480px) {
+    .brikpanel-pl-header-right .brikpanel-pl-btn.secondary {
+        gap: 0;
+        padding: 0.5rem;
+    }
+    .brikpanel-pl-header-right .brikpanel-pl-btn.secondary > span,
+    .brikpanel-pl-header-right .brikpanel-pl-btn.secondary {
+        font-size: 0;
+    }
+    .brikpanel-pl-header-right .brikpanel-pl-btn.secondary svg {
+        width: 18px;
+        height: 18px;
+    }
+    /* Restore full text for the primary "Add product" CTA. */
+    .brikpanel-pl-header-right .brikpanel-pl-btn.primary {
+        font-size: 0.8125rem;
+    }
+}
+
+/* Prevent horizontal scroll from off-screen drawer */
+body.admin_page_brikpanel-products,
+html:has(body.admin_page_brikpanel-products) {
+    overflow-x: hidden;
+}
+
+/* ---------- Hide WP Admin defaults ---------- */
+/* Also strip .updated / .error / .update-nag so they collapse completely,
+   and zero out the 10px .wrap margin WP leaves as a notice slot — together
+   this removes any visible gap above the page header. */
+body.admin_page_brikpanel-products .screen-meta-links,
+body.admin_page_brikpanel-products .notice:not(.brikpanel-notice):not(.notice-error),
+body.admin_page_brikpanel-products .updated:not(.brikpanel-notice),
+body.admin_page_brikpanel-products .update-nag,
+body.admin_page_brikpanel-products #screen-meta {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 0 !important;
+    border: 0 !important;
+}
+body.admin_page_brikpanel-products #wpbody-content > .wrap {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Body background */
+body.admin_page_brikpanel-products #wpbody-content {
+    padding-bottom: 2rem;
+    margin: 0 !important;
+}
+
+body.admin_page_brikpanel-products .wrap {
+    margin: 0 !important;
+    padding: 0 10px !important;
+    max-width: none !important;
+}
+
+/* Lock body scroll when drawer/modal is open */
+body.brikpanel-pl-drawer-open {
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Bulk Update Modal
+   ========================================================================== */
+
+.brikpanel-pl-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.brikpanel-pl-modal-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.brikpanel-pl-modal {
+    background: var(--card);
+    border-radius: 0.75rem;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+    width: 560px;
+    max-width: 92vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(12px) scale(0.97);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brikpanel-pl-modal-overlay.open .brikpanel-pl-modal {
+    transform: translateY(0) scale(1);
+}
+
+.brikpanel-pl-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.brikpanel-pl-modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.brikpanel-pl-modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.brikpanel-pl-modal-close:hover {
+    background: var(--hover-bg);
+    color: var(--text);
+}
+
+.brikpanel-pl-modal-body {
+    padding: 1.25rem 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.brikpanel-pl-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+/* Modal Tabs */
+.brikpanel-pl-modal-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+}
+
+.brikpanel-pl-modal-tab {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+}
+
+.brikpanel-pl-modal-tab:hover {
+    color: var(--text);
+}
+
+.brikpanel-pl-modal-tab.active {
+    color: var(--text);
+    font-weight: 600;
+    border-bottom-color: var(--primary);
+}
+
+.brikpanel-pl-modal-tab-content {
+    display: none;
+}
+
+.brikpanel-pl-modal-tab-content.active {
+    display: block;
+}
+
+/* Modal Fields */
+.brikpanel-pl-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-bottom: 0.875rem;
+}
+
+.brikpanel-pl-modal-field.grow {
+    flex: 1;
+    min-width: 0;
+}
+
+.brikpanel-pl-modal-field label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.brikpanel-pl-modal-field input[type="text"],
+.brikpanel-pl-modal-field input[type="number"] {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--input-border);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+    background: var(--card);
+    height: auto;
+    line-height: 1.4;
+}
+
+.brikpanel-pl-modal-field input:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+.brikpanel-pl-select.full {
+    width: 100%;
+    max-width: none;
+}
+
+.brikpanel-pl-modal-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.brikpanel-pl-modal-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+}
+
+.brikpanel-pl-modal-field-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.5rem;
+}
+
+.brikpanel-pl-modal-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0.25rem 0 0;
+    line-height: 1.4;
+}
+
+.brikpanel-pl-modal-info {
+    font-size: 0.875rem;
+    color: var(--text);
+    margin: 0 0 1rem;
+    font-weight: 500;
+}
+
+.brikpanel-pl-modal-info.brikpanel-pl-modal-warn {
+    color: var(--error);
+}
+
+/* ==========================================================================
+   Quick Edit Drawer – Variation List
+   ========================================================================== */
+
+.brikpanel-pl-qe-var-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.brikpanel-pl-qe-var-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.brikpanel-pl-qe-var-item:last-child {
+    border-bottom: none;
+}
+
+.brikpanel-pl-qe-var-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+}
+
+.brikpanel-pl-qe-var-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 80px;
+    gap: 0.5rem;
+}
+
+.brikpanel-pl-qe-var-fields .brikpanel-pl-qe-field label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.brikpanel-pl-qe-var-input {
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--input-border);
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--text);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s;
+}
+
+.brikpanel-pl-qe-var-input:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+/* Danger tab */
+.brikpanel-pl-modal-tab-danger {
+    color: var(--error) !important;
+}
+
+.brikpanel-pl-modal-tab-danger.active {
+    border-bottom-color: var(--error) !important;
+}
+
+/* Danger banner */
+.brikpanel-pl-modal-danger-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    background: #fef2f2;
+    border: 1px solid #f1b0b0;
+    border-radius: 0.5rem;
+    color: #c62828;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+}
+
+.brikpanel-pl-modal-danger-banner svg {
+    flex-shrink: 0;
+    stroke: #c62828;
+}
+
+/* Checkbox label */
+.brikpanel-pl-modal-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.brikpanel-pl-modal-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #8a8a8a;
+    border-radius: 4px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+@media screen and (max-width: 600px) {
+    .brikpanel-pl-modal {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0;
+        max-height: 100vh;
+    }
+
+    .brikpanel-pl-modal-row {
+        flex-direction: column;
+    }
+}
+
+/* =========================================================================
+   BULK PROGRESS MODAL
+   ========================================================================= */
+.bpl-progress-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(32, 32, 32, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100050;
+    padding: 1rem;
+}
+
+.bpl-progress-backdrop.open {
+    display: flex;
+}
+
+.bpl-progress-card {
+    background: #ffffff;
+    border: 1px solid #e3e3e3;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+    animation: bplProgressIn 0.18s cubic-bezier(.4, 0, .2, 1);
+}
+
+@keyframes bplProgressIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.bpl-progress-header {
+    padding: 1.25rem 1.5rem 0.75rem;
+}
+
+.bpl-progress-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #303030;
+    line-height: 1.4;
+}
+
+.bpl-progress-body {
+    padding: 0.5rem 1.5rem 1rem;
+}
+
+.bpl-progress-bar {
+    background: #e3e3e3;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+}
+
+.bpl-progress-bar-fill {
+    background: #303030;
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    transition: width 0.25s ease;
+}
+
+.bpl-progress-stats {
+    margin-top: 0.625rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: #616161;
+}
+
+.bpl-progress-stats #bpl-progress-percent {
+    color: #303030;
+    font-variant-numeric: tabular-nums;
+}
+
+.bpl-progress-errors {
+    margin: 0.625rem 0 0;
+    font-size: 0.75rem;
+    font-weight: 550;
+    color: #d72c0d;
+    background: #fdecec;
+    border: 1px solid #f1b0b0;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.625rem;
+}
+
+.bpl-progress-footer {
+    padding: 0.75rem 1.5rem 1.25rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid #f1f1f1;
+    background: #fafafa;
+}
+
+/* Fast delete warning */
+.bpl-fast-warning {
+    align-items: flex-start;
+    gap: 0.625rem;
+    margin-top: 0.5rem;
+}
+
+.bpl-fast-warning svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.bpl-fast-warning-list {
+    margin: 0.375rem 0 0;
+    padding-left: 1.125rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.55;
+}
+
+.bpl-fast-warning-list li {
+    margin-bottom: 0.25rem;
+}
+
+.bpl-fast-hint {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: #616161;
+}
+
+/* Taxonomy wipe grid (categories / tags / attributes / brands) */
+.bpl-del-tax-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.375rem 1rem;
+    margin-top: 0.375rem;
+}
+
+.bpl-del-tax-grid .brikpanel-pl-modal-check {
+    margin: 0;
+}
+
+/* ==========================================================================
+   Inline stock popover (simple products) + shared toggle group
+   ========================================================================== */
+.brikpanel-pl-stock-popover {
+    position: absolute;
+    z-index: 1000;
+    min-width: 300px;
+    max-width: calc(100vw - 2rem);
+    background: #ffffff;
+    border: 1px solid #e3e3e3;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.04);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.brikpanel-pl-stock-popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+.brikpanel-pl-stock-popover-field label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #303030;
+    line-height: 1.35;
+}
+.brikpanel-pl-stock-popover-qty {
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.875rem;
+    color: #303030;
+    background: #ffffff;
+    border: 1px solid #8a8a8a;
+    border-radius: 0.5rem;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.brikpanel-pl-stock-popover-qty:focus {
+    border-color: #303030;
+    box-shadow: 0 0 0 1px #303030;
+}
+.brikpanel-pl-stock-popover-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+/* Shared toggle-group UI (used in popover + quick-edit drawer) */
+.brikpanel-pl-toggle-group {
+    display: inline-flex;
+    background: #f7f7f7;
+    border: 1px solid #e3e3e3;
+    border-radius: 0.5rem;
+    padding: 0.1875rem;
+    gap: 0.1875rem;
+}
+.brikpanel-pl-toggle-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4375rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: #616161;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.brikpanel-pl-toggle-opt:hover {
+    color: #303030;
+}
+.brikpanel-pl-toggle-opt.is-active {
+    background: #ffffff;
+    color: #303030;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+.brikpanel-pl-toggle-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #8a8a8a;
+    flex-shrink: 0;
+}
+.brikpanel-pl-toggle-dot.instock { background: #1a8917; }
+.brikpanel-pl-toggle-dot.outofstock { background: #d72c0d; }
+.brikpanel-pl-toggle-dot.onbackorder { background: #c2820a; }
+
+/* The drawer toggle fills the row */
+#bpl-qe-stock-status-toggle {
+    display: flex;
+    width: 100%;
+}
+#bpl-qe-stock-status-toggle .brikpanel-pl-toggle-opt {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+}
+/* On narrow phones the "On backorder" label runs out of room. Tighten the
+   padding so the three options share the row without being clipped — applies
+   to both the simple-product toggle and the per-variation toggles. */
+@media (max-width: 480px) {
+    .brikpanel-pl-drawer-body .brikpanel-pl-toggle-group {
+        display: flex;
+        width: 100%;
+    }
+    .brikpanel-pl-drawer-body .brikpanel-pl-toggle-opt {
+        flex: 1;
+        min-width: 0;
+        padding: 0.4375rem 0.25rem;
+        font-size: 0.6875rem;
+        gap: 0.25rem;
+        justify-content: center;
+    }
+}
+
+/* ==========================================================================
+   Variable product inline popup — compact
+   ========================================================================== */
+.brikpanel-pl-var-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99997;
+}
+.brikpanel-pl-var-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99998;
+    background: #ffffff;
+    border: 1px solid #e3e3e3;
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    width: 380px;
+    max-width: calc(100vw - 2rem);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+.brikpanel-pl-var-popup.is-price {
+    width: 520px;
+}
+.brikpanel-pl-var-popup-loading {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.brikpanel-pl-var-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid #e3e3e3;
+    flex-shrink: 0;
+}
+.brikpanel-pl-var-popup-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #303030;
+}
+.brikpanel-pl-var-popup-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: #8a8a8a;
+    cursor: pointer;
+    padding: 0 0.375rem;
+    border-radius: 0.375rem;
+}
+.brikpanel-pl-var-popup-close:hover {
+    background: #f1f1f1;
+    color: #303030;
+}
+.brikpanel-pl-var-popup-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+}
+.brikpanel-pl-var-popup-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: #8a8a8a;
+    font-size: 0.8125rem;
+}
+.brikpanel-pl-var-popup-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.375rem 1rem;
+    border-bottom: 1px solid #f1f1f1;
+}
+.brikpanel-pl-var-popup-row:last-child {
+    border-bottom: none;
+}
+.brikpanel-pl-var-popup-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #303030;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.brikpanel-pl-var-popup-fields {
+    display: flex;
+    gap: 0.375rem;
+    flex-shrink: 0;
+}
+.brikpanel-pl-var-popup-input {
+    width: 80px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #303030;
+    background: #ffffff;
+    border: 1px solid #8a8a8a;
+    border-radius: 0.375rem;
+    box-sizing: border-box;
+    outline: none;
+    text-align: right;
+    -moz-appearance: textfield;
+}
+.brikpanel-pl-var-popup-input::-webkit-outer-spin-button,
+.brikpanel-pl-var-popup-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.brikpanel-pl-var-popup-input:focus {
+    border-color: #303030;
+    box-shadow: 0 0 0 1px #303030;
+}
+.brikpanel-pl-var-popup-input.sale {
+    color: #616161;
+}
+.brikpanel-pl-var-popup.is-price .brikpanel-pl-var-popup-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.375rem;
+}
+.brikpanel-pl-var-popup.is-price .brikpanel-pl-var-popup-name {
+    white-space: normal;
+}
+.brikpanel-pl-var-popup.is-price .brikpanel-pl-var-popup-fields {
+    flex-wrap: wrap;
+}
+.brikpanel-pl-var-popup.is-price .brikpanel-pl-var-popup-input {
+    flex: 1 1 calc(50% - 0.375rem);
+    width: auto;
+    text-align: left;
+}
+.brikpanel-pl-var-popup-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-top: 1px solid #e3e3e3;
+    flex-shrink: 0;
+}
+
+/* Popup/popover appended to <body> can't inherit --primary etc. from
+   .brikpanel-pl wrapper — redeclare locally so buttons theme correctly. */
+.brikpanel-pl-var-popup,
+.brikpanel-pl-stock-popover {
+    --bg: #f1f1f1;
+    --card: #ffffff;
+    --text: #303030;
+    --text-secondary: #616161;
+    --text-muted: #8a8a8a;
+    --border: #e3e3e3;
+    --input-border: #8a8a8a;
+    --input-focus: #303030;
+    --primary: #303030;
+    --primary-hover: #1a1a1a;
+    --success: #1a8917;
+    --error: #d72c0d;
+    --hover-bg: #f7f7f7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+}
+
+/* ---------- Columns visibility dropdown ---------- */
+.brikpanel-pl-columns-menu {
+    position: relative;
+    display: inline-flex;
+}
+
+.brikpanel-pl-columns-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.brikpanel-pl-columns-popover {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    padding: 0.375rem;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.brikpanel-pl-columns-popover[hidden] {
+    display: none;
+}
+
+.brikpanel-pl-columns-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    color: #303030;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.brikpanel-pl-columns-item:hover {
+    background: #f7f7f7;
+}
+
+.brikpanel-pl-columns-item input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.brikpanel-pl-columns-item.is-locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.brikpanel-pl-columns-item.is-locked input {
+    cursor: not-allowed;
+}
+
+/* Section header above 3rd-party (SEO/ASE/etc.) columns inside the
+   Columns dropdown — visually separates plugin-contributed entries from
+   BrikPanel's native columns. */
+.brikpanel-pl-columns-divider {
+    margin: 0.375rem 0.25rem 0.125rem;
+    padding: 0.375rem 0.375rem 0.25rem;
+    border-top: 1px solid #e3e3e3;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #8a8a8a;
+    user-select: none;
+}
+
+/* Generic hide class for columns whose IDs are dynamic (3rd-party) and
+   therefore can't use the static [data-hide-<id>] CSS rules above. */
+.brikpanel-pl-table th.bpl-col-hidden,
+.brikpanel-pl-table td.bpl-col-hidden {
+    display: none;
+}
+
+/* Quick-edit drawer — taxonomy checkbox lists (categories + tags) */
+.brikpanel-pl-qe-term-wrap {
+    border: 1px solid #e3e3e3;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: #fff;
+}
+.brikpanel-pl-qe-term-search {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    border: none;
+    border-bottom: 1px solid #e3e3e3;
+    outline: none;
+    background: #fafafa;
+    box-sizing: border-box;
+    color: #303030;
+}
+.brikpanel-pl-qe-term-search::placeholder {
+    color: #8a8a8a;
+}
+.brikpanel-pl-qe-term-search:focus {
+    background: #fff;
+}
+.brikpanel-pl-qe-term-list {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+.brikpanel-pl-qe-term-tree,
+.brikpanel-pl-qe-term-children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.brikpanel-pl-qe-term-children {
+    padding: 0 0 0 1rem;
+    border-left: 1px solid #e3e3e3;
+    margin-left: 0.625rem;
+}
+.brikpanel-pl-qe-term-tree li {
+    margin: 0;
+    padding: 0;
+}
+.brikpanel-pl-qe-term-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    padding: 0.25rem 0.375rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+    color: #303030;
+    margin: 0;
+}
+.brikpanel-pl-qe-term-item:hover {
+    background: #f1f1f1;
+}
+.brikpanel-pl-qe-term-item input[type="checkbox"] {
+    margin: 0;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #8a8a8a;
+    border-radius: 4px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+.brikpanel-pl-qe-term-list-flat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+.brikpanel-pl-qe-term-empty {
+    margin: 0;
+    padding: 0.5rem 0.25rem;
+    font-size: 0.8125rem;
+    color: #8a8a8a;
+}
+
+/* Column hiding — toggled by data-hide-* attributes on the table. */
+.brikpanel-pl-table[data-hide-image] .brikpanel-pl-col-image,
+.brikpanel-pl-table[data-hide-name] .brikpanel-pl-col-name,
+.brikpanel-pl-table[data-hide-sku] .brikpanel-pl-col-sku,
+.brikpanel-pl-table[data-hide-variation_skus] .brikpanel-pl-col-variation_skus,
+.brikpanel-pl-table[data-hide-global_unique_id] .brikpanel-pl-col-global_unique_id,
+.brikpanel-pl-table[data-hide-product_code] .brikpanel-pl-col-product_code,
+.brikpanel-pl-table[data-hide-price] .brikpanel-pl-col-price,
+.brikpanel-pl-table[data-hide-cogs] .brikpanel-pl-col-cogs,
+.brikpanel-pl-table[data-hide-profit] .brikpanel-pl-col-profit,
+.brikpanel-pl-table[data-hide-stock] .brikpanel-pl-col-stock,
+.brikpanel-pl-table[data-hide-category] .brikpanel-pl-col-category,
+.brikpanel-pl-table[data-hide-shipping_class] .brikpanel-pl-col-shipping_class,
+.brikpanel-pl-table[data-hide-author] .brikpanel-pl-col-author,
+.brikpanel-pl-table[data-hide-menu_order] .brikpanel-pl-col-menu_order,
+.brikpanel-pl-table[data-hide-status] .brikpanel-pl-col-status,
+.brikpanel-pl-table[data-hide-date] .brikpanel-pl-col-date {
+    display: none;
+}
+/* Publish date/time cell — muted, no-wrap so the date+time stays on one line. */
+.brikpanel-pl-cell-date {
+    color: var(--text-secondary, #616161);
+    font-size: .8125rem;
+    white-space: nowrap;
+}
+
+/* ---------- Inline product ID — tiny muted line above the product title ---------- */
+.brikpanel-pl-name-id {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.6875rem;
+    line-height: 1.3;
+    color: #8a8a8a;
+    margin-bottom: 1px;
+    -webkit-user-select: all;
+    -moz-user-select: all;
+    user-select: all;
+}
+
+/* ---------- Variation SKUs column ----------
+   A single code prints as itself; two or more collapse into a count badge
+   that opens the shared hover popover with the full list. The badge styling
+   lives with the category "+N" chip further down, which it shares. */
+.brikpanel-pl-cell-varskus {
+    white-space: nowrap;
+    color: #303030;
+}
+
+/* ---------- Global Unique ID (GTIN) column ---------- */
+.brikpanel-pl-cell-guid {
+    white-space: nowrap;
+    color: #303030;
+}
+.brikpanel-pl-gid-multi {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 10px;
+    background: #f1f1f1;
+    color: #616161;
+    font-size: 0.75rem;
+    font-weight: 550;
+    line-height: 1.5;
+    cursor: default;
+}
+
+/* ---------- Category "+N more" badge + floating popover ---------- */
+.brikpanel-pl-cell-cat {
+    white-space: nowrap;
+}
+
+.brikpanel-pl-cat-main {
+    display: inline-block;
+    vertical-align: middle;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Category link — filters the list by that category on click. Monochrome:
+   inherits the text colour, only underlines on hover (no bright blue). */
+a.brikpanel-pl-cat-link {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+a.brikpanel-pl-cat-link:hover,
+a.brikpanel-pl-cat-link:focus {
+    text-decoration: underline;
+    color: var(--text, #303030);
+}
+
+/* Count badges that open the shared hover popover: the category "+N" chip and
+   the Variation SKUs count. Same affordance, so the same chip. */
+.brikpanel-pl-cat-more,
+.brikpanel-pl-varskus-more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    margin-left: 0.375rem;
+    min-width: 1.375rem;
+    height: 1.375rem;
+    padding: 0 0.375rem;
+    border-radius: 999px;
+    background: #f0f0f0;
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: default;
+    transition: background 0.12s ease, color 0.12s ease;
+    user-select: none;
+}
+
+.brikpanel-pl-cat-more:hover,
+.brikpanel-pl-cat-more:focus,
+.brikpanel-pl-varskus-more:hover,
+.brikpanel-pl-varskus-more:focus {
+    background: var(--primary, #303030);
+    color: #fff;
+    outline: none;
+}
+
+/* The shared chip carries a left margin for sitting after a category name.
+   In the Variation SKUs cell it is the only thing there, so it starts at the
+   cell edge. Declared after the shared rule on purpose — same specificity,
+   so order is what decides. */
+.brikpanel-pl-varskus-more {
+    margin-left: 0;
+}
+
+.brikpanel-pl-cat-popover {
+    position: fixed;
+    z-index: 999999;
+    min-width: 140px;
+    max-width: 280px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 0.5rem 0.625rem;
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e3e3e3);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
+    font-size: 0.8125rem;
+    color: var(--text, #303030);
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.brikpanel-pl-cat-popover.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.brikpanel-pl-cat-popover-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.brikpanel-pl-cat-popover-list li {
+    margin: 0;
+    padding: 0;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.brikpanel-pl-cat-popover-list li a.brikpanel-pl-cat-link {
+    display: block;
+    padding: 0.25rem 0.375rem;
+    margin: 0 -0.25rem;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    transition: background 0.12s ease;
+}
+
+.brikpanel-pl-cat-popover-list li a.brikpanel-pl-cat-link:hover,
+.brikpanel-pl-cat-popover-list li a.brikpanel-pl-cat-link:focus {
+    background: var(--bg, #f1f1f1);
+    text-decoration: none;
+}
+
+
+/* ── Third-party (ASE) extra columns ─────────────────────────────────── */
+.brikpanel-pl-th-ase {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    color: #303030;
+    white-space: nowrap;
+}
+
+.brikpanel-pl-cell-ase {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+    color: #303030;
+    vertical-align: middle;
+    max-width: 17rem;
+    white-space: normal;
+}
+
+.brikpanel-pl-cell-ase img {
+    max-width: 40px;
+    height: auto;
+    border-radius: 0.25rem;
+    vertical-align: middle;
+}
+
+.brikpanel-pl-cell-ase .last-modified-timestamp {
+    font-size: 0.75rem;
+    color: #616161;
+    line-height: 1.3;
+}
+
+/* Plugin columns are display-only inside BrikPanel's list.
+   These cells are captured by replaying manage_*_posts_custom_column against
+   an AJAX-rendered table. The originating plugin's own script binds directly
+   at DOM-ready, against .wp-list-table rows keyed `id="post-N"` that do not
+   exist here, and BrikPanel re-renders every row on each fetch — so any
+   control the plugin emits is inert no matter when it loads. Hide the dead
+   affordances instead of showing buttons that do nothing. Deliberately
+   generic: no plugin is named.
+   Columns registered through brikpanel_products_columns are exempt: that
+   markup was written for THIS table, so its controls are live and hiding them
+   would break the column the developer just added. */
+.brikpanel-pl-cell-ase:not(.brikpanel-pl-cell-custom) input,
+.brikpanel-pl-cell-ase:not(.brikpanel-pl-cell-custom) select,
+.brikpanel-pl-cell-ase:not(.brikpanel-pl-cell-custom) textarea,
+.brikpanel-pl-cell-ase:not(.brikpanel-pl-cell-custom) button,
+.brikpanel-pl-cell-ase:not(.brikpanel-pl-cell-custom) a[href="#"],
+.brikpanel-pl-cell-ase:not(.brikpanel-pl-cell-custom) a[href=""] {
+    display: none !important;
+}
+
+.brikpanel-pl-cell-ase label {
+    color: #8a8a8a;
+    font-size: 0.75rem;
+}
+
+/* Score badges emitted by SEO plugins. Their own stylesheet scopes every rule
+   to `.wp-list-table td`, which never matches this table, so the badge would
+   render as bare bold text. Colour only — restated in the BrikPanel palette.
+   `.good` intentionally falls through to the neutral chip: the palette keeps
+   colour for success and error alone. */
+.brikpanel-pl-cell-ase .seo-score strong {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 550;
+    background: #f7f7f7;
+    color: #616161;
+    border: 1px solid #e3e3e3;
+}
+
+.brikpanel-pl-cell-ase .seo-score.great strong {
+    background: #eef7ee;
+    color: #1a8917;
+    border-color: #cfe6cf;
+}
+
+.brikpanel-pl-cell-ase .seo-score.bad strong {
+    background: #fef3f2;
+    color: #d72c0d;
+    border-color: #f5cdc7;
+}
+
+.brikpanel-pl-cell-ase .seo-score img.is-pillar {
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+}
+
+/* Chips, dividers and file-type hints emitted by column plugins that scope
+   their own stylesheet to the native list table, which never matches this one.
+   Restated in the BrikPanel palette rather than loading a foreign 56 KB
+   stylesheet onto a monochrome page. Deliberately generic: no plugin is
+   named. */
+.brikpanel-pl-cell-ase .ac-image {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.brikpanel-pl-cell-ase .ac-small-block {
+    display: inline-block;
+    margin-right: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    background: #f7f7f7;
+    color: #616161;
+    font-size: 0.75rem;
+}
+
+.brikpanel-pl-cell-ase .ac-rounded {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 10px;
+    background: #f1f1f1;
+    color: #616161;
+    font-size: 0.75rem;
+}
+
+.brikpanel-pl-cell-ase .ac-divider {
+    display: inline-block;
+    width: 1px;
+    height: 0.75em;
+    margin: 0 0.375rem;
+    background: #e3e3e3;
+    vertical-align: middle;
+}
+
+.brikpanel-pl-cell-ase .ac-spacing {
+    margin-right: 0.25rem;
+}
+
+.brikpanel-pl-cell-ase .ac-file-type,
+.brikpanel-pl-cell-ase .ac-extension {
+    color: #8a8a8a;
+    font-size: 0.6875rem;
+}
+
+/* "Show more" toggles are driven by the originating plugin's own script, which
+   is not loaded here. Hide the dead affordance and leave the content expanded;
+   it carries no href, so the inert-link rule above does not catch it. */
+.brikpanel-pl-cell-ase .ac-show-more__toggle,
+.brikpanel-pl-cell-ase .ac-show-more__divider {
+    display: none;
+}
+
+/* Row actions injected via post_row_actions filter (e.g. ASE "ID: N"). */
+.brikpanel-pl-row-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
+    font-size: 0.6875rem;
+    color: #8a8a8a;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.brikpanel-pl-row-actions .asenha-list-table-item-id {
+    background: #f1f1f1;
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    color: #616161;
+    font-weight: 500;
+}
+
+/* ── Quick edit: Digital product (downloadable) ──────────────────────── */
+.brikpanel-pl-qe-digital { margin-top: 0.25rem; }
+
+.brikpanel-pl-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.brikpanel-pl-toggle-row > span {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #303030;
+}
+.brikpanel-pl-toggle-row + .brikpanel-pl-toggle-row {
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e3e3e3;
+}
+.brikpanel-pl-toggle-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+    flex: 1;
+}
+.brikpanel-pl-toggle-help {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: #8a8a8a;
+    line-height: 1.4;
+}
+.brikpanel-pl-switch input:disabled + .brikpanel-pl-switch-slider {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.brikpanel-pl-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+.brikpanel-pl-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.brikpanel-pl-switch-slider {
+    position: absolute;
+    inset: 0;
+    background: #ccc;
+    border-radius: 22px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.brikpanel-pl-switch-slider::before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease;
+}
+.brikpanel-pl-switch input:checked + .brikpanel-pl-switch-slider {
+    background: #303030;
+}
+.brikpanel-pl-switch input:checked + .brikpanel-pl-switch-slider::before {
+    transform: translateX(18px);
+}
+
+.brikpanel-pl-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    grid-template-columns: minmax(0, 1fr);
+    opacity: 0;
+    transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    margin-top: 0;
+}
+.brikpanel-pl-collapse > * { overflow: hidden; min-width: 0; }
+.brikpanel-pl-collapse.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    margin-top: 0.625rem;
+}
+
+.brikpanel-pl-help-text {
+    font-size: 0.75rem;
+    color: #8a8a8a;
+    margin: 0 0 0.625rem;
+    line-height: 1.4;
+}
+.brikpanel-pl-text-muted {
+    font-size: 0.8125rem;
+    color: #8a8a8a;
+    margin: 0;
+    font-style: italic;
+}
+
+.brikpanel-pl-downloads {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+}
+.brikpanel-pl-download-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e3e3e3;
+    border-radius: 0.5rem;
+    background: #fafafa;
+}
+.brikpanel-pl-download-icon { flex-shrink: 0; color: #616161; }
+.brikpanel-pl-download-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.brikpanel-pl-download-name {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+    border: 1px solid #e3e3e3;
+    border-radius: 4px;
+    outline: none;
+    background: #fff;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+}
+.brikpanel-pl-download-name:focus {
+    border-color: #303030;
+    box-shadow: 0 0 0 1px #303030;
+}
+.brikpanel-pl-download-url-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+.brikpanel-pl-download-url {
+    flex: 1;
+    min-width: 0;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #616161;
+    background: #fff;
+    border: 1px solid #e3e3e3;
+    border-radius: 4px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+}
+.brikpanel-pl-download-url:focus {
+    border-color: #303030;
+    color: #303030;
+    box-shadow: 0 0 0 1px #303030;
+}
+.brikpanel-pl-download-browse {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e3e3e3;
+    background: #fff;
+    border-radius: 4px;
+    color: #616161;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.15s ease;
+}
+.brikpanel-pl-download-browse:hover {
+    background: #f1f1f1;
+    color: #303030;
+    border-color: #8a8a8a;
+}
+.brikpanel-pl-download-remove {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: transparent;
+    color: #8a8a8a;
+    border: none;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.15s ease;
+}
+.brikpanel-pl-download-remove:hover {
+    background: rgba(215, 44, 13, 0.1);
+    color: #d72c0d;
+}
+
+/* ==========================================================================
+   Sort mode — drag-to-reorder products by storefront menu_order
+   ========================================================================== */
+
+/* Toolbar Sort button — secondary by default; flips to primary-style when
+   the mode is engaged so it doubles as the "exit sort mode" affordance. */
+.brikpanel-pl-btn#bpl-sort-toggle.is-active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.brikpanel-pl-btn#bpl-sort-toggle.is-active:hover {
+    background: var(--primary-hover);
+}
+
+/* Helper banner shown above the table while sorting. Single info row with
+   icon + text + Done button, sticky enough to stay visible while the user
+   scrolls the table on long pages. */
+.brikpanel-pl-sort-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 1rem;
+    background: #f7f7f7;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+.brikpanel-pl-sort-hint[hidden] {
+    display: none;
+}
+.brikpanel-pl-sort-hint > svg {
+    flex-shrink: 0;
+    color: var(--text-secondary);
+}
+.brikpanel-pl-sort-hint > span {
+    flex: 1;
+}
+.brikpanel-pl-sort-hint .brikpanel-pl-btn {
+    flex-shrink: 0;
+}
+
+/* Drag-handle column — present in the DOM at all times for stable colspan
+   math, but hidden until the user enters sort mode. Width is small enough
+   that turning it on barely shifts the rest of the table. */
+.brikpanel-pl-th-handle,
+.brikpanel-pl-cell-handle {
+    width: 0;
+    padding: 0 !important;
+    overflow: hidden;
+}
+.brikpanel-pl .brikpanel-pl-sort-handle {
+    display: none;
+}
+
+/* When sortMode is on: reveal the handle column + handle button. */
+.brikpanel-pl.is-sort-mode .brikpanel-pl-th-handle,
+.brikpanel-pl.is-sort-mode .brikpanel-pl-cell-handle {
+    width: 32px;
+    padding: 0.625rem 0 0.625rem 0.5rem !important;
+    overflow: visible;
+}
+.brikpanel-pl.is-sort-mode .brikpanel-pl-sort-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: grab;
+    padding: 0;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.brikpanel-pl.is-sort-mode .brikpanel-pl-sort-handle:hover {
+    background: var(--card);
+    color: var(--text);
+    border-color: var(--border);
+}
+.brikpanel-pl.is-sort-mode .brikpanel-pl-sort-handle:active {
+    cursor: grabbing;
+}
+
+/* While sortMode is on, lock the row from doubling as a click-to-edit
+   target (rows have cursor:pointer normally; that's confusing while
+   dragging) and disable hover-row coloring so the placeholder stands out. */
+.brikpanel-pl.is-sort-mode .brikpanel-pl-row {
+    cursor: default;
+}
+
+/* Row being dragged (jQuery UI clones the <tr> as the helper). Lift it
+   visually without redrawing the placeholder underneath. */
+.brikpanel-pl-row.ui-sortable-helper {
+    background: var(--card);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border);
+    border-radius: 0.5rem;
+    cursor: grabbing !important;
+}
+
+/* Placeholder = a "ghost slot" where the row will land. Match the row
+   height so the table doesn't jitter while the user hovers between rows. */
+tr.brikpanel-pl-row-placeholder {
+    background: rgba(48, 48, 48, 0.04);
+    border-top: 1px dashed var(--text-muted);
+    border-bottom: 1px dashed var(--text-muted);
+    visibility: visible !important;
+}
+tr.brikpanel-pl-row-placeholder td {
+    padding: 0;
+    border: none;
+}

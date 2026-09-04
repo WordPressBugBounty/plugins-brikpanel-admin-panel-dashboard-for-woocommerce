@@ -1,0 +1,1205 @@
+/* =============================================================================
+   BrikPanel Global Topbar — e-commerce focused top bar that replaces the
+   WordPress admin bar across the entire admin area. Mirrors the BrikPanel
+   design system (monochrome, rounded, subtle shadows).
+   ============================================================================= */
+
+:root {
+    --bp-topbar-height: 52px;
+    --bp-topbar-bg: #ffffff;
+    --bp-topbar-text: #303030;
+    --bp-topbar-text-2: #616161;
+    --bp-topbar-text-3: #8a8a8a;
+    --bp-topbar-border: #e3e3e3;
+    --bp-topbar-primary: #303030;
+    --bp-topbar-primary-hover: #1a1a1a;
+    --bp-topbar-success: #1a8917;
+    --bp-topbar-error: #d72c0d;
+}
+
+/* Re-publish the topbar height on a higher-specificity selector than :root so
+   a sibling plugin that defines --bp-topbar-height on its own :root (same
+   specificity, cascade decides by load order) can never clobber it and squish
+   the topbar. html.brikpanel-has-topbar (0,1,1) always beats :root (0,1,0). */
+html.brikpanel-has-topbar {
+    --bp-topbar-height: 52px;
+}
+
+/* ---- Push core admin layout below our fixed topbar ---- */
+html.brikpanel-has-topbar.wp-toolbar,
+html.brikpanel-has-topbar {
+    padding-top: var(--bp-topbar-height) !important;
+}
+body.brikpanel-has-topbar #wpadminbar {
+    display: none !important;
+}
+/* Reset WP's own admin bar offset on responsive breakpoints. */
+@media screen and (max-width: 782px) {
+    html.brikpanel-has-topbar.wp-toolbar,
+    html.brikpanel-has-topbar {
+        padding-top: var(--bp-topbar-height) !important;
+    }
+}
+
+/* ---- Make the BrikPanel sidebar pinned and always visible while scrolling.
+       WP's #adminmenuwrap is position: relative and scrolls off-screen on
+       long pages; we pin it to the viewport so the main nav stays reachable. */
+body.brikpanel-has-topbar #adminmenuback,
+body.brikpanel-has-topbar #adminmenuwrap {
+    position: fixed;
+    top: var(--bp-topbar-height);
+    bottom: 0;
+    left: 0;
+    height: auto;
+    z-index: 9990;
+}
+/* Let the inner BrikPanel nav handle scrolling — wrapping #adminmenuwrap
+   must NOT also scroll, otherwise two scrollbars show up side by side. */
+body.brikpanel-has-topbar #adminmenuwrap {
+    overflow: hidden;
+}
+/* Classic (native WP) menu mode: the inner BrikPanel nav is hidden, so the
+   pinning above would trap the native #adminmenu inside a fixed, overflow:hidden
+   wrap — long admin menus get clipped and lower items become unreachable. Restore
+   WordPress's default flow positioning so the menu scrolls with the page and its
+   hover flyout submenus aren't clipped. #adminmenuback stays pinned as the
+   full-height background strip (now BrikPanel light, re-skinned in
+   brikpanel-navigation.css). */
+body.brikpanel-has-topbar.brikpanel-classic-nav #adminmenuwrap,
+body.brikpanel-has-topbar.brikpanel-native-nav #adminmenuwrap {
+    position: relative;
+    float: left;
+    top: auto;
+    bottom: auto;
+    left: auto;
+    height: auto;
+    overflow: visible;
+}
+/* Constrain the inner nav to the viewport-minus-topbar height, so it owns
+   the only scrollbar inside the sidebar. */
+body.brikpanel-has-topbar #brikpanel-navigation {
+    height: calc(100vh - var(--bp-topbar-height)) !important;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+body.brikpanel-has-topbar #brikpanel-navigation::-webkit-scrollbar { width: 6px; }
+body.brikpanel-has-topbar #brikpanel-navigation::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 3px;
+}
+/* Push the main content column down so the (now fixed) topbar doesn't overlap. */
+body.brikpanel-has-topbar #wpbody { padding-top: 0 !important; }
+
+/* The modern Order Edit page renders its own fixed sub-header positioned for
+   the native WP admin bar (`top: 32px`). Push it below the BrikPanel topbar
+   so it doesn't slide under our bar. */
+body.brikpanel-has-topbar .brikpanel-order-header {
+    top: var(--bp-topbar-height) !important;
+}
+
+/* On embedded wc-admin screens (orders/products/coupons list tables, settings)
+   WooCommerce injects a `.woocommerce-layout` notice-list wrapper before the
+   page `.wrap`. Its core 10px top padding leaves a visible gap between our
+   topbar and the Screen Options/Help row. Custom BrikPanel screens (e.g. the
+   product editor) have no such wrapper, hence no gap there. Collapse the
+   padding only on these embedded screens so the row sits flush under the bar.
+   Scoped to .woocommerce-embed-page so full wc-admin SPA pages (Analytics,
+   Home), where `.woocommerce-layout` is the app root, are untouched. */
+body.brikpanel-has-topbar.woocommerce-embed-page .woocommerce-layout {
+    padding-top: 0 !important;
+}
+
+/* On mobile WP collapses the sidebar; keep our offsets sensible. */
+@media screen and (max-width: 960px) {
+    body.brikpanel-has-topbar.auto-fold #adminmenuwrap,
+    body.brikpanel-has-topbar.auto-fold #adminmenuback {
+        top: var(--bp-topbar-height);
+    }
+}
+
+/* ============================ The topbar itself ========================= */
+
+.brikpanel-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 99999;
+    height: var(--bp-topbar-height);
+    background: var(--bp-topbar-bg);
+    border-bottom: 1px solid var(--bp-topbar-border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--bp-topbar-text);
+}
+
+.brikpanel-topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0 1rem;
+    height: 100%;
+}
+
+/* ---------- Left ---------- */
+
+.brikpanel-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    /* Shrink (and clip) the brand side before the icon cluster does, so the
+       brand never spills across the gap and overlaps the search button on
+       narrow screens. The icon cluster is flex-shrink:0 (see -right). */
+    flex: 0 1 auto;
+    overflow: hidden;
+}
+
+.brikpanel-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--bp-topbar-text);
+    text-decoration: none;
+    padding: 0.25rem 0.375rem;
+    border-radius: 0.5rem;
+    transition: background 0.15s ease;
+}
+
+.brikpanel-topbar-brand:hover,
+.brikpanel-topbar-brand:focus {
+    background: #f7f7f7;
+    color: var(--bp-topbar-text);
+    outline: none;
+    box-shadow: none;
+}
+
+.brikpanel-topbar-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.brikpanel-topbar-brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.brikpanel-topbar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+    min-width: 0;
+}
+
+.brikpanel-topbar-brand-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--bp-topbar-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Grow with the viewport so longer site names aren't truncated when there
+       is room, while the flex parent (.brikpanel-topbar-brand-left, overflow
+       hidden + shrink) still clips and the ellipsis kicks in on tight screens. */
+    max-width: clamp(180px, 28vw, 440px);
+}
+
+.brikpanel-topbar-brand-sub {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--bp-topbar-text-3);
+}
+
+.brikpanel-topbar-live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    background: #f0faf0;
+    border: 1px solid #d5ecd4;
+    color: var(--bp-topbar-success);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: default;
+    white-space: nowrap;
+}
+
+.brikpanel-topbar-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--bp-topbar-success);
+    box-shadow: 0 0 0 0 rgba(26, 137, 23, 0.5);
+    animation: brikpanel-topbar-pulse 2s ease-out infinite;
+}
+
+@keyframes brikpanel-topbar-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(26, 137, 23, 0.45); }
+    70%  { box-shadow: 0 0 0 6px rgba(26, 137, 23, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(26, 137, 23, 0); }
+}
+
+.brikpanel-topbar-live-label { opacity: 0.8; }
+
+.brikpanel-topbar-live-pill.is-empty {
+    background: #f7f7f7;
+    border-color: var(--bp-topbar-border);
+    color: var(--bp-topbar-text-3);
+}
+.brikpanel-topbar-live-pill.is-empty .brikpanel-topbar-live-dot {
+    background: var(--bp-topbar-text-3);
+    animation: none;
+    box-shadow: none;
+}
+
+/* ---------- Right ---------- */
+
+.brikpanel-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    /* Never squeeze the action icons — they stay a fixed cluster and the brand
+       side yields instead (see -left). Keeps every icon a full tap target. */
+    flex-shrink: 0;
+}
+
+.brikpanel-topbar-search-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4375rem 0.625rem;
+    border: 1px solid var(--bp-topbar-border);
+    background: #fafafa;
+    border-radius: 0.5rem;
+    color: var(--bp-topbar-text-2, #616161);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    min-width: 200px;
+}
+
+.brikpanel-topbar-search-btn:hover {
+    background: #f1f1f1;
+    color: var(--bp-topbar-text);
+}
+
+.brikpanel-topbar-search-text {
+    flex: 1;
+    text-align: left;
+}
+
+.brikpanel-topbar-kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    font-size: 0.6875rem;
+    color: var(--bp-topbar-text-3);
+}
+
+.brikpanel-topbar-kbd-key {
+    background: #fff;
+    border: 1px solid var(--bp-topbar-border);
+    border-radius: 0.25rem;
+    padding: 1px 4px;
+    font-weight: 600;
+    color: var(--bp-topbar-text-2);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+    line-height: 1;
+}
+
+.brikpanel-topbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.brikpanel-topbar-btn-primary {
+    background: var(--bp-topbar-primary);
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.brikpanel-topbar-btn-primary:hover {
+    background: var(--bp-topbar-primary-hover);
+    color: #fff;
+}
+
+/* Owner-defined shortcut button — light secondary treatment. */
+.brikpanel-topbar-btn-secondary {
+    background: #ffffff;
+    color: var(--bp-topbar-text);
+    border: 1px solid var(--bp-topbar-border);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+    text-decoration: none;
+    max-width: 220px;
+}
+
+.brikpanel-topbar-btn-secondary:hover {
+    background: #f7f7f7;
+    color: var(--bp-topbar-text);
+    border-color: #cfcfcf;
+}
+
+.brikpanel-topbar-btn-secondary svg { flex-shrink: 0; }
+
+.brikpanel-topbar-btn-secondary .brikpanel-topbar-btn-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Wrapper around an item another plugin registered through the
+   `brikpanel_topbar_items` filter. It is a plain flex passthrough so the
+   registered control lines up with the built-in ones on its own; the wrapper
+   exists so third-party markup can never unbalance the bar's own layout and so
+   the item stays addressable (`[data-topbar-item="…"]`) from CSS. */
+.brikpanel-topbar-ext {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+}
+
+.brikpanel-topbar-ext .brikpanel-topbar-ext-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brikpanel-topbar-ext .brikpanel-topbar-ext-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Icon buttons (bell, external) — sized to match the Create button height so
+   every item in the right cluster shares one consistent height. */
+.brikpanel-topbar-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    box-sizing: border-box;
+    border: 1px solid var(--bp-topbar-border);
+    background: #ffffff;
+    /* Literal fallback, not decoration: the glyph inside is stroked with
+       `currentColor`, so if the custom property ever fails to resolve — a CSS
+       optimiser that drops the `:root` block, a stylesheet that 404s — the icon
+       would inherit whatever colour the page happens to carry and can end up
+       invisible on the white button. Same reason on every `color` below. */
+    color: var(--bp-topbar-text, #303030);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.brikpanel-topbar-icon-btn:hover {
+    background: #f1f1f1;
+    color: var(--bp-topbar-text, #303030);
+    border-color: #cfcfcf;
+}
+
+.brikpanel-topbar-icon-btn svg { width: 20px; height: 20px; }
+
+.brikpanel-topbar-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    background: var(--bp-topbar-error);
+    color: #fff;
+    font-size: 0.5625rem;
+    font-weight: 700;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--bp-topbar-bg);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+/* Hidden-notices badge: these are low-priority, suppressed notices, so use a
+   muted grey instead of the alarming red the order/alert badges use. */
+#brikpanel-topbar [data-topbar-menu="hidden-notices"] .brikpanel-topbar-badge {
+    background: #646970;
+}
+
+/* ---------- Dropdowns ---------- */
+
+.brikpanel-topbar-menu { position: relative; }
+
+.brikpanel-topbar-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 220px;
+    background: var(--bp-topbar-bg);
+    border: 1px solid var(--bp-topbar-border);
+    border-radius: 0.625rem;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05);
+    padding: 0.375rem;
+    z-index: 100000;
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.brikpanel-topbar-menu.is-open .brikpanel-topbar-dropdown {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.brikpanel-topbar-dropdown-wide { min-width: 280px; }
+.brikpanel-topbar-dropdown-user { min-width: 240px; }
+
+.brikpanel-topbar-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    color: var(--bp-topbar-text);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: background 0.1s ease;
+    cursor: pointer;
+}
+
+.brikpanel-topbar-dropdown-item:hover,
+.brikpanel-topbar-dropdown-item:focus {
+    background: #f7f7f7;
+    color: var(--bp-topbar-text);
+    outline: none;
+    box-shadow: none;
+}
+
+.brikpanel-topbar-dropdown-item svg {
+    color: var(--bp-topbar-text-2);
+    flex-shrink: 0;
+}
+
+.brikpanel-topbar-dropdown-item-danger { color: var(--bp-topbar-error); }
+.brikpanel-topbar-dropdown-item-danger svg { color: var(--bp-topbar-error); }
+.brikpanel-topbar-dropdown-item-danger:hover {
+    background: #fdecea;
+    color: var(--bp-topbar-error);
+}
+
+.brikpanel-topbar-dropdown-header {
+    padding: 0.5rem 0.625rem 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--bp-topbar-text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.brikpanel-topbar-dropdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    color: var(--bp-topbar-text);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: background 0.1s ease;
+}
+
+.brikpanel-topbar-dropdown-row:hover {
+    background: #f7f7f7;
+    color: var(--bp-topbar-text);
+}
+
+.brikpanel-topbar-dropdown-row-count {
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #f1f1f1;
+    color: var(--bp-topbar-text-2);
+    font-size: 0.6875rem;
+    font-weight: 650;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brikpanel-topbar-dropdown-row[data-has-count="true"] .brikpanel-topbar-dropdown-row-count {
+    background: var(--bp-topbar-primary);
+    color: #fff;
+}
+
+.brikpanel-topbar-dropdown-sep {
+    height: 1px;
+    background: var(--bp-topbar-border);
+    margin: 0.25rem 0;
+}
+
+/* ---------- Hidden third-party notices panel ---------- */
+
+.brikpanel-fn-panel {
+    width: min(720px, 94vw);
+    padding: 0;
+    max-height: min(80vh, 720px);
+    display: flex;
+    flex-direction: column;
+}
+
+.brikpanel-fn-panel-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.875rem 1.125rem;
+    border-bottom: 1px solid var(--bp-topbar-border);
+    background: var(--bp-topbar-bg);
+    border-radius: 0.625rem 0.625rem 0 0;
+    flex: 0 0 auto;
+}
+
+.brikpanel-fn-panel-header > span:first-child {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--bp-topbar-text);
+}
+
+.brikpanel-fn-panel-hint {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--bp-topbar-text-3);
+    white-space: nowrap;
+}
+
+.brikpanel-fn-panel-list {
+    padding: 0.75rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+/* Normalize the relocated WordPress admin notices so they read cleanly inside
+   the panel: no giant default margins, rounded card, but keep the coloured left
+   accent WP core gives each notice type.
+
+   The relocation script also stamps each notice with `.brikpanel-notice`, which
+   every BrikPanel declutter rule already excludes via `:not(.brikpanel-notice)`
+   — so the panel notices stay visible on custom screens without an !important
+   tug-of-war. The `#brikpanel-topbar` prefix is belt-and-suspenders against any
+   future global rule. */
+#brikpanel-topbar .brikpanel-fn-panel-list > .notice,
+#brikpanel-topbar .brikpanel-fn-panel-list > .updated,
+#brikpanel-topbar .brikpanel-fn-panel-list > .error,
+#brikpanel-topbar .brikpanel-fn-panel-list > .update-nag {
+    display: block !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0.75rem 1rem !important;
+    box-shadow: none;
+    background: #fff;
+    border: 1px solid var(--bp-topbar-border);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#brikpanel-topbar .brikpanel-fn-panel-list .notice p,
+#brikpanel-topbar .brikpanel-fn-panel-list .updated p,
+#brikpanel-topbar .brikpanel-fn-panel-list .error p,
+#brikpanel-topbar .brikpanel-fn-panel-list .update-nag p { margin: 0.35em 0; font-size: 0.875rem; }
+
+#brikpanel-topbar .brikpanel-fn-panel-list .notice-dismiss { padding: 0.5rem; }
+
+/* ---------- User button ---------- */
+
+.brikpanel-topbar-user-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 0.5rem 0 0.25rem;
+    border: 1px solid var(--bp-topbar-border);
+    background: #fff;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: var(--bp-topbar-text);
+    font-size: 0.8125rem;
+    font-weight: 550;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.brikpanel-topbar-user-btn:hover {
+    background: #f1f1f1;
+    border-color: #cfcfcf;
+}
+
+.brikpanel-topbar-user-btn img {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+.brikpanel-topbar-user-name {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.brikpanel-topbar-user-caret {
+    color: var(--bp-topbar-text-3);
+    transition: transform 0.15s ease;
+}
+
+.brikpanel-topbar-menu-user.is-open .brikpanel-topbar-user-caret {
+    transform: rotate(180deg);
+}
+
+.brikpanel-topbar-user-card {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0.625rem 0.5rem;
+    border-bottom: 1px solid var(--bp-topbar-border);
+    margin-bottom: 0.25rem;
+}
+.brikpanel-topbar-user-card img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.brikpanel-topbar-user-card-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+}
+.brikpanel-topbar-user-card-text strong {
+    font-size: 0.8125rem;
+    font-weight: 650;
+    color: var(--bp-topbar-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.brikpanel-topbar-user-card-text span {
+    font-size: 0.75rem;
+    color: var(--bp-topbar-text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- Cache-clear button ---------- */
+
+/* The cache-clear icon button reuses .brikpanel-topbar-icon-btn but adds a
+   spinner overlay that takes over while a purge is in flight. */
+.brikpanel-topbar-cache-btn { position: relative; }
+
+.brikpanel-topbar-cache-btn svg {
+    transition: opacity 0.15s ease;
+}
+
+.brikpanel-topbar-cache-spinner {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.brikpanel-topbar-cache-spinner::after {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--bp-topbar-border);
+    border-top-color: var(--bp-topbar-primary);
+    animation: brikpanel-topbar-cache-spin 0.7s linear infinite;
+}
+
+.brikpanel-topbar-cache-btn.is-loading {
+    pointer-events: none;
+    opacity: 0.95;
+}
+
+.brikpanel-topbar-cache-btn.is-loading svg {
+    opacity: 0;
+}
+
+.brikpanel-topbar-cache-btn.is-loading .brikpanel-topbar-cache-spinner {
+    display: flex;
+}
+
+@keyframes brikpanel-topbar-cache-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Cache dropdown — slightly wider than the default to fit plugin names. */
+.brikpanel-topbar-dropdown-cache { min-width: 240px; }
+
+/* The shared broom SVG markup is sized via CSS so the same source can be
+   reused as both the topbar icon (20×20 via .brikpanel-topbar-icon-btn) and
+   as the per-item icon inside this dropdown (16×16). */
+.brikpanel-topbar-dropdown-cache svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--bp-topbar-text-2);
+}
+
+/* Dropdown items inside the cache dropdown are <button> elements (not <a>),
+   so reset native button styling so they look identical to the existing
+   .brikpanel-topbar-dropdown-item rows. */
+.brikpanel-topbar-cache-item {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.brikpanel-topbar-cache-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(48, 48, 48, 0.18);
+}
+
+/* ---------- Topbar toast ---------- */
+
+.brikpanel-topbar-toast-container {
+    position: fixed;
+    top: calc(var(--bp-topbar-height) + 12px);
+    right: 16px;
+    z-index: 100002;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: calc(100vw - 32px);
+}
+
+.brikpanel-topbar-toast {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 240px;
+    max-width: 360px;
+    padding: 0.625rem 0.75rem 0.625rem 0.875rem;
+    border-radius: 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    line-height: 1.4;
+    background: #ffffff;
+    border: 1px solid var(--bp-topbar-border);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05);
+    transform: translateX(110%);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(.4, 0, .2, 1), opacity 0.2s ease;
+    pointer-events: auto;
+    color: var(--bp-topbar-text);
+}
+
+.brikpanel-topbar-toast.is-visible {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.brikpanel-topbar-toast-success {
+    background: #e4f5e1;
+    border-color: #b7e1b0;
+    color: #1a6b15;
+}
+
+.brikpanel-topbar-toast-error {
+    background: #fce4e4;
+    border-color: #f1b0b0;
+    color: #c62828;
+}
+
+.brikpanel-topbar-toast-text {
+    flex: 1;
+    word-break: break-word;
+}
+
+.brikpanel-topbar-toast-close {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    opacity: 0.6;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    padding: 0;
+    transition: background 0.15s ease, opacity 0.15s ease;
+}
+.brikpanel-topbar-toast-close:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+/* The search overlay is relocated to <body> by the topbar JS so it can still
+   be opened when the WP admin bar is hidden. Make sure the modal sits above
+   the fixed topbar. */
+body.brikpanel-has-topbar .brikpanel-search-overlay {
+    z-index: 100001;
+}
+
+/* ---------- Mobile hamburger (replaces missing WP admin-bar menu toggle) ---------- */
+.brikpanel-topbar-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--bp-topbar-border);
+    background: #ffffff;
+    color: var(--bp-topbar-text, #303030);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+}
+.brikpanel-topbar-menu-btn:hover { background: #f1f1f1; }
+
+/* Backdrop that appears behind the off-canvas sidebar on mobile. */
+.brikpanel-topbar-mobile-backdrop {
+    position: fixed;
+    top: var(--bp-topbar-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9989;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+body.brikpanel-mobile-nav-open .brikpanel-topbar-mobile-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ---------- Responsive ---------- */
+
+/* Tablet — hide search label & shortcut hint to save space. */
+@media (max-width: 1240px) {
+    .brikpanel-topbar-search-btn { min-width: 0; padding: 0.5rem; }
+    .brikpanel-topbar-search-text { display: none; }
+    .brikpanel-topbar-kbd { display: none; }
+}
+
+@media (max-width: 960px) {
+    .brikpanel-topbar-live-pill { display: none; }
+}
+
+/* ===== Sidebar access (matches WP's REAL auto-fold breakpoint, 960px) =====
+   WordPress collapses the admin sidebar at <=960px, and BrikPanel hides the
+   resulting icon-only menu (navigation.css) in favour of an off-canvas sheet.
+   That reveal — the hamburger + the sliding sidebar — must therefore cover the
+   whole <=960px range, NOT just phones. Keying it to 782px left a dead zone at
+   783–960px (tablets, small laptop windows) where the sidebar was hidden AND no
+   hamburger existed, so the menu was unreachable. The heavier phone-only topbar
+   compaction stays at <=782px below. */
+@media (max-width: 960px) {
+    /* Show the hamburger so the collapsed sidebar stays reachable. */
+    .brikpanel-topbar-menu-btn { display: inline-flex; }
+
+    /* Pin the sidebar off-canvas; reveal on `body.brikpanel-mobile-nav-open`. */
+    body.brikpanel-has-topbar #adminmenuback,
+    body.brikpanel-has-topbar #adminmenuwrap {
+        display: block !important;
+        transform: translateX(-100%);
+        transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+        will-change: transform;
+        z-index: 9990;
+        width: 240px;
+    }
+    body.brikpanel-mobile-nav-open #adminmenuback,
+    body.brikpanel-mobile-nav-open #adminmenuwrap {
+        transform: translateX(0);
+    }
+    /* Content area gets full width (the sidebar floats over it). */
+    body.brikpanel-has-topbar #wpcontent { margin-left: 0 !important; }
+    body.brikpanel-has-topbar #wpfooter { margin-left: 0 !important; }
+
+    /* Classic / native WP menu modes: the desktop rules above force
+       #adminmenuwrap to position:relative + float:left so the native menu
+       scrolls with the page on the desktop sidebar. Inside the off-canvas
+       sheet that collapses the wrap to 0px height — its only in-flow child,
+       #adminmenu, is absolutely positioned — so the slide-in box has no body
+       and cannot scroll, and only #adminmenuback paints the light strip.
+       Restore a real sheet: a fixed, full-height, scrollable wrap. #adminmenu
+       is laid out statically to fill it in brikpanel-navigation.css. */
+    body.brikpanel-has-topbar.brikpanel-classic-nav #adminmenuwrap,
+    body.brikpanel-has-topbar.brikpanel-native-nav #adminmenuwrap {
+        position: fixed;
+        float: none;
+        top: var(--bp-topbar-height);
+        bottom: 0;
+        left: 0;
+        height: auto;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+    }
+    body.brikpanel-has-topbar.brikpanel-classic-nav #adminmenuwrap::-webkit-scrollbar,
+    body.brikpanel-has-topbar.brikpanel-native-nav #adminmenuwrap::-webkit-scrollbar {
+        width: 6px;
+    }
+    body.brikpanel-has-topbar.brikpanel-classic-nav #adminmenuwrap::-webkit-scrollbar-thumb,
+    body.brikpanel-has-topbar.brikpanel-native-nav #adminmenuwrap::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.18);
+        border-radius: 3px;
+    }
+}
+
+/* ===== Phone-only compaction ===== */
+@media (max-width: 782px) {
+    /* Hide WP's "Screen Options" and "Help" toggles on small screens — they
+       open desktop-sized panels that don't fit a phone, and the icons just
+       eat horizontal space below the topbar. The order edit screen is exempt:
+       it relocates these toggles into its own header as compact icon buttons
+       and manages the panel itself (see brikpanel-order.css/.js), so they stay
+       usable on tablet & phone there. */
+    body.brikpanel-has-topbar:not(.brikpanel-modern-edit) #screen-meta-links,
+    body.brikpanel-has-topbar:not(.brikpanel-modern-edit) #screen-meta {
+        display: none !important;
+    }
+
+    /* Hide non-essential brand text. */
+    .brikpanel-topbar-brand-sub { display: none; }
+    .brikpanel-topbar-brand-name { max-width: 130px; }
+    .brikpanel-topbar-user-name { display: none; }
+    .brikpanel-topbar-btn-label { display: none; }
+    .brikpanel-topbar-btn { padding: 0.5rem 0.625rem; }
+
+    /* Hide the create button entirely on phones — quick-create lives in the
+       user menu / hamburger flow instead, freeing space for icon buttons. */
+    .brikpanel-topbar-menu[data-topbar-menu="create"] { display: none; }
+
+    /* Tighter inner padding to fit the icon-row. */
+    .brikpanel-topbar-inner { padding: 0 0.5rem; gap: 0.5rem; }
+    .brikpanel-topbar-right { gap: 0.25rem; }
+
+    /* Dropdowns become full-width sheets anchored under the topbar. */
+    .brikpanel-topbar-dropdown,
+    .brikpanel-topbar-dropdown-wide,
+    .brikpanel-topbar-dropdown-user {
+        position: fixed;
+        top: calc(var(--bp-topbar-height) + 6px);
+        left: 8px;
+        right: 8px;
+        min-width: 0;
+        max-width: none;
+        max-height: calc(100vh - var(--bp-topbar-height) - 16px);
+        overflow-y: auto;
+    }
+
+    /* Let the full-width sheet rule above own the notices panel width too. */
+    .brikpanel-fn-panel { width: auto; }
+}
+
+/* Phones: drop the brand entirely — mark and all.
+   `.brikpanel-topbar-right` is flex-shrink:0 by design (icons stay full tap
+   targets), so every pixel the bar is short of is taken out of the *left*
+   side, which is `overflow: hidden`. The overflow therefore never wraps or
+   scales: it slices the logo down its middle. Measured with the default seven
+   controls (search, notifications, hidden notices, BrikControl, master switch,
+   view store, user = 244px): at 360px the mark lost 11px — a visibly halved
+   logo — and at 320px it was clipped away completely while still consuming
+   layout. A store with the cache-clear button, a custom shortcut, or any
+   third-party `brikpanel_topbar_items` entry hits the same edge at 390-430px.
+   Hiding the whole brand is what makes the bar fit by construction instead of
+   by luck. Nothing is lost: the hamburger sits in the very same corner and the
+   panel is one tap away, and the name+mark both return at 601px. An admin who
+   wants the brand gone on every screen already has the `brand` top bar item
+   toggle. */
+@media (max-width: 600px) {
+    .brikpanel-topbar-brand { display: none; }
+
+    /* Compact the action cluster so all seven controls (search, notifications,
+       notices, BrikControl, master switch, store link, user) plus the logo and
+       hamburger fit a phone without overlapping. Slightly smaller hit targets
+       and no user caret claw back ~30px, which is the difference between fitting
+       and the logo sliding under the search button. */
+    .brikpanel-topbar-icon-btn,
+    .brikpanel-topbar-user-btn,
+    .brikpanel-topbar-search-btn {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+    }
+    /* The search button is a label+shortcut row on desktop (justify-content
+       defaults to flex-start); collapsed to an icon on phones it must centre
+       like the other icon buttons, otherwise the magnifier sits flush-left and
+       looks misaligned next to the bells. Match its glyph size too (18px). */
+    .brikpanel-topbar-search-btn { justify-content: center; }
+    .brikpanel-topbar-icon-btn svg,
+    .brikpanel-topbar-search-btn svg { width: 18px; height: 18px; }
+    .brikpanel-topbar-user-btn img { width: 24px; height: 24px; }
+    .brikpanel-topbar-user-caret { display: none; }
+
+    /* ---- Last-resort overflow guard ----
+       The two rules above size the *known* cluster to fit a phone, but the bar
+       is extensible: the cache-clear button, a custom shortcut and any
+       third-party `brikpanel_topbar_items` entry all land in the same row, and
+       no arithmetic here can cover every store. Without a guard the overflow
+       goes somewhere silently harmful — measured on this bar: at 280px (fold
+       cover screens) the hamburger itself was clipped away and the navigation
+       became unreachable; at 320px with two extra controls the user avatar sat
+       23px past the viewport edge, un-tappable, with no page scrollbar to
+       reveal it.
+
+       So: pin the hamburger (it is the only nav entry point at this width and
+       must never shrink), and let the action cluster become a horizontally
+       scrollable strip when — and only when — its contents genuinely do not
+       fit. No overflow, no visual change whatsoever. The padding/negative
+       margin pair carves out room for the badges' -5px overhang so making this
+       a scroll container cannot crop a count bubble; the dropdowns are
+       `position: fixed` at this breakpoint, so they are not clipped by it. */
+    .brikpanel-topbar-left { flex: 0 0 auto; }
+
+    .brikpanel-topbar-right {
+        flex: 0 1 auto;
+        min-width: 0;
+        padding: 6px 6px 6px 0;
+        margin: -6px -6px -6px 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .brikpanel-topbar-right::-webkit-scrollbar { display: none; }
+}
+
+/* Very small phones. The hamburger used to be squeezed to 36px and the brand
+   mark to 28px here, both to buy back room the brand was eating; with the
+   brand gone below 600px that room already exists, so the hamburger keeps its
+   full 40px tap target and the mark rule is dropped as dead (the element it
+   targets is display:none across this whole range). */
+@media (max-width: 380px) {
+    .brikpanel-topbar-icon-btn svg { width: 18px; height: 18px; }
+}
+
+/* =============================================================================
+   GLYPH INTEGRITY GUARD — keep the top bar icons drawn no matter what else the
+   current screen loads.
+
+   Every top bar glyph is an inline outline SVG painted with the *presentation
+   attributes* `fill="none" stroke="currentColor"`. Presentation attributes sit
+   at the very bottom of the cascade: they lose to ANY author CSS on the page,
+   including a rule that was never meant for us. A single declaration such as
+
+       svg path, svg line, svg circle { fill: #fff; stroke: none; }
+
+   shipped by another plugin's screen-specific stylesheet repaints our strokes
+   away, and the buttons render as empty boxes that still open their menus —
+   the icon is gone, the control is not. Because such stylesheets are usually
+   loaded on one screen only (the WooCommerce order list is a favourite), the
+   symptom looks like "the bells vanish on that one page". Reported on wp.org
+   by iesayi (BrikPanel 3.2.37).
+
+   Restating the drawing model here puts it back on equal footing with the rest
+   of the cascade. The rules are keyed on the attribute the markup actually
+   declares, so an icon that legitimately paints differently (a filled glyph, a
+   child element with its own `fill`/`stroke`) is matched by none of them and is
+   left exactly as authored. Scoped to the top bar, plus the pieces the script
+   relocates to <body> (toasts, mobile sheet), so nothing outside our own chrome
+   is touched. */
+#brikpanel-topbar svg[fill="none"],
+[class*="brikpanel-topbar-"] svg[fill="none"] {
+    fill: none !important;
+}
+
+#brikpanel-topbar svg[stroke="currentColor"],
+[class*="brikpanel-topbar-"] svg[stroke="currentColor"] {
+    stroke: currentColor !important;
+}
+
+#brikpanel-topbar svg[fill="none"] *:not([fill]),
+[class*="brikpanel-topbar-"] svg[fill="none"] *:not([fill]) {
+    fill: none !important;
+}
+
+#brikpanel-topbar svg[stroke="currentColor"] *:not([stroke]),
+[class*="brikpanel-topbar-"] svg[stroke="currentColor"] *:not([stroke]) {
+    stroke: currentColor !important;
+}
+
+/* Same reasoning for the box the glyph is drawn in: a foreign `svg { width:
+   100% }` or `svg { display: none }` would either blow the bar apart or empty
+   it. Keep our own sizing authoritative — including across the responsive step,
+   which is restated here rather than left to the earlier (non-!important)
+   declarations. Each selector repeats the size that surface is *already*
+   authored at (icon buttons 20px from the rule above, the search magnifier 16px
+   from its own `width`/`height` attributes), so this pins the current design
+   rather than changing it. */
+#brikpanel-topbar .brikpanel-topbar-icon-btn svg {
+    display: block !important;
+    width: 20px !important;
+    height: 20px !important;
+    flex: none;
+}
+
+#brikpanel-topbar .brikpanel-topbar-search-btn svg {
+    display: block !important;
+    width: 16px !important;
+    height: 16px !important;
+    flex: none;
+}
+
+@media (max-width: 600px) {
+    #brikpanel-topbar .brikpanel-topbar-icon-btn svg,
+    #brikpanel-topbar .brikpanel-topbar-search-btn svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+}
+
+/* Cheap ceiling for every other glyph in the bar (master switch, user menu,
+   dropdown items). They keep their authored sizes — nothing in the bar is ever
+   meant to be taller than the bar itself — but a foreign `svg { width: 100% }`
+   can no longer push one of them through the layout. */
+#brikpanel-topbar svg {
+    max-width: 100%;
+    max-height: var(--bp-topbar-height, 52px);
+}

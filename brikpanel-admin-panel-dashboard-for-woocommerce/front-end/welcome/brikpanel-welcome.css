@@ -1,0 +1,753 @@
+/* =============================================================================
+   BrikPanel — Welcome / Feature Tour Popup
+   Two-pane modal: navigable section rail + rich feature content.
+   ============================================================================= */
+
+/* ── Overlay ────────────────────────────────────────────────────────────────── */
+.brikpanel-welcome-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.4s ease, backdrop-filter 0.4s ease;
+    pointer-events: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.brikpanel-welcome-overlay.is-visible {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+    pointer-events: auto;
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────────── */
+.brikpanel-welcome-modal {
+    position: relative;
+    width: 900px;
+    max-width: 94vw;
+    height: 600px;
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.94) translateY(20px);
+    opacity: 0;
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+                opacity 0.35s ease;
+}
+
+.brikpanel-welcome-overlay.is-visible .brikpanel-welcome-modal {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* ── Progress bar ───────────────────────────────────────────────────────────── */
+.brikpanel-welcome-progress {
+    flex: none;
+    height: 3px;
+    width: 100%;
+    background: #ececec;
+}
+
+.brikpanel-welcome-progress-fill {
+    display: block;
+    height: 100%;
+    width: 11%;
+    background: #303030;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Close button ───────────────────────────────────────────────────────────── */
+.brikpanel-welcome-close {
+    position: absolute;
+    top: 13px;
+    right: 13px;
+    z-index: 5;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a8a8a;
+    transition: background 0.15s, color 0.15s;
+}
+
+.brikpanel-welcome-close:hover {
+    background: #f1f1f1;
+    color: #303030;
+}
+
+.brikpanel-welcome-close svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ── Body (rail + slides) ───────────────────────────────────────────────────── */
+.brikpanel-welcome-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+}
+
+/* ── Left rail ──────────────────────────────────────────────────────────────── */
+.brikpanel-welcome-rail {
+    width: 256px;
+    flex: none;
+    border-right: 1px solid #e3e3e3;
+    background: #fafafa;
+    padding: 16px 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.brikpanel-welcome-railhead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px 16px;
+}
+
+.brikpanel-welcome-railhead-logo {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 8px;
+    background: #303030;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brikpanel-welcome-railhead-logo svg {
+    width: 17px;
+    height: 17px;
+    color: #fff;
+}
+
+.brikpanel-welcome-railhead-name {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #303030;
+}
+
+.brikpanel-welcome-railhead-ver {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #8a8a8a;
+    background: #ececec;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.brikpanel-welcome-railitem {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    padding: 9px 11px;
+    border: none;
+    background: transparent;
+    border-radius: 9px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.brikpanel-welcome-railitem:hover {
+    background: #f0f0f0;
+}
+
+.brikpanel-welcome-railitem.is-active {
+    background: #fff;
+    box-shadow: inset 0 0 0 1px #e3e3e3, 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.brikpanel-welcome-rail-ico {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 8px;
+    background: #ececec;
+    color: #616161;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.brikpanel-welcome-rail-ico svg {
+    width: 17px;
+    height: 17px;
+}
+
+.brikpanel-welcome-railitem.is-active .brikpanel-welcome-rail-ico {
+    background: #303030;
+    color: #fff;
+}
+
+.brikpanel-welcome-railitem.is-visited:not(.is-active) .brikpanel-welcome-rail-ico {
+    background: #e8f5e7;
+    color: #1a8917;
+}
+
+.brikpanel-welcome-rail-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #303030;
+    line-height: 1.3;
+}
+
+.brikpanel-welcome-rail-badge {
+    margin-left: auto;
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: #1a8917;
+    background: #e8f5e7;
+    padding: 1px 8px;
+    border-radius: 20px;
+}
+
+/* ── Slides container ───────────────────────────────────────────────────────── */
+.brikpanel-welcome-slides {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.brikpanel-welcome-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 44px 48px 32px;
+    opacity: 0;
+    transform: translateX(48px);
+    transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    overflow-y: auto;
+}
+
+.brikpanel-welcome-slide.is-active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+.brikpanel-welcome-slide.is-exiting-left {
+    opacity: 0;
+    transform: translateX(-48px);
+}
+
+/* ── Feature head ───────────────────────────────────────────────────────────── */
+.brikpanel-welcome-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-head {
+    animation: bwFadeUp 0.4s 0.1s ease both;
+}
+
+.brikpanel-welcome-head-ico {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    border-radius: 13px;
+    background: #f1f1f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brikpanel-welcome-head-ico svg {
+    width: 25px;
+    height: 25px;
+    color: #303030;
+}
+
+.brikpanel-welcome-head h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #303030;
+    margin: 2px 0 5px;
+    line-height: 1.25;
+}
+
+.brikpanel-welcome-sub {
+    font-size: 0.875rem;
+    color: #616161;
+    margin: 0;
+    line-height: 1.55;
+}
+
+/* ── Highlights grid ────────────────────────────────────────────────────────── */
+.brikpanel-welcome-highlights {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.brikpanel-welcome-highlights li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 2px;
+    font-size: 0.875rem;
+    color: #303030;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-highlights li {
+    animation: bwListItem 0.35s ease both;
+}
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-highlights li:nth-child(1) { animation-delay: 0.18s; }
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-highlights li:nth-child(2) { animation-delay: 0.23s; }
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-highlights li:nth-child(3) { animation-delay: 0.28s; }
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-highlights li:nth-child(4) { animation-delay: 0.33s; }
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-highlights li:nth-child(5) { animation-delay: 0.38s; }
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-highlights li:nth-child(6) { animation-delay: 0.43s; }
+
+.brikpanel-welcome-highlights li .bw-check {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin-top: 1px;
+    background: #e8f5e7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brikpanel-welcome-highlights li .bw-check svg {
+    width: 12px;
+    height: 12px;
+    color: #1a8917;
+}
+
+.brikpanel-welcome-highlights li .bw-hl-text {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+/* ── Tags / chips ───────────────────────────────────────────────────────────── */
+.brikpanel-welcome-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 18px;
+}
+
+.brikpanel-welcome-slide.is-active .brikpanel-welcome-tags {
+    animation: bwFadeUp 0.4s 0.45s ease both;
+}
+
+.brikpanel-welcome-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 550;
+    color: #616161;
+    background: #f1f1f1;
+    border: 1px solid #e3e3e3;
+    padding: 5px 12px;
+    border-radius: 20px;
+}
+
+.brikpanel-welcome-tag.is-pos {
+    color: #1a6b15;
+    background: #e8f5e7;
+    border-color: #b7e1b0;
+}
+
+.brikpanel-welcome-tag .bw-tag-check {
+    display: inline-flex;
+}
+
+.brikpanel-welcome-tag .bw-tag-check svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* ── Hero (welcome) slide ───────────────────────────────────────────────────── */
+.brikpanel-welcome-hero {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.brikpanel-welcome-logo {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: #303030;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: bwLogoEntrance 0.6s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.brikpanel-welcome-logo svg {
+    width: 32px;
+    height: 32px;
+    color: #fff;
+}
+
+.brikpanel-welcome-hero h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #303030;
+    margin: 0 0 10px;
+    animation: bwFadeUp 0.5s 0.35s ease both;
+}
+
+.brikpanel-welcome-hero p {
+    font-size: 0.9375rem;
+    color: #616161;
+    margin: 0 auto;
+    line-height: 1.6;
+    max-width: 440px;
+    animation: bwFadeUp 0.5s 0.45s ease both;
+}
+
+.brikpanel-welcome-hero-hint {
+    margin-top: 18px !important;
+    font-size: 0.8125rem !important;
+    color: #8a8a8a !important;
+    animation-delay: 0.55s !important;
+}
+
+/* ── Final / all-set slide ──────────────────────────────────────────────────── */
+.brikpanel-welcome-final {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+}
+
+.brikpanel-welcome-final-ico {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: #f1f1f1;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+}
+
+.brikpanel-welcome-final.is-active .brikpanel-welcome-final-ico {
+    animation: bwIconPop 0.5s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.brikpanel-welcome-final-ico svg {
+    width: 30px;
+    height: 30px;
+    color: #303030;
+}
+
+.brikpanel-welcome-final h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #303030;
+    margin: 0 0 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.brikpanel-welcome-final.is-active h2 {
+    animation: bwFadeUp 0.4s 0.18s ease both;
+}
+
+.brikpanel-welcome-final > p {
+    font-size: 0.9375rem;
+    color: #616161;
+    margin: 0 auto;
+    line-height: 1.6;
+    max-width: 440px;
+    position: relative;
+    z-index: 1;
+}
+
+.brikpanel-welcome-final.is-active > p {
+    animation: bwFadeUp 0.4s 0.24s ease both;
+}
+
+.brikpanel-welcome-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 26px;
+    position: relative;
+    z-index: 1;
+}
+
+.brikpanel-welcome-final.is-active .brikpanel-welcome-cta {
+    animation: bwFadeUp 0.4s 0.32s ease both;
+}
+
+.brikpanel-welcome-cta .brikpanel-welcome-btn {
+    text-decoration: none;
+    padding: 9px 18px;
+}
+
+.brikpanel-welcome-final-link {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    color: #8a8a8a;
+    text-decoration: none;
+    position: relative;
+    z-index: 1;
+    transition: color 0.15s;
+}
+
+.brikpanel-welcome-final.is-active .brikpanel-welcome-final-link {
+    animation: bwFadeUp 0.4s 0.4s ease both;
+}
+
+.brikpanel-welcome-final-link:hover {
+    color: #303030;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────────── */
+.brikpanel-welcome-footer {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-top: 1px solid #e3e3e3;
+    background: #fafafa;
+}
+
+.brikpanel-welcome-nav {
+    display: flex;
+    gap: 8px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.brikpanel-welcome-btn {
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.2;
+}
+
+.brikpanel-welcome-btn:active {
+    transform: scale(0.97);
+}
+
+.brikpanel-welcome-btn--secondary,
+.brikpanel-welcome-btn--secondary:hover,
+.brikpanel-welcome-btn--secondary:focus,
+.brikpanel-welcome-btn--secondary:active,
+.brikpanel-welcome-btn--secondary:visited {
+    background: #fff;
+    color: #303030;
+    box-shadow: inset 0 0 0 1px #e3e3e3, 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+
+.brikpanel-welcome-btn--secondary:hover,
+.brikpanel-welcome-btn--secondary:focus {
+    background: #f7f7f7;
+}
+
+.brikpanel-welcome-btn--primary,
+.brikpanel-welcome-btn--primary:hover,
+.brikpanel-welcome-btn--primary:focus,
+.brikpanel-welcome-btn--primary:active,
+.brikpanel-welcome-btn--primary:visited {
+    background: #303030;
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.brikpanel-welcome-btn--primary:hover,
+.brikpanel-welcome-btn--primary:focus {
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.brikpanel-welcome-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ── Skip link ──────────────────────────────────────────────────────────────── */
+.brikpanel-welcome-skip {
+    background: none;
+    border: none;
+    color: #8a8a8a;
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.15s;
+}
+
+.brikpanel-welcome-skip:hover {
+    color: #303030;
+}
+
+/* ── Keyboard shortcut badge ────────────────────────────────────────────────── */
+.brikpanel-welcome-kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 4px;
+}
+
+.brikpanel-welcome-kbd kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    background: #fff;
+    border: 1px solid #d0d0d0;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.6875rem;
+    color: #616161;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
+    line-height: 1.4;
+}
+
+/* ── Confetti ───────────────────────────────────────────────────────────────── */
+.brikpanel-welcome-confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.brikpanel-welcome-confetti span {
+    position: absolute;
+    top: 30%;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    opacity: 0;
+}
+
+.brikpanel-welcome-final.is-active .brikpanel-welcome-confetti span {
+    animation: bwConfetti 1.6s ease-out both;
+}
+
+@keyframes bwConfetti {
+    0%   { transform: translateY(0) rotate(0deg) scale(0); opacity: 0; }
+    15%  { opacity: 1; transform: translateY(-24px) rotate(45deg) scale(1); }
+    100% { transform: translateY(140px) rotate(360deg) scale(0.5); opacity: 0; }
+}
+
+/* ── Shared animations ──────────────────────────────────────────────────────── */
+@keyframes bwLogoEntrance {
+    from { transform: scale(0) rotate(-30deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+@keyframes bwFadeUp {
+    from { transform: translateY(12px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bwListItem {
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bwIconPop {
+    from { transform: scale(0.5); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 782px) {
+    .brikpanel-welcome-modal {
+        width: 100%;
+        height: 100%;
+        max-width: 100vw;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .brikpanel-welcome-body {
+        flex-direction: column;
+    }
+
+    .brikpanel-welcome-rail {
+        width: auto;
+        flex-direction: row;
+        align-items: center;
+        border-right: none;
+        border-bottom: 1px solid #e3e3e3;
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 6px;
+        padding: 10px 12px;
+    }
+
+    .brikpanel-welcome-railhead {
+        display: none;
+    }
+
+    .brikpanel-welcome-railitem {
+        flex: none;
+        width: auto;
+    }
+
+    .brikpanel-welcome-rail-title {
+        white-space: nowrap;
+    }
+
+    .brikpanel-welcome-slide {
+        padding: 28px 24px 24px;
+    }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .brikpanel-welcome-overlay,
+    .brikpanel-welcome-modal,
+    .brikpanel-welcome-slide,
+    .brikpanel-welcome-progress-fill,
+    .brikpanel-welcome-slide.is-active * {
+        transition: none !important;
+        animation: none !important;
+    }
+}

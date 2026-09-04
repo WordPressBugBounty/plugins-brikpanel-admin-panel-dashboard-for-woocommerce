@@ -1,0 +1,5738 @@
+/**
+ * BrikPanel – Simplified Product Editor
+ * @package BrikPanel
+ * @since 1.6.0
+ */
+(function ($) {
+    'use strict';
+
+    var PE = brikpanelPE || {};
+    var productData = window.brikpanelProductData || {};
+
+    // `imagesReady` stays false until the gallery has been hydrated from the
+    // saved product. Until then a save must stay silent about images rather
+    // than claim there are none — see the payload builder in saveProduct().
+    var state = { images: [], imagesReady: false, saving: false, dirty: false, varTemplate: null, varAttributes: [], variations: [], downloads: [], tags: [], linked: { upsells: [], cross_sells: [] }, varCustomStarted: false, defaultAttributes: {}, lastSubmittedVariations: [] };
+
+    /* Every variation field that is backed by a control in the table, i.e. the
+       ones a merchant can still be typing into while a save is in flight. Used
+       to tell a genuine in-flight edit apart from the server's echo. */
+    var VAR_INPUT_FIELDS = ['regular_price', 'sale_price', 'sale_from', 'sale_to', 'manage_stock',
+        'enabled', 'stock_quantity', 'stock_status', 'sku', 'global_unique_id', 'tax_class',
+        'shipping_class', 'cogs_value', 'vendor_id', 'backorders'];
+
+    /* Compare two variation field values across the boolean/int/string spellings
+       the table state and the submitted payload use for the same thing (a
+       checkbox is `true` in state and `1` on the wire). */
+    /* Split a pasted or typed list into clean entries. Blank fragments and
+       repeats within the same paste are dropped, so a trailing separator or a
+       spreadsheet column with empty cells does not create empty values. */
+    function splitDelimited(text, pattern) {
+        var out = [], seen = {};
+        String(text == null ? '' : text).split(pattern).forEach(function (part) {
+            var v = $.trim(part);
+            if (!v) return;
+            var key = v.toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            out.push(v);
+        });
+        return out;
+    }
+
+    /* Turn a failed save into something a merchant can act on (or paste into a
+       support message). "An error occurred" is a dead end: the interesting part
+       is whether the server 500'd, timed out, or answered with HTML — usually a
+       PHP fatal from another plugin hooking the product save, printed before
+       our JSON. Pull the first readable line out of whatever came back. */
+    function saveFailureDetail(xhr) {
+        var generic = PE.i18n.error || 'An error occurred';
+        if (!xhr) return generic;
+        // status 0 = the browser never got a reply: the request was aborted, the
+        // connection dropped, or a proxy/firewall killed it mid-flight.
+        if (!xhr.status) {
+            return PE.i18n.error_no_response || generic;
+        }
+        var detail = '';
+        var body = (xhr.responseText || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (body) {
+            // A PHP fatal names itself in the first sentence — keep that, drop
+            // the rest so the toast stays readable.
+            var m = body.match(/(?:Fatal error|Parse error|Warning|Notice|Uncaught)[^.]{0,200}/i);
+            detail = m ? m[0] : body.slice(0, 200);
+        }
+        return (PE.i18n.error_status || 'Could not save. The server replied %1$s. %2$s')
+            .replace('%1$s', xhr.status + (xhr.statusText ? ' ' + xhr.statusText : ''))
+            .replace('%2$s', detail);
+    }
+
+    function varFieldSame(a, b) {
+        var norm = function (v) {
+            if (v === true) return '1';
+            if (v === false) return '0';
+            if (v === undefined || v === null) return '';
+            return String(v);
+        };
+        return norm(a) === norm(b);
+    }
+
+    function init() {
+        bindEvents();
+        initStatusDropdown();
+        initCatalogVisibility();
+        initPubDate();
+        initHeaderOverflow();
+        initFeaturedStar();
+        initToggles();
+        initImages();
+        initCharCounter();
+        initPriceInputs();
+        initCategorySearch();
+        initEditor();
+        initSeoPreview();
+        initSeoAnalysisBridge();
+        initSurerankAnalyze();
+        initAutoSave();
+        initInlineEdit();
+        initTags();
+        initSaleDates();
+        initAttributes();
+        initManageStock();
+        initBackorderNotify();
+        initLinkedProducts();
+        initThirdPartyTabLazyLoad();
+        initThirdPartyHint();
+        initCogsMirror();
+        loadExistingData();
+    }
+
+    /* Discovery card shown when other plugins add fields to this product but
+       the setting that surfaces them is off. Enabling reloads rather than
+       injecting the panels over AJAX: those panels come with their own scripts,
+       styles and DOM ancestors, and a reload is the one way to guarantee they
+       initialise exactly as they do on a normal load. */
+    function initThirdPartyHint() {
+        bindToggle('.brikpanel-pe-wc-fields', '.brikpanel-pe-wc-fields__hide',
+            'brikpanel_pe_disable_thirdparty_fields', 'tp_hide_working');
+        bindToggle('.brikpanel-pe-tp-hint', '.brikpanel-pe-tp-hint__enable',
+            'brikpanel_pe_enable_thirdparty_fields', 'tp_hint_working');
+
+        function bindToggle(cardSel, btnSel, action, busyKey) {
+            var $card = $(cardSel);
+            if (!$card.length) return;
+
+            $card.on('click', btnSel, function () {
+                var $btn = $(this);
+                if ($btn.prop('disabled')) return;
+                var label = $btn.text();
+                $btn.prop('disabled', true).text((PE.i18n && PE.i18n[busyKey]) || label);
+                $.post(PE.ajax_url, { action: action, security: PE.nonce })
+                    .done(function (res) {
+                        if (res && res.success) {
+                            // `state.dirty` is deliberately NOT cleared here.
+                            // The panels come with their own scripts, so the
+                            // only reliable way to add or remove them is a
+                            // reload — but a reload throws away anything typed
+                            // and not yet saved. Leaving the guard armed lets
+                            // the browser ask first, which is the merchant's
+                            // call to make, not ours.
+                            window.location.reload();
+                            return;
+                        }
+                        fail($card, $btn, label, res);
+                    })
+                    .fail(function () { fail($card, $btn, label); });
+            });
+        }
+
+        /* Put the button back the way it was and say what went wrong next to
+           it. A button relabelled with an error message is not a button anyone
+           knows how to press again, and a failure with no message at all reads
+           as "nothing happened". */
+        function fail($card, $btn, label, res) {
+            $btn.prop('disabled', false).text(label);
+            var message = (res && res.data && res.data.message)
+                ? res.data.message
+                : ((PE.i18n && PE.i18n.error) || '');
+            if (!message) return;
+            var $note = $card.find('.brikpanel-pe-tp-msg');
+            if (!$note.length) {
+                $note = $('<p class="brikpanel-pe-tp-msg" aria-live="polite"></p>').appendTo($card);
+            }
+            $note.text(message);
+        }
+    }
+
+    /* A cost-of-goods plugin renders its own cost input into WooCommerce's
+       Product data panel, which we embed — so the editor can end up showing
+       two boxes for one number: BrikPanel's Cost field and theirs. They start
+       out disagreeing (theirs renders from its own meta, which may be empty)
+       and only one of them can win the save, so whichever box the merchant
+       happened to edit could silently lose its value.
+
+       Keep them in step both ways instead: typing in either updates the other,
+       so there is only ever one number on screen and the save is unambiguous.
+       Runs only when BrikPanel's own Cost field is on the page — with that
+       section switched off in settings, the plugin's field is the only cost
+       control there is and we leave it strictly alone. */
+    function pairCogsInputs($ours, $theirs) {
+        if (!$ours.length || !$theirs.length) return;
+        var syncing = false;
+        var push = function (from, $to) {
+            if (syncing) return;
+            syncing = true;
+            $to.val(from);
+            syncing = false;
+        };
+        // Adopt BrikPanel's value up front: ours is hydrated from the resolved
+        // cost (their key included), so it is the one that is certainly right.
+        push($ours.val() || '', $theirs);
+        $ours.on('input.bpCogsMirror change.bpCogsMirror', function () { push($(this).val() || '', $theirs); }); // i18n-ignore: jQuery event namespace, not user-facing text
+        $theirs.on('input.bpCogsMirror change.bpCogsMirror', function () { push($(this).val() || '', $ours); }); // i18n-ignore: jQuery event namespace, not user-facing text
+    }
+
+    function initCogsMirror() {
+        var names = (window.brikpanelPE && brikpanelPE.cogs_mirror_inputs) || [];
+        if (!names.length) return;
+        var $ours = $('#bpe-cogs');
+        if (!$ours.length) return;
+        var $theirs = $();
+        for (var i = 0; i < names.length; i++) {
+            $theirs = $theirs.add($('[name="' + names[i] + '"]'));
+        }
+        pairCogsInputs($ours, $theirs);
+    }
+
+    /* Per-variation half of the mirror. The plugin's input lands in the
+       variation's "extras" row — a sibling of the row holding our cost cell,
+       not a parent — so we match on the `data-idx` both rows carry rather than
+       on document order. Called after every renderVarTable() because that
+       rebuilds both rows from scratch. */
+    function syncVariationCogsMirror() {
+        var varNames = (window.brikpanelPE && brikpanelPE.cogs_mirror_variation_inputs) || [];
+        if (!varNames.length) return;
+        var $tb = $('#bpe-var-table-body');
+        if (!$tb.length) return;
+
+        for (var v = 0; v < varNames.length; v++) {
+            $tb.find('[name^="' + varNames[v] + '["]').each(function () {
+                var $theirs = $(this);
+                var idx = $theirs.closest('.var-extras-row').data('idx');
+                if (idx === undefined) return;
+                // No cost cell means the COGS column is switched off in
+                // settings — their field is then the only cost control on the
+                // page and we leave it strictly alone.
+                pairCogsInputs($tb.find('tr[data-idx="' + idx + '"] .var-cogs').first(), $theirs); // i18n-ignore: CSS selector, not user-facing text
+            });
+        }
+    }
+
+    /* Some 3rd-party WooCommerce product-data tabs only render their saved
+       content when their tab link is clicked (they bind the lazy loader to a
+       `.{key}_tab` click). BrikPanel shows the panel directly with no WC tab
+       nav, so those plugins would display an empty builder. We emit a hidden,
+       WC-shaped tab-nav node per panel (.brikpanel-pe-wc-tabsim) carrying the
+       classes the plugin listens on; firing a click here triggers the lazy
+       render. The panel itself stays visible via CSS regardless. */
+    function initThirdPartyTabLazyLoad() {
+        var $sims = $('.brikpanel-pe-wc-tabsim');
+        if (!$sims.length) return;
+        $sims.each(function () {
+            // Trigger handlers bound to the <li> (WC's `.{key}_tab`) and the
+            // <ul>. We avoid triggering the <a> so jQuery does not follow its
+            // href and scroll the page to the anchor.
+            $(this).find('li').addBack().trigger('click');
+        });
+    }
+
+    /* Linked products (upsells & cross-sells) — opt-in card. Lightweight
+       chip + AJAX search picker; only active when the card is rendered. */
+    function initLinkedProducts() {
+        if (!$('#bpe-linked-card').length) return;
+        state.linked.upsells     = (productData.upsells || []).slice();
+        state.linked.cross_sells = (productData.cross_sells || []).slice();
+
+        ['upsells', 'cross_sells'].forEach(function (field) {
+            var $wrap = $('.brikpanel-pe-linked[data-field="' + field + '"]');
+            if (!$wrap.length) return;
+            var $chips   = $wrap.find('.brikpanel-pe-linked-chips');
+            var $search  = $wrap.find('.brikpanel-pe-linked-search');
+            var $results = $wrap.find('.brikpanel-pe-linked-results');
+            var timer = null;
+
+            function renderChips() {
+                $chips.empty();
+                state.linked[field].forEach(function (item, i) {
+                    $chips.append(
+                        '<span class="brikpanel-pe-linked-chip" data-i="' + i + '">' +
+                            esc(item.text) +
+                            '<button type="button" class="brikpanel-pe-linked-remove" aria-label="' + esc(PE.i18n && PE.i18n.chip_remove ? PE.i18n.chip_remove : 'Remove') + '">&times;</button>' +
+                        '</span>'
+                    );
+                });
+            }
+            renderChips();
+
+            $chips.on('click', '.brikpanel-pe-linked-remove', function () {
+                var i = $(this).closest('.brikpanel-pe-linked-chip').data('i');
+                state.linked[field].splice(i, 1);
+                renderChips();
+                state.dirty = true;
+            });
+
+            function hideResults() { $results.attr('hidden', true).empty(); }
+
+            $search.on('input', function () {
+                var q = $.trim($search.val());
+                clearTimeout(timer);
+                if (q.length < 2) { hideResults(); return; }
+                timer = setTimeout(function () {
+                    $.get(PE.ajax_url, {
+                        action: 'brikpanel_pe_search_products',
+                        security: PE.nonce,
+                        q: q,
+                        exclude: $('#bpe-product-id').val() || 0
+                    }).done(function (res) {
+                        if (!res || !res.success) { hideResults(); return; }
+                        var chosen = {};
+                        state.linked[field].forEach(function (it) { chosen[it.id] = true; });
+                        var list = (res.data.results || []).filter(function (r) { return !chosen[r.id]; });
+                        if (!list.length) { hideResults(); return; }
+                        $results.empty();
+                        list.forEach(function (r) {
+                            $results.append('<button type="button" class="brikpanel-pe-linked-option" data-id="' + r.id + '">' + esc(r.text) + '</button>');
+                        });
+                        $results.removeAttr('hidden');
+                    }).fail(hideResults);
+                }, 250);
+            });
+
+            $results.on('click', '.brikpanel-pe-linked-option', function () {
+                var id = parseInt($(this).data('id'), 10);
+                var text = $(this).text();
+                if (!state.linked[field].some(function (it) { return it.id === id; })) {
+                    state.linked[field].push({ id: id, text: text });
+                    renderChips();
+                    state.dirty = true;
+                }
+                $search.val('');
+                hideResults();
+            });
+
+            $(document).on('click', function (e) {
+                if (!$wrap[0].contains(e.target)) hideResults();
+            });
+        });
+    }
+
+    /* "Track quantity" toggle for simple products. When on, the merchant
+       enters a quantity + backorder rule and WooCommerce derives the stock
+       status; when off, they pick an in/out/backorder status directly. The
+       two field sets are mutually exclusive, mirroring WC's native tab. */
+    function initManageStock() {
+        var $toggle = $('#bpe-manage-stock');
+        if (!$toggle.length) return;
+        function sync() {
+            var on = $toggle.is(':checked');
+            $('#bpe-stock-qty-field, #bpe-backorders-field').toggle(on);
+            $('#bpe-stock-status-field').toggle(!on);
+            // The "Backorder behavior" radio collapse belongs to the
+            // tracking-off flow (it refines a manual "On backorder" status).
+            // While tracking is on, backorders are set via the dropdown, so
+            // keep the collapse closed to avoid a duplicate control.
+            $('#bpe-backorder-notify').toggleClass('open', !on && $('#bpe-stock-status').val() === 'onbackorder');
+        }
+        $toggle.on('change', function () { sync(); state.dirty = true; });
+        sync();
+    }
+
+    /* Backorder notification — opt-in via setting. The collapse opens
+       only when the simple-product stock status is "On backorder". */
+    function initBackorderNotify() {
+        var $collapse = $('#bpe-backorder-notify');
+        if (!$collapse.length) return;
+        var $sel = $('#bpe-stock-status');
+        function sync() {
+            // Never open while stock tracking is on — backorders are picked
+            // via the "Allow backorders?" dropdown in that mode.
+            if ($('#bpe-manage-stock').is(':checked')) { $collapse.removeClass('open'); return; }
+            $collapse.toggleClass('open', $sel.val() === 'onbackorder');
+        }
+        $sel.on('change', sync);
+        sync();
+    }
+
+    /* Sale schedule date pickers (flatpickr) */
+    function initSaleDates() {
+        if (typeof flatpickr !== 'function') return;
+        var $from = $('#bpe-sale-from'), $to = $('#bpe-sale-to');
+        if (!$from.length || !$to.length) return;
+
+        var fpFrom = flatpickr($from.get(0), {
+            dateFormat: 'Y-m-d',
+            allowInput: false,
+            onChange: function (dates) {
+                if (fpTo && dates[0]) {
+                    fpTo.set('minDate', dates[0]);
+                }
+            }
+        });
+        var fpTo = flatpickr($to.get(0), {
+            dateFormat: 'Y-m-d',
+            allowInput: false,
+            minDate: $from.val() || null
+        });
+    }
+
+    function bindEvents() {
+        $('#bpe-publish').on('click', function () {
+            var status = $('#bpe-status').val() || 'publish';
+            saveProduct(status);
+        });
+
+        var $dz = $('#bpe-dropzone');
+        $dz.on('click', openMediaLibrary);
+        $('#bpe-add-images').on('click', function (e) { e.stopPropagation(); openMediaLibrary(); });
+        $dz.on('dragover', function (e) { e.preventDefault(); $dz.addClass('dragover'); });
+        $dz.on('dragleave drop', function () { $dz.removeClass('dragover'); });
+        $dz.on('drop', function (e) { e.preventDefault(); handleFileDrop(e.originalEvent.dataTransfer.files); });
+
+        $('#bpe-add-cat-toggle').on('click', function (e) { e.preventDefault(); toggleSection($('#bpe-new-cat-section')); });
+        $('#bpe-add-cat-btn').on('click', addCategory);
+
+        // Keep the SEOPress "Primary category" dropdown in sync with the
+        // category checklist — only the currently-selected categories are valid
+        // primary choices. Delegated so it survives checklist re-renders.
+        $(document).on('change', 'input[name="category_ids[]"]', syncPrimaryCatOptions);
+
+        $('#bpe-add-brand-toggle').on('click', function (e) { e.preventDefault(); toggleSection($('#bpe-new-brand-section')); });
+        $('#bpe-add-brand-btn').on('click', addBrand);
+
+        // Quick-start template cards (shown only on an empty variable product).
+        // "Size + Color" drops in the two variation rows; "Custom" just reveals
+        // the attribute controls so the user builds their own.
+        $('#bpe-var-templates').on('click', '.brikpanel-pe-var-template', function () {
+            var t = $(this).data('template');
+            state.varCustomStarted = true;
+            if (t === 'size-color') {
+                quickAddSizeColor();
+            } else {
+                if (!$('#bpe-var-toggle').is(':checked')) { $('#bpe-var-toggle').prop('checked', true).trigger('change'); }
+                updateVarStartView();
+                $('#bpe-attr-new-name').trigger('focus');
+            }
+        });
+        // Quick add from the controls: Size + Color rows flagged for variations,
+        // turning the product variable in one click.
+        $('#bpe-attr-quick-sizecolor').on('click', quickAddSizeColor);
+        $('#bpe-generate-vars').on('click', generateVariations);
+        $('#bpe-add-variation').on('click', addVariationManually);
+        $('#bpe-clear-vars').on('click', clearAllVariations);
+        $('#bpe-apply-bulk').on('click', applyBulk);
+        // The sort select is an action menu: picking a mode sorts immediately
+        // and the select snaps back to its placeholder.
+        $('#bpe-var-sort').on('change', applyVariationSort);
+        // Bound once on the persistent table body: initialising inside
+        // renderVarTable() would stack another sortable instance per render.
+        initVarSortable();
+
+        // Default Form Values selects (delegated — rebuilt on every table render).
+        $('#bpe-var-defaults').on('change', '.bpe-var-default', function () {
+            var key = $(this).attr('data-key');
+            var val = $(this).val();
+            if (val) { state.defaultAttributes[key] = val; }
+            else { delete state.defaultAttributes[key]; }
+            state.dirty = true;
+            markDefaultFormValues();
+        });
+        // Its popover: toggle, close on outside click / Escape.
+        $('#bpe-var-defaults-toggle').on('click', function (e) {
+            e.stopPropagation();
+            toggleDefaultFormValues(!$(this).attr('aria-expanded') || $(this).attr('aria-expanded') === 'false');
+        });
+        $('#bpe-var-defaults-pop').on('click', function (e) { e.stopPropagation(); });
+        $(document).on('click.bpeVarDefaults', function () { toggleDefaultFormValues(false); });
+        $(document).on('keydown.bpeVarDefaults', function (e) {
+            if (e.key === 'Escape' && $('#bpe-var-defaults-toggle').attr('aria-expanded') === 'true') {
+                toggleDefaultFormValues(false);
+                $('#bpe-var-defaults-toggle').trigger('focus');
+            }
+        });
+
+        // Duplicate (delegated so dynamically injected button still works)
+        $(document).on('click', '#bpe-duplicate', duplicateProduct);
+
+        // Scope to real form controls: ACF (and other plugins) put
+        // data-required="1" on the field *wrapper div*, not the input. A bare
+        // [data-required] selector would match those wrappers too — see the
+        // note in validateAll().
+        $(':input[data-required]').on('blur', function () { validateField($(this)); });
+
+        // Ctrl+S shortcut
+        $(document).on('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                var status = $('#bpe-status').val() || 'publish';
+                saveProduct(status);
+            }
+        });
+
+        // Track dirty state
+        $(document).on('input change', '.brikpanel-pe-content input, .brikpanel-pe-content textarea, .brikpanel-pe-content select, .brikpanel-pe-content [contenteditable]', function () {
+            state.dirty = true;
+        });
+        // Password field lives in the header — track it separately
+        $(document).on('input', '#bpe-post-password', function () {
+            state.dirty = true;
+        });
+
+        // Beforeunload warning
+        $(window).on('beforeunload', function () {
+            if (state.dirty) return true;
+        });
+
+        // Vendor selector reactivity:
+        //   1. Hide / show the parent's "Vendor SKU" row depending on whether
+        //      a real vendor is selected (no point in collecting an SKU under
+        //      "None"). Hidden via `[hidden]` so screen readers also skip it.
+        //   2. When the parent vendor changes, refresh the inherit-label of
+        //      every variation row's vendor select so "(parent: Acme …)" stays
+        //      accurate without a full re-render of the table.
+        $(document).on('change', '#bpe-vendor', function () {
+            var $sel = $(this);
+            var newId = parseInt($sel.val(), 10) || 0;
+            var newName = $sel.find('option:selected').text();
+            $('.brikpanel-pe-vendor-sku-row').prop('hidden', newId === 0);
+            productData.parent_vendor_id = newId;
+            var inherit = newId === 0
+                ? (PE.i18n.inherit_parent || '(parent)')
+                : (PE.i18n.inherit_parent_named || '(parent: %s)').replace('%s', newName);
+            $('.var-vendor option[value="0"]').text(inherit);
+        });
+    }
+
+    /* Close every other header popover (status / catalog visibility / overflow)
+       except the one passed in. The triggers call e.stopPropagation(), so the
+       per-dropdown outside-click handlers don't fire for sibling triggers;
+       this keeps only one header menu open at a time. */
+    function closeHeaderPopovers(except) {
+        $('.brikpanel-pe-status-wrap, #bpe-catvis-wrap, #bpe-pubdate-wrap, #bpe-header-overflow').not(except).each(function () {
+            var $w = $(this);
+            if ($w.hasClass('is-open')) {
+                $w.removeClass('is-open').find('[aria-expanded="true"]').attr('aria-expanded', 'false');
+            }
+        });
+    }
+
+    /* Build a datetime-local value (Y-m-d\TH:i) for ~24h from now, in the
+       browser's local time — used to seed the schedule picker when the merchant
+       first switches to "Scheduled" and the field is empty. */
+    function defaultScheduleValue() {
+        var d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+               'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+
+    /* ----- Publish-date control (header) -----------------------------------
+       A compact popover showing the product's publish date (WordPress
+       post_date). Editable for any status: backdate/correct a live product, or
+       pick a future go-live moment together with the "Scheduled" status. Shares
+       the single #bpe-schedule-date input with the scheduling flow. */
+
+    /* Format the datetime-local value for the trigger label. Empty → the
+       localized "Immediately". Uses the browser locale for the date/time so it
+       reads naturally; the word "Immediately" comes from the server i18n bag. */
+    function formatPubDateLabel(val) {
+        var immediately = (PE.i18n && PE.i18n.immediately) || 'Immediately';
+        if (!val) return immediately;
+        var d = new Date(val);
+        if (isNaN(d.getTime())) return immediately;
+        try {
+            return d.toLocaleString(undefined, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        } catch (e) {
+            return val.replace('T', ' ');
+        }
+    }
+
+    function syncPubDateLabel() {
+        var $lbl = $('#bpe-pubdate-label');
+        if (!$lbl.length) return;
+        $lbl.text(formatPubDateLabel($('#bpe-schedule-date').val()));
+    }
+
+    function openPubDate() {
+        var $wrap = $('#bpe-pubdate-wrap');
+        if (!$wrap.length || $wrap.hasClass('is-open')) return;
+        closeHeaderPopovers($wrap);
+        $wrap.addClass('is-open');
+        $('#bpe-pubdate-trigger').attr('aria-expanded', 'true');
+        // Defer focus so the popover has painted before the picker opens.
+        window.setTimeout(function () { $('#bpe-schedule-date').focus(); }, 0);
+    }
+
+    function closePubDate() {
+        var $wrap = $('#bpe-pubdate-wrap');
+        if (!$wrap.length) return;
+        $wrap.removeClass('is-open');
+        $('#bpe-pubdate-trigger').attr('aria-expanded', 'false');
+    }
+
+    function initPubDate() {
+        var $wrap = $('#bpe-pubdate-wrap');
+        if (!$wrap.length) return;
+        syncPubDateLabel();
+
+        $('#bpe-pubdate-trigger').on('click', function (e) {
+            e.stopPropagation();
+            $wrap.hasClass('is-open') ? closePubDate() : openPubDate();
+        });
+
+        // Keep the trigger label in step with the picker, and flag the form dirty
+        // so the change is committed on the next Update/Publish (or auto-save).
+        $('#bpe-schedule-date').on('change input', function () {
+            syncPubDateLabel();
+            updatePublishLabel($('#bpe-status').val());
+            state.dirty = true;
+        });
+
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#bpe-pubdate-wrap').length) closePubDate();
+        });
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && $wrap.hasClass('is-open')) closePubDate();
+        });
+    }
+
+    /* True when the picker holds a moment in the future — used to mirror WordPress
+       core, which relabels the primary button to "Schedule" once a future publish
+       date is set even on an otherwise "Published" product. */
+    function pubDateIsFuture() {
+        var val = $('#bpe-schedule-date').val();
+        if (!val) return false;
+        var d = new Date(val);
+        return !isNaN(d.getTime()) && d.getTime() > Date.now() + 30000;
+    }
+
+    /* Swap the primary button label to "Schedule" while the status is future,
+       restoring the original label (Publish/Update/Save) for any other status.
+       The server-rendered label is captured once as the baseline. */
+    function updatePublishLabel(status) {
+        var $pub = $('#bpe-publish');
+        if (!$pub.length) return;
+        if (typeof $pub.data('origLabel') === 'undefined') {
+            $pub.data('origLabel', $.trim($pub.text()));
+        }
+        // Show "Schedule" for the explicit Scheduled status, and also when a live
+        // status carries a future publish date and scheduling is enabled — the
+        // server promotes that to a scheduled publish, so the button should say so.
+        var schedulingOn = !PE || PE.scheduling_enabled !== '0';
+        var willSchedule = status === 'future'
+            || (schedulingOn && (status === 'publish') && pubDateIsFuture());
+        if (willSchedule) {
+            $pub.text(PE.i18n.schedule || 'Schedule');
+        } else {
+            $pub.text($pub.data('origLabel'));
+        }
+    }
+
+    /* Custom Visibility dropdown (replaces the old <select>) */
+    function initStatusDropdown() {
+        var $wrap = $('.brikpanel-pe-status-wrap');
+        if (!$wrap.length) return;
+        var $trigger = $('#bpe-status-trigger');
+        var $menu = $wrap.find('.brikpanel-pe-status-menu');
+        var $hidden = $('#bpe-status');
+
+        // Capture the non-future baseline for the primary button label. If the
+        // product loads already scheduled, the server label is "Schedule"; derive
+        // the correct fallback (Update for an existing product, Publish for a new
+        // one) so switching away from "Scheduled" doesn't leave a stale label.
+        var $pubBtn = $('#bpe-publish');
+        if ($pubBtn.length && typeof $pubBtn.data('origLabel') === 'undefined') {
+            if ($hidden.val() === 'future') {
+                var isEdit = parseInt($('#bpe-product-id').val() || '0', 10) > 0;
+                $pubBtn.data('origLabel', isEdit ? (PE.i18n.update || 'Update') : (PE.i18n.publish || 'Publish'));
+            } else {
+                $pubBtn.data('origLabel', $.trim($pubBtn.text()));
+            }
+        }
+
+        function close() {
+            $wrap.removeClass('is-open');
+            $trigger.attr('aria-expanded', 'false');
+        }
+        function open() {
+            $wrap.addClass('is-open');
+            $trigger.attr('aria-expanded', 'true');
+        }
+
+        $trigger.on('click', function (e) {
+            e.stopPropagation();
+            closeHeaderPopovers($wrap);
+            $wrap.hasClass('is-open') ? close() : open();
+        });
+
+        $menu.on('click', 'li[role="option"]', function () {
+            var v = $(this).data('value');
+            $hidden.val(v).trigger('change');
+            $wrap.attr('data-status', v);
+            $menu.find('li').removeClass('is-active');
+            $(this).addClass('is-active');
+            $trigger.find('.brikpanel-pe-status-trigger-label').text($(this).find('strong').text());
+            // Show/hide password field
+            var $pwWrap = $('#bpe-password-wrap');
+            if (v === 'password') {
+                $pwWrap.addClass('is-visible');
+                $('#bpe-post-password').focus();
+            } else {
+                $pwWrap.removeClass('is-visible');
+            }
+            // Switching to "Scheduled" needs a future go-live moment. The publish
+            // date lives in its own always-visible control now, so seed a sensible
+            // near-future default (tomorrow, same time) when it's empty, then open
+            // that control so the merchant lands right on the picker.
+            if (v === 'future') {
+                var $date = $('#bpe-schedule-date');
+                if (!$date.val()) { $date.val(defaultScheduleValue()); syncPubDateLabel(); }
+                openPubDate();
+            }
+            updatePublishLabel(v);
+            close();
+        });
+
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.brikpanel-pe-status-wrap').length) close();
+        });
+
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && $wrap.hasClass('is-open')) close();
+        });
+    }
+
+    /* Featured-product star button in the header. Toggles the visual state
+       and the hidden #bpe-is-featured field; the actual save fires when the
+       user hits Update/Publish (or the next auto-save tick). No standalone
+       AJAX — keeps the editor's single-commit save model intact. */
+    function initFeaturedStar() {
+        var $btn = $('#bpe-featured-star');
+        if (!$btn.length) return;
+        var $field = $('#bpe-is-featured');
+
+        $btn.on('click', function () {
+            var nowOn = !$btn.hasClass('is-on');
+            $btn.toggleClass('is-on', nowOn);
+            $btn.attr('aria-pressed', nowOn ? 'true' : 'false');
+            // i18n-ignore: data-label-on/off are __()-wrapped in PHP at brikpanel-product-editor.php:512-513; the English fallback only runs if the attribute is missing.
+            var label = nowOn
+                ? ($btn.data('label-on')  || 'Featured')
+                : ($btn.data('label-off') || 'Mark as featured');
+            $btn.attr('title', label);
+            $btn.find('.screen-reader-text').text(label);
+            $btn.find('svg').attr('fill', nowOn ? 'currentColor' : 'none');
+            $field.val(nowOn ? '1' : '0');
+            state.dirty = true;
+        });
+    }
+
+    /* Catalog visibility dropdown */
+    function initCatalogVisibility() {
+        var $wrap = $('#bpe-catvis-wrap');
+        if (!$wrap.length) return;
+        var $trigger = $('#bpe-catvis-trigger');
+        var $menu = $wrap.find('.brikpanel-pe-catvis-menu');
+        var $hidden = $('#bpe-catalog-visibility');
+
+        function close() { $wrap.removeClass('is-open'); $trigger.attr('aria-expanded', 'false'); }
+        function open()  { $wrap.addClass('is-open');  $trigger.attr('aria-expanded', 'true');  }
+
+        $trigger.on('click', function (e) {
+            e.stopPropagation();
+            closeHeaderPopovers($wrap);
+            $wrap.hasClass('is-open') ? close() : open();
+        });
+
+        $menu.on('click', 'li[role="option"]', function () {
+            var v = $(this).data('value');
+            $hidden.val(v).trigger('change');
+            $menu.find('li[role="option"]').removeClass('is-active');
+            $(this).addClass('is-active');
+            $trigger.find('.brikpanel-pe-catvis-label').text($(this).text());
+            state.dirty = true;
+            close();
+        });
+
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#bpe-catvis-wrap').length) close();
+        });
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && $wrap.hasClass('is-open')) close();
+        });
+    }
+
+    /* Header overflow ("More actions") menu — only interactive on mobile,
+       where View product / Duplicate / Add new collapse behind a kebab
+       trigger. On desktop the menu is display:contents, so the trigger is
+       hidden and the actions render inline; the handlers below are harmless
+       there. Mirrors the status / catalog-visibility dropdown pattern. */
+    function initHeaderOverflow() {
+        var $wrap = $('#bpe-header-overflow');
+        if (!$wrap.length) return;
+        var $trigger = $('#bpe-overflow-trigger');
+
+        function close() { $wrap.removeClass('is-open'); $trigger.attr('aria-expanded', 'false'); }
+        function open()  { $wrap.addClass('is-open');  $trigger.attr('aria-expanded', 'true');  }
+
+        $trigger.on('click', function (e) {
+            e.stopPropagation();
+            closeHeaderPopovers($wrap);
+            $wrap.hasClass('is-open') ? close() : open();
+        });
+
+        // Collapse the menu once an action is chosen (Duplicate stays on the
+        // page; View product / Add new navigate away anyway).
+        $wrap.find('.brikpanel-pe-overflow-menu').on('click', 'a, button', function () {
+            close();
+        });
+
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#bpe-header-overflow').length) close();
+        });
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && $wrap.hasClass('is-open')) close();
+        });
+    }
+
+    /* Toggles */
+    function initToggles() {
+        bindToggle('#bpe-weight-toggle', '#bpe-weight-section');
+        bindToggle('#bpe-dims-toggle', '#bpe-dims-section');
+        bindToggle('#bpe-seo-toggle', '#bpe-seo-section');
+        bindToggle('#bpe-digital-toggle', '#bpe-digital-section');
+
+        // Hide the parent pricing + inventory cards whenever the variations
+        // toggle is on — each variation row already carries its own price,
+        // sale schedule, stock qty, stock status and SKU, so the top-level
+        // fields are dead inputs in that mode and must not block submit.
+        // The unified attribute editor stays visible for both product types:
+        // a simple product treats every attribute as a spec, while a variable
+        // product splits them by each row's "Use for variations" switch (Size,
+        // Color drive variations; Brand, Material stay as specs). The variation
+        // builder (Generate + table) and the per-row switches only show while
+        // "Variable product" is on.
+        function syncVariableMode() {
+            var isVar = $('#bpe-var-toggle').is(':checked');
+            $('#bpe-pricing-card, #bpe-inventory-card, #bpe-gtin-card').toggle(!isVar);
+            $('#bpe-var-card').toggleClass('bpe-variable-on', isVar);
+            $('#bpe-var-build').toggle(isVar);
+            // The table only makes sense once variations have been generated.
+            $('#bpe-var-table-section').toggle(isVar && !!(state.variations && state.variations.length));
+            $('.brikpanel-pe-attr-help-var').toggle(isVar);
+            $('.brikpanel-pe-attr-help-simple').toggle(!isVar);
+            updateVarStartView();
+        }
+        $('#bpe-var-toggle').on('change', syncVariableMode);
+        syncVariableMode();
+
+        /* Turning a variable product into a simple one makes the save delete
+           every variation permanently — they do not go to the trash and cannot
+           be restored. "Clear all" and the per-row delete both confirm first,
+           and both are less destructive than this, so the conversion asks too.
+           Returns true when it is safe to proceed. */
+        function confirmVariableLoss() {
+            // Only an EXISTING product can lose stored variations. A brand-new
+            // one has nothing on the server yet, so there is nothing to warn
+            // about even if the table has unsaved rows in it.
+            if (!(parseInt(productData.id || 0, 10) > 0)) return true;
+            // `variation_count` is what the product really had in the database
+            // when the page loaded, which the rendered table does not always
+            // match: WooCommerce hides a variation whose parent axis was
+            // rewritten by an import, so a damaged product shows fewer rows than
+            // it owns. Generating variations goes the other way — it writes them
+            // immediately, before any Save — so the table can also be ahead.
+            // Take the larger, but only count rows that carry an id: a blank row
+            // the merchant added and never saved is not something a conversion
+            // can destroy, and warning about it would be a lie.
+            var stored = parseInt(productData.variation_count || 0, 10) || 0;
+            var local  = (state.variations || []).filter(function (v) { return v && v.id; }).length;
+            var n = Math.max(stored, local);
+            if (n < 1) return true;
+            var msg = PE.i18n.confirm_convert_to_simple
+                || 'This product has %d variations. Changing it to a simple product deletes them permanently and this cannot be undone.';
+            return window.confirm(msg.replace('%d', n));
+        }
+
+        // Bound to `click`, not `change`, on purpose: the editor flips this
+        // checkbox programmatically in several places (hydrate, the attribute
+        // "use for variations" switch, the product-type selector below) with
+        // .prop('checked', …).trigger('change'), and jQuery's trigger does not
+        // fire a click. Listening for the real click keeps the prompt on the
+        // one path that is an actual merchant decision. preventDefault() on a
+        // checkbox click restores its previous state, so declining leaves the
+        // product variable and fires no change event.
+        $('#bpe-var-toggle').on('click', function (e) {
+            if (this.checked) return;            // switching variations ON is harmless
+            // With the product-type selector on the page the dropdown is what
+            // the save posts, and a posted type always wins server-side — so
+            // unticking this toggle alone converts nothing and destroys nothing.
+            // Asking there would be a warning about something that will not
+            // happen. The selector's own handler below covers that route.
+            if ($('#bpe-product-type').length) return;
+            if (confirmVariableLoss()) return;
+            e.preventDefault();
+        });
+
+        // Product type selector (enabled via "Product type selector" setting).
+        // The dropdown is the canonical source of truth for which WC product
+        // type the editor is creating. For backward compatibility, we keep
+        // #bpe-var-toggle mirrored to the variable-or-not derived flag so the
+        // existing pricing/inventory/variations show/hide logic continues to
+        // work unchanged.
+        var $productType = $('#bpe-product-type');
+        if ($productType.length) {
+            function isVariableType(t) {
+                if (!t) return false;
+                if (t === 'variable') return true;
+                return t.indexOf('variable-') === 0 || t.indexOf('variable_') === 0;
+            }
+            function syncProductType() {
+                var t = $productType.val();
+                var shouldBeVariable = isVariableType(t);
+                var $vt = $('#bpe-var-toggle');
+                if ($vt.is(':checked') !== shouldBeVariable) {
+                    $vt.prop('checked', shouldBeVariable).trigger('change');
+                }
+            }
+            // The dropdown is the second route into the same permanent deletion,
+            // so it asks the same question. The confirm lives only in the change
+            // handler — never in syncProductType(), which also runs on load —
+            // and the previous value is remembered so declining can put the
+            // select back. The toggle's own prompt cannot double up here:
+            // syncProductType() flips it with .trigger('change'), which fires no
+            // click, and the click handler above is the only thing that asks.
+            var lastProductType = $productType.val();
+            $productType.on('change', function () {
+                var next = $productType.val();
+                if (isVariableType(lastProductType) && !isVariableType(next) && !confirmVariableLoss()) {
+                    // Put the select back, then re-announce the restored value.
+                    // A <select> fires `change` only after its value has already
+                    // moved, so listeners registered ahead of this one have
+                    // already seen the declined value — the Yoast shim printed
+                    // inline by brikpanel-product-editor.php mirrors it into its
+                    // hidden #product-type — and silently rewinding the box would
+                    // leave them out of step. Dispatched natively, not with
+                    // jQuery's .trigger(): jQuery only runs handlers bound
+                    // through jQuery, so a plain addEventListener like the shim's
+                    // would never hear it. Re-firing cannot loop, because `next`
+                    // is then the value already held in lastProductType and the
+                    // branch above is false the second time through.
+                    $productType.val(lastProductType);
+                    $productType[0].dispatchEvent(new Event('change', { bubbles: true }));
+                    return;
+                }
+                lastProductType = next;
+                syncProductType();
+            });
+            syncProductType();
+        }
+
+        // Virtual = no physical shipping (service product). Downloadable
+        // products are implicitly virtual too — when Digital is toggled on
+        // we flip Virtual on and disable it so the user can't end up in an
+        // inconsistent "downloadable but ships physically" state by accident.
+        function syncShippingVisibility() {
+            var virtualOn = $('#bpe-virtual-toggle').is(':checked') || $('#bpe-digital-toggle').is(':checked');
+            $('#bpe-weight-card, #bpe-dims-card').toggle(!virtualOn);
+        }
+        function syncVirtualLock() {
+            var digitalOn = $('#bpe-digital-toggle').is(':checked');
+            var $virtual = $('#bpe-virtual-toggle');
+            if (digitalOn) {
+                $virtual.prop('checked', true).prop('disabled', true);
+            } else {
+                $virtual.prop('disabled', false);
+            }
+        }
+        $('#bpe-digital-toggle').on('change', function () {
+            $('#bpe-digital-section').toggleClass('open', this.checked);
+            syncVirtualLock();
+            syncShippingVisibility();
+        });
+        $('#bpe-virtual-toggle').on('change', syncShippingVisibility);
+        syncVirtualLock();
+        syncShippingVisibility();
+
+        // Add download file
+        $('#bpe-add-download').on('click', openFilePicker);
+    }
+
+    function bindToggle(cb, sec) { $(cb).on('change', function () { toggleSection($(sec), this.checked); }); }
+
+    function toggleSection($s, force) {
+        var open = typeof force === 'boolean' ? force : !$s.hasClass('open');
+        $s.toggleClass('open', open);
+    }
+
+    /* Multi-select media helper — every click toggles selection, no Ctrl needed */
+    var _origToggle = null;
+    function enableClickToToggle() {
+        if (wp.media && wp.media.view && wp.media.view.Attachment && !_origToggle) {
+            _origToggle = wp.media.view.Attachment.prototype.toggleSelectionHandler;
+            wp.media.view.Attachment.prototype.toggleSelectionHandler = function () {
+                // Always use 'toggle' method so each click adds/removes
+                this.toggleSelection({ method: 'toggle' });
+            };
+        }
+    }
+    function disableClickToToggle() {
+        if (_origToggle) {
+            wp.media.view.Attachment.prototype.toggleSelectionHandler = _origToggle;
+            _origToggle = null;
+        }
+    }
+
+    /* Images */
+    function initImages() {
+        $('#bpe-gallery').sortable({
+            items: '.brikpanel-pe-gallery-item', tolerance: 'pointer', cursor: 'grabbing',
+            placeholder: 'brikpanel-pe-gallery-item ui-sortable-placeholder',
+            update: syncImageOrder
+        });
+    }
+
+    function openMediaLibrary() {
+        var frame = wp.media({ title: PE.i18n.add_images || 'Add images', multiple: true, library: { type: 'image' }, button: { text: PE.i18n.select || 'Select' } });
+        frame.on('open', enableClickToToggle);
+        frame.on('close', disableClickToToggle);
+        frame.on('select', function () {
+            frame.state().get('selection').toJSON().forEach(function (att) {
+                addImage(att.id, (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url, null, att.alt);
+            });
+        });
+        frame.open();
+    }
+
+    /* Downloadable files */
+    function openFilePicker() {
+        var frame = wp.media({
+            title: PE.i18n.select_file || 'Select downloadable file',
+            multiple: true,
+            button: { text: PE.i18n.select || 'Select' }
+        });
+        frame.on('open', enableClickToToggle);
+        frame.on('close', disableClickToToggle);
+        frame.on('select', function () {
+            frame.state().get('selection').toJSON().forEach(function (att) {
+                addDownload({
+                    id: '',
+                    name: att.title || att.filename || 'File',
+                    file: att.url
+                });
+            });
+        });
+        frame.open();
+    }
+
+    function addDownload(d) {
+        // Avoid duplicates by file URL
+        if (state.downloads.some(function (x) { return x.file === d.file; })) return;
+        state.downloads.push(d);
+        renderDownloads();
+        state.dirty = true;
+    }
+
+    function removeDownload(idx) {
+        state.downloads.splice(idx, 1);
+        renderDownloads();
+        state.dirty = true;
+    }
+
+    function renderDownloads() {
+        var $list = $('#bpe-downloads-list').empty();
+        if (!state.downloads.length) {
+            $list.append('<p class="brikpanel-pe-text-muted">' + (PE.i18n.no_files || 'No files added yet.') + '</p>');
+            return;
+        }
+        state.downloads.forEach(function (d, idx) {
+            var $row = $('<div class="brikpanel-pe-download-item" data-idx="' + idx + '">');
+            $row.append('<svg class="brikpanel-pe-download-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>');
+            var $info = $('<div class="brikpanel-pe-download-info">');
+            $info.append('<input type="text" class="brikpanel-pe-download-name" value="' + esc(d.name) + '" placeholder="' + (PE.i18n.file_name || 'File name') + '">');
+            var $urlRow = $('<div class="brikpanel-pe-download-url-row">');
+            $urlRow.append('<input type="url" class="brikpanel-pe-download-url" value="' + esc(d.file) + '" placeholder="https://…" spellcheck="false">');
+            $urlRow.append('<button type="button" class="brikpanel-pe-download-browse" title="' + (PE.i18n.choose_file || 'Choose file') + '">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
+                '</button>');
+            $info.append($urlRow);
+            $row.append($info);
+            var $rm = $('<button type="button" class="brikpanel-pe-download-remove" title="' + (PE.i18n.remove || 'Remove') + '">&times;</button>');
+            $rm.on('click', function () { removeDownload(idx); });
+            $row.append($rm);
+            $list.append($row);
+        });
+
+        // Update name on input
+        $list.find('.brikpanel-pe-download-name').on('input', function () {
+            var idx = parseInt($(this).closest('.brikpanel-pe-download-item').data('idx'), 10);
+            if (state.downloads[idx]) {
+                state.downloads[idx].name = this.value;
+                state.dirty = true;
+            }
+        });
+
+        // Update URL on input — lets users correct or replace a link in place.
+        $list.find('.brikpanel-pe-download-url').on('input', function () {
+            var idx = parseInt($(this).closest('.brikpanel-pe-download-item').data('idx'), 10);
+            if (state.downloads[idx]) {
+                state.downloads[idx].file = this.value;
+                state.dirty = true;
+            }
+        });
+
+        // Media library picker to replace the current file URL.
+        $list.find('.brikpanel-pe-download-browse').on('click', function (e) {
+            e.preventDefault();
+            var $item = $(this).closest('.brikpanel-pe-download-item');
+            var idx = parseInt($item.data('idx'), 10);
+            if (!state.downloads[idx]) return;
+            var frame = wp.media({
+                title: PE.i18n.select_file || 'Select downloadable file',
+                multiple: false,
+                button: { text: PE.i18n.select || 'Select' }
+            });
+            frame.on('open', enableClickToToggle);
+            frame.on('close', disableClickToToggle);
+            frame.on('select', function () {
+                var att = frame.state().get('selection').first().toJSON();
+                state.downloads[idx].file = att.url;
+                if (!state.downloads[idx].name) {
+                    state.downloads[idx].name = att.title || att.filename || 'File';
+                }
+                state.dirty = true;
+                renderDownloads();
+            });
+            frame.open();
+        });
+    }
+
+    function handleFileDrop(files) {
+        Array.from(files).forEach(function (file) {
+            if (!file.type.startsWith('image/')) return;
+
+            // Show upload placeholder with spinner
+            var placeholderId = 'upload-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+            var $placeholder = $('<div class="brikpanel-pe-gallery-item is-uploading" id="' + placeholderId + '"></div>');
+            $('#bpe-gallery').append($placeholder);
+
+            var fd = new FormData();
+            fd.append('action', 'brikpanel_upload_image');
+            fd.append('security', PE.nonce);
+            fd.append('file', file);
+            $.ajax({ url: PE.ajax_url, type: 'POST', data: fd, processData: false, contentType: false,
+                success: function (r) {
+                    $('#' + placeholderId).remove();
+                    if (r.success) addImage(r.data.id, r.data.url);
+                },
+                error: function () { $('#' + placeholderId).remove(); }
+            });
+        });
+    }
+
+    // Whether the Blocksy per-image video editor is available on this site.
+    var blocksyVideo = String(PE.blocksy_video) === '1';
+    // Attachment ids whose video was edited this session; only these are sent.
+    var videoDirty = {};
+
+    function defaultVideo() {
+        return { has: false, source: 'youtube', upload: 0, upload_url: '', upload_name: '', youtube: '', vimeo: '', event: 'click', loop: false, player: false };
+    }
+
+    // `alt` is carried purely so the SEO analysers can read the featured
+    // image the way they would on the native editor; it is never saved here.
+    function addImage(id, url, video, alt) {
+        if (state.images.some(function (i) { return i.id === id; })) return;
+        state.images.push({
+            id: id,
+            url: url,
+            alt: alt ? String(alt) : '',
+            video: (video && typeof video === 'object') ? video : defaultVideo()
+        });
+        renderGallery();
+    }
+
+    function removeImage(id) {
+        state.images = state.images.filter(function (i) { return i.id !== id; });
+        renderGallery();
+    }
+
+    function renderGallery() {
+        var $g = $('#bpe-gallery').empty();
+        state.images.forEach(function (img, idx) {
+            var $item = $('<div class="brikpanel-pe-gallery-item" data-id="' + img.id + '">');
+            $item.append('<img src="' + esc(img.url) + '" alt="">');
+            if (idx === 0) $item.append('<span class="brikpanel-pe-gallery-item-badge">' + (PE.i18n.featured || 'Featured') + '</span>');
+            var $rm = $('<button type="button" class="brikpanel-pe-gallery-item-remove">&times;</button>');
+            $rm.on('click', function (e) { e.stopPropagation(); removeImage(img.id); });
+            $item.append($rm);
+            if (blocksyVideo) {
+                if (!img.video || typeof img.video !== 'object') img.video = defaultVideo();
+                var hasVid = !!img.video.has;
+                var $vb = $('<button type="button" class="brikpanel-pe-gallery-item-video' + (hasVid ? ' is-active' : '') + '">' +
+                    '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>');
+                $vb.attr('title', hasVid ? (PE.i18n.video_badge || 'Has video') : (PE.i18n.video_edit || 'Video'));
+                $vb.attr('aria-label', hasVid ? (PE.i18n.video_badge || 'Has video') : (PE.i18n.video_edit || 'Video'));
+                $vb.on('click', function (e) { e.stopPropagation(); openVideoDialog(img.id); });
+                $item.append($vb);
+            }
+            $g.append($item);
+        });
+        $g.sortable('refresh');
+        // Whichever image sits first is the featured one the SEO analysers see.
+        if (seoScheduleSync) seoScheduleSync();
+    }
+
+    function syncImageOrder() {
+        var o = [];
+        $('#bpe-gallery .brikpanel-pe-gallery-item').each(function () {
+            var id = parseInt($(this).data('id'), 10);
+            var f = state.images.find(function (i) { return i.id === id; });
+            if (f) o.push(f);
+        });
+        state.images = o;
+        renderGallery();
+    }
+
+    // ---- Blocksy per-image video dialog -----------------------------------
+    var $videoDlg = null;
+    var videoDlgState = { id: 0, video: null };
+    var videoMediaFrame = null;
+
+    function buildVideoDialog() {
+        if ($videoDlg) return $videoDlg;
+        var t = PE.i18n;
+        var html = '' +
+            '<div class="brikpanel-pe-linkdlg brikpanel-pe-viddlg" hidden>' +
+                '<div class="brikpanel-pe-linkdlg-backdrop"></div>' +
+                '<div class="brikpanel-pe-linkdlg-box">' +
+                    '<h3 class="brikpanel-pe-linkdlg-title">' + esc(t.video_title || 'Product video') + '</h3>' +
+                    '<p class="brikpanel-pe-viddlg-help">' + esc(t.video_help || '') + '</p>' +
+                    '<label class="brikpanel-pe-linkdlg-lbl">' + esc(t.video_source || 'Video source') + '</label>' +
+                    '<div class="brikpanel-pe-imgdlg-align brikpanel-pe-viddlg-source" style="grid-template-columns:repeat(3,1fr)">' +
+                        '<button type="button" data-source="youtube">' + esc(t.video_youtube || 'YouTube') + '</button>' +
+                        '<button type="button" data-source="vimeo">' + esc(t.video_vimeo || 'Vimeo') + '</button>' +
+                        '<button type="button" data-source="upload">' + esc(t.video_upload || 'Self-hosted') + '</button>' +
+                    '</div>' +
+                    '<div class="brikpanel-pe-viddlg-field" data-for="youtube" style="margin-top:.875rem">' +
+                        '<label class="brikpanel-pe-linkdlg-lbl">' + esc(t.video_youtube_url || 'YouTube URL') + '</label>' +
+                        '<input type="url" class="brikpanel-pe-linkdlg-url brikpanel-pe-viddlg-youtube" placeholder="' + esc(t.video_youtube_ph || '') + '" spellcheck="false">' +
+                    '</div>' +
+                    '<div class="brikpanel-pe-viddlg-field" data-for="vimeo" style="margin-top:.875rem" hidden>' +
+                        '<label class="brikpanel-pe-linkdlg-lbl">' + esc(t.video_vimeo_url || 'Vimeo URL') + '</label>' +
+                        '<input type="url" class="brikpanel-pe-linkdlg-url brikpanel-pe-viddlg-vimeo" placeholder="' + esc(t.video_vimeo_ph || '') + '" spellcheck="false">' +
+                    '</div>' +
+                    '<div class="brikpanel-pe-viddlg-field" data-for="upload" style="margin-top:.875rem" hidden>' +
+                        '<div class="brikpanel-pe-viddlg-filerow">' +
+                            '<span class="brikpanel-pe-viddlg-filename">' + esc(t.video_no_file || 'No video selected') + '</span>' +
+                            '<button type="button" class="brikpanel-pe-btn secondary small brikpanel-pe-viddlg-choose">' + esc(t.video_choose_file || 'Choose video') + '</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<label class="brikpanel-pe-linkdlg-lbl" style="margin-top:.875rem">' + esc(t.video_playback || 'Playback') + '</label>' +
+                    '<div class="brikpanel-pe-imgdlg-align brikpanel-pe-viddlg-event" style="grid-template-columns:repeat(3,1fr)">' +
+                        '<button type="button" data-event="click">' + esc(t.video_on_click || 'Play on click') + '</button>' +
+                        '<button type="button" data-event="autoplay">' + esc(t.video_autoplay || 'Autoplay') + '</button>' +
+                        '<button type="button" data-event="hover">' + esc(t.video_on_hover || 'Play on hover') + '</button>' +
+                    '</div>' +
+                    '<div class="brikpanel-pe-toggle-row" style="margin-top:.875rem">' +
+                        '<span>' + esc(t.video_loop || 'Loop the video') + '</span>' +
+                        '<label class="brikpanel-pe-switch"><input type="checkbox" class="brikpanel-pe-viddlg-loop"><span class="brikpanel-pe-slider"></span></label>' +
+                    '</div>' +
+                    '<div class="brikpanel-pe-toggle-row">' +
+                        '<span>' + esc(t.video_simple_player || 'Hide player controls') + '</span>' +
+                        '<label class="brikpanel-pe-switch"><input type="checkbox" class="brikpanel-pe-viddlg-player"><span class="brikpanel-pe-slider"></span></label>' +
+                    '</div>' +
+                    '<div class="brikpanel-pe-linkdlg-actions brikpanel-pe-viddlg-actions">' +
+                        '<button type="button" class="brikpanel-pe-btn secondary small brikpanel-pe-viddlg-remove" style="margin-right:auto">' + esc(t.video_remove || 'Remove video') + '</button>' +
+                        '<button type="button" class="brikpanel-pe-btn secondary small brikpanel-pe-viddlg-cancel">' + esc(t.video_cancel || 'Cancel') + '</button>' +
+                        '<button type="button" class="brikpanel-pe-btn primary small brikpanel-pe-viddlg-ok">' + esc(t.video_save || 'Save video') + '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        $videoDlg = $(html).appendTo('body');
+
+        function close() { $videoDlg.attr('hidden', true); }
+
+        function syncSource() {
+            var src = videoDlgState.video.source || 'youtube';
+            $videoDlg.find('.brikpanel-pe-viddlg-source button').each(function () {
+                $(this).toggleClass('is-active', $(this).data('source') === src);
+            });
+            $videoDlg.find('.brikpanel-pe-viddlg-field').each(function () {
+                $(this).prop('hidden', $(this).data('for') !== src);
+            });
+        }
+        function syncEvent() {
+            var ev = videoDlgState.video.event || 'click';
+            $videoDlg.find('.brikpanel-pe-viddlg-event button').each(function () {
+                $(this).toggleClass('is-active', $(this).data('event') === ev);
+            });
+        }
+        function syncFile() {
+            var v = videoDlgState.video;
+            var name = v.upload_name || v.upload_url || '';
+            $videoDlg.find('.brikpanel-pe-viddlg-filename').text(name || (PE.i18n.video_no_file || 'No video selected'));
+            $videoDlg.find('.brikpanel-pe-viddlg-choose').text(name ? (PE.i18n.video_replace_file || 'Replace video') : (PE.i18n.video_choose_file || 'Choose video'));
+        }
+        function syncAll() {
+            var v = videoDlgState.video;
+            $videoDlg.find('.brikpanel-pe-viddlg-youtube').val(v.youtube || '');
+            $videoDlg.find('.brikpanel-pe-viddlg-vimeo').val(v.vimeo || '');
+            $videoDlg.find('.brikpanel-pe-viddlg-loop').prop('checked', !!v.loop);
+            $videoDlg.find('.brikpanel-pe-viddlg-player').prop('checked', !!v.player);
+            syncSource(); syncEvent(); syncFile();
+        }
+        $videoDlg.data('sync', syncAll);
+
+        $videoDlg.find('.brikpanel-pe-viddlg-cancel, .brikpanel-pe-linkdlg-backdrop').on('click', close);
+        $videoDlg.on('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+        $videoDlg.find('.brikpanel-pe-viddlg-source').on('click', 'button', function () {
+            videoDlgState.video.source = $(this).data('source'); syncSource();
+        });
+        $videoDlg.find('.brikpanel-pe-viddlg-event').on('click', 'button', function () {
+            videoDlgState.video.event = $(this).data('event'); syncEvent();
+        });
+
+        $videoDlg.find('.brikpanel-pe-viddlg-choose').on('click', function () {
+            if (typeof wp === 'undefined' || !wp.media) return;
+            if (!videoMediaFrame) {
+                videoMediaFrame = wp.media({
+                    title: PE.i18n.video_choose_file || 'Choose video',
+                    button: { text: PE.i18n.video_select || 'Use this video' },
+                    library: { type: 'video' },
+                    multiple: false
+                });
+                videoMediaFrame.on('select', function () {
+                    var a = videoMediaFrame.state().get('selection').first();
+                    if (!a) return;
+                    a = a.toJSON();
+                    videoDlgState.video.upload = a.id;
+                    videoDlgState.video.upload_url = a.url || '';
+                    videoDlgState.video.upload_name = a.title || a.filename || '';
+                    syncFile();
+                });
+            }
+            videoMediaFrame.open();
+        });
+
+        $videoDlg.find('.brikpanel-pe-viddlg-remove').on('click', function () {
+            var img = state.images.find(function (i) { return i.id === videoDlgState.id; });
+            if (img) { img.video = defaultVideo(); videoDirty[videoDlgState.id] = true; renderGallery(); }
+            close();
+            showToast(PE.i18n.video_removed || 'Video removed from image', 'success');
+        });
+
+        $videoDlg.find('.brikpanel-pe-viddlg-ok').on('click', function () {
+            var v = videoDlgState.video;
+            v.youtube = ($videoDlg.find('.brikpanel-pe-viddlg-youtube').val() || '').trim();
+            v.vimeo = ($videoDlg.find('.brikpanel-pe-viddlg-vimeo').val() || '').trim();
+            v.loop = $videoDlg.find('.brikpanel-pe-viddlg-loop').is(':checked');
+            v.player = $videoDlg.find('.brikpanel-pe-viddlg-player').is(':checked');
+
+            var src = v.source || 'youtube';
+            if (src === 'youtube') {
+                if (!v.youtube) { showToast(PE.i18n.video_url_required || 'Please enter a video URL first.', 'error'); return; }
+                v.has = true;
+            } else if (src === 'vimeo') {
+                if (!v.vimeo) { showToast(PE.i18n.video_url_required || 'Please enter a video URL first.', 'error'); return; }
+                v.has = true;
+            } else if (src === 'upload') {
+                if (!v.upload && !v.upload_url) { showToast(PE.i18n.video_file_required || 'Please choose a video file first.', 'error'); return; }
+                v.has = true;
+            }
+
+            var img = state.images.find(function (i) { return i.id === videoDlgState.id; });
+            if (img) { img.video = v; videoDirty[videoDlgState.id] = true; renderGallery(); }
+            close();
+            showToast(PE.i18n.video_added || 'Video added to image', 'success');
+        });
+
+        return $videoDlg;
+    }
+
+    function openVideoDialog(id) {
+        var img = state.images.find(function (i) { return i.id === id; });
+        if (!img) return;
+        if (!img.video || typeof img.video !== 'object') img.video = defaultVideo();
+        var $dlg = buildVideoDialog();
+        // Work on a copy so Cancel discards changes.
+        videoDlgState.id = id;
+        videoDlgState.video = $.extend({}, defaultVideo(), img.video);
+        $dlg.data('sync')();
+        $dlg.removeAttr('hidden');
+    }
+
+    function initPriceInputs() {
+        $(document).on('input', '[data-price]', function () {
+            var sep = PE.decimal_sep || ',';
+            this.value = this.value.replace(sep === ',' ? /[^0-9,]/g : /[^0-9.]/g, '');
+        });
+    }
+
+    function initCharCounter() { /* char counter removed — short description now supports HTML with no length limit */ }
+
+    /* Tags that already carry their own block box — an autop pass must leave
+       them alone instead of nesting them inside a paragraph. */
+    var EDITOR_LEADING_BLOCK = /^\s*<(?:p|div|h[1-6]|ul|ol|li|dl|dt|dd|table|thead|tbody|tfoot|tr|td|th|blockquote|pre|hr|figure|figcaption|section|article|aside|header|footer|address|form|fieldset|iframe|video|audio|noscript)\b/i;
+
+    /* Same set as a selector, for asking "does this wrapper hold real blocks?" */
+    var EDITOR_BLOCK_SELECTOR = 'p,div,h1,h2,h3,h4,h5,h6,ul,ol,dl,table,blockquote,pre,hr,figure,section,article,aside,header,footer,address,form,fieldset';
+
+    /* Turn blank-line paragraphs into real <p> blocks.
+
+       Descriptions written outside BrikPanel (classic editor, importers, CLI)
+       store paragraphs as blank lines and rely on wpautop() at render time. A
+       contenteditable has no render step, so those newlines collapse into one
+       run of text. The server already normalises what it prints on page load;
+       this is the same pass for HTML typed into the source view, so switching
+       back to the visual editor keeps the paragraphs the author just wrote. */
+    function editorAutop(html) {
+        html = html == null ? '' : String(html);
+        if (html.indexOf('\n') === -1) return html;
+        // Block-editor markup states its own paragraphs — wrapping the
+        // `<!-- wp:… -->` delimiters would strand empty ones on the storefront.
+        if (html.indexOf('<!-- wp:') !== -1) return html;
+
+        var parts = html.split(/\n[ \t]*\n+/);
+        var out = '';
+        for (var i = 0; i < parts.length; i++) {
+            var block = parts[i].replace(/^\s+|\s+$/g, '');
+            if (block === '') continue;
+            out += EDITOR_LEADING_BLOCK.test(block)
+                ? block
+                : '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+        }
+        return out;
+    }
+
+    /* Normalise what the browser leaves behind in a contenteditable.
+
+       Chrome and Firefox wrap each new line in a bare <div>, which renders with
+       no paragraph spacing on the storefront because wpautop() treats a <div>
+       as an already-formed block. Rewriting those attribute-less wrappers as
+       <p> (and giving a leading loose text run its own paragraph) means what is
+       saved matches what the editor shows. Divs the author wrote themselves in
+       the source view carry attributes and are left untouched. */
+    function normalizeEditorOutput(html) {
+        html = html == null ? '' : String(html);
+        if (html === '') return '';
+
+        var wrap = document.createElement('div');
+        wrap.innerHTML = html;
+
+        // Deepest first (reverse document order), so a wrapper is judged after
+        // its own children have already been rewritten.
+        var divs = Array.prototype.slice.call(wrap.getElementsByTagName('div'));
+        for (var i = divs.length - 1; i >= 0; i--) {
+            var div = divs[i];
+            if (!div.parentNode) continue;          // already lifted out
+            if (div.attributes.length) continue;    // author-written wrapper — keep
+            if (div.querySelector(EDITOR_BLOCK_SELECTOR)) {
+                // Grouping wrapper around real blocks. A <p> may not contain a
+                // block, and the browser would split the illegal nesting back
+                // apart into stray empty paragraphs — so lift the children out
+                // instead of wrapping them.
+                while (div.firstChild) div.parentNode.insertBefore(div.firstChild, div);
+                div.parentNode.removeChild(div);
+                continue;
+            }
+            var p = document.createElement('p');
+            while (div.firstChild) p.appendChild(div.firstChild);
+            if (!p.firstChild) p.appendChild(document.createElement('br'));
+            div.parentNode.replaceChild(p, div);
+        }
+
+        // A leading run of loose text/inline nodes is a paragraph too — the
+        // browser only wraps the lines it creates, never the first one.
+        var lead = [];
+        for (var n = wrap.firstChild; n; n = n.nextSibling) {
+            // Stop at a block, and at a block-editor delimiter: those comments
+            // must stay exactly where the block editor put them.
+            if (n.nodeType === 8) break;
+            if (n.nodeType === 1 && EDITOR_LEADING_BLOCK.test('<' + n.tagName)) break;
+            lead.push(n);
+        }
+        if (lead.length && lead.length < wrap.childNodes.length) {
+            var lp = document.createElement('p');
+            wrap.insertBefore(lp, lead[0]);
+            for (var k = 0; k < lead.length; k++) lp.appendChild(lead[k]);
+            if (lp.textContent.trim() === '' && !lp.querySelector('img, br, hr')) {
+                // Nothing but whitespace — unwrap rather than leave a stray
+                // paragraph, and put the original nodes back where they were.
+                while (lp.firstChild) wrap.insertBefore(lp.firstChild, lp);
+                wrap.removeChild(lp);
+            }
+        }
+
+        // A paragraph holding nothing but a line break is the blank line the
+        // author deliberately typed. wpautop() drops the bare <br> and then
+        // discards the now-empty paragraph, so that blank line would disappear
+        // on the storefront. A non-breaking space is what the classic editor
+        // stores for the same thing and it survives the render untouched.
+        var ps = wrap.getElementsByTagName('p');
+        for (var q = 0; q < ps.length; q++) {
+            if (ps[q].textContent.trim() === '' && !ps[q].querySelector('img, hr, iframe')) {
+                ps[q].innerHTML = '&nbsp;';
+            }
+        }
+
+        return wrap.innerHTML;
+    }
+
+    /* The description exactly as it is stored, per editor id, captured before
+       anything can touch it. A description the merchant never edited is saved
+       back from here unchanged — otherwise simply opening a product (the
+       background auto-save fires on its own) would rewrite an older plain-text
+       description into paragraph markup and leave a revision nobody asked for.
+       Once the field IS edited we save the editor's own clean HTML. */
+    var editorPristine = {};
+    var editorTouched  = {};
+
+    function captureEditorPristine() {
+        $('.brikpanel-pe-editor').each(function () {
+            if (!this.id) return;
+            var $src = $(this).closest('[data-editor-field]').find('.brikpanel-pe-editor-source');
+            editorPristine[this.id] = $src.length ? $src.val() : this.innerHTML;
+        });
+    }
+
+    function markEditorTouched($field) {
+        $field.find('.brikpanel-pe-editor').each(function () {
+            if (this.id) editorTouched[this.id] = true;
+        });
+    }
+
+    /* Keep editor contenteditable in sync with its HTML-source textarea. */
+    function syncEditorFromSource($field) {
+        var $editor = $field.find('.brikpanel-pe-editor');
+        var $source = $field.find('.brikpanel-pe-editor-source');
+        if ($source.is(':visible') || !$source.prop('hidden')) {
+            $editor.html(editorAutop($source.val()));
+        }
+    }
+
+    function getEditorHtml(id) {
+        // Untouched — hand back what was stored, so a save never rewrites a
+        // description the merchant did not edit. Checked before the source-mode
+        // branch: opening the HTML view to read the markup is not an edit.
+        if (!editorTouched[id] && Object.prototype.hasOwnProperty.call(editorPristine, id)) {
+            return editorPristine[id];
+        }
+        var $field = $('#' + id).closest('[data-editor-field]');
+        var $source = $field.find('.brikpanel-pe-editor-source');
+        if (!$source.prop('hidden')) {
+            // HTML source mode is active — trust the textarea value.
+            return $source.val();
+        }
+        return normalizeEditorOutput($('#' + id).html());
+    }
+
+    function initCategorySearch() {
+        // Scope each search box to its own wrapper so the Category search and
+        // the Brand search (which share .brikpanel-pe-cat-* classes) never
+        // filter each other's lists.
+        $('#bpe-cat-search, #bpe-brand-search').on('input', function () {
+            var q = this.value.toLowerCase();
+            var $wrap = $(this).closest('.brikpanel-pe-cat-wrap');
+            $wrap.find('.brikpanel-pe-cat-tree li').each(function () {
+                var name = $(this).data('name') || '';
+                var match = name.indexOf(q) !== -1 || q === '';
+                $(this).toggle(match);
+                // Show parent chain if child matches
+                if (match && q) $(this).parents('li').show();
+            });
+        });
+    }
+
+    // Rebuild the SEOPress "Primary category" <select> from the currently
+    // checked categories, preserving the chosen primary when it is still
+    // selected. The first option (the server-rendered "None" label) is left
+    // untouched so no user-facing string lives in JS.
+    function syncPrimaryCatOptions() {
+        var $sel = $('#bpe-seo-primary-cat');
+        if (!$sel.length) return;
+        var current = $sel.val();
+        $sel.find('option').not(':first').remove();
+        $('input[name="category_ids[]"]:checked').each(function () {
+            var $cb = $(this);
+            var label = $.trim($cb.closest('label').text());
+            $sel.append($('<option></option>').attr('value', $cb.val()).text(label));
+        });
+        if (current && $sel.find('option[value="' + current + '"]').length) {
+            $sel.val(current);
+        } else {
+            $sel.val('none');
+        }
+    }
+
+    function addCategory() {
+        var $btn = $('#bpe-add-cat-btn');
+        if ($btn.prop('disabled')) return;
+
+        var name = $.trim($('#bpe-new-cat-name').val());
+        var parent = parseInt($('#bpe-new-cat-parent').val(), 10) || 0;
+        if (!name) return;
+
+        // Current client-side selection — preserved across the re-render so
+        // the user doesn't lose pending checkbox changes.
+        var selected = $('input[name="category_ids[]"]:checked').map(function () {
+            return this.value;
+        }).get();
+
+        $btn.prop('disabled', true);
+        $.post(PE.ajax_url, {
+            action: 'brikpanel_add_category',
+            security: PE.nonce,
+            name: name,
+            parent: parent,
+            selected_ids: selected
+        }, function (r) {
+            $btn.prop('disabled', false);
+            if (!r.success) {
+                showToast((r.data && r.data.message) || 'Error', 'error');
+                return;
+            }
+            var d = r.data;
+
+            // Swap checklist — server-rendered HTML keeps depth classes,
+            // hierarchical order, and the newly created term pre-checked.
+            $('.brikpanel-pe-cat-list').html(d.checklist_html);
+
+            // The new term is pre-checked, so refresh the primary-category
+            // dropdown to include it.
+            syncPrimaryCatOptions();
+
+            // Rebuild parent dropdown while preserving the "— No parent —"
+            // sentinel and keeping the user's previously-selected parent
+            // if it still exists.
+            var prevParent = $('#bpe-new-cat-parent').val();
+            var $select = $('#bpe-new-cat-parent');
+            $select.find('option').not('[value="0"]').remove();
+            $select.append(d.options_html);
+            if (prevParent && $select.find('option[value="' + prevParent + '"]').length) {
+                $select.val(prevParent);
+            } else {
+                $select.val('0');
+            }
+
+            $('#bpe-new-cat-name').val('').focus();
+
+            // Re-run the search filter so the fresh DOM respects the
+            // active query instead of showing every item again.
+            var $search = $('#bpe-cat-search');
+            if ($search.val()) $search.trigger('input');
+
+            showToast(PE.i18n.category_added || 'Category added', 'success');
+        }).fail(function () {
+            $btn.prop('disabled', false);
+            showToast('Error', 'error');
+        });
+    }
+
+    function addBrand() {
+        var $btn = $('#bpe-add-brand-btn');
+        if ($btn.prop('disabled')) return;
+
+        var name = $.trim($('#bpe-new-brand-name').val());
+        // The parent select only exists for hierarchical brand taxonomies.
+        var parent = parseInt($('#bpe-new-brand-parent').val(), 10) || 0;
+        if (!name) return;
+
+        // Preserve the current client-side selection across the re-render.
+        var selected = $('input[name="brand_ids[]"]:checked').map(function () {
+            return this.value;
+        }).get();
+
+        $btn.prop('disabled', true);
+        $.post(PE.ajax_url, {
+            action: 'brikpanel_add_brand',
+            security: PE.nonce,
+            name: name,
+            parent: parent,
+            selected_ids: selected
+        }, function (r) {
+            $btn.prop('disabled', false);
+            if (!r.success) {
+                showToast((r.data && r.data.message) || (PE.i18n.error || 'Error'), 'error');
+                return;
+            }
+            var d = r.data;
+
+            $('#bpe-brand-list').html(d.checklist_html);
+
+            // Rebuild parent dropdown (hierarchical taxonomies only) while
+            // keeping the "— No parent —" sentinel and prior selection.
+            var $select = $('#bpe-new-brand-parent');
+            if ($select.length && d.options_html) {
+                var prevParent = $select.val();
+                $select.find('option').not('[value="0"]').remove();
+                $select.append(d.options_html);
+                if (prevParent && $select.find('option[value="' + prevParent + '"]').length) {
+                    $select.val(prevParent);
+                } else {
+                    $select.val('0');
+                }
+            }
+
+            $('#bpe-new-brand-name').val('').focus();
+
+            var $search = $('#bpe-brand-search');
+            if ($search.val()) $search.trigger('input');
+
+            showToast(PE.i18n.brand_added || 'Brand added', 'success');
+        }).fail(function () {
+            $btn.prop('disabled', false);
+            showToast(PE.i18n.error || 'Error', 'error');
+        });
+    }
+
+    /* Tags the rich-text editor + paste sanitizer are allowed to keep. Block
+       and inline maps are intentionally lean: a small, predictable subset that
+       every toolbar control can still tweak afterwards (the user's complaint
+       was that pasted website markup could only be fixed via the code view). */
+    var EDITOR_BLOCK_TAGS  = { P:1, H2:1, H3:1, H4:1, H5:1, H6:1, UL:1, OL:1, LI:1, BLOCKQUOTE:1 };
+    var EDITOR_TABLE_TAGS  = { TABLE:1, THEAD:1, TBODY:1, TFOOT:1, TR:1, TD:1, TH:1, CAPTION:1 };
+    var EDITOR_INLINE_MAP  = { STRONG:'strong', B:'strong', EM:'em', I:'em', U:'u', A:'a', CODE:'code' };
+    var EDITOR_DROP_TAGS   = { SCRIPT:1, STYLE:1, NOSCRIPT:1, IFRAME:1, VIDEO:1, AUDIO:1, OBJECT:1, EMBED:1, SVG:1, FORM:1, INPUT:1, BUTTON:1, META:1, LINK:1, HEAD:1 };
+
+    /* Only the four WordPress alignment classes are allowed on an editor image;
+       everything else (inline styles, arbitrary classes, onerror, …) is dropped
+       so a pasted/inserted <img> can never carry a script vector. */
+    function editorImageAlignClass(cls) {
+        var m = ('' + (cls == null ? '' : cls)).match(/align(none|left|center|right)/);
+        return m ? 'align' + m[1] : '';
+    }
+    /* Normalise an arbitrary width hint into a safe CSS width value
+       ("50%" / "300px") or '' (let the image use its natural size). Only a
+       bare number + optional %/px is accepted — anything else is dropped so a
+       pasted style string can never smuggle extra declarations. */
+    function editorSafeWidth(w) {
+        if (w == null || w === '') return '';
+        var m = ('' + w).match(/(\d{1,4})(?:\.\d+)?\s*(%|px)?/);
+        if (!m) return '';
+        var n = parseFloat(m[1]);
+        if (!(n > 0)) return '';
+        var unit = m[2] || 'px';
+        if (unit === '%') { if (n > 100) n = 100; }
+        else { if (n > 2000) n = 2000; }
+        return n + unit;
+    }
+    /* Build a clean, attribute-restricted <img>. Returns '' when the URL is not
+       safe. Only src, alt, the alignment + lightbox classes, and a width style
+       survive. The brikpanel-lightbox class opts the image into the front-end
+       click-to-enlarge overlay on the product page. */
+    function editorBuildImg(src, alt, align, width, lightbox) {
+        var safe = editorSafeUrl(src);
+        if (!safe) return '';
+        var cls = editorImageAlignClass(align && /^align/.test(align) ? align : ('align' + (align || 'none')));
+        var lb = lightbox === true || (typeof align === 'string' && /(^|\s)brikpanel-lightbox(\s|$)/.test(align));
+        if (lb) cls += (cls ? ' ' : '') + 'brikpanel-lightbox';
+        var w = editorSafeWidth(width);
+        var html = '<img src="' + editorEscAttr(safe) + '" alt="' + editorEscAttr(alt || '') + '"';
+        if (cls) html += ' class="' + cls + '"';
+        if (w) html += ' style="width:' + w + '"';
+        return html + '>';
+    }
+    /* The size presets the dialog offers, as a fraction of the available width.
+       'full' means no explicit width (natural size, capped by max-width:100%). */
+    var EDITOR_IMG_SIZES = { small: '25%', medium: '50%', large: '75%', full: '' };
+    function editorWidthToSize(cssWidth) {
+        var m = ('' + (cssWidth || '')).match(/(\d{1,4})(?:\.\d+)?\s*%/);
+        if (!m) return 'full';
+        var n = parseFloat(m[1]);
+        if (n <= 37) return 'small';
+        if (n <= 62) return 'medium';
+        if (n < 88) return 'large';
+        return 'full';
+    }
+
+    function editorSafeUrl(u) {
+        u = (u == null ? '' : ('' + u)).trim();
+        if (u === '') return '';
+        if (/^(https?:|mailto:|tel:)/i.test(u)) return u;
+        if (/^(\/|#|\?)/.test(u)) return u;            // root-relative / anchor
+        if (/^[\w.-]+(\.[\w.-]+)+(\/.*)?$/.test(u)) return 'https://' + u; // bare domain
+        if (/^[^:/?#\s]+(\/.*)?$/.test(u)) return u;   // relative path
+        return '';
+    }
+    function editorEscAttr(s) { return ('' + s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    /* Convert arbitrary pasted HTML into the lean allowed subset. Unknown
+       wrappers (span, font, div, msword cruft…) are unwrapped, all inline
+       styles/classes dropped, links re-validated. Returns clean HTML string. */
+    function sanitizeEditorHtml(html) {
+        var doc;
+        try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch (e) { return null; }
+        if (!doc || !doc.body) return null;
+
+        function walk(node) {
+            var out = '';
+            var kids = node.childNodes;
+            var parentTag = node.tagName || '';
+            for (var i = 0; i < kids.length; i++) {
+                var child = kids[i];
+                if (child.nodeType === 3) {
+                    // Whitespace-only text between table-structural elements is
+                    // layout cruft from the source — keep the grid markup clean.
+                    if (/^(TABLE|THEAD|TBODY|TFOOT|TR)$/.test(parentTag) && !child.nodeValue.trim()) continue;
+                    out += esc(child.nodeValue); continue;
+                }
+                if (child.nodeType !== 1) continue;
+                var tag = child.tagName;
+                if (tag === 'BR') { out += '<br>'; continue; }
+                if (tag === 'IMG') {
+                    // Void element — emit a sanitized image (safe URL + the four
+                    // alignment classes + a width style only); skip if unsafe.
+                    var iw = (child.style && child.style.width) ? child.style.width : (child.getAttribute('width') || '');
+                    out += editorBuildImg(child.getAttribute('src'), child.getAttribute('alt'), child.getAttribute('class'), iw);
+                    continue;
+                }
+                if (EDITOR_DROP_TAGS[tag]) continue;
+                var inner = walk(child);
+                if (tag === 'H1') tag = 'H2';
+                if (EDITOR_BLOCK_TAGS[tag]) {
+                    var lt = tag.toLowerCase();
+                    if (tag === 'LI') { out += '<li>' + inner + '</li>'; }
+                    else if (inner.replace(/<br>/g, '').trim() !== '' || tag === 'UL' || tag === 'OL') { out += '<' + lt + '>' + inner + '</' + lt + '>'; }
+                } else if (EDITOR_TABLE_TAGS[tag]) {
+                    // Preserve pasted tables (structure + colspan/rowspan) so the
+                    // grid survives instead of collapsing into loose text.
+                    var ltag = tag.toLowerCase();
+                    var attrs = '';
+                    if (tag === 'TD' || tag === 'TH') {
+                        var cs = parseInt(child.getAttribute('colspan'), 10);
+                        var rs = parseInt(child.getAttribute('rowspan'), 10);
+                        if (cs > 1) attrs += ' colspan="' + cs + '"';
+                        if (rs > 1) attrs += ' rowspan="' + rs + '"';
+                    }
+                    out += '<' + ltag + attrs + '>' + inner + '</' + ltag + '>';
+                } else if (EDITOR_INLINE_MAP[tag]) {
+                    var m = EDITOR_INLINE_MAP[tag];
+                    if (m === 'a') {
+                        var href = editorSafeUrl(child.getAttribute('href'));
+                        out += href ? '<a href="' + editorEscAttr(href) + '" rel="noopener">' + inner + '</a>' : inner;
+                    } else if (inner !== '') {
+                        out += '<' + m + '>' + inner + '</' + m + '>';
+                    }
+                } else if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') {
+                    out += inner.replace(/<br>/g, '').trim() !== '' ? '<p>' + inner + '</p>' : '';
+                } else {
+                    out += inner; // span/font/etc — unwrap, keep content
+                }
+            }
+            return out;
+        }
+        return walk(doc.body)
+            .replace(/<p>(\s|<br>)*<\/p>/gi, '')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+    }
+
+    /* Remember the live selection inside an editor so the heading <select>
+       (which steals focus when opened) can restore it before formatting. */
+    function rememberEditorRange($field) {
+        var sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        var ed = $field.find('.brikpanel-pe-editor')[0];
+        if (ed && ed.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+            $field.data('bpRange', sel.getRangeAt(0).cloneRange());
+        }
+    }
+    function restoreEditorRange($field) {
+        var r = $field.data('bpRange');
+        var ed = $field.find('.brikpanel-pe-editor')[0];
+        if (!ed) return;
+        ed.focus();
+        if (r) { var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+    }
+
+    /* Reflect caret context on the toolbar: active inline buttons + the
+       block-format label/active item shown by the custom heading dropdown. */
+    function refreshEditorToolbar($field) {
+        var ed = $field.find('.brikpanel-pe-editor')[0];
+        if (!ed) return;
+        function st(c) { try { return document.queryCommandState(c); } catch (e) { return false; } }
+        $field.find('[data-cmd="bold"]').toggleClass('is-active', st('bold'));
+        $field.find('[data-cmd="italic"]').toggleClass('is-active', st('italic'));
+        $field.find('[data-cmd="insertUnorderedList"]').toggleClass('is-active', st('insertUnorderedList'));
+        $field.find('[data-cmd="insertOrderedList"]').toggleClass('is-active', st('insertOrderedList'));
+        $field.find('[data-cmd="justifyLeft"]').toggleClass('is-active', st('justifyLeft'));
+        $field.find('[data-cmd="justifyCenter"]').toggleClass('is-active', st('justifyCenter'));
+        $field.find('[data-cmd="justifyRight"]').toggleClass('is-active', st('justifyRight'));
+        var sel = window.getSelection();
+        var block = 'p';
+        if (sel && sel.rangeCount) {
+            var n = sel.getRangeAt(0).commonAncestorContainer;
+            while (n && n !== ed) {
+                if (n.nodeType === 1) {
+                    var t = n.tagName.toLowerCase();
+                    // Every format the menu offers is reported as-is so the label
+                    // and active tick match the caret's real block.
+                    if (/^h[1-6]$/.test(t) || t === 'blockquote' || t === 'p') { block = t; break; }
+                    if (t === 'div' || t === 'li') { block = 'p'; break; }
+                }
+                n = n.parentNode;
+            }
+        }
+        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'blockquote'].indexOf(block) === -1) block = 'p';
+        var $items = $field.find('.brikpanel-pe-fmt-item');
+        $items.removeClass('is-active');
+        var $active = $items.filter('[data-format="' + block + '"]').addClass('is-active');
+        if ($active.length) {
+            $field.find('.brikpanel-pe-fmt-label').text($active.text());
+        }
+    }
+
+    // execCommand('foreColor') always emits `color: rgb(...)`, but wp_kses_post
+    // strips rgb() on save (it only keeps hex / named colours). Convert to hex
+    // so applied colours actually persist. Idempotent for values already hex.
+    function bpeRgbToHex(rgb) {
+        var m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(rgb || '');
+        if (!m) return null;
+        function h(x) { x = parseInt(x, 10).toString(16); return x.length === 1 ? '0' + x : x; }
+        return '#' + h(m[1]) + h(m[2]) + h(m[3]);
+    }
+
+    function runEditorCommand($field, cmd, value) {
+        var $editor = $field.find('.brikpanel-pe-editor');
+        var $source = $field.find('.brikpanel-pe-editor-source');
+        if (!$source.prop('hidden')) return; // visual mode only
+        markEditorTouched($field);
+        $editor.focus();
+        if (cmd === 'formatBlock') {
+            document.execCommand('formatBlock', false, '<' + value + '>');
+        } else if (cmd === 'foreColor') {
+            // styleWithCSS makes execCommand emit <span style="color:…"> instead
+            // of the deprecated <font color> tag, so the colour survives
+            // wp_kses_post on save (text-align + color are allowed CSS props).
+            try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+            document.execCommand('foreColor', false, value);
+            try { document.execCommand('styleWithCSS', false, false); } catch (e) {}
+            // Normalise the rgb() execCommand produced to hex so wp_kses_post
+            // keeps it (it strips color: rgb(...) but allows hex). Must rewrite
+            // the style ATTRIBUTE string via setAttribute — assigning
+            // element.style.color re-serialises back to rgb() in innerHTML.
+            $editor.find('[style*="color"]').each(function () {
+                var styleAttr = this.getAttribute('style');
+                if (!styleAttr || !/color:\s*rgb/i.test(styleAttr)) { return; }
+                var fixed = styleAttr.replace(/color:\s*(rgba?\([^)]*\))/gi, function (whole, rgbVal) {
+                    var hex = bpeRgbToHex(rgbVal);
+                    return hex ? 'color: ' + hex : whole;
+                });
+                this.setAttribute('style', fixed);
+            });
+        } else {
+            document.execCommand(cmd, false, null);
+        }
+        if (cmd === 'insertOrderedList' || cmd === 'insertUnorderedList') {
+            // execCommand can leave the new list wrapped in a <p> (invalid:
+            // a <p> may not contain block elements). Unwrap those.
+            $editor.find('p > ul:only-child, p > ol:only-child').each(function () {
+                $(this).unwrap();
+            });
+        }
+        state.dirty = true;
+        refreshEditorToolbar($field);
+    }
+
+    function closeFmtMenus() {
+        $('.brikpanel-pe-fmt.is-open, .brikpanel-pe-colorpick.is-open').removeClass('is-open')
+            .find('.brikpanel-pe-fmt-trigger, .brikpanel-pe-color-trigger').attr('aria-expanded', 'false');
+    }
+
+    /* ---- Link dialog (URL + "open in new tab") ------------------------- */
+    var linkDlgState = { $field: null, anchor: null };
+
+    function buildLinkDialog() {
+        if (document.getElementById('bpe-link-dialog')) return;
+        var i = PE.i18n || {};
+        var html =
+            '<div id="bpe-link-dialog" class="brikpanel-pe-linkdlg" hidden>' +
+              '<div class="brikpanel-pe-linkdlg-backdrop"></div>' +
+              '<div class="brikpanel-pe-linkdlg-box" role="dialog" aria-modal="true" aria-label="' + esc(i.link_title || 'Insert link') + '">' +
+                '<div class="brikpanel-pe-linkdlg-title">' + esc(i.link_title || 'Insert link') + '</div>' +
+                '<label class="brikpanel-pe-linkdlg-lbl" for="bpe-link-url">' + esc(i.link_url || 'URL') + '</label>' +
+                '<input type="text" id="bpe-link-url" class="brikpanel-pe-linkdlg-url" placeholder="https://example.com" autocomplete="off" spellcheck="false">' +
+                '<label class="brikpanel-pe-linkdlg-check"><input type="checkbox" id="bpe-link-newtab"><span>' + esc(i.link_new_tab || 'Open in a new tab') + '</span></label>' +
+                '<div class="brikpanel-pe-linkdlg-actions">' +
+                  '<button type="button" class="brikpanel-pe-btn secondary brikpanel-pe-linkdlg-cancel">' + esc(i.link_cancel || 'Cancel') + '</button>' +
+                  '<button type="button" class="brikpanel-pe-btn primary brikpanel-pe-linkdlg-ok">' + esc(i.link_insert || 'Insert link') + '</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+        $('body').append(html);
+
+        var $dlg = $('#bpe-link-dialog');
+        function closeDlg() {
+            $dlg.attr('hidden', true);
+            linkDlgState.$field = null;
+            linkDlgState.anchor = null;
+        }
+        $dlg.find('.brikpanel-pe-linkdlg-cancel, .brikpanel-pe-linkdlg-backdrop').on('click', closeDlg);
+        $dlg.on('keydown', function (e) {
+            if (e.key === 'Escape') closeDlg();
+            if (e.key === 'Enter' && e.target.id === 'bpe-link-url') { e.preventDefault(); $dlg.find('.brikpanel-pe-linkdlg-ok').click(); }
+        });
+        $dlg.find('.brikpanel-pe-linkdlg-ok').on('click', function () {
+            var $field = linkDlgState.$field;
+            if (!$field) { closeDlg(); return; }
+            var url = editorSafeUrl($('#bpe-link-url').val());
+            if (!url) { $('#bpe-link-url').focus(); return; }
+            var newTab = $('#bpe-link-newtab').is(':checked');
+            var anchor = linkDlgState.anchor;
+            closeDlg();
+            restoreEditorRange($field);
+            var ed = $field.find('.brikpanel-pe-editor')[0];
+
+            function decorate(a) {
+                if (!a) return;
+                a.setAttribute('href', url);
+                if (newTab) {
+                    a.setAttribute('target', '_blank');
+                    a.setAttribute('rel', 'noopener noreferrer');
+                } else {
+                    a.removeAttribute('target');
+                    a.removeAttribute('rel');
+                }
+            }
+
+            if (anchor && ed && ed.contains(anchor)) {
+                // Editing an existing link (incl. just toggling new-tab).
+                decorate(anchor);
+            } else {
+                var sel = window.getSelection();
+                if (sel && sel.toString().length) {
+                    document.execCommand('createLink', false, url);
+                    // Tag every anchor the command produced in the selection.
+                    var node = sel.anchorNode;
+                    var a = node && (node.nodeType === 1 ? node : node.parentNode);
+                    a = a && a.closest ? a.closest('a[href]') : null;
+                    if (a) { decorate(a); }
+                    else { $(ed).find('a[href="' + url.replace(/"/g, '\\"') + '"]').each(function () { decorate(this); }); }
+                } else {
+                    var rel = newTab ? ' target="_blank" rel="noopener noreferrer"' : '';
+                    document.execCommand('insertHTML', false, '<a href="' + editorEscAttr(url) + '"' + rel + '>' + esc(url) + '</a>');
+                }
+            }
+            state.dirty = true;
+            markEditorTouched($field);
+            refreshEditorToolbar($field);
+        });
+    }
+
+    function openLinkDialog($field) {
+        buildLinkDialog();
+        // Save the live selection before the dialog input steals focus.
+        rememberEditorRange($field);
+        var ed = $field.find('.brikpanel-pe-editor')[0];
+        var sel = window.getSelection();
+        var anchor = null;
+        if (ed && sel && sel.rangeCount) {
+            var n = sel.getRangeAt(0).commonAncestorContainer;
+            n = (n && n.nodeType === 1) ? n : (n ? n.parentNode : null);
+            if (n && n.closest) {
+                var a = n.closest('a[href]');
+                if (a && ed.contains(a)) anchor = a;
+            }
+        }
+        linkDlgState.$field = $field;
+        linkDlgState.anchor = anchor;
+        $('#bpe-link-url').val(anchor ? anchor.getAttribute('href') : '');
+        $('#bpe-link-newtab').prop('checked', anchor ? (anchor.getAttribute('target') === '_blank') : false);
+        $('#bpe-link-dialog').removeAttr('hidden');
+        setTimeout(function () { $('#bpe-link-url').focus().select(); }, 0);
+    }
+
+    /* ---- Image dialog (choose / replace, alt text, alignment) ---------- */
+    var imageDlgState = { $field: null, img: null, src: '', alt: '', align: 'none', size: 'full', lightbox: false };
+    var imageMediaFrame = null;
+
+    function buildImageDialog() {
+        if (document.getElementById('bpe-image-dialog')) return;
+        var i = PE.i18n || {};
+        // Shares .brikpanel-pe-linkdlg styling (vars, backdrop, box, actions);
+        // .brikpanel-pe-imgdlg adds the preview + alignment-segment styles.
+        var html =
+            '<div id="bpe-image-dialog" class="brikpanel-pe-linkdlg brikpanel-pe-imgdlg" hidden>' +
+              '<div class="brikpanel-pe-linkdlg-backdrop"></div>' +
+              '<div class="brikpanel-pe-linkdlg-box" role="dialog" aria-modal="true" aria-label="' + esc(i.image_title || 'Insert image') + '">' +
+                '<div class="brikpanel-pe-linkdlg-title brikpanel-pe-imgdlg-title">' + esc(i.image_title || 'Insert image') + '</div>' +
+                '<div class="brikpanel-pe-imgdlg-preview" id="bpe-img-preview"></div>' +
+                '<button type="button" class="brikpanel-pe-btn secondary brikpanel-pe-imgdlg-choose">' + esc(i.image_choose || 'Choose image') + '</button>' +
+                '<label class="brikpanel-pe-linkdlg-lbl" for="bpe-img-alt">' + esc(i.image_alt || 'Alt text (description)') + '</label>' +
+                '<input type="text" id="bpe-img-alt" class="brikpanel-pe-linkdlg-url" placeholder="' + esc(i.image_alt_ph || '') + '" autocomplete="off">' +
+                '<label class="brikpanel-pe-linkdlg-lbl">' + esc(i.image_align || 'Alignment') + '</label>' +
+                '<div class="brikpanel-pe-imgdlg-align" role="group">' +
+                  '<button type="button" data-align="none">' + esc(i.align_none || 'None') + '</button>' +
+                  '<button type="button" data-align="left">' + esc(i.align_left || 'Left') + '</button>' +
+                  '<button type="button" data-align="center">' + esc(i.align_center || 'Center') + '</button>' +
+                  '<button type="button" data-align="right">' + esc(i.align_right || 'Right') + '</button>' +
+                '</div>' +
+                '<label class="brikpanel-pe-linkdlg-lbl">' + esc(i.image_size || 'Size') + '</label>' +
+                '<div class="brikpanel-pe-imgdlg-size" role="group">' +
+                  '<button type="button" data-size="small">' + esc(i.size_small || 'Small') + '</button>' +
+                  '<button type="button" data-size="medium">' + esc(i.size_medium || 'Medium') + '</button>' +
+                  '<button type="button" data-size="large">' + esc(i.size_large || 'Large') + '</button>' +
+                  '<button type="button" data-size="full">' + esc(i.size_full || 'Full') + '</button>' +
+                '</div>' +
+                '<label class="brikpanel-pe-linkdlg-check brikpanel-pe-imgdlg-lightbox"><input type="checkbox" id="bpe-img-lightbox"><span>' + esc(i.image_lightbox || 'Open in a lightbox when clicked') + '</span></label>' +
+                '<div class="brikpanel-pe-linkdlg-actions">' +
+                  '<button type="button" class="brikpanel-pe-btn secondary brikpanel-pe-imgdlg-cancel">' + esc(i.link_cancel || 'Cancel') + '</button>' +
+                  '<button type="button" class="brikpanel-pe-btn primary brikpanel-pe-imgdlg-ok">' + esc(i.image_insert || 'Insert image') + '</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+        $('body').append(html);
+
+        var $dlg = $('#bpe-image-dialog');
+        function closeDlg() {
+            $dlg.attr('hidden', true);
+            imageDlgState.$field = null;
+            imageDlgState.img = null;
+        }
+        function syncDlg() {
+            var i2 = PE.i18n || {};
+            var $prev = $('#bpe-img-preview');
+            if (imageDlgState.src) {
+                $prev.html('<img src="' + editorEscAttr(imageDlgState.src) + '" alt="">').removeClass('is-empty');
+                $dlg.find('.brikpanel-pe-imgdlg-choose').text(i2.image_replace || 'Replace image');
+            } else {
+                $prev.text(i2.image_none || 'No image selected').addClass('is-empty');
+                $dlg.find('.brikpanel-pe-imgdlg-choose').text(i2.image_choose || 'Choose image');
+            }
+            $dlg.find('.brikpanel-pe-imgdlg-align button').each(function () {
+                $(this).toggleClass('is-active', $(this).data('align') === imageDlgState.align);
+            });
+            $dlg.find('.brikpanel-pe-imgdlg-size button').each(function () {
+                $(this).toggleClass('is-active', $(this).data('size') === imageDlgState.size);
+            });
+            $('#bpe-img-lightbox').prop('checked', !!imageDlgState.lightbox);
+        }
+        $dlg.data('sync', syncDlg);
+
+        $dlg.find('.brikpanel-pe-imgdlg-cancel, .brikpanel-pe-linkdlg-backdrop').on('click', closeDlg);
+        $dlg.on('keydown', function (e) { if (e.key === 'Escape') closeDlg(); });
+
+        $dlg.find('.brikpanel-pe-imgdlg-align').on('click', 'button', function () {
+            imageDlgState.align = $(this).data('align');
+            syncDlg();
+        });
+
+        $dlg.find('.brikpanel-pe-imgdlg-size').on('click', 'button', function () {
+            imageDlgState.size = $(this).data('size');
+            syncDlg();
+        });
+
+        $dlg.on('change', '#bpe-img-lightbox', function () {
+            imageDlgState.lightbox = $(this).is(':checked');
+        });
+
+        $dlg.find('.brikpanel-pe-imgdlg-choose').on('click', function () {
+            if (typeof wp === 'undefined' || !wp.media) return;
+            if (!imageMediaFrame) {
+                imageMediaFrame = wp.media({
+                    title: PE.i18n.image_choose || 'Choose image',
+                    button: { text: PE.i18n.select || 'Select' },
+                    library: { type: 'image' },
+                    multiple: false
+                });
+                imageMediaFrame.on('select', function () {
+                    var a = imageMediaFrame.state().get('selection').first();
+                    if (!a) return;
+                    a = a.toJSON();
+                    // Prefer a web-friendly size over the full-res original.
+                    var url = a.url;
+                    if (a.sizes) {
+                        if (a.sizes.large) url = a.sizes.large.url;
+                        else if (a.sizes.medium_large) url = a.sizes.medium_large.url;
+                    }
+                    imageDlgState.src = url;
+                    if (!$('#bpe-img-alt').val()) {
+                        imageDlgState.alt = a.alt || '';
+                        $('#bpe-img-alt').val(imageDlgState.alt);
+                    }
+                    syncDlg();
+                });
+            }
+            imageMediaFrame.open();
+        });
+
+        $dlg.find('.brikpanel-pe-imgdlg-ok').on('click', function () {
+            var $field = imageDlgState.$field;
+            if (!$field) { closeDlg(); return; }
+            imageDlgState.src = imageDlgState.src || '';
+            if (!imageDlgState.src) { showToast(PE.i18n.image_required || 'Please choose an image first.', 'error'); return; }
+            var alt = $('#bpe-img-alt').val() || '';
+            var align = imageDlgState.align || 'none';
+            var width = EDITOR_IMG_SIZES[imageDlgState.size || 'full'] || '';
+            var lightbox = !!imageDlgState.lightbox;
+            var existing = imageDlgState.img;
+            var ed = $field.find('.brikpanel-pe-editor')[0];
+            closeDlg();
+
+            if (existing && ed && ed.contains(existing)) {
+                // Edit in place: only ever set the validated attributes.
+                existing.setAttribute('src', editorSafeUrl(imageDlgState.src) || existing.getAttribute('src'));
+                existing.setAttribute('alt', alt);
+                existing.className = 'align' + align + (lightbox ? ' brikpanel-lightbox' : '');
+                var sw = editorSafeWidth(width);
+                if (sw) { existing.style.width = sw; } else { existing.style.removeProperty('width'); }
+            } else {
+                insertImageIntoEditor($field, editorBuildImg(imageDlgState.src, alt, align, width, lightbox));
+            }
+            state.dirty = true;
+            markEditorTouched($field);
+            refreshEditorToolbar($field);
+        });
+    }
+
+    /* Insert an image at the saved caret and leave the caret right after it so
+       the user can keep typing without re-clicking. A trailing <br> is added
+       when the image would otherwise be the last node in its block (a bare
+       block/floated image at the end of a contenteditable has no caret slot to
+       continue from), giving the integrated "type after the image" feel. */
+    function insertImageIntoEditor($field, imgHtml) {
+        if (!imgHtml) return;
+        restoreEditorRange($field);
+        var ed = $field.find('.brikpanel-pe-editor')[0];
+        if (!ed) return;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = imgHtml;
+        var node = tmp.firstChild;
+        if (!node) return;
+
+        var sel = window.getSelection();
+        var range;
+        if (sel && sel.rangeCount && ed.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+            range = sel.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(node);
+        } else {
+            ed.appendChild(node);
+        }
+
+        // Guarantee a caret slot only when the image landed as a bare, trailing
+        // child of the editable root (an empty editor) — there a block/floated
+        // image has nowhere to type next. Inside a paragraph the browser already
+        // gives a caret after the image, so adding a <br> would just leave a
+        // stray blank line.
+        if (node.parentNode === ed && !node.nextSibling) {
+            node.parentNode.insertBefore(document.createElement('br'), null);
+        }
+
+        var r = document.createRange();
+        r.setStartAfter(node);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+        ed.focus();
+    }
+
+    function openImageDialog($field, existingImg) {
+        buildImageDialog();
+        rememberEditorRange($field);
+        var i = PE.i18n || {};
+        imageDlgState.$field = $field;
+        imageDlgState.img = existingImg || null;
+        if (existingImg) {
+            imageDlgState.src = existingImg.getAttribute('src') || '';
+            imageDlgState.alt = existingImg.getAttribute('alt') || '';
+            imageDlgState.align = editorImageAlignClass(existingImg.className).replace('align', '') || 'none';
+            imageDlgState.size = editorWidthToSize(existingImg.style && existingImg.style.width);
+            imageDlgState.lightbox = /(^|\s)brikpanel-lightbox(\s|$)/.test(existingImg.className || '');
+        } else {
+            imageDlgState.src = '';
+            imageDlgState.alt = '';
+            imageDlgState.align = 'none';
+            imageDlgState.size = 'full';
+            imageDlgState.lightbox = false;
+        }
+        var $dlg = $('#bpe-image-dialog');
+        $dlg.find('.brikpanel-pe-imgdlg-title').text(existingImg ? (i.image_edit_title || 'Image settings') : (i.image_title || 'Insert image'));
+        $dlg.find('.brikpanel-pe-imgdlg-ok').text(existingImg ? (i.image_update || 'Update image') : (i.image_insert || 'Insert image'));
+        $('#bpe-img-alt').val(imageDlgState.alt);
+        ($dlg.data('sync') || function () {})();
+        $dlg.removeAttr('hidden');
+        setTimeout(function () { $('#bpe-img-alt').focus(); }, 0);
+    }
+
+    function initEditor() {
+        buildLinkDialog();
+        buildImageDialog();
+        captureEditorPristine();
+
+        // Browsers default to <div> for the block Enter creates, which the
+        // storefront renders with no paragraph spacing (wpautop() leaves an
+        // existing block alone). Ask for <p> instead so a new paragraph in the
+        // editor is a real paragraph in the shop.
+        try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
+
+        // Any real edit — typing, a toolbar command, a paste, an inserted image
+        // or link — routes through an `input` event on the editable or on its
+        // HTML source textarea, so this is the one place that has to mark the
+        // field as genuinely changed.
+        $(document).on('input', '.brikpanel-pe-editor, .brikpanel-pe-editor-source', function () {
+            markEditorTouched($(this).closest('[data-editor-field]'));
+        });
+
+        // Keep the caret inside the editable when a toolbar control is pressed
+        // (mousedown would otherwise blur the selection first). This is what
+        // makes every command — including the heading menu — reliable.
+        $('.brikpanel-pe-editor-toolbar').on('mousedown', 'button', function (e) { e.preventDefault(); });
+
+        $('.brikpanel-pe-editor-toolbar').on('click', 'button', function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var cmd = $btn.data('cmd');
+            var $field = $btn.closest('[data-editor-field]');
+            var $editor = $field.find('.brikpanel-pe-editor');
+            var $source = $field.find('.brikpanel-pe-editor-source');
+
+            // Custom heading dropdown — trigger toggles, items apply.
+            if ($btn.hasClass('brikpanel-pe-fmt-trigger')) {
+                var $fmt = $btn.closest('.brikpanel-pe-fmt');
+                var willOpen = !$fmt.hasClass('is-open');
+                closeFmtMenus();
+                $fmt.toggleClass('is-open', willOpen);
+                $btn.attr('aria-expanded', willOpen ? 'true' : 'false');
+                return;
+            }
+            if ($btn.hasClass('brikpanel-pe-fmt-item')) {
+                closeFmtMenus();
+                if ($source.prop('hidden')) {
+                    runEditorCommand($field, 'formatBlock', $btn.data('format'));
+                }
+                return;
+            }
+
+            // Text-colour dropdown — trigger toggles, swatches apply.
+            if ($btn.hasClass('brikpanel-pe-color-trigger')) {
+                var $cp = $btn.closest('.brikpanel-pe-colorpick');
+                var cpOpen = !$cp.hasClass('is-open');
+                closeFmtMenus();
+                $cp.toggleClass('is-open', cpOpen);
+                $btn.attr('aria-expanded', cpOpen ? 'true' : 'false');
+                return;
+            }
+            if ($btn.hasClass('brikpanel-pe-color-swatch')) {
+                closeFmtMenus();
+                if ($source.prop('hidden')) {
+                    runEditorCommand($field, 'foreColor', $btn.data('color'));
+                }
+                return;
+            }
+
+            if (cmd === 'html') {
+                var isSource = !$source.prop('hidden');
+                var $controls = $field.find('.brikpanel-pe-editor-toolbar button').not('.brikpanel-pe-fmt-item');
+                if (isSource) {
+                    // Switch back to visual
+                    $editor.html(editorAutop($source.val()));
+                    $source.prop('hidden', true);
+                    $editor.prop('hidden', false);
+                    $btn.removeClass('is-active');
+                    $controls.not(this).prop('disabled', false);
+                    $editor.focus();
+                    refreshEditorToolbar($field);
+                } else {
+                    // Switch to HTML source
+                    $source.val(normalizeEditorOutput($editor.html()));
+                    $editor.prop('hidden', true);
+                    $source.prop('hidden', false);
+                    $btn.addClass('is-active');
+                    $controls.not(this).prop('disabled', true);
+                    closeFmtMenus();
+                    $source.focus();
+                }
+                state.dirty = true;
+                return;
+            }
+
+            if (cmd === 'createLink') {
+                if ($source.prop('hidden')) openLinkDialog($field);
+                return;
+            }
+
+            if (cmd === 'image') {
+                if ($source.prop('hidden')) openImageDialog($field, null);
+                return;
+            }
+
+            runEditorCommand($field, cmd);
+        });
+
+        // Close the heading + colour menus on outside click / Escape.
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.brikpanel-pe-fmt, .brikpanel-pe-colorpick').length) closeFmtMenus();
+        });
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape') closeFmtMenus();
+        });
+
+        // Sanitize pasted website content down to the editable subset so it
+        // stays tweakable from the toolbar instead of only the code view.
+        $('.brikpanel-pe-editor').on('paste', function (e) {
+            var cd = e.originalEvent && e.originalEvent.clipboardData;
+            if (!cd) return; // very old browser — let default happen
+            var html = cd.getData('text/html');
+            if (!html) return; // plain-text paste — browser default is fine
+            e.preventDefault();
+            var clean = sanitizeEditorHtml(html);
+            if (clean == null) { clean = esc(cd.getData('text/plain') || ''); }
+            var ed = this;
+            var wasEmpty = ed.textContent.trim() === '' && !/<(img|hr|ul|ol|table)/i.test(ed.innerHTML);
+            document.execCommand('insertHTML', false, clean);
+            // Pasting into an empty editable leaves stray empty <p></p>
+            // wrappers around the inserted content (an insertHTML quirk).
+            // Tidy them and drop the caret at the end so typing continues
+            // naturally.
+            if (wasEmpty) {
+                ed.innerHTML = ed.innerHTML
+                    .replace(/^(?:<p>(?:\s|<br\s*\/?>|&nbsp;)*<\/p>)+/i, '')
+                    .replace(/(?:<p>(?:\s|<br\s*\/?>|&nbsp;)*<\/p>)+$/i, '');
+                var rng = document.createRange();
+                rng.selectNodeContents(ed);
+                rng.collapse(false);
+                var sel2 = window.getSelection();
+                sel2.removeAllRanges();
+                sel2.addRange(rng);
+            }
+            state.dirty = true;
+            markEditorTouched($(this).closest('[data-editor-field]'));
+            refreshEditorToolbar($(this).closest('[data-editor-field]'));
+        });
+
+        // Click an existing image to re-open the dialog (change alignment, alt,
+        // or replace it). Visual mode only.
+        $('.brikpanel-pe-editor').on('click', 'img', function (e) {
+            var $field = $(this).closest('[data-editor-field]');
+            if (!$field.find('.brikpanel-pe-editor-source').prop('hidden')) return;
+            e.preventDefault();
+            openImageDialog($field, this);
+        });
+
+        // Keep toolbar state in sync with the caret.
+        $('.brikpanel-pe-editor').on('keyup mouseup focus', function () {
+            var $field = $(this).closest('[data-editor-field]');
+            rememberEditorRange($field);
+            refreshEditorToolbar($field);
+        });
+
+        // Keep textarea value live so autosave/submit always reads fresh HTML.
+        $(document).on('input', '.brikpanel-pe-editor-source', function () {
+            state.dirty = true;
+        });
+    }
+
+    /* ====== Variation Wizard ====== */
+    /* Synonym lists for the "Size + Color" starter template and the quick-add
+       button, used only to pre-fill those two rows from a global attribute the
+       store already has. This is a convenience, not a rule: the server decides
+       whether a typed-in attribute becomes global from the "Create global
+       attributes automatically" setting, for any name in any language. */
+    var SIZE_COLOR_SYNONYMS = {
+        size:  ['size', 'beden'],
+        color: ['color', 'colour', 'renk']
+    };
+
+    /* Find an existing global attribute that represents the given role
+       (size|color) by slug, label, or taxonomy. Returns the global-attribute
+       entry or null. Lets the size+color template pre-attach its taxonomy so
+       suggestions and saved terms use the real attribute right away. */
+    function findGlobalAttrForRole(role) {
+        var globals = productData.global_attributes || [];
+        var synonyms = SIZE_COLOR_SYNONYMS[role] || [];
+        for (var i = 0; i < globals.length; i++) {
+            var g = globals[i];
+            var slug = String(g.slug || '').toLowerCase();
+            var name = String(g.name || '').toLowerCase();
+            var tax  = String(g.taxonomy || '').toLowerCase();
+            if (synonyms.indexOf(slug) !== -1
+                || synonyms.indexOf(name) !== -1
+                || tax === 'pa_' + role) {
+                return g;
+            }
+        }
+        return null;
+    }
+
+    /* Quick add: insert Size and Color rows already flagged for variations and
+       flip the product to variable, covering the common apparel case in one
+       click. Pre-attaches the matching global taxonomy when one exists so term
+       suggestions and the save path use the real attribute. */
+    function quickAddSizeColor() {
+        var $vt = $('#bpe-var-toggle');
+        if (!$vt.prop('checked')) { $vt.prop('checked', true).trigger('change'); }
+        var sizeAttr  = findGlobalAttrForRole('size');
+        var colorAttr = findGlobalAttrForRole('color');
+        var sizeName  = sizeAttr  ? sizeAttr.name  : (PE.i18n.size  || 'Size');
+        var colorName = colorAttr ? colorAttr.name : (PE.i18n.color || 'Color');
+        if (!attributeExistsInList(sizeName)) {
+            $('#bpe-attr-list').append(createAttrRow(sizeName, ['S', 'M', 'L', 'XL', 'XXL'], sizeAttr ? sizeAttr.taxonomy : '', true));
+        }
+        if (!attributeExistsInList(colorName)) {
+            $('#bpe-attr-list').append(createAttrRow(colorName, [], colorAttr ? colorAttr.taxonomy : '', true));
+        }
+        state.varCustomStarted = true;
+        state.dirty = true;
+        updateVarStartView();
+    }
+
+    function createTagGroup(name, defaults, taxonomy) {
+        var taxAttr = taxonomy ? ' data-attr-taxonomy="' + esc(taxonomy) + '"' : '';
+        var $group = $('<div class="brikpanel-pe-tag-group" data-attr-name="' + esc(name) + '"' + taxAttr + '>');
+        $group.append('<label>' + esc(name) + '</label>');
+        var $inputWrap = $('<div class="brikpanel-pe-attr-input-container">');
+        var $wrap = $('<div class="brikpanel-pe-tag-input-wrap">');
+        var $input = $('<input type="text" placeholder="' + (PE.i18n.type_enter_value || 'Press Enter to add...') + '" autocomplete="off">');
+        defaults.forEach(function (v) { $wrap.append(createTag(v)); });
+
+        // Find available terms for this attribute from global attributes.
+        // The taxonomy is the reliable identity — two attributes can share a
+        // label, and only a global attribute has a term list to offer at all.
+        var globalAttrs = productData.global_attributes || [];
+        var availableTerms = [];
+        // WooCommerce only honours the per-term order we save when the
+        // attribute is set to "Custom ordering" (menu_order).
+        var attrOrderby = 'menu_order';
+        globalAttrs.forEach(function (a) {
+            var hit = taxonomy ? (a.taxonomy === taxonomy) : (a.name === name || a.taxonomy === name || a.slug === name);
+            if (hit) { availableTerms = (a.terms || []).slice(); attrOrderby = a.orderby || 'menu_order'; }
+        });
+
+        var $suggestions = $('<div class="brikpanel-pe-tag-suggestions brikpanel-pe-attr-term-suggestions">');
+
+        function getExistingTags() {
+            var tags = [];
+            $wrap.find('.brikpanel-pe-tag').each(function () {
+                tags.push($(this).clone().children().remove().end().text().trim().toLowerCase());
+            });
+            return tags;
+        }
+
+        function showTermSuggestions(filter) {
+            var existing = getExistingTags();
+            var q = (filter || '').toLowerCase();
+            // Cap the rendered rows so a huge taxonomy (hundreds of terms)
+            // keeps the DOM light, but high enough that a store with ~40
+            // colors shows every option in the scrollable dropdown. The old
+            // cap of 10 hid the rest even while typing a substring, so terms
+            // past the 10th could never be picked.
+            var matches = availableTerms.filter(function (t) {
+                return existing.indexOf(t.toLowerCase()) === -1 && (!q || t.toLowerCase().indexOf(q) !== -1);
+            }).slice(0, 50);
+            var html = '';
+            // Typing something the attribute does not have yet? Offer to create
+            // it right here. WooCommerce's own editor lets you add a term to a
+            // global attribute without leaving the product, and the save path
+            // already creates it — this just makes that reachable.
+            var typed = $.trim(filter || '');
+            if (typed && existing.indexOf(typed.toLowerCase()) === -1
+                && !availableTerms.some(function (t) { return t.toLowerCase() === typed.toLowerCase(); })) {
+                var newLabel = (PE.i18n.add_new_value || 'Add “%s”').replace('%s', typed);
+                html += '<div class="brikpanel-pe-tag-suggestion brikpanel-pe-tag-suggestion-new" data-value="' + esc(typed) + '">' + esc(newLabel) + '</div>';
+            }
+            matches.forEach(function (t) {
+                html += '<div class="brikpanel-pe-tag-suggestion" data-value="' + esc(t) + '">' + esc(t) + '</div>';
+            });
+            if (!html) { $suggestions.hide(); return; }
+            $suggestions.html(html).show();
+        }
+
+        /* "Select all" for a global attribute: adds every term the attribute
+           owns in one click, instead of picking them one by one out of the
+           dropdown. Only offered where there is a term list to take, and it
+           re-labels itself to "Clear" once everything is already on the row. */
+        var $selectAll = $();
+        if (availableTerms.length) {
+            $selectAll = $('<button type="button" class="brikpanel-pe-attr-selectall"></button>');
+            var refreshSelectAll = function () {
+                var existing = getExistingTags();
+                var remaining = availableTerms.filter(function (t) { return existing.indexOf(t.toLowerCase()) === -1; }).length;
+                $selectAll
+                    .attr('data-mode', remaining ? 'all' : 'none')
+                    .text(remaining
+                        ? (PE.i18n.select_all_terms || 'Select all (%d)').replace('%d', remaining)
+                        : (PE.i18n.clear_all_terms || 'Clear all'));
+            };
+            $selectAll.on('click', function (e) {
+                e.preventDefault();
+                if ($selectAll.attr('data-mode') === 'none') {
+                    $wrap.find('.brikpanel-pe-tag').remove();
+                } else {
+                    var existing = getExistingTags();
+                    availableTerms.forEach(function (t) {
+                        if (existing.indexOf(t.toLowerCase()) === -1) { $input.before(createTag(t)); }
+                    });
+                }
+                refreshSelectAll();
+                showTermSuggestions('');
+                $input.trigger('change');
+            });
+            // The row's tag set changes from several places (typing, pasting,
+            // removing a chip), so recount on any change bubbling out of it.
+            $group.on('change', refreshSelectAll);
+            $group.on('click', '.brikpanel-pe-tag-remove', function () { setTimeout(refreshSelectAll, 0); });
+            refreshSelectAll();
+        }
+
+        /* Add one or many values at once, with the separator chosen by what the
+           text actually contains, most specific first:
+             "|"      WooCommerce's own attribute format — always wins, because a
+                      pipe-separated list may legitimately contain commas
+                      ("Lime, Basil and Mandarin | Vanilla").
+             newline  a spreadsheet column.
+             ","      what people reach for when there is no pipe in sight.
+           Returns how many were added. */
+        function valueSplitPattern(text) {
+            if (text.indexOf('|') !== -1) return /\|+/;
+            if (/[\r\n]/.test(text)) return /[\r\n]+/;
+            return /,+/;
+        }
+
+        function addValues(text) {
+            var added = 0;
+            splitDelimited(text, valueSplitPattern(String(text == null ? '' : text))).forEach(function (v) {
+                if (tagExists($wrap, v)) return;
+                $input.before(createTag(v));
+                added++;
+            });
+            if (added) { $input.val(''); showTermSuggestions(''); $input.trigger('change'); }
+            return added;
+        }
+
+        $input.on('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); addValues(this.value); }
+            if (e.key === 'Backspace' && !this.value) { $wrap.find('.brikpanel-pe-tag:last').remove(); showTermSuggestions(''); $(this).trigger('change'); }
+        });
+
+        // Paste a whole separated list straight out of WooCommerce's own
+        // attribute box (or a spreadsheet column) and get one value per entry
+        // instead of a single tag holding the entire string.
+        $input.on('paste', function (e) {
+            var clip = (e.originalEvent || e).clipboardData;
+            var text = clip ? clip.getData('text') : '';
+            if (!text || !/[|,\r\n]/.test(text)) return; // single value — let the browser paste it
+            e.preventDefault();
+            var n = addValues(text);
+            if (n) {
+                showToast((PE.i18n.values_added || '%d values added').replace('%d', n), 'success');
+            }
+        });
+
+        $input.on('input', function () { showTermSuggestions($.trim(this.value)); });
+        $input.on('focus', function () { showTermSuggestions($.trim(this.value)); });
+        $input.on('blur', function () { setTimeout(function () { $suggestions.hide(); }, 150); });
+
+        $suggestions.on('mousedown', '.brikpanel-pe-tag-suggestion', function (e) {
+            e.preventDefault();
+            // Read via attr(), not data(): jQuery.data() JSON-coerces a purely
+            // numeric term (shoe sizes like "40", "42") into a Number, and the
+            // string helpers below then throw on .toLowerCase(). Keep it a string.
+            var v = String($(this).attr('data-value') || '');
+            if (v && !tagExists($wrap, v)) {
+                $input.before(createTag(v));
+                $input.val('');
+                showTermSuggestions('');
+                $input.trigger('change');
+            }
+        });
+
+        $wrap.append($input);
+        $wrap.on('click', function () { $input.focus(); });
+        initTagSortable($wrap, $input);
+        $inputWrap.append($wrap, $suggestions);
+        $group.append($inputWrap);
+        // Dragging values only reaches the storefront when the attribute uses
+        // "Custom ordering". Say so rather than let a drag look broken.
+        if (taxonomy && attrOrderby !== 'menu_order') {
+            $group.append($('<p class="brikpanel-pe-attr-order-note">').text(
+                String(PE.i18n.attr_order_ignored || '%s').replace('%s', name)
+            ));
+        }
+        // Sits in the row's label line, left of the "Use for variations" switch
+        // that createAttrRow() appends to the same label.
+        if ($selectAll.length) { $group.find('> label').first().append($selectAll); }
+        return $group;
+    }
+
+    /* Drag-to-reorder the VALUES of one attribute.
+
+       This order is not cosmetic: for a global attribute WooCommerce builds the
+       storefront dropdown from the terms, ordered by their `order` term meta,
+       and the save handler writes that meta from the order collected here (see
+       sync_attribute_term_order() in brikpanel-product-editor.php). Without a
+       way to arrange the values, a merchant who wanted 6, 12, 24, 50, 100 got
+       them back alphabetised as 100, 12, 24, 50, 6.
+
+       collectAttrRows() reads `.brikpanel-pe-tag` in DOM order, so reordering
+       the DOM is all that is needed — no parallel state to keep in sync. */
+    function initTagSortable($wrap, $input) {
+        if (typeof $wrap.sortable !== 'function') return;
+        $wrap.sortable({
+            items: '> .brikpanel-pe-tag',
+            // The × is a button: dragging from it would swallow the click that
+            // removes the value.
+            cancel: '.brikpanel-pe-tag-remove, input',
+            tolerance: 'pointer',
+            cursor: 'grabbing',
+            containment: 'parent',
+            forcePlaceholderSize: true,
+            placeholder: 'brikpanel-pe-tag-placeholder',
+            update: function () {
+                // The text input is a sibling of the tags, not a sortable item,
+                // so a tag dropped at the end can land after it. Put it back.
+                if ($input && $input.length) { $wrap.append($input); }
+                state.dirty = true;
+                var $list = $wrap.closest('#bpe-attr-list');
+                if ($list.length) { $list.trigger('change'); }
+                showToast(PE.i18n.attr_values_reordered, 'success');
+            }
+        });
+    }
+
+    function createTag(value) {
+        // Title set via .attr(), not interpolated: esc() escapes &, < and > but
+        // not quotes, and a translated string is free to contain one.
+        var $tag = $('<span class="brikpanel-pe-tag">' + esc(value) + '</span>');
+        if (PE.i18n.reorder_attr_value) { $tag.attr('title', PE.i18n.reorder_attr_value); }
+        var $rm = $('<button type="button" class="brikpanel-pe-tag-remove">&times;</button>');
+        $rm.on('click', function () {
+            // Removing a value changes the attribute set — notify the list so the
+            // "regenerate variations" hint can re-evaluate (tag remove is a click,
+            // it emits no input/change event of its own).
+            var $list = $tag.closest('#bpe-attr-list');
+            $tag.remove();
+            if ($list.length) { $list.trigger('change'); }
+        });
+        $tag.append($rm);
+        return $tag;
+    }
+
+    function tagExists($w, val) {
+        var needle = String(val).toLowerCase();
+        var e = false;
+        $w.find('.brikpanel-pe-tag').each(function () { if ($(this).clone().children().remove().end().text().trim().toLowerCase() === needle) e = true; });
+        return e;
+    }
+
+    /* ====== Unified attribute editor (variation attributes + plain specs) ===
+       One list. Each row carries a "Use for variations" switch: when the
+       product is Variable, switched-on rows build the variation table and
+       switched-off rows stay as specs; when Simple, every row is a spec. */
+
+    function isVariableOn() { return $('#bpe-var-toggle').is(':checked'); }
+
+    /* Quick-start template cards vs. the attribute controls. The cards are an
+       empty-state shortcut: shown only when the product is Variable, no
+       attributes exist yet, and the user has not dismissed them via "Custom".
+       Otherwise the controls + list take over. */
+    function updateVarStartView() {
+        var $templates = $('#bpe-var-templates');
+        if (!$templates.length) { return; }
+        var empty = $('#bpe-attr-list .brikpanel-pe-attr-row').length === 0;
+        var showTemplates = isVariableOn() && empty && !state.varCustomStarted;
+        $templates.toggle(showTemplates);
+        $('#bpe-var-attr-controls').toggle(!showTemplates);
+        refreshVarStaleHint();
+    }
+
+    function initAttributes() {
+        var $list = $('#bpe-attr-list');
+        if (!$list.length) return;
+
+        // Existing global attribute picker — a searchable popover dropdown.
+        // New rows default to "use for variations" when the product is currently
+        // Variable, else to a spec. Rows start with an empty value list: the
+        // typeahead inside the tag input lets the user pick only the terms they
+        // want (pre-loading every term locks up the browser on huge taxonomies).
+        var $combo = $('#bpe-attr-combo');
+        if ($combo.length) {
+            var $comboTrigger = $('#bpe-attr-combo-trigger');
+            var $comboSearch = $('#bpe-attr-combo-search');
+            var $comboOptions = $combo.find('.brikpanel-pe-combo-option');
+            var $comboEmpty = $combo.find('.brikpanel-pe-combo-empty');
+
+            var closeCombo = function () {
+                $combo.removeClass('open');
+                $comboTrigger.attr('aria-expanded', 'false');
+            };
+            var openCombo = function () {
+                $combo.addClass('open');
+                $comboTrigger.attr('aria-expanded', 'true');
+                $comboSearch.val('').trigger('input');
+                setTimeout(function () { $comboSearch.trigger('focus'); }, 0);
+            };
+
+            $comboTrigger.on('click', function (e) {
+                e.stopPropagation();
+                if ($combo.hasClass('open')) { closeCombo(); } else { openCombo(); }
+            });
+
+            $comboSearch.on('input', function () {
+                var q = $.trim(this.value).toLowerCase();
+                var any = false;
+                $comboOptions.each(function () {
+                    var match = !q || this.textContent.toLowerCase().indexOf(q) !== -1;
+                    this.style.display = match ? '' : 'none';
+                    if (match) { any = true; }
+                });
+                $comboEmpty[0].style.display = any ? 'none' : '';
+            });
+
+            $comboSearch.on('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeCombo();
+                    $comboTrigger.trigger('focus');
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    var $first = $comboOptions.filter(function () { return this.style.display !== 'none'; }).first();
+                    if ($first.length) { $first.trigger('click'); }
+                }
+            });
+
+            $combo.on('click', '.brikpanel-pe-combo-option', function () {
+                var name = $(this).attr('data-value');
+                var taxonomy = $(this).attr('data-taxonomy') || '';
+                closeCombo();
+                if (!name || attributeExistsInList(name)) { return; }
+                $list.append(createAttrRow(name, [], taxonomy, isVariableOn()));
+                state.varCustomStarted = true;
+                state.dirty = true;
+                updateVarStartView();
+            });
+
+            $(document).on('click', function (e) {
+                if ($combo.hasClass('open') && !$combo[0].contains(e.target)) { closeCombo(); }
+            });
+        }
+
+        // "Add" button for new custom (non-taxonomy) attributes.
+        var $newName = $('#bpe-attr-new-name');
+        $('#bpe-attr-add').on('click', function () {
+            var name = $.trim($newName.val());
+            if (!name || attributeExistsInList(name)) { $newName.focus(); return; }
+            $list.append(createAttrRow(name, [], '', isVariableOn()));
+            $newName.val('').focus();
+            state.varCustomStarted = true;
+            state.dirty = true;
+            updateVarStartView();
+        });
+        $newName.on('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); $('#bpe-attr-add').click(); }
+        });
+
+        // Editing values or toggling "use for variations" after a table was
+        // generated drifts it out of sync — surface the regenerate hint.
+        $list.on('input change', function () { refreshVarStaleHint(); });
+
+        // Drag-to-reorder attribute rows (jquery-ui-sortable is a dependency of
+        // this script). Order determines the variation axis order, so a reorder
+        // dirties the form and marks any generated table stale.
+        if (typeof $list.sortable === 'function') {
+            $list.sortable({
+                items: '> .brikpanel-pe-attr-row',
+                handle: '.brikpanel-pe-attr-drag',
+                tolerance: 'pointer',
+                cursor: 'grabbing',
+                placeholder: 'brikpanel-pe-attr-row-placeholder',
+                forcePlaceholderSize: true,
+                update: function () {
+                    state.dirty = true;
+                    refreshVarStaleHint();
+                }
+            });
+        }
+    }
+
+    function attributeExistsInList(name) {
+        var lower = String(name).toLowerCase();
+        var found = false;
+        $('#bpe-attr-list .brikpanel-pe-tag-group').each(function () {
+            if (String($(this).attr('data-attr-name') || '').toLowerCase() === lower) found = true;
+        });
+        return found;
+    }
+
+    /* One attribute row: the tag-group (label + value tags) plus two per-row
+       switches and a remove button.
+
+       "Show on product page" mirrors WooCommerce's own "Visible on the product
+       page" checkbox — it decides whether the attribute appears in the
+       storefront's Additional information table — and is shown for every row,
+       simple and variable alike. A variation axis can legitimately be hidden
+       there while still driving the variation dropdowns, which is exactly what
+       WooCommerce allows.
+
+       "Use for variations" only shows while the product is Variable (CSS, via
+       #bpe-var-card.bpe-variable-on), so it sits to the RIGHT of the visibility
+       switch: that keeps the remove button's position identical between simple
+       and variable products.
+
+       `showOnPage` defaults to true when omitted, matching WooCommerce's own
+       default for a freshly added attribute. */
+    function createAttrRow(name, defaults, taxonomy, useForVar, showOnPage) {
+        var $row = $('<div class="brikpanel-pe-attr-row">');
+        var $group = createTagGroup(name, defaults || [], taxonomy);
+
+        var $controls = $('<span class="brikpanel-pe-attr-row-controls">');
+
+        var $showLabel = $('<label class="brikpanel-pe-showpage">');
+        var $showChk = $('<input type="checkbox" class="brikpanel-pe-showpage-check">');
+        if (showOnPage !== false) { $showChk.prop('checked', true); }
+        $showChk.on('change', function () { state.dirty = true; });
+        $showLabel.append(
+            $showChk,
+            $('<span class="brikpanel-pe-usevar-slider"></span>'),
+            $('<span class="brikpanel-pe-usevar-text"></span>').text(PE.i18n.show_on_product_page || 'Show on product page')
+        );
+
+        var $useLabel = $('<label class="brikpanel-pe-usevar">');
+        var $useChk = $('<input type="checkbox" class="brikpanel-pe-usevar-check">');
+        if (useForVar) { $useChk.prop('checked', true); }
+        $useChk.on('change', function () { state.dirty = true; });
+        $useLabel.append(
+            $useChk,
+            $('<span class="brikpanel-pe-usevar-slider"></span>'),
+            $('<span class="brikpanel-pe-usevar-text">' + esc(PE.i18n.use_for_variations || 'Use for variations') + '</span>')
+        );
+
+        var $remove = $('<button type="button" class="brikpanel-pe-attr-remove" aria-label="' + esc(PE.i18n.remove || 'Remove') + '" title="' + esc(PE.i18n.remove || 'Remove') + '">&times;</button>');
+        $remove.on('click', function () {
+            $row.remove();
+            state.dirty = true;
+            // Back to a clean slate? Let the quick-start cards return.
+            if ($('#bpe-attr-list .brikpanel-pe-attr-row').length === 0) { state.varCustomStarted = false; }
+            updateVarStartView();
+        });
+
+        $controls.append($showLabel, $useLabel, $remove);
+        $group.find('> label').first().append($controls);
+
+        // Drag handle (left gutter) for reordering. Attribute order = variation
+        // axis order, which drives the variation name join order and combo
+        // nesting, so reordering must mark dirty + flag the table stale.
+        var dragLabel = esc(PE.i18n.reorder_attribute || 'Drag to reorder');
+        var $drag = $('<span class="brikpanel-pe-attr-drag" role="button" tabindex="0" aria-label="' + dragLabel + '" title="' + dragLabel + '">' +
+            '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/><circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/><circle cx="5" cy="13" r="1.4"/><circle cx="11" cy="13" r="1.4"/></svg>' +
+            '</span>');
+        $row.append($drag, $group);
+        return $row;
+    }
+
+    /* Read every attribute row into {name, values, taxonomy, useVar, $el}.
+       `$el` is the row's tag-group element, so callers that need to write back
+       to the DOM (see adoptSavedAttributes) get there through the same filter
+       the payload builders use instead of re-walking the list themselves. It is
+       never posted: the collectors below pick their fields explicitly. */
+    function collectAttrRows() {
+        var rows = [];
+        $('#bpe-attr-list .brikpanel-pe-tag-group').each(function () {
+            var $g = $(this);
+            var name = $g.attr('data-attr-name');
+            if (!name) return;
+            var vals = [];
+            $g.find('.brikpanel-pe-tag').each(function () {
+                vals.push($(this).clone().children().remove().end().text().trim());
+            });
+            rows.push({
+                name: name,
+                values: vals,
+                taxonomy: $g.attr('data-attr-taxonomy') || '',
+                useVar: $g.find('.brikpanel-pe-usevar-check').is(':checked'),
+                showOnPage: $g.find('.brikpanel-pe-showpage-check').is(':checked'),
+                $el: $g
+            });
+        });
+        return rows;
+    }
+
+    /* Variation attributes = rows flagged "use for variations" (only when the
+       product is Variable). These drive the variation table. */
+    /* Effective axis key for a row — must match genCombinations()/the server so
+       two rows that resolve to the same key (e.g. "Size" and "Size ") collapse
+       to one axis here instead of silently clobbering each other in the
+       cartesian product. */
+    function attrAxisKey(r) {
+        return r.taxonomy ? r.taxonomy.toLowerCase() : slugify(r.name);
+    }
+
+    function collectVariationAttributes() {
+        if (!isVariableOn()) return [];
+        var out = [], seen = {};
+        collectAttrRows().forEach(function (r) {
+            if (!r.useVar || !r.values.length) return;
+            var key = attrAxisKey(r);
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            // `key` rides along so the server can map this axis onto a taxonomy
+            // it may create during the save. It cannot re-derive the key from
+            // the name: slugify() and PHP's sanitize_title() disagree outside
+            // ASCII (remove_accents turns "Größe" into `grosse`, we produce
+            // `gro-e`), and the variations were keyed with OUR spelling.
+            // `visible` is WooCommerce's "show in the Additional information
+            // table" flag. It deliberately stays out of attrAxisKey() and
+            // variationAttrSignature(): flipping it changes nothing about the
+            // axes, so it must not light up the "attributes changed, regenerate"
+            // hint or invalidate the generated variation table.
+            out.push({ name: r.name, values: r.values, taxonomy: r.taxonomy, key: key, visible: r.showOnPage });
+        });
+        return out;
+    }
+
+    /* Axis key -> attribute label ("pa_renk" -> "Color"), used to name the
+       variation rows. Live attribute rows win because they reflect edits made
+       since the last save; the hydrated snapshot backs them up for products
+       whose attribute section is hidden by the section picker. */
+    function variationAxisLabels() {
+        var map = {};
+        function add(list) {
+            (list || []).forEach(function (a) {
+                if (!a || !a.name) return;
+                var key = attrAxisKey({ name: a.name, taxonomy: a.taxonomy || '' });
+                if (!key) return;
+                if (!map[key]) map[key] = a.name;
+                // Second, looser index. WordPress's sanitize_title drops
+                // characters such as & and $ where slugify() turns them into a
+                // separator, so a custom attribute named "A&B" is stored on the
+                // variation as "ab" while its axis key here is "a-b". Stripping
+                // the separators makes both spellings land on the same label.
+                var loose = key.replace(/-/g, '');
+                if (loose && !map[loose]) map[loose] = a.name;
+            });
+        }
+        add(collectVariationAttributes());
+        add(productData.attributes);
+        return map;
+    }
+
+    /* Display name of a variation row — its attribute values joined in axis
+       order ("S - Black"). This is presentation only and is never stored, so it
+       has to be derived from the attributes EVERY time a variation list is
+       taken on: the list the server hands back after a save carries the saved
+       fields but no name, so adopting it verbatim used to blank out the whole
+       Variation column until the page was reloaded.
+       An empty value is WooCommerce's "matches any value of this attribute" —
+       render it as "Any Color" rather than as a bare separator. */
+    function varDisplayName(v, labels) {
+        if (!v || !v.attributes) return '';
+        var parts = [];
+        Object.keys(v.attributes).forEach(function (k) {
+            var raw = v.attributes[k];
+            var val = (raw === null || raw === undefined) ? '' : String(raw);
+            if (val !== '') { parts.push(val); return; }
+            // Only an "Any" slot needs the attribute labels, and building them
+            // walks the attribute rows — so build them at most once per call and
+            // let a caller naming a whole table hand the same map to every row.
+            if (!labels) labels = variationAxisLabels();
+            var key = String(k).toLowerCase();
+            var label = labels[key] || labels[key.replace(/-/g, '')] || key.replace(/^pa_/, '');
+            // Function replacement, not a string: a label containing $& or $1
+            // would otherwise be read as a replacement pattern.
+            parts.push((PE.i18n.variation_any_value || 'Any %s').replace('%s', function () { return label; }));
+        });
+        return parts.join(' - ');
+    }
+
+    /* Re-derive the display name of every row in a variation list, in place. */
+    function applyVarDisplayNames(list) {
+        if (!Array.isArray(list)) return list;
+        var labels = variationAxisLabels();
+        list.forEach(function (v) { if (v) v.name = varDisplayName(v, labels); });
+        return list;
+    }
+
+    /* Non-variation specs = every row when Simple; the not-used-for-variations
+       rows when Variable. Saved as the product's descriptive attributes.
+       `treatAsVariable` lets the save path pass the *effective* mode: when the
+       Variable toggle is on but zero variations exist (the product falls back to
+       simple server-side), pass false so the would-be variation rows are still
+       persisted as specs instead of silently vanishing. */
+    function collectNonVariationAttributes(treatAsVariable) {
+        var variable = (typeof treatAsVariable === 'boolean') ? treatAsVariable : isVariableOn();
+        var out = [], seen = {};
+        collectAttrRows().forEach(function (r) {
+            if (variable && r.useVar) return;
+            if (!r.values.length) return;
+            var key = attrAxisKey(r);
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            out.push({ name: r.name, values: r.values, taxonomy: r.taxonomy, visible: r.showOnPage });
+        });
+        return out;
+    }
+
+    /* Sync the variation table's live DOM inputs back into state.variations.
+       Called before any step transition that may rebuild the table so the
+       user's in-flight edits (prices, stock, SKU, dates, vendor, cogs) are
+       not silently dropped when they go Back and re-generate. */
+    function captureVarTableInputs() {
+        var sep = PE.decimal_sep || ',';
+        $('#bpe-var-table-body tr.var-main-row').each(function (idx) {
+            var v = state.variations[idx]; if (!v) return;
+            var $row = $(this);
+            v.regular_price  = parsePrice($row.find('.var-price').val(), sep);
+            v.sale_price     = parsePrice($row.find('.var-sale-price').val(), sep);
+            v.sale_from      = $row.find('.var-sale-from').val() || '';
+            v.sale_to        = $row.find('.var-sale-to').val()   || '';
+            v.manage_stock   = $row.find('.var-manage').is(':checked');
+            v.enabled        = $row.find('.var-enabled').is(':checked');
+            v.stock_quantity = $row.find('.var-stock').val();
+            v.stock_status   = $row.find('.var-stock-status').val() || 'instock';
+            v.sku            = $row.find('.var-sku').val();
+            var $vgtin = $row.find('.var-gtin');
+            if ($vgtin.length) v.global_unique_id = $vgtin.val();
+            var $vtax = $row.find('.var-tax-class');
+            if ($vtax.length) v.tax_class = $vtax.val();
+            var $vship = $row.find('.var-shipping-class');
+            if ($vship.length) v.shipping_class = $vship.val();
+            var $cogs = $row.find('.var-cogs');
+            if ($cogs.length) v.cogs_value = parsePrice($cogs.val(), sep);
+            // Manually added rows carry their combination in dropdowns, not in
+            // a derived label — read those back too or a rebuild resets them.
+            // Rebuilt rather than merged: the dropdowns are the current axes, so
+            // an attribute the merchant has since deleted leaves no orphan key
+            // behind to be written back as a phantom `attribute_<gone>`.
+            var $axes = $row.find('.var-attr-select');
+            if ($axes.length) {
+                var picked = {};
+                $axes.each(function () { picked[$(this).attr('data-axis')] = $(this).val() || ''; });
+                v.attributes = picked;
+                v.name = varDisplayName(v);
+            }
+            var $vendor = $row.find('.var-vendor');
+            if ($vendor.length) v.vendor_id = parseInt($vendor.val(), 10) || 0;
+            if (v.stock_status === 'onbackorder') {
+                var $back = $('#bpe-var-table-body tr.var-backorder-row[data-idx="' + idx + '"] input[type="radio"]:checked');
+                if ($back.length) v.backorders = $back.val() === 'notify' ? 'notify' : 'yes';
+            }
+        });
+    }
+
+    /* Third-party per-variation fields live in HTML the server captured once.
+       Every renderVarTable() re-inserts that snapshot verbatim, so anything the
+       merchant typed into another plugin's variation field was wiped by a
+       delete / regenerate / preview-fetch. Snapshot by input NAME: names carry
+       the render-time loop index, so they are unique per variation and stable
+       across re-renders — no row bookkeeping needed. */
+    function captureVarExtraInputs() {
+        var snap = state.varExtraValues || (state.varExtraValues = {});
+        $('#bpe-var-table-body .brikpanel-pe-var-extras :input[name]').each(function () {
+            var $el = $(this), n = $el.attr('name');
+            if (!n) return;
+            if ($el.is(':checkbox') || $el.is(':radio')) {
+                snap[n + '\u0000' + $el.val()] = $el.is(':checked');
+            } else {
+                snap[n] = $el.val();
+            }
+        });
+    }
+
+    function restoreVarExtraInputs() {
+        var snap = state.varExtraValues;
+        if (!snap) return;
+        $('#bpe-var-table-body .brikpanel-pe-var-extras :input[name]').each(function () {
+            var $el = $(this), n = $el.attr('name');
+            if (!n) return;
+            if ($el.is(':checkbox') || $el.is(':radio')) {
+                var k = n + '\u0000' + $el.val();
+                if (Object.prototype.hasOwnProperty.call(snap, k)) $el.prop('checked', !!snap[k]);
+            } else if (Object.prototype.hasOwnProperty.call(snap, n)) {
+                $el.val(snap[n]);
+            }
+        });
+    }
+
+    function generateVariations() {
+        var attrs = collectVariationAttributes();
+        if (!attrs.length) {
+            showToast(PE.i18n.need_variation_attr || 'Switch on “Use for variations” for at least one attribute, then add its values.', 'error');
+            return;
+        }
+        // Regenerating rebuilds every row from state.variations, so anything
+        // typed into the live table since the last load (cost, price, stock,
+        // SKU, sale dates) has to be pulled back into state first. Without
+        // this the table is restored from the last server snapshot and the
+        // merchant watches a screen full of unsaved edits vanish.
+        captureVarTableInputs();
+        captureVarExtraInputs();
+        state.varAttributes = attrs;
+        var combos = genCombinations(state.varAttributes), baseSKU = $('#bpe-sku').val() || '';
+        // Guard the cartesian explosion: a handful of attributes with many
+        // values each can produce thousands of rows that freeze the tab (and
+        // the server caps the save anyway). Refuse and tell the user to trim.
+        var MAX_GEN = 500;
+        if (combos.length > MAX_GEN) {
+            showToast((PE.i18n.too_many_variations || 'That combination would create more than %d variations. Reduce the number of attribute values, then try again.').replace('%d', MAX_GEN), 'error');
+            return;
+        }
+        var existing = state.variations || [];
+
+        // Index the table as it stands. First occurrence wins, so a duplicate
+        // row can never claim a second cartesian slot.
+        var slotOf = {};
+        existing.forEach(function (v, i) {
+            var k = comboKey(v.attributes);
+            if (!(k in slotOf)) slotOf[k] = i;
+        });
+
+        // Walk the cartesian product. A combination already on screen keeps its
+        // row, and therefore its position — merchants arrange this list
+        // deliberately and regenerating must not shuffle it. Genuinely new
+        // combinations are appended, in cartesian order, after everything that
+        // already exists.
+        var claimed = {}, appended = [];
+        combos.forEach(function (combo) {
+            var k = comboKey(combo);
+            if (k in slotOf) { claimed[slotOf[k]] = true; return; }
+            appended.push(makeVarRow(combo, findExVar(combo), baseSKU));
+        });
+
+        // Rows the cartesian product no longer produces, because the merchant
+        // removed an attribute value or built the row by hand. These used to be
+        // dropped here, and the next save deleted the variation with no warning.
+        // Keep anything that represents real data — a persisted variation, or a
+        // manual row whose axes include "Any" (a valid WooCommerce combination
+        // that is never part of the cartesian set) — flag it, and let the
+        // merchant remove it deliberately with the row's own delete button.
+        var orphans = 0;
+        var kept = existing.filter(function (v, i) {
+            if (claimed[i]) { delete v._orphan; return true; }
+            if (v.manual)   { delete v._orphan; return true; }
+            if (v.id)       { v._orphan = true; orphans++; return true; }
+            return false; // unsaved leftover from an older attribute set
+        });
+
+        state.variations = applyVarDisplayNames(kept.concat(appended));
+        // Regenerating changes the product; without this the tab could be closed
+        // (and the periodic auto-save skipped) with the new rows never written.
+        state.dirty = true;
+
+        renderVarTable();
+        $('#bpe-var-table-section').show();
+        // Snapshot the attribute set this table was built from so later edits
+        // to the attribute rows can surface a "regenerate" hint.
+        state.varSignature = variationAttrSignature();
+        refreshVarStaleHint();
+        fetchVariationPreviews();
+
+        if (appended.length) {
+            var addedMsg = appended.length === 1
+                ? (PE.i18n.variations_generated_one  || '%d new variation added at the end of the list.')
+                : (PE.i18n.variations_generated_many || '%d new variations added at the end of the list.');
+            showToast(addedMsg.replace('%d', appended.length), 'success');
+        } else {
+            showToast(PE.i18n.variations_generated_none || 'No new combinations to add — every variation already exists.', 'success');
+        }
+        if (orphans) {
+            var orphanMsg = orphans === 1
+                ? (PE.i18n.variations_orphaned_one  || '%d variation no longer matches your attribute values. It is marked in the list and kept until you delete it.')
+                : (PE.i18n.variations_orphaned_many || '%d variations no longer match your attribute values. They are marked in the list and kept until you delete them.');
+            showToast(orphanMsg.replace('%d', orphans), 'error', 7000);
+        }
+    }
+
+    /* ---------------------------------------------------------------------
+       Variation order.
+
+       WooCommerce reads a variable product's children with
+       `menu_order ASC, ID ASC`, and the save handler now writes each row's
+       position into menu_order. So the array order of state.variations IS the
+       storefront/admin order, and everything here just permutes that array and
+       re-renders. A full re-render (rather than moving <tr>s around in place)
+       is deliberate: each variation owns up to three sibling rows (main,
+       backorder, extras) and every handler reads `$(this).data('idx')`, which
+       jQuery caches on first read — renumbering attributes in place would leave
+       them all pointing at stale indices.
+       --------------------------------------------------------------------- */
+
+    /* Reorder state.variations from a list of previous indices. */
+    function applyVariationOrder(order) {
+        var src = state.variations || [], out = [];
+        order.forEach(function (i) { if (src[i]) out.push(src[i]); });
+        // Defensive: never drop a row because the DOM and state disagreed.
+        if (out.length !== src.length) return false;
+        state.variations = out;
+        state.dirty = true;
+        return true;
+    }
+
+    function initVarSortable() {
+        var $tb = $('#bpe-var-table-body');
+        if (!$tb.length || typeof $tb.sortable !== 'function') return;
+        $tb.sortable({
+            items: '> tr.var-main-row',
+            handle: '.var-drag-handle',
+            axis: 'y',
+            cursor: 'grabbing',
+            tolerance: 'pointer',
+            forcePlaceholderSize: true,
+            // A cloned <tr> loses its column widths the moment it leaves the
+            // table's layout, so freeze them onto the helper.
+            helper: function (e, $tr) {
+                var $orig = $tr.children(), $helper = $tr.clone();
+                $helper.children().each(function (i) { $(this).width($orig.eq(i).width()); });
+                return $helper;
+            },
+            // The placeholder has to be a real row with a cell or the gap
+            // collapses to nothing while dragging.
+            placeholder: {
+                element: function () {
+                    var cols = $('#bpe-var-table thead th').length;
+                    return $('<tr class="brikpanel-pe-var-row-placeholder"><td colspan="' + cols + '"></td></tr>')[0]; // i18n-ignore: markup, no user-facing text
+                },
+                update: $.noop
+            },
+            start: function (e, ui) {
+                // Pull the live table into state before anything moves — the
+                // drop triggers a full re-render, which would otherwise restore
+                // every row from the last snapshot and wipe in-flight edits.
+                captureVarTableInputs();
+                captureVarExtraInputs();
+                // The backorder and extras rows are siblings of the main row,
+                // not children, so they would stay behind and visually detach
+                // from their variation. Drop them now; `stop` re-renders and
+                // rebuilds them in the new order.
+                $tb.find('tr.var-backorder-row, tr.var-extras-row').remove(); // i18n-ignore: CSS selector, not user-facing text
+                ui.placeholder.height(ui.item.outerHeight());
+            },
+            update: function () {
+                var order = $tb.find('tr.var-main-row').map(function () {
+                    return parseInt($(this).attr('data-idx'), 10);
+                }).get();
+                if (applyVariationOrder(order)) {
+                    showToast(PE.i18n.variations_reordered || 'Order updated. Save the product to keep it.', 'success');
+                }
+            },
+            // Fires on every drop, moved or not, so one render path restores the
+            // companion rows either way.
+            stop: function () { renderVarTable(); }
+        });
+    }
+
+    /* Keyboard reordering from the focused drag handle. Two more buttons per
+       row would widen a table that is already the widest thing on the page. */
+    function moveVariation(from, to) {
+        if (isNaN(from) || to < 0 || to >= (state.variations || []).length || from === to) return false;
+        captureVarTableInputs();
+        captureVarExtraInputs();
+        var order = state.variations.map(function (_, i) { return i; });
+        order.splice(to, 0, order.splice(from, 1)[0]);
+        if (!applyVariationOrder(order)) return false;
+        renderVarTable();
+        $('#bpe-var-table-body tr.var-main-row[data-idx="' + to + '"] .var-drag-handle').trigger('focus'); // i18n-ignore: CSS selector, not user-facing text
+        showToast(PE.i18n.variations_reordered || 'Order updated. Save the product to keep it.', 'success');
+        return true;
+    }
+
+    function applyVariationSort() {
+        var $sel = $('#bpe-var-sort'), mode = $sel.val();
+        // Action menu, not a stored setting: whatever happens below, the select
+        // goes back to its "Sort variations…" placeholder so the same mode can
+        // be picked again after a manual drag.
+        $sel.val('');
+        if (!mode) return;
+        if (!state.variations || state.variations.length < 2) return;
+        captureVarTableInputs();
+        captureVarExtraInputs();
+        sortVariations(mode);
+        renderVarTable();
+        showToast(PE.i18n.variations_reordered || 'Order updated. Save the product to keep it.', 'success');
+    }
+
+    function sortVariations(mode) {
+        var src = applyVarDisplayNames((state.variations || []).slice());
+        // `__s` is the tie-breaker/rank scratch field; stripped before returning
+        // so it can never reach the save payload.
+        if (mode === 'attribute') {
+            // "The order set in the product": the cartesian product of the
+            // current attribute rows, in attribute-row order and value order —
+            // the same sequence Generate would produce. This is a sort, not a
+            // regenerate: no row is added or removed, so a combination outside
+            // the cartesian set (a manual "Any" row, a stranded one) simply
+            // falls to the end keeping its relative order.
+            var rank = {}, n = 0;
+            genCombinations(collectVariationAttributes()).forEach(function (c) {
+                var k = comboKey(c);
+                if (!(k in rank)) { rank[k] = n++; }
+            });
+            var far = n + src.length;
+            src.forEach(function (v, i) {
+                var r = rank[comboKey(v.attributes)];
+                v.__s = (r === undefined) ? (far + i) : r;
+            });
+            src.sort(function (a, b) { return a.__s - b.__s; });
+        } else {
+            var dir = (mode === 'name-desc') ? -1 : 1;
+            src.forEach(function (v, i) { v.__s = i; });
+            src.sort(function (a, b) {
+                // `numeric` so "Size 2" sorts before "Size 10"; `base`
+                // sensitivity so case and accents don't split otherwise equal
+                // labels. Locale comes from the browser, which gets Turkish
+                // i/İ and German umlauts right without a lookup table here.
+                var c = String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+                return c !== 0 ? dir * c : a.__s - b.__s; // stable
+            });
+        }
+        src.forEach(function (v) { delete v.__s; });
+        state.variations = src;
+        state.dirty = true;
+    }
+
+    /* Order- and case-independent signature of a variation's combination. Two
+       rows with the same signature are the same slot as far as WooCommerce is
+       concerned (the storefront can only ever reach the first). An empty value
+       is WC's "Any", which is a combination in its own right. */
+    function comboKey(attrs) {
+        return Object.keys(attrs || {}).sort().map(function (k) {
+            var v = attrs[k];
+            return String(k).toLowerCase() + '=' + String(v === null || v === undefined ? '' : v).toLowerCase();
+        }).join('|');
+    }
+
+    /* One variation row for a cartesian combination, carrying over whatever an
+       already-existing variation with the same combination holds. */
+    function makeVarRow(combo, ex, baseSKU) {
+        var sp = [baseSKU];
+        Object.keys(combo).forEach(function (k) { sp.push(slugify(combo[k])); });
+        return { id: ex ? ex.id : 0, attributes: combo, name: varDisplayName({ attributes: combo }),
+            regular_price: ex ? ex.regular_price : '', sale_price: ex ? ex.sale_price : '',
+            stock_quantity: ex ? (ex.stock_quantity !== null ? ex.stock_quantity : '') : '',
+            stock_status: ex ? (ex.stock_status || 'instock') : 'instock',
+            // New variations track stock by default (quantity column
+            // active), preserving the prior behavior; existing ones keep
+            // whatever was saved.
+            manage_stock: ex ? !!ex.manage_stock : true,
+            // New variations are Active by default (matches WooCommerce);
+            // regenerating keeps whatever active state an existing row had.
+            enabled: ex ? (ex.enabled === undefined ? true : !!ex.enabled) : true,
+            backorders: ex ? (ex.backorders || 'no') : 'no',
+            sale_from: ex ? (ex.sale_from || '') : '',
+            sale_to:   ex ? (ex.sale_to   || '') : '',
+            sku: ex ? ex.sku : sp.filter(Boolean).join('-').toUpperCase(),
+            global_unique_id: ex ? (ex.global_unique_id || '') : '',
+            tax_class: ex ? (ex.tax_class !== undefined && ex.tax_class !== null ? ex.tax_class : 'parent') : 'parent',
+            shipping_class: ex ? (ex.shipping_class !== undefined && ex.shipping_class !== null ? ex.shipping_class : '') : '',
+            images: ex && ex.images ? ex.images : [],
+            cogs_value: ex ? (ex.cogs_value || '') : '',
+            vendor_id:  ex ? (ex.vendor_id || 0) : 0,
+            vendor_sku: ex ? (ex.vendor_sku || '') : '' };
+    }
+
+    /* Add ONE empty variation and let the merchant pick its combination, the
+       way WooCommerce's own "Add manually" does. Generating the full cartesian
+       product is the wrong tool when a catalogue only sells a handful of the
+       possible combinations — nine bundles times two inserts is 18 rows even
+       when only three of them exist. Every axis starts on "Any", which is a
+       valid WooCommerce combination in its own right, and the row's name cell
+       becomes one dropdown per axis until the product is saved. */
+    function addVariationManually() {
+        var attrs = collectVariationAttributes();
+        if (!attrs.length) {
+            showToast(PE.i18n.need_variation_attr || 'Switch on “Use for variations” for at least one attribute, then add its values.', 'error');
+            return;
+        }
+        // The table is about to be rebuilt — keep what is already typed in it.
+        captureVarTableInputs();
+        captureVarExtraInputs();
+        state.varAttributes = attrs;
+        var combo = {};
+        attrs.forEach(function (a) { combo[attrAxisKey(a)] = ''; });
+        state.variations = (state.variations || []).concat([{
+            id: 0,
+            attributes: combo,
+            manual: true,
+            name: varDisplayName({ attributes: combo }),
+            regular_price: '', sale_price: '', sale_from: '', sale_to: '',
+            stock_quantity: '', stock_status: 'instock', manage_stock: true,
+            enabled: true, backorders: 'no', sku: '', global_unique_id: '',
+            tax_class: 'parent', shipping_class: '', images: [],
+            cogs_value: '', vendor_id: 0, vendor_sku: ''
+        }]);
+        renderVarTable();
+        $('#bpe-var-table-section').show();
+        state.dirty = true;
+        // Adding a row does not change which attributes the table was built
+        // from, so the "regenerate" hint must not start crying about drift.
+        if (typeof state.varSignature !== 'string') { state.varSignature = variationAttrSignature(); }
+        refreshVarStaleHint();
+        var $new = $('#bpe-var-table-body tr.var-main-row').last();
+        $new.find('.var-attr-select').first().trigger('focus');
+        if ($new.length && $new[0].scrollIntoView) { $new[0].scrollIntoView({ block: 'center' }); }
+    }
+
+    /* Drop every variation of the product in one action.
+       Unlike the per-row delete this does NOT wait for a save: on a matrix of
+       hundreds of rows the round-trip payload is the slow, fragile part, and
+       "start this over" is not a change anyone wants to stage. The server
+       deletes the children and keeps the parent variable with its attributes
+       intact, so the very next click can be "Generate variations". */
+    function clearAllVariations() {
+        var n = (state.variations || []).length;
+        if (!n) return;
+        var confirmMsg = PE.i18n.confirm_clear_variations
+            || 'Delete all %d variations? They are removed immediately and this cannot be undone. The product stays a variable product and its attributes are kept.';
+        if (!window.confirm(confirmMsg.replace('%d', n))) return;
+
+        var pid = parseInt($('#bpe-product-id').val() || 0, 10) || 0;
+        if (!pid) {
+            // Never saved — the rows exist only in this tab, so there is
+            // nothing to delete server-side. Deliberately no keepVariableEmpty
+            // here: a brand-new product must not be published as a variable
+            // product with an empty matrix just because the list was cleared.
+            resetVariationState();
+            state.dirty = true;
+            showToast(PE.i18n.variations_cleared_local || 'Variation list cleared.', 'success');
+            return;
+        }
+
+        var $btn = $('#bpe-clear-vars'), label = $btn.text();
+        var busy = PE.i18n.clearing_variations || 'Deleting…';
+        $btn.prop('disabled', true).text(busy);
+
+        var totalDeleted = 0;
+        var release = function () { $btn.prop('disabled', false).text(label); };
+        var failed = function (msg) {
+            release();
+            showToast(msg || PE.i18n.clear_variations_failed || 'Could not delete the variations. Please try again.', 'error');
+        };
+
+        // The server deletes in bounded batches so a huge matrix cannot run
+        // past max_execution_time, and answers with how many are left. Keep
+        // asking until it says it is done.
+        var runBatch = function () {
+            $.post(PE.ajax_url, {
+                action: 'brikpanel_pe_clear_variations',
+                security: PE.nonce,
+                product_id: pid
+            }).done(function (r) {
+                if (!r || !r.success) {
+                    failed(r && r.data && r.data.message);
+                    return;
+                }
+                var batch = (r.data && typeof r.data.deleted === 'number') ? r.data.deleted : 0;
+                totalDeleted += batch;
+                var remaining = (r.data && typeof r.data.remaining === 'number') ? r.data.remaining : 0;
+
+                if (remaining > 0) {
+                    // A batch that removes nothing while claiming rows are left
+                    // would loop forever (a variation some plugin refuses to
+                    // delete). Stop and say so instead of hanging the button.
+                    if (batch < 1) { failed(); return; }
+                    $btn.text((PE.i18n.clearing_variations_left || 'Deleting… %d left').replace('%d', remaining));
+                    runBatch();
+                    return;
+                }
+
+                // Only a real deletion earns the override. When nothing was
+                // persisted there is no "the database already lost them" fact
+                // to protect, so an empty table keeps meaning what it always
+                // did and the product falls back to simple on save.
+                if (totalDeleted > 0) { state.keepVariableEmpty = true; }
+                resetVariationState();
+                // "0 variations deleted." reads like the click did nothing —
+                // a table of freshly generated, never-saved rows legitimately
+                // reports 0, so say what actually happened instead.
+                var doneMsg;
+                if (!totalDeleted) {
+                    doneMsg = PE.i18n.variations_cleared_local || 'Variation list cleared.';
+                } else {
+                    doneMsg = (totalDeleted === 1
+                        ? (PE.i18n.variations_cleared_one  || '%d variation deleted.')
+                        : (PE.i18n.variations_cleared_many || '%d variations deleted.')
+                    ).replace('%d', totalDeleted);
+                }
+                showToast(doneMsg, 'success');
+                release();
+            }).fail(function () { failed(); });
+        };
+        runBatch();
+    }
+
+    /* Put the variation half of the editor back to "no variations yet".
+       productData.variations is the line that cannot be skipped: findExVar()
+       searches that server-hydrated snapshot, so leaving it populated would let
+       the next Generate re-create every row WITH ITS OLD ID — and the save
+       would then quietly resurrect variations the user just deleted. */
+    function resetVariationState() {
+        state.variations = [];
+        // The server side of this reset is a real deletion, so the count the
+        // conversion warning reads has to come down with it.
+        productData.variation_count = 0;
+        state.varExtraValues = null;
+        state.previewExtras = null;
+        state.removedVariationIds = null;
+        state.lastSubmittedVariations = [];
+        productData.variations = [];
+        productData.variation_extras = {};
+        renderVarTable();
+        $('#bpe-var-table-section').hide();
+        $('#bpe-clear-vars').prop('hidden', true);
+        refreshVarStaleHint();
+    }
+
+    /* Stable signature of the current variation-attribute set (names + values +
+       taxonomy). Used to detect that the attributes drifted from what the
+       generated variation table was built on. */
+    function variationAttrSignature() {
+        // Only the fields that define the axes. `visible` rides along on the
+        // same records but is pure presentation (the storefront's Additional
+        // information table), so including it would make toggling that switch
+        // light up the "attributes changed, regenerate" hint on a table that is
+        // still perfectly in sync.
+        return JSON.stringify(collectVariationAttributes().map(function (a) {
+            return { name: a.name, values: a.values, taxonomy: a.taxonomy, key: a.key };
+        }));
+    }
+
+    /* Show the "attributes changed, regenerate" hint when a generated table is
+       now out of sync with the attribute rows. Never blocks saving. */
+    function refreshVarStaleHint() {
+        var $hint = $('#bpe-var-stale-hint');
+        if (!$hint.length) return;
+        var stale = isVariableOn()
+            && state.variations && state.variations.length
+            && typeof state.varSignature === 'string'
+            && state.varSignature !== variationAttrSignature();
+        $hint.prop('hidden', !stale);
+    }
+
+    /* Pull the 3rd-party per-variation field structure for not-yet-saved rows
+       so the "More fields" expander shows before the first save. No-op when no
+       provider plugin is registered (server returns an empty map) or when every
+       row already has a real ID. Re-renders once the HTML arrives. */
+    function fetchVariationPreviews() {
+        var newCount = 0;
+        state.variations.forEach(function (v) { if (!v.id) newCount++; });
+        if (!newCount) return;
+        var pid = $('#bpe-product-id').val() || 0;
+        if (!pid) return; // the auto-draft id is needed to parent the stub variation
+        // Sequence guard: rapid Generate clicks / attribute edits fire
+        // overlapping requests. Only the latest response may touch state, so a
+        // late reply for a now-stale table can't attach extras to wrong rows.
+        var seq = (state.previewSeq = (state.previewSeq || 0) + 1);
+        var expectCount = state.variations.length;
+        $.post(PE.ajax_url, {
+            action: 'brikpanel_pe_preview_variation_fields',
+            security: PE.nonce,
+            product_id: pid,
+            count: expectCount
+        }).done(function (r) {
+            if (seq !== state.previewSeq) return; // superseded by a newer fetch
+            if (state.variations.length !== expectCount) return; // table changed underneath
+            if (r && r.success && r.data && r.data.extras && !$.isEmptyObject(r.data.extras)) {
+                state.previewExtras = r.data.extras;
+                // Pin each unsaved row to the preview slot it is about to be
+                // rendered from. That HTML's `name="field[<n>]"` is fixed from
+                // here on, so if the row is later dragged or regenerated it has
+                // to keep pointing at the same slot — otherwise its values would
+                // be read back against a different variation.
+                state.variations.forEach(function (v, i) { if (!v.id) v._previewKey = i; });
+                // This reply can land while the merchant is already filling in
+                // the fresh rows — keep what is on screen before rebuilding.
+                captureVarTableInputs();
+                captureVarExtraInputs();
+                renderVarTable();
+            }
+        }).fail(function () {
+            if (seq !== state.previewSeq) return;
+            showToast(PE.i18n.preview_failed || 'Could not load extra variation fields. Saving still works.', 'error');
+        });
+    }
+
+    function genCombinations(attrs) {
+        return attrs.reduce(function (combos, attr) {
+            // Taxonomy attributes must key on their taxonomy slug (e.g. `pa_renk`)
+            // so the variation's attribute keys match WC's internal lookup.
+            var slug = attr.taxonomy ? attr.taxonomy : slugify(attr.name);
+            if (!combos.length) return attr.values.map(function (v) { var o = {}; o[slug] = v; return o; });
+            var r = [];
+            combos.forEach(function (c) { attr.values.forEach(function (v) { var n = $.extend({}, c); n[slug] = v; r.push(n); }); });
+            return r;
+        }, []);
+    }
+
+    function findExVar(combo) {
+        // Look in the in-flight state first so user edits made before clicking
+        // Back survive when the table is regenerated. Fall back to the server-
+        // hydrated snapshot for the initial render of a saved product.
+        var pools = [];
+        if (state.variations && state.variations.length) pools.push(state.variations);
+        if (productData.variations && productData.variations.length) pools.push(productData.variations);
+        var removed = state.removedVariationIds || {};
+        function matches(v) {
+            if (!v || !v.attributes) return false;
+            // A row the merchant deleted this session is still sitting in the
+            // server-hydrated pool. Reusing it would hand its id back to a new
+            // row and silently cancel the deletion.
+            if (v.id && removed[v.id]) return false;
+            return Object.keys(combo).every(function (k) {
+                return (v.attributes[k] || '').toString().toLowerCase() === (combo[k] || '').toString().toLowerCase();
+            });
+        }
+        for (var p = 0; p < pools.length; p++) {
+            var hit = pools[p].find(matches);
+            if (hit) return hit;
+        }
+        return null;
+    }
+
+    /* The attribute rows that make up the variation axes, as jQuery tag-group
+       elements, filtered and ordered exactly like collectVariationAttributes()
+       so index N here is axis N there. */
+    function variationAttrRowElements() {
+        if (!isVariableOn()) return [];
+        var out = [], seen = {};
+        collectAttrRows().forEach(function (r) {
+            if (!r.useVar || !r.values.length) return;
+            var key = attrAxisKey(r);
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            out.push(r.$el);
+        });
+        return out;
+    }
+
+    /* A save can turn an attribute the merchant simply typed ("Kleur") into a
+       real global attribute ("pa_kleur"), either by creating it or by binding
+       to one the store already had. The client is still holding the row it
+       posted, so its axis key stays `kleur` while every variation the server
+       just returned is keyed `pa_kleur`. Left alone that mismatch is not
+       cosmetic: state.defaultAttributes is keyed the same way, so the Default
+       Form Values dropdown would render empty and the NEXT save would post a
+       blank default and wipe _default_attributes.
+
+       `promotedAxes` maps the posted axis key to the taxonomy it became. It is
+       the only reliable pairing: binding to an existing global can change the
+       label (type "Kleur", get back an attribute labelled "Colour"), so the
+       rows cannot be matched up by name.
+
+       Must run BEFORE adoptSavedVariations(): that reads the axis keys out of
+       the live DOM to name the rows and to reset the "regenerate" baseline. */
+    function adoptSavedAttributes(savedAttrs, savedGlobals, promotedAxes, silent) {
+        promotedAxes = promotedAxes || {};
+        if (!Object.keys(promotedAxes).length) return;
+
+        // The saved rows carry the canonical term names and the resolved
+        // default, both of which may differ in case from what was typed.
+        var byTaxonomy = {};
+        (savedAttrs || []).forEach(function (a) {
+            if (a && a.taxonomy) { byTaxonomy[String(a.taxonomy).toLowerCase()] = a; }
+        });
+
+        // Writing the taxonomy back changes variationAttrSignature(), which
+        // would otherwise light up the "attributes changed, regenerate" hint on
+        // a product that was just saved successfully.
+        var wasInSync = (state.varSignature === variationAttrSignature());
+        var touched = false;
+
+        variationAttrRowElements().forEach(function ($g) {
+            if ($g.attr('data-attr-taxonomy')) return;   // already global
+            var oldKey = attrAxisKey({ name: $g.attr('data-attr-name'), taxonomy: '' });
+            var taxonomy = promotedAxes[oldKey];
+            if (!taxonomy) return;
+
+            var saved = byTaxonomy[String(taxonomy).toLowerCase()];
+            touched = true;
+
+            // Re-key the Default Form Values selection onto the new axis, and
+            // take the value from the server: after binding to an existing
+            // attribute the term's canonical name ("Zwart") can differ from
+            // what was typed ("zwart"), and renderDefaultFormValues() drops a
+            // selection that does not match one of the row's values verbatim.
+            var newKey = String(taxonomy).toLowerCase();
+            delete state.defaultAttributes[oldKey];
+            if (saved && saved['default']) { state.defaultAttributes[newKey] = saved['default']; }
+
+            if (silent || !saved) {
+                // Background auto-save: never rebuild the DOM under the
+                // merchant. Re-pointing the row is invisible and is the part
+                // that actually has to happen, or the next manual "generate"
+                // would fail to recognise any existing variation and orphan
+                // every price and stock value on the table.
+                $g.attr('data-attr-taxonomy', taxonomy);
+                return;
+            }
+
+            // Refresh the global list first: createTagGroup() snapshots the
+            // term suggestions for a row at build time, so a just-created
+            // attribute needs the new list to offer its terms.
+            if (savedGlobals) { productData.global_attributes = savedGlobals; }
+
+            // Rebuild rather than patch. Chips, label, data-attr-name and the
+            // term typeahead all have to follow the canonical values, and
+            // replacing the row makes the post-save DOM identical to a reload.
+            var $row = $g.closest('.brikpanel-pe-attr-row');
+            if (!$row.length) { $g.attr('data-attr-taxonomy', taxonomy); return; }
+            $row.replaceWith(createAttrRow(saved.name, saved.values || [], saved.taxonomy, true, saved.visible !== false));
+        });
+
+        if (!touched) return;
+        if (wasInSync) {
+            state.varSignature = variationAttrSignature();
+            refreshVarStaleHint();
+        }
+    }
+
+    /* After a successful save the server's variation list is authoritative:
+       it is exactly what was just persisted, with real IDs, attributes and the
+       per-variation 3rd-party field map. Adopt it wholesale so brand-new
+       variations pick up their IDs — and therefore their "More fields"
+       expander — without a page reload. Matching by attribute signature is
+       deliberately avoided: a "custom" attribute may resolve to an existing
+       taxonomy on save (e.g. a "Size" label saved under pa_beden), so the
+       client key and server key differ and any signature match would miss. */
+    function adoptSavedVariations(savedVars, extras, silent) {
+        if (!Array.isArray(savedVars)) return;
+        productData.variation_extras = extras || {};
+        productData.variations = savedVars;
+        // Everything the payload carried is now persisted, and the server just
+        // echoed freshly-rendered extras HTML whose loop indices match the list
+        // above. Drop the local snapshot rather than replaying it: its keys
+        // reference the PREVIOUS render's loop numbers, so replaying it after a
+        // reorder could put one variation's value on another. Same trade the
+        // main-field merge below makes when the ids no longer line up.
+        state.varExtraValues = null;
+        // Rows that just got a real ID read their extras by ID from now on, so
+        // the preview slot they were pinned to is meaningless (and would shadow
+        // the real HTML on the next render).
+        savedVars.forEach(function (v) { if (v && v.id) { delete v._previewKey; } });
+        (state.variations || []).forEach(function (v) { if (v && v.id) { delete v._previewKey; } });
+        // A save reconciles deletions with the database, so the guard that keeps
+        // a just-deleted row from being resurrected by Generate has done its job.
+        state.removedVariationIds = null;
+        // NOTE: state.keepVariableEmpty is deliberately NOT cleared here. It is
+        // not a one-shot for the next save — a merchant who clears the matrix
+        // and then saves twice must not have the second save convert the
+        // product to simple. The flag is inert the moment a row exists again
+        // (the length check in saveProduct() short-circuits it), and unticking
+        // the "Variable product" toggle still wins over it.
+        // Background auto-save runs behind the user's back — never disturb the
+        // live table/state mid-edit. The fresh productData is enough for the
+        // next manual render to be correct.
+        if (silent) return;
+        // A save is not instant, and on a busy store with dozens of variations
+        // it can take seconds — long enough for the merchant to keep filling in
+        // the next rows. Anything they changed AFTER the payload went out is
+        // newer than the echo the server just sent back, so pull the live table
+        // in first and let those edits survive the rebuild below.
+        captureVarTableInputs();
+        var live = state.variations || [];
+        var sent = state.lastSubmittedVariations || [];
+        // The saved list has no display name — derive it, or the Variation
+        // column renders blank for every row after a save.
+        state.variations = applyVarDisplayNames(savedVars.map(function (v, i) {
+            var merged = $.extend(true, {}, v);
+            var lv = live[i];
+            var sv = sent[i];
+            // Only merge when this really is the same row. The server returns
+            // the product's children in its own order, which need not match the
+            // order they were submitted in, and pairing the wrong rows would
+            // move a merchant's edit onto a different variation.
+            if (!lv || !sv) return merged;
+            if (sv.id && v.id && String(sv.id) !== String(v.id)) return merged;
+            // Only a field that drifted from what was submitted counts as an
+            // in-flight edit. Everything else defers to the server, so values
+            // it normalised or rejected (a duplicate SKU, say) still win.
+            VAR_INPUT_FIELDS.forEach(function (key) {
+                if (lv[key] === undefined) return;
+                if (!varFieldSame(lv[key], sv[key])) { merged[key] = lv[key]; }
+            });
+            return merged;
+        }));
+        // The freshly-saved table matches the current attribute rows, so reset
+        // the drift baseline and clear any stale hint.
+        state.varSignature = variationAttrSignature();
+        refreshVarStaleHint();
+        var $tableSection = $('#bpe-var-table-section');
+        if ($tableSection.length && $tableSection.is(':visible') && state.variations.length) {
+            renderVarTable();
+        }
+    }
+
+    /* Default Form Values — one dropdown per variation attribute letting the
+       merchant pick which option is pre-selected on the storefront (WC's
+       native _default_attributes). Rebuilt from the live attribute rows so it
+       always tracks the current axes/values; the chosen names are kept in
+       state.defaultAttributes and round-tripped on save. */
+    function renderDefaultFormValues() {
+        var $wrap = $('#bpe-var-defaults'), $row = $('#bpe-var-defaults-row');
+        if (!$wrap.length || !$row.length) return;
+        var attrs = collectVariationAttributes();
+        if (!attrs.length) { toggleDefaultFormValues(false); $wrap.hide(); $row.empty(); return; }
+        var i18n = PE.i18n || {};
+
+        // Last group of the one-line variation tools strip: the selects live in
+        // a popover behind one button, because there is one per variation axis
+        // and inline they would be the thing that pushes the strip onto a
+        // second line. Each select still names its own axis ("No default
+        // Color…"), so the popover needs no per-field labels.
+        var groupLabel = i18n.default_form_values || 'Default Form Values';
+
+        $row.empty();
+        attrs.forEach(function (a) {
+            var key = attrAxisKey(a);
+            var cur = state.defaultAttributes[key] || '';
+            // Drop a stale selection that no longer matches a current value.
+            if (cur && a.values.indexOf(cur) === -1) { cur = ''; delete state.defaultAttributes[key]; }
+
+            var $sel = $('<select class="brikpanel-pe-select bpe-var-default"></select>').attr('data-key', key);
+            var noneLabel = (i18n.no_default_for || 'No default %s…').replace('%s', a.name);
+            $sel.attr('aria-label', groupLabel + ' — ' + a.name);
+            $sel.append($('<option value=""></option>').text(noneLabel));
+            a.values.forEach(function (val) {
+                var $opt = $('<option></option>').attr('value', val).text(val);
+                if (val === cur) $opt.prop('selected', true);
+                $sel.append($opt);
+            });
+            $row.append($sel);
+        });
+
+        // Explicit flex (not .show(), which would force display:block and lose
+        // the group's row layout).
+        $wrap.css('display', 'flex');
+        markDefaultFormValues();
+    }
+
+    /* Collapsed state has to report itself: the button wears a dot whenever any
+       axis has a default picked, so a merchant can tell without opening it. */
+    function markDefaultFormValues() {
+        var any = false;
+        $('#bpe-var-defaults-row .bpe-var-default').each(function () { if ($(this).val()) { any = true; } });
+        $('#bpe-var-defaults').toggleClass('has-default', any);
+    }
+
+    function toggleDefaultFormValues(open) {
+        var $btn = $('#bpe-var-defaults-toggle'), $pop = $('#bpe-var-defaults-pop');
+        if (!$btn.length) return;
+        $btn.attr('aria-expanded', open ? 'true' : 'false');
+        $pop.prop('hidden', !open);
+    }
+
+    function renderVarTable() {
+        var $tb = $('#bpe-var-table-body').empty(), sep = PE.decimal_sep || ',';
+        renderDefaultFormValues();
+        var hasCogs   = productData.cogs_enabled || false;
+        var hasGtin   = !!productData.gtin_enabled;
+        var hasTax    = !!productData.tax_enabled;
+        var taxClassOpts = productData.tax_class_options || {};
+        var hasShipping  = !!productData.shipping_class_enabled;
+        var shippingClassOpts = productData.shipping_class_options || {};
+        var hasVendor = !!productData.vendor_field_enabled;
+        var hasBackorderNotify = !!productData.backorder_notify;
+        var vendorOpts = Array.isArray(productData.vendor_options) ? productData.vendor_options : [];
+        var parentVendorId = productData.parent_vendor_id || 0;
+        var parentVendorName = '';
+        for (var pi = 0; pi < vendorOpts.length; pi++) {
+            if (vendorOpts[pi].id === parentVendorId) { parentVendorName = vendorOpts[pi].name; break; }
+        }
+        var extras = productData.variation_extras || {};
+        var previewExtras = state.previewExtras || {};
+        // Position of each saved variation inside productData.variations. That
+        // array is exactly what capture_wc_variation_fields() was handed, so its
+        // index IS the <loop> baked into every `name="field[<loop>]"` in the
+        // extras HTML (see the docblock above capture_wc_variation_fields()).
+        // Rows can move afterwards, so the loop travels with the row as
+        // `data-loop` and the save payload re-indexes it to the submit position.
+        var savedLoopById = {};
+        (productData.variations || []).forEach(function (pv, i) {
+            if (pv && pv.id) savedLoopById[pv.id] = i;
+        });
+        // Live axes, for the per-axis dropdowns a manually added row renders.
+        var varAttrRows = collectVariationAttributes();
+        // colspan for the extras row — main row has 9 base cols + optional gtin + optional tax class + optional cogs + optional vendor + drag + expander + delete
+        var baseCols = 10 + (hasGtin ? 1 : 0) + (hasTax ? 1 : 0) + (hasShipping ? 1 : 0) + (hasCogs ? 1 : 0) + (hasVendor ? 1 : 0) + 3; // 10 base (incl. Track) +1 drag handle, +1 expander toggle, +1 delete cell
+        state.variations.forEach(function (v, idx) {
+            var pv = v.regular_price ? ('' + v.regular_price).replace('.', sep) : '';
+            var sv = v.sale_price ? ('' + v.sale_price).replace('.', sep) : '';
+            var stk = v.stock_quantity !== '' && v.stock_quantity !== null ? v.stock_quantity : '';
+            var cogsv = hasCogs && v.cogs_value ? ('' + v.cogs_value).replace('.', sep) : '';
+            var varStatus = v.stock_status || 'instock';
+            // Per-variation stock tracking. When on, the quantity input is
+            // active and the status select is disabled (WC derives it); when
+            // off, the reverse. Mirrors the simple-product "Track quantity".
+            var varManage = !!v.manage_stock;
+            // "Active" state. Undefined (freshly generated rows) defaults to on,
+            // matching WooCommerce, so new variations are purchasable by default.
+            var varEnabled = (v.enabled === undefined) ? true : !!v.enabled;
+            var trackTd = '<td class="var-track-cell"><label class="brikpanel-pe-switch brikpanel-pe-switch-sm">' +
+                '<input type="checkbox" class="var-manage"' + (varManage ? ' checked' : '') + '>' +
+                '<span class="brikpanel-pe-slider"></span></label></td>';
+            var imgCellHtml = buildVarImageCell(v.images, idx);
+            var cogsTd = hasCogs ? '<td><input type="text" class="var-cogs" value="' + esc(cogsv) + '" data-price="1" placeholder="0' + sep + '00"></td>' : '';
+            var taxTd = '';
+            if (hasTax) {
+                var vtc = (v.tax_class === undefined || v.tax_class === null) ? 'parent' : ('' + v.tax_class);
+                var taxOptsHtml = '';
+                Object.keys(taxClassOpts).forEach(function (slug) {
+                    taxOptsHtml += '<option value="' + esc(slug) + '"' + (slug === vtc ? ' selected' : '') + '>' + esc(taxClassOpts[slug]) + '</option>';
+                });
+                taxTd = '<td><select class="var-tax-class brikpanel-pe-select">' + taxOptsHtml + '</select></td>';
+            }
+            var shipTd = '';
+            if (hasShipping) {
+                var vsc = (v.shipping_class === undefined || v.shipping_class === null) ? '' : ('' + v.shipping_class);
+                var shipOptsHtml = '';
+                Object.keys(shippingClassOpts).forEach(function (slug) {
+                    shipOptsHtml += '<option value="' + esc(slug) + '"' + (slug === vsc ? ' selected' : '') + '>' + esc(shippingClassOpts[slug]) + '</option>';
+                });
+                shipTd = '<td><select class="var-shipping-class brikpanel-pe-select">' + shipOptsHtml + '</select></td>';
+            }
+            // Vendor select per variation. The "(parent)" option keeps cells
+            // visually clean when most variations share the parent vendor.
+            var vendorTd = '';
+            if (hasVendor) {
+                var vid = parseInt(v.vendor_id, 10) || 0;
+                var inheritLabel = parentVendorName
+                    ? (PE.i18n.inherit_parent_named || '(parent: %s)').replace('%s', parentVendorName)
+                    : (PE.i18n.inherit_parent || '(parent)');
+                var opts = '<option value="0"' + (vid === 0 ? ' selected' : '') + '>' + esc(inheritLabel) + '</option>';
+                for (var oi = 0; oi < vendorOpts.length; oi++) {
+                    var o = vendorOpts[oi];
+                    opts += '<option value="' + o.id + '"' + (vid === o.id ? ' selected' : '') + '>' + esc(o.name) + '</option>';
+                }
+                vendorTd = '<td class="var-vendor-cell"><select class="var-vendor brikpanel-pe-vendor-select">' + opts + '</select></td>';
+            }
+            var statusTd = '<td><select class="var-stock-status"' + (varManage ? ' disabled' : '') + '>' +
+                '<option value="instock"' + (varStatus === 'instock' ? ' selected' : '') + '>' + (PE.i18n.in_stock || 'In stock') + '</option>' +
+                '<option value="outofstock"' + (varStatus === 'outofstock' ? ' selected' : '') + '>' + (PE.i18n.out_of_stock || 'Out of stock') + '</option>' +
+                '<option value="onbackorder"' + (varStatus === 'onbackorder' ? ' selected' : '') + '>' + (PE.i18n.on_backorder || 'On backorder') + '</option>' +
+                '</select></td>';
+            // Per-variation backorder mode — only injected when the merchant
+            // enabled the sub-option in settings. Hidden until the row's
+            // stock status is "On backorder".
+            var backorderRow = '';
+            if (hasBackorderNotify) {
+                var varBackVal = (v.backorders === 'notify') ? 'notify' : 'yes';
+                var showBack   = (varStatus === 'onbackorder');
+                backorderRow = '<tr class="var-backorder-row" data-idx="' + idx + '"' + (showBack ? '' : ' hidden') + '>' +
+                    '<td colspan="' + baseCols + '">' +
+                    '<div class="brikpanel-pe-var-backorder">' +
+                    '<span class="brikpanel-pe-var-backorder-label">' + esc(PE.i18n.backorder_label || 'Backorder') + '</span>' +
+                    '<div class="brikpanel-pe-radio-group">' +
+                    '<label class="brikpanel-pe-radio"><input type="radio" name="var-backorders-' + idx + '" value="yes"' + (varBackVal === 'yes' ? ' checked' : '') + '><span>' + esc(PE.i18n.backorder_silent || 'Allow without notification') + '</span></label>' +
+                    '<label class="brikpanel-pe-radio"><input type="radio" name="var-backorders-' + idx + '" value="notify"' + (varBackVal === 'notify' ? ' checked' : '') + '><span>' + esc(PE.i18n.backorder_notify || 'Allow and notify customer') + '</span></label>' +
+                    '</div></div></td></tr>';
+            }
+            // Saved variations read their real per-variation 3rd-party fields
+            // (keyed by variation ID). Variations not yet persisted fall back to
+            // the preview HTML, keyed by the slot it was fetched for and pinned
+            // to the row as `_previewKey` so a later move keeps pointing at the
+            // same HTML. `extraLoop` is the loop index the HTML's name
+            // attributes were rendered with — NOT the current row position; the
+            // save payload rewrites it to the submit index.
+            var previewKey = (v._previewKey === undefined) ? idx : v._previewKey;
+            var extraHtml = (v.id && extras[v.id]) ? extras[v.id]
+                : (!v.id && previewExtras[previewKey]) ? previewExtras[previewKey]
+                : '';
+            var extraLoop = (v.id && extras[v.id])
+                ? (savedLoopById[v.id] === undefined ? idx : savedLoopById[v.id])
+                : previewKey;
+            var hasExtra = !!extraHtml;
+            var expanderTd = hasExtra
+                ? '<td class="var-expand-cell"><button type="button" class="var-expand-btn" data-idx="' + idx + '" aria-label="' + esc(PE.i18n.more_fields || 'More fields') + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button></td>'
+                : '<td class="var-expand-cell"></td>';
+            // Reorder handle. Grabbed by the sortable, and focusable so the
+            // order can also be changed from the keyboard with the arrow keys.
+            var varDragLabel = esc(PE.i18n.reorder_variation || 'Drag to reorder this variation');
+            var dragTd = '<td class="var-drag-cell"><span class="var-drag-handle" role="button" tabindex="0" aria-label="' + varDragLabel + '" title="' + varDragLabel + '">' +
+                '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/><circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/><circle cx="5" cy="13" r="1.4"/><circle cx="11" cy="13" r="1.4"/></svg>' +
+                '</span></td>';
+            var rowClasses = 'var-main-row';
+            if (hasExtra) rowClasses += ' has-extra';
+            if (hasBackorderNotify && varStatus === 'onbackorder') rowClasses += ' has-backorder';
+            if (!varEnabled) rowClasses += ' is-disabled';
+            if (v._orphan) rowClasses += ' is-orphan';
+            // "Active" toggle sits at the head of the variation name cell —
+            // where WooCommerce's own "Enabled" checkbox lives — so merchants
+            // working only in this dashboard can turn a variation on/off.
+            var enabledSwitch = '<label class="brikpanel-pe-switch brikpanel-pe-switch-xs var-enabled-switch" title="' + esc(PE.i18n.variation_active || 'Active') + '">' +
+                '<input type="checkbox" class="var-enabled"' + (varEnabled ? ' checked' : '') + ' aria-label="' + esc(PE.i18n.variation_active || 'Active') + '">' +
+                '<span class="brikpanel-pe-slider"></span></label>';
+            // A row added with "Add manually" has no combination yet, so the
+            // name cell turns into one dropdown per axis. Once it is saved the
+            // server returns it like any other row and it reads as text again.
+            var nameCellHtml = v.manual
+                ? buildVarAttrSelects(v, varAttrRows)
+                : '<span class="var-name-text">' + esc(v.name) + '</span>';
+            // Flag rows whose combination is no longer produced by the current
+            // attribute values, so a merchant who removed a value can see which
+            // variations are now stranded instead of losing them silently.
+            var orphanBadge = v._orphan
+                ? '<span class="var-orphan-badge" title="' + esc(PE.i18n.variation_orphan_title || 'This combination is no longer among your attribute values.') + '">' +
+                  esc(PE.i18n.variation_orphan_badge || 'Not in your attributes') + '</span>'
+                : '';
+            $tb.append('<tr data-idx="' + idx + '" class="' + rowClasses + '">' +
+                dragTd +
+                expanderTd +
+                '<td class="var-name' + (v.manual ? ' var-name-manual' : '') + '">' + enabledSwitch + nameCellHtml + orphanBadge + '</td>' +
+                '<td><input type="text" class="var-price" value="' + esc(pv) + '" data-price="1" placeholder="0' + sep + '00"></td>' +
+                '<td><input type="text" class="var-sale-price" value="' + esc(sv) + '" data-price="1" placeholder="0' + sep + '00"></td>' +
+                '<td><input type="text" class="var-sale-from" value="' + esc(v.sale_from || '') + '" placeholder="' + esc(PE.i18n.date_placeholder || 'YYYY-MM-DD') + '" autocomplete="off"></td>' +
+                '<td><input type="text" class="var-sale-to"   value="' + esc(v.sale_to   || '') + '" placeholder="' + esc(PE.i18n.date_placeholder || 'YYYY-MM-DD') + '" autocomplete="off"></td>' +
+                trackTd +
+                '<td><input type="number" class="var-stock" value="' + esc('' + stk) + '" min="0" placeholder="0"' + (varManage ? '' : ' disabled') + '></td>' +
+                statusTd +
+                cogsTd +
+                vendorTd +
+                '<td><input type="text" class="var-sku" value="' + esc(v.sku) + '"></td>' +
+                (hasGtin ? '<td><input type="text" class="var-gtin" value="' + esc(v.global_unique_id || '') + '" inputmode="numeric" autocomplete="off"></td>' : '') +
+                taxTd +
+                shipTd +
+                '<td>' + imgCellHtml + '</td>' +
+                '<td class="var-delete-cell"><button type="button" class="var-delete-btn" data-idx="' + idx + '" aria-label="' + esc(PE.i18n.delete_variation || 'Delete variation') + '" title="' + esc(PE.i18n.delete_variation || 'Delete variation') + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></td>' +
+                '</tr>');
+            if (backorderRow) {
+                $tb.append(backorderRow);
+            }
+            if (hasExtra) {
+                $tb.append('<tr class="var-extras-row" data-idx="' + idx + '" data-loop="' + extraLoop + '" data-variation-id="' + v.id + '" hidden>' +
+                    '<td colspan="' + baseCols + '" class="var-extras-cell">' +
+                    '<div class="brikpanel-pe-var-extras">' + extraHtml + '</div>' +
+                    '</td></tr>');
+            }
+        });
+        // Per-axis dropdowns on a manually added row: write the pick straight
+        // into state so the save payload carries it even if the merchant never
+        // touches another control on that row.
+        $tb.find('.var-attr-select').on('change', function () {
+            var $sel = $(this);
+            var idx = parseInt($sel.closest('tr.var-main-row').attr('data-idx'), 10);
+            var v = state.variations[idx];
+            if (!v) return;
+            v.attributes = v.attributes || {};
+            v.attributes[$sel.attr('data-axis')] = $sel.val() || '';
+            v.name = varDisplayName(v);
+            state.dirty = true;
+            warnDuplicateVariation(idx);
+        });
+        $tb.find('.var-image-btn').on('click', function () { openVarImagePicker($(this).data('idx')); });
+        $tb.find('.var-image-remove').on('click', function (e) { e.stopPropagation(); removeVarImage($(this).data('idx')); });
+        // Keyboard reordering: focus a drag handle, then arrow up/down. Gives
+        // the sortable a non-pointer equivalent without adding two buttons to
+        // every row.
+        $tb.find('.var-drag-handle').on('keydown', function (e) {
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            e.preventDefault();
+            var from = parseInt($(this).closest('tr.var-main-row').attr('data-idx'), 10);
+            moveVariation(from, from + (e.key === 'ArrowUp' ? -1 : 1));
+        });
+        $tb.find('.var-delete-btn').on('click', function () {
+            var idx = $(this).data('idx');
+            var confirmMsg = PE.i18n.confirm_delete_variation || 'Delete this variation? This change is applied when you save the product.';
+            if (!window.confirm(confirmMsg)) return;
+            // Pull live DOM edits back into state.variations BEFORE the splice
+            // so unsaved price/stock/SKU edits on sibling rows survive the
+            // re-render. Without this, renderVarTable() restores those rows
+            // from the stale server-hydrated values and the user perceives
+            // deleting one variation as wiping data from the others.
+            captureVarTableInputs();
+            captureVarExtraInputs();
+            // Remember what was removed. findExVar() also searches the
+            // server-hydrated snapshot, which still holds this row, so without
+            // this a later Generate would re-add it WITH ITS OLD ID and the
+            // save would quietly undo the deletion.
+            var gone = state.variations[idx];
+            if (gone && gone.id) {
+                (state.removedVariationIds || (state.removedVariationIds = {}))[gone.id] = true;
+            }
+            state.variations.splice(idx, 1);
+            state.dirty = true;
+            renderVarTable();
+            // When the last variation is removed there is nothing to show — hide
+            // the table. The product stays "Variable" per the top toggle until
+            // the user turns it off (save with zero variations falls back to a
+            // simple product server-side).
+            if (!state.variations.length) { $('#bpe-var-table-section').hide(); }
+        });
+        $tb.find('.var-expand-btn').on('click', function () {
+            var idx = $(this).data('idx');
+            var $row = $tb.find('.var-extras-row[data-idx="' + idx + '"]');
+            var open = $row.is('[hidden]');
+            if (open) { $row.removeAttr('hidden'); $(this).addClass('open'); }
+            else      { $row.attr('hidden', 'hidden'); $(this).removeClass('open'); }
+        });
+        // Per-variation "Track" toggle: enables the quantity input and lets
+        // WC derive the status (status select disabled), or vice-versa.
+        // Bound on fresh checkboxes each render — no event stacking.
+        // Per-variation "Active" toggle: reflect the on/off state visually
+        // (dim the row when disabled) and mark the editor dirty so the change
+        // is persisted on the next save. Bound fresh each render.
+        $tb.find('.var-enabled').on('change', function () {
+            var $cb = $(this), $row = $cb.closest('tr.var-main-row');
+            $row.toggleClass('is-disabled', !$cb.is(':checked'));
+            state.dirty = true;
+        });
+        $tb.find('.var-manage').on('change', function () {
+            var $cb = $(this), $row = $cb.closest('tr.var-main-row');
+            var on = $cb.is(':checked');
+            $row.find('.var-stock').prop('disabled', !on);
+            $row.find('.var-stock-status').prop('disabled', on);
+            if (on) {
+                // Tracking on: status is derived, so collapse any open
+                // backorder sub-row tied to a manual "On backorder" choice.
+                var idx = $row.data('idx');
+                $tb.find('tr.var-backorder-row[data-idx="' + idx + '"]').attr('hidden', 'hidden');
+                $row.removeClass('has-backorder');
+            }
+            state.dirty = true;
+        });
+        // Reveal the per-variation backorder sub-row only when the row's
+        // stock status flips to "On backorder". Adds/removes the
+        // `has-backorder` class so the main row's bottom border merges.
+        if (hasBackorderNotify) {
+            // Delegated on the persistent table body, which survives re-renders,
+            // so namespace + off first or each render stacks another handler and
+            // one status change fires N times.
+            $tb.off('change.bpVarStatus').on('change.bpVarStatus', '.var-stock-status', function () {
+                var $sel = $(this);
+                var idx = $sel.closest('tr.var-main-row').data('idx');
+                var $mainRow = $tb.find('tr.var-main-row[data-idx="' + idx + '"]');
+                var $backRow = $tb.find('tr.var-backorder-row[data-idx="' + idx + '"]');
+                var on = $sel.val() === 'onbackorder';
+                if (on) { $backRow.removeAttr('hidden'); $mainRow.addClass('has-backorder'); }
+                else    { $backRow.attr('hidden', 'hidden'); $mainRow.removeClass('has-backorder'); }
+            });
+        }
+
+        // Flatpickr on every per-variation sale date input
+        if (typeof flatpickr === 'function') {
+            $tb.find('.var-sale-from, .var-sale-to').each(function () {
+                if (this._flatpickr) return;
+                flatpickr(this, { dateFormat: 'Y-m-d', allowInput: false });
+            });
+        }
+
+        // The extras rows above were re-inserted from the server's captured
+        // HTML, which knows nothing about edits made since the page loaded.
+        // Put those back before anything else reads them.
+        restoreVarExtraInputs();
+
+        // Re-pair the cost-plugin inputs: this render rebuilt both the cost
+        // cells and the extras rows they live in, so the previous bindings
+        // point at detached elements and their freshly-rendered value is back
+        // to whatever the server captured.
+        syncVariationCogsMirror();
+
+        // "Clear all" only means something while there is something to clear.
+        // Driven from here rather than from each caller because every path
+        // that changes the row count ends in a render.
+        $('#bpe-clear-vars').prop('hidden', !state.variations.length);
+    }
+
+    /* One dropdown per variation axis for a manually added row. The empty
+       option is WooCommerce's "Any <attribute>", which is a real combination
+       (it matches every value), so it is offered rather than treated as a
+       blank that has to be filled in. */
+    function buildVarAttrSelects(v, attrRows) {
+        if (!attrRows || !attrRows.length) {
+            return '<span class="var-name-text">' + esc(v.name || '') + '</span>';
+        }
+        var html = '<span class="var-attr-picks">';
+        attrRows.forEach(function (a) {
+            var axis = attrAxisKey(a);
+            var cur = (v.attributes && v.attributes[axis]) ? String(v.attributes[axis]) : '';
+            var anyLabel = (PE.i18n.any_attribute || 'Any %s').replace('%s', a.name);
+            html += '<select class="var-attr-select brikpanel-pe-select" data-axis="' + esc(axis) + '" aria-label="' + esc(a.name) + '">' +
+                '<option value=""' + (cur === '' ? ' selected' : '') + '>' + esc(anyLabel) + '</option>';
+            (a.values || []).forEach(function (val) {
+                html += '<option value="' + esc(val) + '"' + (String(val) === cur ? ' selected' : '') + '>' + esc(val) + '</option>';
+            });
+            html += '</select>';
+        });
+        return html + '</span>';
+    }
+
+    /* Two variations with the same combination are a WooCommerce dead end: the
+       storefront can only ever reach the first one. Flag it as soon as the
+       merchant picks the duplicate rather than at save time. */
+    function warnDuplicateVariation(idx) {
+        var target = state.variations[idx];
+        if (!target || !target.attributes) return;
+        // Same slot definition Generate uses, so "already exists" here and
+        // "keeps its position" there can never disagree.
+        var mine = comboKey(target.attributes);
+        var clash = state.variations.some(function (v, i) { return i !== idx && comboKey(v.attributes) === mine; });
+        $('#bpe-var-table-body tr.var-main-row[data-idx="' + idx + '"]').toggleClass('is-duplicate', clash);
+        if (clash) {
+            showToast(PE.i18n.duplicate_variation || 'Another variation already uses this combination.', 'error');
+        }
+    }
+
+    function buildVarImageCell(images, idx) {
+        var count = images ? images.length : 0;
+        var badge = count > 1 ? '<span class="var-image-count">' + count + '</span>' : '';
+        if (count > 0) {
+            var removeLabel = esc(PE.i18n.remove_image || 'Remove image');
+            return '<span class="var-image-wrap" data-idx="' + idx + '">' +
+                '<button type="button" class="var-image-btn has-images" data-idx="' + idx + '">' +
+                '<img src="' + esc(images[0].url) + '" alt="">' + badge + '</button>' +
+                '<button type="button" class="var-image-remove" data-idx="' + idx + '" aria-label="' + removeLabel + '" title="' + removeLabel + '">' +
+                '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+                '</span>';
+        }
+        return '<span class="var-image-wrap" data-idx="' + idx + '">' +
+            '<button type="button" class="var-image-btn" data-idx="' + idx + '">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>' +
+            '</span>';
+    }
+
+    // Rebind click handlers for a single (re-rendered) variation image cell.
+    function bindVarImageCell(idx) {
+        var $wrap = $('#bpe-var-table-body .var-image-wrap[data-idx="' + idx + '"]');
+        $wrap.find('.var-image-btn').off('click').on('click', function () { openVarImagePicker(idx); });
+        $wrap.find('.var-image-remove').off('click').on('click', function (e) {
+            e.stopPropagation();
+            removeVarImage(idx);
+        });
+    }
+
+    // Clear all images for a variation. The change is committed on product save
+    // (an empty image_ids array clears the thumbnail + gallery meta server-side).
+    function removeVarImage(idx) {
+        state.variations[idx].images = [];
+        $('#bpe-var-table-body .var-image-wrap[data-idx="' + idx + '"]').replaceWith(buildVarImageCell([], idx));
+        bindVarImageCell(idx);
+    }
+
+    function openVarImagePicker(idx) {
+        // wp_localize_script flattens booleans to strings (true → "1", false → ""),
+        // so check truthiness against the "1"/"0" payload instead of === false.
+        var galleryEnabled = String(PE.variation_gallery_enabled) === '1';
+        var frame = wp.media({
+            title: galleryEnabled ? (PE.i18n.select_images || 'Select images') : (PE.i18n.select_image || 'Select image'),
+            multiple: galleryEnabled,
+            library: { type: 'image' },
+            button: { text: PE.i18n.select || 'Select' }
+        });
+        frame.on('open', enableClickToToggle);
+        frame.on('close', disableClickToToggle);
+
+        // Pre-select ONLY the variation's own images. The media frame would
+        // otherwise inherit the current post context and auto-highlight the
+        // parent product's featured image, which users reported as
+        // unexpected. `selection.reset()` clears any pre-populated items
+        // (including that inherited featured image) before we add ours.
+        frame.on('open', function () {
+            var selection = frame.state().get('selection');
+            selection.reset();
+            var imgs = state.variations[idx].images || [];
+            if (!galleryEnabled) imgs = imgs.slice(0, 1);
+            imgs.forEach(function (img) {
+                var attachment = wp.media.attachment(img.id);
+                attachment.fetch();
+                selection.add(attachment);
+            });
+        });
+
+        frame.on('select', function () {
+            var attachments = frame.state().get('selection').toJSON();
+            var newImages = attachments.map(function (att) {
+                return {
+                    id: att.id,
+                    url: (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url
+                };
+            });
+            if (!galleryEnabled) newImages = newImages.slice(0, 1);
+            state.variations[idx].images = newImages;
+            // Re-render just this cell, then rebind its picker + remove handlers.
+            $('#bpe-var-table-body .var-image-wrap[data-idx="' + idx + '"]').replaceWith(buildVarImageCell(newImages, idx));
+            bindVarImageCell(idx);
+        });
+
+        frame.open();
+    }
+
+    function applyBulk() {
+        var price = $.trim($('#bpe-bulk-price').val());
+        var salePrice = $.trim($('#bpe-bulk-sale-price').val());
+        var stock = $.trim($('#bpe-bulk-stock').val());
+        if (price) $('#bpe-var-table-body .var-price').val(price);
+        if (salePrice) $('#bpe-var-table-body .var-sale-price').val(salePrice);
+        if (stock !== '') {
+            // Setting a bulk quantity implies the merchant wants tracking on,
+            // so enable it across all rows (and disable the now-derived status
+            // select) before applying the value.
+            $('#bpe-var-table-body tr.var-main-row').each(function () {
+                var $row = $(this);
+                $row.find('.var-manage').prop('checked', true);
+                $row.find('.var-stock').prop('disabled', false).val(stock);
+                $row.find('.var-stock-status').prop('disabled', true);
+                $row.removeClass('has-backorder');
+                var idx = $row.data('idx');
+                $('#bpe-var-table-body tr.var-backorder-row[data-idx="' + idx + '"]').attr('hidden', 'hidden');
+            });
+        }
+        // Bulk Active/Inactive — flip every row's toggle and its dimmed state.
+        // Empty value means "No change", so it never touches rows accidentally.
+        var active = $('#bpe-bulk-active').val();
+        if (active === '1' || active === '0') {
+            var on = active === '1';
+            $('#bpe-var-table-body tr.var-main-row').each(function () {
+                var $row = $(this);
+                $row.find('.var-enabled').prop('checked', on);
+                $row.toggleClass('is-disabled', !on);
+            });
+        }
+        // A bulk apply mutates the table — mark dirty so the unload guard and
+        // background auto-save treat it as a real change.
+        if (price || salePrice || stock !== '' || active === '1' || active === '0') { state.dirty = true; }
+    }
+
+    /* Validation — only enforces required fields that are actually visible.
+       A hidden required field (e.g. the top-level price input while the
+       variations toggle is on) must not block publishing. */
+    function validateField($i) {
+        var $e = $i.closest('.brikpanel-pe-field').find('.brikpanel-pe-field-error');
+        if (!$i.is(':visible')) { $i.removeClass('has-error'); $e.text(''); return true; }
+        var v = $.trim($i.val());
+        if ($i.data('required') && !v) { $i.addClass('has-error'); $e.text(PE.i18n.field_required || 'This field is required'); return false; }
+        $i.removeClass('has-error'); $e.text(''); return true;
+    }
+    function validateAll() {
+        var ok = true;
+        // Only validate BrikPanel's own required inputs. ACF and other
+        // metabox plugins mark required fields with data-required="1" on the
+        // *wrapper div* (e.g. <div class="acf-field is-required" data-required="1">);
+        // a bare [data-required] selector matched those divs, and $(div).val()
+        // is undefined, so a single required ACF field made validateAll() always
+        // fail — silently blocking the Update/Publish button. Scoping to :input
+        // (input/select/textarea/button) excludes the wrappers; the fields'
+        // native/ACF validation still runs server-side.
+        $(':input[data-required]:visible').each(function () { if (!validateField($(this))) ok = false; });
+        return ok;
+    }
+
+    /* Save */
+    function saveProduct(status, silent) {
+        if (state.saving) return;
+        if (!silent && (status === 'publish' || status === 'future') && !validateAll()) { showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error'); return; }
+        var name = $.trim($('#bpe-name').val());
+        if (!name) { if (!silent) { showToast(PE.i18n.fill_name || 'Please fill in the product name', 'error'); validateField($('#bpe-name')); } return; }
+
+        // ACF client-side validation. ACF marks its required/format errors only
+        // through its own validator; BrikPanel's custom save never triggered it,
+        // so on an explicit save ACF's *server-side* validation would fail
+        // silently and drop the ENTIRE $_POST['acf'] payload — discarding every
+        // ACF edit in that save while the editor still reported success. Run
+        // ACF's validateForm first (over the card container that holds all ACF
+        // groups + the #acf-form-data nonce block); on failure it renders the
+        // inline field errors natively and we abort with a toast. Skipped for
+        // silent autosaves and when ACF is absent. The `acfValidated` flag guards
+        // the one-level re-entry after validation succeeds.
+        if (!silent && !state.acfValidated && window.acf && typeof acf.validateForm === 'function') {
+            var $acfForm = $('.brikpanel-pe-content');
+            if ($acfForm.find('.acf-field').length) {
+                acf.validateForm({
+                    form: $acfForm,
+                    reset: true,
+                    success: function () {
+                        state.acfValidated = true;
+                        saveProduct(status, silent);
+                        state.acfValidated = false;
+                    },
+                    failure: function () {
+                        showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error');
+                    }
+                });
+                return;
+            }
+        }
+
+        state.saving = true;
+        var $pub = $('#bpe-publish'), op = $pub.text();
+        $pub.prop('disabled', true).text(PE.i18n.saving || 'Saving...');
+
+        var $varToggle = $('#bpe-var-toggle');
+        // An empty table normally means "not a variable product after all", so
+        // the server is told `simple` and drops the leftover children. That is
+        // wrong after "Clear all": the variations are already gone from the
+        // database and the product was deliberately left variable with its
+        // attributes, so posting `simple` here would undo exactly what the
+        // merchant just asked for. The flag is set ONLY by a server-side clear
+        // — ticking the toggle without generating anything still behaves as
+        // before.
+        var isVar = $varToggle.is(':checked')
+            && (state.variations.length > 0 || state.keepVariableEmpty === true);
+        var sep = PE.decimal_sep || ',';
+        var data = { action: 'brikpanel_save_product', security: PE.nonce,
+            product_id: $('#bpe-product-id').val() || 0, status: status, name: name,
+            sku: $('#bpe-sku').val() };
+        // Same rule the other opt-in sections follow: send the key only when the
+        // control is actually on the page. With the variations section switched
+        // off the toggle is a permanently-unchecked stand-in, so posting
+        // `is_variable=0` would tell the server the merchant chose "simple" —
+        // which converted every variable product and deleted all its variations.
+        // Omitting the key means "not editable here, leave the type alone".
+        if (!$varToggle.attr('data-section-hidden')) {
+            data.is_variable = isVar ? 1 : 0;
+            // How many variations the editor actually loaded. `is_variable` is
+            // derived from the table being non-empty, and an empty table does
+            // not always mean the merchant wants a simple product: WooCommerce
+            // hides variations whose parent axis was rewritten by an import, so
+            // a product with children can load with none. The server uses this
+            // to tell "the merchant switched the type" apart from "the editor
+            // never saw them" instead of deleting the children on a guess.
+            data.variations_loaded = state.variations.length;
+        }
+
+        // Both description fields are opt-in sections, so send a key only when
+        // the editor is actually on the page. An always-present key meant a
+        // store that had switched the section off wiped the stored description
+        // of every product it saved.
+        if ($('#bpe-short-desc').length) data.short_description = getEditorHtml('bpe-short-desc');
+        if ($('#bpe-description').length) data.description      = getEditorHtml('bpe-description');
+
+        // Only send the GTIN when the field is actually rendered (the section
+        // is opt-in). Omitting the key lets the server leave any existing
+        // value untouched instead of wiping it.
+        var $gtinField = $('#bpe-gtin');
+        if ($gtinField.length) data.global_unique_id = $gtinField.val();
+
+        // Permalink slug — opt-in section. Only sent when its card is rendered so
+        // a disabled section never rewrites the stored slug. An empty value tells
+        // the server to let WordPress regenerate it from the product name.
+        var $slugField = $('#bpe-slug');
+        if ($slugField.length) data.slug = $slugField.val();
+
+        // Opt-in WC-core sections — only send a key when its card is rendered
+        // so a disabled section never wipes the stored value server-side.
+        if ($('#bpe-tax-card').length) {
+            data.tax_status = $('#bpe-tax-status').val();
+            data.tax_class  = $('#bpe-tax-class').val();
+        }
+        if ($('#bpe-shipping-class-card').length) {
+            data.shipping_class = $('#bpe-shipping-class').val();
+        }
+        if ($('#bpe-sold-individually-card').length) {
+            data.sold_individually = $('#bpe-sold-individually').is(':checked') ? 1 : 0;
+        }
+        if ($('#bpe-linked-card').length) {
+            data.upsell_ids     = JSON.stringify(state.linked.upsells.map(function (i) { return i.id; }));
+            data.cross_sell_ids = JSON.stringify(state.linked.cross_sells.map(function (i) { return i.id; }));
+        }
+        if ($('#bpe-advanced-card').length) {
+            data.purchase_note   = $('#bpe-purchase-note').val();
+            data.reviews_allowed = $('#bpe-reviews-allowed').is(':checked') ? 1 : 0;
+            data.menu_order      = $('#bpe-menu-order').val();
+        }
+
+        // Product type — only when the selector is enabled. Server falls
+        // back to the is_variable flag when missing. We send the selected
+        // type verbatim even if zero variations exist; the user may be
+        // setting up the parent first and adding variations later.
+        var $ptSel = $('#bpe-product-type');
+        if ($ptSel.length) {
+            var ptVal = $ptSel.val();
+            if (ptVal) {
+                data.product_type = ptVal;
+            }
+        }
+
+        // Password protected
+        data.post_password = status === 'password' ? ($('#bpe-post-password').val() || '') : '';
+
+        // Publish date — always send the chosen datetime-local value. It is the
+        // product's WordPress post_date: for "Scheduled" it's the future go-live
+        // moment; for any live status it backdates/corrects the publish date. An
+        // empty value means "publish now" (new products default to the moment of
+        // saving). The server clamps/promotes future dates per the scheduling
+        // setting, so the merchant can never leave a product silently stuck.
+        var $pubDateInput = $('#bpe-schedule-date');
+        if ($pubDateInput.length) {
+            data.publish_date = $pubDateInput.val() || '';
+        }
+
+        // Catalog visibility
+        data.catalog_visibility = $('#bpe-catalog-visibility').val() || 'visible';
+
+        // Featured product — applies to both simple and variable products
+        // (WC stores it on the parent via the `product_visibility` taxonomy).
+        // Source of truth is the hidden #bpe-is-featured field, kept in sync
+        // by the header star button. The field is ONLY rendered when the
+        // "Featured product star" setting is on — when it's off we omit the
+        // key from the payload entirely so the server leaves the existing
+        // featured flag untouched (whatever set it elsewhere is preserved).
+        var $featuredField = $('#bpe-is-featured');
+        if ($featuredField.length) {
+            data.is_featured = $featuredField.val() === '1' ? 1 : 0;
+        }
+
+        if (!isVar) {
+            data.regular_price = parsePrice($('#bpe-price').val(), sep);
+            // Sale fields are always visible now — the server treats empty
+            // sale price as "no sale" and clears the scheduled dates.
+            data.sale_price = parsePrice($('#bpe-sale-price').val(), sep);
+            data.sale_from  = $('#bpe-sale-from').val() || '';
+            data.sale_to    = $('#bpe-sale-to').val()   || '';
+        }
+        // "Track quantity" toggle is the explicit manage_stock source. When
+        // on we send quantity + backorder rule and let WC derive the status;
+        // when off we send the directly-chosen status instead.
+        var manageStock = $('#bpe-manage-stock').is(':checked');
+        data.manage_stock = manageStock ? 1 : 0;
+        if (manageStock) {
+            data.stock_quantity = $('#bpe-stock').val();
+            data.backorders = $('#bpe-backorders').val() || 'no';
+        } else {
+            data.stock_status = $('#bpe-stock-status').val() || 'instock';
+            // Backorder mode — only sent when the merchant turned on the
+            // "Notify customer" sub-option *and* the status is "On backorder".
+            // Falls through to the legacy yes/no mapping on the server otherwise.
+            if (data.stock_status === 'onbackorder') {
+                var $backRadio = $('input[name="backorders"]:checked');
+                if ($backRadio.length) {
+                    data.backorders = $backRadio.val() === 'notify' ? 'notify' : 'yes';
+                }
+            }
+        }
+        // Only forward COGS when the section is rendered. Sending an empty
+        // value back when the card is hidden would tell the save handler to
+        // clear the meta and wipe the cost on every product the merchant
+        // touches after disabling the section in settings.
+        var $cogsInput = $('#bpe-cogs');
+        if ($cogsInput.length) {
+            data.cogs_value = parsePrice($cogsInput.val() || '', sep);
+        }
+
+        // Parent product vendor (only when the editor field is rendered).
+        // The select has name="bp_vendor_id" so it would also be picked up
+        // by a native form submit — we still send it explicitly because the
+        // editor uses a manual JSON payload, not form serialization.
+        var $bpVendor = $('#bpe-vendor');
+        if ($bpVendor.length) {
+            data.bp_vendor_id  = parseInt($bpVendor.val(), 10) || 0;
+            data.bp_vendor_sku = ($('#bpe-vendor-sku').val() || '').trim();
+        }
+        data.weight = $('#bpe-weight-toggle').is(':checked') ? parsePrice($('#bpe-weight').val(), sep) : '';
+
+        // Dimensions
+        if ($('#bpe-dims-toggle').is(':checked')) {
+            data.length = parsePrice($('#bpe-length').val(), sep);
+            data.width = parsePrice($('#bpe-width').val(), sep);
+            data.height = parsePrice($('#bpe-height').val(), sep);
+        } else { data.length = ''; data.width = ''; data.height = ''; }
+
+        // SEO
+        data.seo_title = $('#bpe-seo-title').val() || '';
+        data.seo_focus_kw = $('#bpe-seo-focus-kw').val() || '';
+        data.seo_canonical = $('#bpe-seo-canonical').val() || '';
+        data.seo_noindex = $('#bpe-seo-noindex').is(':checked') ? 1 : 0;
+        data.seo_description = $('#bpe-seo-desc').val() || '';
+
+        // Primary category — only sent when the field is rendered (a SEO plugin
+        // with the feature is active + the category section is visible). Omitting
+        // it leaves the existing value untouched on the server. The server
+        // mirrors it to every active plugin's meta key.
+        if ($('#bpe-seo-primary-cat').length) {
+            data.primary_cat = $('#bpe-seo-primary-cat').val() || 'none';
+        }
+
+        // Virtual / Digital / downloads — flags are independent on the wire.
+        // The server treats `is_downloadable=1` as implying virtual too, but
+        // we send the explicit toggle state so the data round-trips back to
+        // the editor identically on next load.
+        data.is_virtual      = $('#bpe-virtual-toggle').is(':checked') ? 1 : 0;
+        data.is_downloadable = $('#bpe-digital-toggle').is(':checked') ? 1 : 0;
+        if (data.is_downloadable) {
+            data.downloads = JSON.stringify(state.downloads);
+        } else {
+            data.downloads = '[]';
+        }
+
+        // Speak about images only once the gallery has been hydrated. Sending
+        // nothing means "leave them alone"; sending an explicit 0 / empty list
+        // means the merchant really did clear them. Conflating the two is what
+        // let an early or interrupted save wipe a product's whole gallery.
+        if (state.imagesReady) {
+            data.image_id = state.images.length ? state.images[0].id : 0;
+            data.gallery_ids = state.images.slice(1).map(function (i) { return i.id; }).join(',');
+        }
+        else { data.image_id = 0; data.gallery_ids = ''; }
+
+        // Blocksy per-image videos: only send the images the merchant edited,
+        // and only those still present in the gallery.
+        if (blocksyVideo) {
+            var vidMap = {};
+            state.images.forEach(function (i) {
+                if (videoDirty[i.id] && i.video && typeof i.video === 'object') { vidMap[i.id] = i.video; }
+            });
+            if (Object.keys(vidMap).length) { data.blocksy_videos = JSON.stringify(vidMap); }
+        }
+
+        var cats = []; $('input[name="category_ids[]"]:checked').each(function () { cats.push($(this).val()); });
+        data.category_ids = cats.join(',');
+
+        // Brand IDs — only sent when the brand section is rendered. Omitting
+        // the field tells the server to leave existing brand assignments
+        // untouched rather than clearing them.
+        if ($('#bpe-brand-list').length) {
+            var brands = []; $('input[name="brand_ids[]"]:checked').each(function () { brands.push($(this).val()); });
+            data.brand_ids = brands.join(',');
+        }
+
+        // Tags
+        data.tag_names = state.tags.join(',');
+
+        // Third-party metabox + WC Product Data custom fields.
+        // Array-style names (`tax_input[orderable_product_label][]`, groups of
+        // checkboxes, etc.) must accumulate into a JS array — otherwise each
+        // repeated name overwrites the previous one and only the last checked
+        // term makes it to the server. We strip the trailing `[]` so jQuery's
+        // default serializer re-emits it for every array element.
+        //
+        // .brikpanel-pe-var-extras inputs are per-variation 3rd-party fields
+        // whose names look like `field_name[<loop_idx>]`. Posting them at the
+        // top level lets PHP assemble `$_POST['field_name'][<loop_idx>]`
+        // natively — exactly what `woocommerce_save_product_variation` handlers
+        // expect to read from.
+        //
+        // .brikpanel-pe-ext-card holds cards registered by third parties via the
+        // `brikpanel_product_editor_boxes` filter. Any inputs a developer renders
+        // inside their box (e.g. ACF's `acf[...]` fields via acf_render_fields())
+        // are forwarded the same way so they reach the server and the native
+        // save_post handlers (ACF, custom meta, …) can persist them.
+        //
+        // #acf-form-data is ACF's hidden block (_acf_nonce, _acf_post_id, …).
+        // It must travel with the payload so ACF's save_post handler can verify
+        // its nonce — wherever on the page acf_form_data() emitted it.
+        // Extracted so the per-variation extras pass below can reuse the exact
+        // same bracket-walking rules while supplying a rewritten name.
+        function collectNamedInput(name, val) {
+            // Extract bracket groups: name="a[b][c]" → key="a", suffixes=["b","c"].
+            var m = /^([^\[]+)((?:\[[^\]]*\])*)$/.exec(name);
+            if (!m) return;
+            var key = m[1];
+            var suffix = m[2] || '';
+            if (suffix === '') {
+                if (!data.hasOwnProperty(key)) data[key] = val;
+                return;
+            }
+            // Walk bracket chain into data[key] as a nested array/object.
+            if (!data.hasOwnProperty(key) || (typeof data[key] !== 'object' || data[key] === null)) {
+                data[key] = {};
+            }
+            var parts = [];
+            suffix.replace(/\[([^\]]*)\]/g, function (_, p) { parts.push(p); return ''; });
+            var cursor = data[key];
+            for (var i = 0; i < parts.length - 1; i++) {
+                var p = parts[i];
+                if (p === '') p = (Array.isArray(cursor) ? cursor.length : Object.keys(cursor).length).toString();
+                if (typeof cursor[p] !== 'object' || cursor[p] === null) cursor[p] = {};
+                cursor = cursor[p];
+            }
+            var last = parts[parts.length - 1];
+            if (last === '') {
+                if (!Array.isArray(cursor.__arr)) cursor.__arr = [];
+                // When the input is a <select multiple>, .val() is an array and
+                // each selected value must become its own element of __arr.
+                // Pushing the whole array (the old behaviour) made PHP receive a
+                // nested array (`[['x','y']]`) — ACF then stringified it to the
+                // literal "Array", silently destroying multi-select values.
+                if (Array.isArray(val)) {
+                    for (var ai = 0; ai < val.length; ai++) cursor.__arr.push(val[ai]);
+                } else {
+                    cursor.__arr.push(val);
+                }
+            } else {
+                cursor[last] = val;
+            }
+        }
+
+        // Normalise an input's value the way the collector expects.
+        function readInputValue($el) {
+            var val = $el.val();
+            // A <select multiple> (ACF select with multiple=1, taxonomy
+            // multi_select, any 3rd-party multi-select) returns an ARRAY from
+            // .val() — or null when nothing is selected. Normalise null to an
+            // empty array so the array-spread paths handle it uniformly
+            // instead of pushing a bare null.
+            if (val === null && $el.is('select[multiple]')) val = [];
+            return val;
+        }
+
+        // Everything EXCEPT the per-variation extras, which need re-indexing
+        // and therefore get their own pass immediately below.
+        $('.brikpanel-pe-metaboxes-wrap :input[name], .brikpanel-pe-wc-fields :input[name], .brikpanel-pe-ext-card :input[name], #acf-form-data :input[name]').each(function () {
+            var $el = $(this), name = $el.attr('name');
+            if (!name) return;
+            if (($el.is(':checkbox') || $el.is(':radio')) && !$el.is(':checked')) return;
+            collectNamedInput(name, readInputValue($el));
+        });
+
+        // Which position each table row will occupy in the `variations` array.
+        // Mirrors the main-row loop further below exactly, including its
+        // `if (!v) return;` skip, so the mapping stays true even if the DOM and
+        // state ever disagree about a row.
+        var varSubmitIndexByDataIdx = {};
+        if (isVar) {
+            var submitPos = 0;
+            $('#bpe-var-table-body tr.var-main-row').each(function (idx) {
+                if (!state.variations[idx]) return;
+                varSubmitIndexByDataIdx[parseInt($(this).attr('data-idx'), 10)] = submitPos++;
+            });
+        }
+
+        // Per-variation third-party fields. Their name attributes carry the
+        // loop index they were RENDERED with (`data-loop`), but the server
+        // dispatches `woocommerce_save_product_variation` with the SUBMITTED
+        // position. Deleting, reordering or regenerating rows makes those two
+        // diverge, which silently writes one variation's values onto another
+        // (and drops the last one). Re-index here so `$_POST['field'][$loop]`
+        // always addresses the variation the merchant actually edited.
+        $('#bpe-var-table-body tr.var-extras-row').each(function () {
+            var $row = $(this);
+            var domIdx = parseInt($row.attr('data-idx'), 10);
+            var submitIdx = varSubmitIndexByDataIdx[domIdx];
+            if (submitIdx === undefined) return; // row has no main row in the payload
+            var origLoop = parseInt($row.attr('data-loop'), 10);
+            $row.find(':input[name]').each(function () {
+                var $el = $(this), name = $el.attr('name');
+                if (!name) return;
+                if (($el.is(':checkbox') || $el.is(':radio')) && !$el.is(':checked')) return;
+                if (!isNaN(origLoop) && origLoop !== submitIdx) {
+                    // Only the FIRST bracket group, and only when it really is
+                    // this row's loop number. A plugin keying on something else
+                    // (`field[sub][<loop>]`, a literal variation id, a string)
+                    // is left exactly as it rendered.
+                    name = name.replace(/^([^\[]+)\[(\d+)\]/, function (whole, base, num) {
+                        return parseInt(num, 10) === origLoop ? base + '[' + submitIdx + ']' : whole;
+                    });
+                }
+                collectNamedInput(name, readInputValue($el));
+            });
+        });
+        // Flatten nested containers back to URL-encoded bracket notation so
+        // URLSearchParams serialises them correctly. `{a: {0: 'x', 1: 'y'}}`
+        // becomes `a[0]=x&a[1]=y` — which is what PHP unpacks into
+        // `$_POST['a'] = ['x','y']`.
+        function flattenPost(target, prefix, val) {
+            if (val === null || val === undefined) return;
+            if (typeof val !== 'object') { target.push([prefix, val]); return; }
+            if (Array.isArray(val)) {
+                val.forEach(function (v, i) { flattenPost(target, prefix + '[' + i + ']', v); });
+                return;
+            }
+            // {__arr: [...]} is the collector's internal marker for inputs
+            // whose names end in `[]` (e.g. `tax_input[tax][]` for hierarchical
+            // taxonomy checkboxes). Emit the array values under the original
+            // prefix so the `__arr` key never leaks into the POST payload.
+            if (Array.isArray(val.__arr)) {
+                // An empty __arr with no sibling keys means a <select multiple>
+                // was emptied (all options deselected). ACF submits a bare
+                // hidden input for this case so it can clear the value; emit an
+                // empty string under the base prefix to reproduce that, else the
+                // field is simply absent from the POST and ACF keeps the old
+                // value — making it impossible to clear a multi-select.
+                if (val.__arr.length === 0 && Object.keys(val).length === 1) {
+                    target.push([prefix, '']);
+                    return;
+                }
+                val.__arr.forEach(function (v, i) { flattenPost(target, prefix + '[' + i + ']', v); });
+                Object.keys(val).forEach(function (k) {
+                    if (k === '__arr') return;
+                    flattenPost(target, prefix + '[' + k + ']', val[k]);
+                });
+                return;
+            }
+            Object.keys(val).forEach(function (k) {
+                flattenPost(target, prefix + '[' + k + ']', val[k]);
+            });
+        }
+        // Rank Math — drains its Redux store into the POST payload. Rank
+        // Math's React metabox keeps the user's edits in a wp.data store and
+        // only persists them via a REST call wired to the classic-editor
+        // form submit event. Our BrikPanel Update button isn't a form
+        // submit, so without this hand-off the user's SEO edits are
+        // abandoned when they leave the page.
+        try {
+            var rmSel = window.wp && window.wp.data && window.wp.data.select && window.wp.data.select('rank-math');
+            if (rmSel && typeof rmSel.getTitle === 'function') {
+                var _rmPick = function (getter, key) {
+                    try { var v = rmSel[getter] && rmSel[getter](); if (v !== undefined && v !== null) data[key] = v; } catch (e) {}
+                };
+                _rmPick('getTitle',           'bpe_rm_title');
+                _rmPick('getDescription',     'bpe_rm_description');
+                _rmPick('getCanonicalUrl',    'bpe_rm_canonical_url');
+                _rmPick('getBreadcrumbTitle', 'bpe_rm_breadcrumb_title');
+                _rmPick('getPillarContent',   'bpe_rm_pillar_content');
+                _rmPick('getFacebookTitle',       'bpe_rm_facebook_title');
+                _rmPick('getFacebookDescription', 'bpe_rm_facebook_description');
+                _rmPick('getFacebookImage',       'bpe_rm_facebook_image');
+                _rmPick('getFacebookImageID',     'bpe_rm_facebook_image_id');
+                _rmPick('getTwitterTitle',        'bpe_rm_twitter_title');
+                _rmPick('getTwitterDescription',  'bpe_rm_twitter_description');
+                _rmPick('getTwitterImage',        'bpe_rm_twitter_image');
+                _rmPick('getTwitterImageID',      'bpe_rm_twitter_image_id');
+                _rmPick('getTwitterUseFacebook',  'bpe_rm_twitter_use_facebook');
+                _rmPick('getTwitterCardType',     'bpe_rm_twitter_card_type');
+                // Keywords: Rank Math stores them as a comma-separated string.
+                try { var kw = rmSel.getKeywords && rmSel.getKeywords(); if (typeof kw === 'string') data.bpe_rm_focus_keyword = kw; } catch (e) {}
+                // Robots array (noindex, nofollow, etc.) — JSON-encode so PHP
+                // receives an intact list regardless of jQuery's serializer.
+                try {
+                    var robots = rmSel.getRobots && rmSel.getRobots();
+                    if (Array.isArray(robots)) data.bpe_rm_robots = JSON.stringify(robots);
+                } catch (e) {}
+                try {
+                    var adv = rmSel.getAdvancedRobots && rmSel.getAdvancedRobots();
+                    if (adv && typeof adv === 'object') data.bpe_rm_advanced_robots = JSON.stringify(adv);
+                } catch (e) {}
+                // SEO score. Rank Math writes this meta from its editor JS
+                // alone (dispatch → REST updateMeta on classic form submit /
+                // Gutenberg save); no PHP path of its own touches it. Without
+                // forwarding it, the score shown in Rank Math's own list column
+                // freezes at whatever the last native-editor save left behind.
+                try {
+                    var rmScore = rmSel.getAnalysisScore && rmSel.getAnalysisScore();
+                    if (rmScore !== undefined && rmScore !== null) data.bpe_rm_seo_score = rmScore;
+                } catch (e) {}
+                // Rank Math stores the inverse of the toggle: 'off' means the
+                // frontend badge IS shown.
+                try {
+                    var rmShow = rmSel.getShowScoreFrontend && rmSel.getShowScoreFrontend();
+                    if (typeof rmShow === 'boolean') data.bpe_rm_dont_show_seo_score = rmShow ? 'off' : 'on';
+                } catch (e) {}
+                data.bpe_rm_active = 1;
+            }
+        } catch (e) { /* Rank Math not active — skip */ }
+
+        // AIOSEO — mirrors the Rank Math approach. AIOSEO's Vue app stores
+        // the user's edits in a hidden `#aioseo-post-settings` input as a
+        // JSON blob; capture the current value so it round-trips through
+        // our save endpoint (AIOSEO's own save_post hook reads it from the
+        // same hidden input on submit).
+        try {
+            var aioHidden = document.getElementById('aioseo-post-settings');
+            if (aioHidden && aioHidden.value) {
+                data.aioseo_post_settings = aioHidden.value;
+            }
+        } catch (e) {}
+
+        // Unwrap anything we nested into plain data keys and emit bracketed pairs.
+        var flattened = [];
+        Object.keys(data).forEach(function (k) {
+            var v = data[k];
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                flattenPost(flattened, k, v);
+                delete data[k];
+            }
+        });
+        data.__flat_extra_pairs = flattened;
+
+        // Send the non-variation (spec) attributes whenever the card is on the
+        // page. It is shown for both simple and variable products now, so its
+        // contents (descriptive/tag attributes like "Occasion") are always
+        // posted; the server merges them with any variation attributes. If the
+        // card markup is absent entirely we omit the key, which tells the
+        // server "section not posted — leave existing attributes alone".
+        if ($('#bpe-attr-list').length) {
+            // Pass the *effective* variable mode: when the toggle is on but no
+            // variations exist the save falls back to a simple product, so the
+            // variation-flagged rows must be kept as specs (isVar is false here).
+            data.non_variation_attributes = JSON.stringify(collectNonVariationAttributes(isVar));
+        }
+
+        if (isVar) {
+            // Variation attributes come straight from the unified editor's
+            // "use for variations" rows so the latest toggles/edits are sent.
+            // Attach each axis's Default Form Values selection (display name,
+            // '' = none) so the server can persist _default_attributes.
+            var varAttrs = collectVariationAttributes();
+            // That collector drops an axis with no values, because nothing
+            // downstream can build a combination out of one. The save still has
+            // to hear about it: an import can empty a parent's option list
+            // while every variation keeps its value, and a server that never
+            // learns the axis exists takes it off the product altogether —
+            // leaving a variable product with children and no attributes. Send
+            // it with an empty list and let the server decide what that means
+            // (see the empty-values branch in save_variations()).
+            var seenAxisKeys = {};
+            varAttrs.forEach(function (a) { seenAxisKeys[attrAxisKey(a)] = true; });
+            collectAttrRows().forEach(function (r) {
+                if (!r.useVar || r.values.length) return;
+                var emptyKey = attrAxisKey(r);
+                if (!emptyKey || seenAxisKeys[emptyKey]) return;
+                seenAxisKeys[emptyKey] = true;
+                varAttrs.push({ name: r.name, values: [], taxonomy: r.taxonomy, key: emptyKey, visible: r.showOnPage });
+            });
+            varAttrs.forEach(function (a) {
+                a['default'] = state.defaultAttributes[attrAxisKey(a)] || '';
+            });
+            data.attributes = JSON.stringify(varAttrs);
+            var tv = [];
+            // Iterate only the main rows — extras rows sit between them and
+            // would otherwise shift the idx → state.variations mapping.
+            $('#bpe-var-table-body tr.var-main-row').each(function (idx) {
+                var v = state.variations[idx]; if (!v) return;
+                var $mainRow = $(this);
+                var varManageStock = $mainRow.find('.var-manage').is(':checked');
+                var varStockStatus = $mainRow.find('.var-stock-status').val() || 'instock';
+                var varObj = { id: v.id || 0, attributes: v.attributes,
+                    enabled: $mainRow.find('.var-enabled').is(':checked') ? 1 : 0,
+                    regular_price: parsePrice($mainRow.find('.var-price').val(), sep),
+                    sale_price: parsePrice($mainRow.find('.var-sale-price').val(), sep),
+                    sale_from: $mainRow.find('.var-sale-from').val() || '',
+                    sale_to:   $mainRow.find('.var-sale-to').val()   || '',
+                    manage_stock: varManageStock ? 1 : 0,
+                    stock_quantity: $mainRow.find('.var-stock').val(),
+                    stock_status: varStockStatus,
+                    sku: $mainRow.find('.var-sku').val(),
+                    image_ids: (v.images || []).map(function(img) { return img.id; }) };
+                var $varGtin = $mainRow.find('.var-gtin');
+                if ($varGtin.length) varObj.global_unique_id = $varGtin.val();
+                var $varTax = $mainRow.find('.var-tax-class');
+                if ($varTax.length) varObj.tax_class = $varTax.val();
+                var $varShip = $mainRow.find('.var-shipping-class');
+                if ($varShip.length) varObj.shipping_class = $varShip.val();
+                // Backorder mode. When tracking is on, WC derives the status,
+                // so we roundtrip the stored backorder rule (preserving any
+                // existing "allow/notify"). When off, it only matters while
+                // the manually-chosen status is "On backorder".
+                if (varManageStock) {
+                    if (v.backorders && v.backorders !== 'no') varObj.backorders = v.backorders;
+                } else if (varStockStatus === 'onbackorder') {
+                    var $backRow = $('#bpe-var-table-body tr.var-backorder-row[data-idx="' + idx + '"]');
+                    var $backSel = $backRow.find('input[type="radio"]:checked');
+                    if ($backSel.length) {
+                        varObj.backorders = $backSel.val() === 'notify' ? 'notify' : 'yes';
+                    }
+                }
+                var $cogsInput = $(this).find('.var-cogs');
+                if ($cogsInput.length) varObj.cogs_value = parsePrice($cogsInput.val(), sep);
+                var $varVendor = $(this).find('.var-vendor');
+                if ($varVendor.length) {
+                    varObj.vendor_id  = parseInt($varVendor.val(), 10) || 0;
+                    varObj.vendor_sku = v.vendor_sku || '';
+                }
+                tv.push(varObj);
+            });
+            data.variations = JSON.stringify(tv);
+            // Baseline for the adoption step: whatever the table holds that
+            // differs from this snapshot when the reply lands was typed while
+            // the request was in flight, and must not be overwritten by it.
+            state.lastSubmittedVariations = tv;
+        } else {
+            state.lastSubmittedVariations = [];
+        }
+
+        // Build FormData so bracketed repeat keys (`field[0]`, `field[1]`…)
+        // from third-party variation fields stay intact. $.post uses jQuery's
+        // param serializer which can't emit the same key twice or our nested
+        // flattened pairs reliably.
+        var fd = new FormData();
+        var _extraPairs = data.__flat_extra_pairs || [];
+        delete data.__flat_extra_pairs;
+        Object.keys(data).forEach(function (k) {
+            var v = data[k];
+            if (Array.isArray(v)) {
+                v.forEach(function (item) { fd.append(k + '[]', item); });
+            } else if (v === undefined || v === null) {
+                fd.append(k, '');
+            } else {
+                fd.append(k, v);
+            }
+        });
+        _extraPairs.forEach(function (pair) { fd.append(pair[0], pair[1]); });
+
+        $.ajax({ url: PE.ajax_url, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json' })
+        .done(function (r) {
+            state.saving = false; $pub.prop('disabled', false).text(op);
+            if (r.success) {
+                state.dirty = false;
+                showToast(r.data.message + ' \u2713', 'success');
+                // Surface non-fatal save warnings (e.g. a duplicate SKU/GTIN
+                // that WooCommerce rejected). The product saved, but these
+                // values did not \u2014 show each as a longer-lived error toast so
+                // the merchant knows to pick a unique value instead of assuming
+                // everything persisted. Messages are already localized server-side.
+                if (r.data.warnings && r.data.warnings.length) {
+                    r.data.warnings.forEach(function (w, i) {
+                        setTimeout(function () { showToast(w, 'error', 7000); }, 250 * (i + 1));
+                    });
+                }
+                // Refresh SureRank's SEO analysis so the checks reflect the
+                // just-saved title/description/keyword/content. Deferred so it
+                // reads the product id this handler may set just below.
+                if (typeof PE._surerankAnalyze === 'function') { setTimeout(PE._surerankAnalyze, 0); }
+                // Adopt the freshly-saved variation IDs + per-variation 3rd-party
+                // fields so the "More fields" expander appears for variations that
+                // were just created (new product, or rows added this session)
+                // without forcing a full page reload.
+                // Order matters: the attribute rows have to carry their new
+                // taxonomies before the variation list is adopted, because
+                // adoptSavedVariations() reads the axis keys back out of the
+                // live DOM to label the rows and to reset the stale-table hint.
+                // Keep the count the conversion warning reads in step with what
+                // the product now actually has. Sent on every successful save,
+                // including one that just converted the product to simple.
+                if (typeof r.data.variation_count === 'number') {
+                    productData.variation_count = r.data.variation_count;
+                }
+                adoptSavedAttributes(r.data.attributes, r.data.global_attributes, r.data.promoted_axes, silent);
+                if (r.data.variations) { adoptSavedVariations(r.data.variations, r.data.variation_extras || {}, silent); }
+                if (r.data.product_id) {
+                    $('#bpe-product-id').val(r.data.product_id);
+                    // Reflect the final slug (WP may have de-duplicated it or
+                    // generated it from the title when left blank) so the field
+                    // shows the real permalink without a reload.
+                    if (typeof r.data.slug !== 'undefined') { $('#bpe-slug').val(r.data.slug); }
+                    // Keep the auto-save gate in sync: a product becomes live
+                    // once saved as publish/private/password, and reverts when
+                    // saved back to draft.
+                    $('#bpe-product-id').data('live', (status === 'publish' || status === 'private' || status === 'password') ? 1 : 0);
+                    var newUrl = PE.admin_url + 'admin.php?page=brikpanel-product-editor&product_id=' + r.data.product_id;
+                    window.history.replaceState(null, '', newUrl);
+                    // Status dropdown lives in the header and is the anchor
+                    // new buttons get inserted before.
+                    var $statusAnchor = $('.brikpanel-pe-status-wrap');
+                    // Duplicate is available as soon as the product has an ID
+                    // (draft, publish, private — all valid).
+                    if (!$('#bpe-duplicate').length && $statusAnchor.length) {
+                        $('<button type="button" class="brikpanel-pe-btn secondary" id="bpe-duplicate" data-id="' + r.data.product_id + '">' + (PE.i18n.duplicate || 'Duplicate') + '</button>').insertBefore($statusAnchor);
+                    } else {
+                        $('#bpe-duplicate').attr('data-id', r.data.product_id);
+                    }
+                    if (status === 'publish' || status === 'private' || status === 'password') {
+                        $pub.text(PE.i18n.update || 'Update');
+                        // View product
+                        if (!$('#bpe-view-product').length && $statusAnchor.length) {
+                            var viewUrl = r.data.permalink || (PE.admin_url.replace(/wp-admin\/?$/, '') + '?p=' + r.data.product_id);
+                            $('<a href="' + viewUrl + '" class="brikpanel-pe-btn secondary" id="bpe-view-product" target="_blank">' + (PE.i18n.view_product || 'View product') + '</a>').insertBefore($('#bpe-duplicate'));
+                        } else if ($('#bpe-view-product').length && r.data.permalink) {
+                            $('#bpe-view-product').attr('href', r.data.permalink);
+                        }
+                        // Add new
+                        if (!$('#bpe-add-new').length && $statusAnchor.length) {
+                            $('<a href="' + PE.admin_url + 'admin.php?page=brikpanel-product-editor" class="brikpanel-pe-btn secondary" id="bpe-add-new"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ' + (PE.i18n.add_new || 'Add new') + '</a>').insertBefore($statusAnchor);
+                        }
+                    }
+                }
+            } else showToast(r.data.message || PE.i18n.error || 'An error occurred', 'error');
+        }).fail(function (xhr) {
+            // Only $pub/op exist in this scope; the old $draft/od references were
+            // never declared and threw a ReferenceError here, which swallowed the
+            // real error toast whenever the save request failed (e.g. a 500 raised
+            // by a third-party plugin hooking into the product save). Restore the
+            // publish button and surface the actual server error instead.
+            state.saving = false; $pub.prop('disabled', false).text(op);
+            var msg = (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message)
+                ? xhr.responseJSON.data.message
+                : saveFailureDetail(xhr);
+            showToast(msg, 'error', 12000);
+            // The toast is short-lived and merchants report "an error occurred"
+            // with nothing else to go on. Put the whole reply in the console so
+            // a support request can carry the real cause.
+            if (window.console && console.error) {
+                console.error('BrikPanel: product save failed', { // i18n-ignore: console diagnostics, not user-facing UI
+                    status: xhr && xhr.status,
+                    statusText: xhr && xhr.statusText,
+                    response: xhr && xhr.responseText ? xhr.responseText.slice(0, 4000) : null
+                });
+            }
+        });
+    }
+
+    /* ====== Product Tags ====== */
+    function initTags() {
+        var $wrap = $('#bpe-tags-wrap');
+        var $input = $('#bpe-tag-input');
+        var $suggestions = $('#bpe-tag-suggestions');
+        if (!$input.length) return;
+
+        var allTags = (productData.all_tags || []).slice();
+
+        /* Add one or many tags at once. WordPress separates tags with commas,
+           so both commas and line breaks split here. Returns how many landed. */
+        function addTags(text) {
+            var added = 0;
+            splitDelimited(text, /[,\r\n]+/).forEach(function (v) {
+                if (hasTag(v)) return;
+                addProductTag(v);
+                added++;
+            });
+            if (added) { $input.val(''); $suggestions.hide(); }
+            return added;
+        }
+
+        $input.on('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addTags(this.value);
+            }
+            if (e.key === 'Backspace' && !this.value && state.tags.length) {
+                state.tags.pop();
+                renderProductTags();
+                state.dirty = true;
+            }
+        });
+
+        // Paste a comma-separated list (the format WordPress itself asks for)
+        // and get one tag per entry rather than a single tag holding them all.
+        $input.on('paste', function (e) {
+            var clip = (e.originalEvent || e).clipboardData;
+            var text = clip ? clip.getData('text') : '';
+            if (!text || !/[,\r\n]/.test(text)) return; // single tag — normal paste
+            e.preventDefault();
+            var n = addTags(text);
+            if (n) {
+                showToast((PE.i18n.tags_added || '%d tags added').replace('%d', n), 'success');
+            }
+        });
+
+        $input.on('input', function () {
+            var q = $.trim(this.value).toLowerCase();
+            if (!q) { $suggestions.hide(); return; }
+            var matches = allTags.filter(function (t) {
+                return t.toLowerCase().indexOf(q) !== -1 && !hasTag(t);
+            }).slice(0, 8);
+            if (!matches.length) { $suggestions.hide(); return; }
+            var html = '';
+            matches.forEach(function (t) {
+                html += '<div class="brikpanel-pe-tag-suggestion" data-value="' + esc(t) + '">' + esc(t) + '</div>';
+            });
+            $suggestions.html(html).show();
+        });
+
+        $suggestions.on('mousedown', '.brikpanel-pe-tag-suggestion', function (e) {
+            e.preventDefault();
+            // See the attribute-term handler above: attr(), not data(), so a
+            // numeric tag name stays a string instead of being coerced to Number.
+            var v = String($(this).attr('data-value') || '');
+            if (v && !hasTag(v)) {
+                addProductTag(v);
+                $input.val('');
+                $suggestions.hide();
+            }
+        });
+
+        $input.on('blur', function () {
+            setTimeout(function () { $suggestions.hide(); }, 150);
+        });
+
+        $wrap.on('click', function () { $input.focus(); });
+    }
+
+    function hasTag(name) {
+        var needle = String(name).toLowerCase();
+        return state.tags.some(function (t) { return String(t).toLowerCase() === needle; });
+    }
+
+    function addProductTag(name) {
+        state.tags.push(name);
+        renderProductTags();
+        state.dirty = true;
+    }
+
+    function removeProductTag(idx) {
+        state.tags.splice(idx, 1);
+        renderProductTags();
+        state.dirty = true;
+    }
+
+    function renderProductTags() {
+        var $wrap = $('#bpe-tags-wrap');
+        $wrap.find('.brikpanel-pe-tag').remove();
+        var $input = $wrap.find('input');
+        state.tags.forEach(function (t, idx) {
+            var $tag = $('<span class="brikpanel-pe-tag">' + esc(t) + '</span>');
+            var $rm = $('<button type="button" class="brikpanel-pe-tag-remove">&times;</button>');
+            $rm.on('click', function () { removeProductTag(idx); });
+            $tag.append($rm);
+            $input.before($tag);
+        });
+    }
+
+    function loadExistingData() {
+        if (!productData || !productData.id) {
+            // Brand-new product: there are no stored images to lose, and
+            // anything the merchant adds before the first save must still be
+            // sent, so the gallery already speaks for itself.
+            state.imagesReady = true;
+            return;
+        }
+        if (productData.gallery && productData.gallery.length) {
+            productData.gallery.forEach(function (i) { state.images.push({ id: i.id, url: i.url, alt: i.alt ? String(i.alt) : '', video: (i.video && typeof i.video === 'object') ? i.video : defaultVideo() }); });
+            renderGallery();
+        }
+        // From here the gallery mirrors the saved product, so a save is
+        // entitled to speak for it — including "the merchant removed them all".
+        state.imagesReady = true;
+        if (productData.downloads && productData.downloads.length) {
+            state.downloads = productData.downloads.slice();
+            renderDownloads();
+        }
+        if (productData.tags && productData.tags.length) {
+            state.tags = productData.tags.slice();
+            renderProductTags();
+        }
+        if (productData.is_downloadable || productData.is_virtual) {
+            $('#bpe-weight-card, #bpe-dims-card').hide();
+        }
+        // Hydrate the unified attribute editor. Variation attributes load first
+        // (flagged "use for variations"), then the plain specs. Runs for simple
+        // AND variable products.
+        var $aList = $('#bpe-attr-list');
+        if ($aList.length) {
+            if (productData.is_variable && productData.attributes && productData.attributes.length) {
+                productData.attributes.forEach(function (attr) {
+                    $aList.append(createAttrRow(attr.name, attr.values || [], attr.taxonomy || '', true, attr.visible !== false));
+                });
+            }
+            if (productData.non_variation_attributes && productData.non_variation_attributes.length) {
+                productData.non_variation_attributes.forEach(function (attr) {
+                    $aList.append(createAttrRow(attr.name, attr.values || [], attr.taxonomy || '', false, attr.visible !== false));
+                });
+            }
+        }
+        // Load the variation table whenever the product is variable and has
+        // variations. It used to require the parent to expose axes too, which
+        // looks equivalent and is not: WooCommerce hides a variation's values
+        // when the parent axis loses its "used for variations" flag or its
+        // option list, so a product rewritten by an import loads with axes
+        // missing but children intact. Skipping the table there left
+        // state.variations empty, the save then posted "simple", and every
+        // variation was deleted.
+        if (productData.is_variable
+            && ((productData.attributes && productData.attributes.length)
+                || (productData.variations && productData.variations.length))) {
+            state.varAttributes = productData.attributes || [];
+            // Seed the Default Form Values selection map from each variation
+            // attribute's stored default (a display name resolved server-side).
+            state.defaultAttributes = {};
+            productData.attributes.forEach(function (a) {
+                if (a && a['default']) {
+                    state.defaultAttributes[attrAxisKey({ name: a.name, taxonomy: a.taxonomy })] = a['default'];
+                }
+            });
+            state.variations = applyVarDisplayNames(productData.variations || []);
+            if (state.variations.length) { renderVarTable(); }
+        }
+        // Reflect the loaded product type: the toggle is pre-checked by PHP for
+        // variable products. Running the sync now wires up the builder, table
+        // visibility, per-row switches and parent-pricing visibility to match.
+        $('#bpe-var-toggle').trigger('change');
+    }
+
+    /* Auto-save every 60s using the current visibility (no silent downgrade). */
+    function initAutoSave() {
+        // Only auto-save if on the editor page
+        if (!$('#bpe-product-id').length) return;
+        setInterval(function () {
+            // Skip silent auto-save until the product is actually published.
+            // A brand-new or draft product is a work in progress, so we never
+            // persist it behind the user's back — auto-save only protects
+            // already-live (publish/private) products from losing edits.
+            if ($('#bpe-product-id').data('live') != 1) return;
+            if (state.dirty && !state.saving && $.trim($('#bpe-name').val())) {
+                var status = $('#bpe-status').val() || 'draft';
+                saveProduct(status, true); // silent = true
+            }
+        }, 60000);
+    }
+
+    /* Duplicate product */
+    function duplicateProduct() {
+        var id = $('#bpe-duplicate').data('id');
+        if (!id) return;
+        var $btn = $('#bpe-duplicate');
+        $btn.prop('disabled', true).text(PE.i18n.duplicating || 'Duplicating...');
+        $.post(PE.ajax_url, { action: 'brikpanel_duplicate_product', security: PE.nonce, product_id: id }, function (r) {
+            $btn.prop('disabled', false).text(PE.i18n.duplicate || 'Duplicate');
+            if (r.success) {
+                showToast(r.data.message + ' \u2713', 'success');
+                setTimeout(function () {
+                    window.location.href = PE.admin_url + 'admin.php?page=brikpanel-product-editor&product_id=' + r.data.product_id;
+                }, 500);
+            } else { showToast(r.data.message || 'Error', 'error'); }
+        });
+    }
+
+    /* SEO live preview */
+    function initSeoPreview() {
+        $('#bpe-seo-title').on('input', function () {
+            var val = this.value || $('#bpe-name').val() || PE.i18n.product_title || 'Product title';
+            $('#bpe-seo-preview-title').text(val);
+            $('#bpe-seo-title-count').text(this.value.length);
+        });
+        $('#bpe-seo-desc').on('input', function () {
+            var val = this.value || ($('#bpe-short-desc').text() || '').trim();
+            $('#bpe-seo-preview-desc').text(val);
+            $('#bpe-seo-desc-count').text(this.value.length);
+        });
+        // Also update preview when product name changes
+        $('#bpe-name').on('input', function () {
+            if (!$('#bpe-seo-title').val()) {
+                $('#bpe-seo-preview-title').text(this.value || PE.i18n.product_title || 'Product title');
+            }
+        });
+    }
+
+    /* Set once the SEO bridge is up; lets the gallery ask for a re-analysis
+       without reaching into the bridge's internals. Stays null when no SEO
+       plugin is active. */
+    var seoScheduleSync = null;
+
+    /* Rank Math pushes the post content through a `rank_math_content` filter
+       before every analysis run, and its own integrations (ACF, and whatever
+       else a site has) hook into it. That call sits inside an unguarded loop:
+       if one handler throws, the exception takes the entire run down with it,
+       so not a single check executes and the metabox reports "0 / 100" for a
+       product whose real score is fine — while the products list, which reads
+       the last saved score, keeps showing the right number.
+
+       We cannot make other people's code stop throwing, so make one broken
+       integration cost only itself: wrap every handler so a failure hands the
+       content back untouched and the analysis carries on. */
+    function guardRankMathContentFilter() {
+        var HOOK = 'rank_math_content'; // i18n-ignore: wp.hooks filter name, not user-facing text
+
+        // Only meaningful where Rank Math actually renders. Both routes that
+        // can show it (the SEO card and a hand-placed section) run Rank Math's
+        // own metabox callback server-side, and that callback prints this
+        // wrapper, so it is in the DOM before any of this runs.
+        if (!document.getElementById('rank-math-metabox-wrapper') && !window.rankMath) return;
+
+        function wrapHandlers() {
+            try {
+                var hooks = window.wp && window.wp.hooks;
+                if (!hooks || !hooks.filters || !hooks.filters[HOOK]) return false;
+                var handlers = hooks.filters[HOOK].handlers;
+                if (!handlers || !handlers.length) return false;
+
+                var wrapped = false;
+                handlers.forEach(function (handler) {
+                    var original = handler && handler.callback;
+                    if (typeof original !== 'function' || original.brikpanelGuarded) return;
+                    var guarded = function (content) {
+                        try {
+                            return original.apply(this, arguments);
+                        } catch (e) {
+                            return content;
+                        }
+                    };
+                    guarded.brikpanelGuarded = true;
+                    handler.callback = guarded;
+                    wrapped = true;
+                });
+                return wrapped;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function reanalyse() {
+            try {
+                if (window.rankMathEditor && typeof rankMathEditor.refresh === 'function') {
+                    rankMathEditor.refresh('content'); // i18n-ignore: Rank Math API argument, not user-facing text
+                }
+            } catch (e) {}
+        }
+
+        // Handlers register as their plugins boot, which can be before or after
+        // us, so cover both: wrap what is already there and keep watching.
+        wrapHandlers();
+        try {
+            if (window.wp && window.wp.hooks && typeof window.wp.hooks.addAction === 'function') {
+                // A plugin that re-registers its filter on every analysis would
+                // otherwise have us re-analyse forever, so the recovery pass is
+                // capped. The wrapping itself carries on regardless: it is the
+                // part that keeps the score alive.
+                var rescues = 0;
+                wp.hooks.addAction('hookAdded', 'brikpanel/seo-analysis-guard', function (hookName) { // i18n-ignore: hook + namespace identifiers, not user-facing text
+                    if (hookName !== HOOK) return;
+                    // A run poisoned before we got here left the score at zero;
+                    // recompute now that the handler can no longer take it down.
+                    if (wrapHandlers() && rescues < 5) {
+                        rescues++;
+                        reanalyse();
+                    }
+                });
+            }
+        } catch (e) {}
+    }
+
+    /* Live SEO analysis bridge.
+     *
+     * The active SEO plugin's metabox renders inside the BrikPanel SEO card,
+     * but its content analyser reads the *native* post-editor fields, which
+     * PHP scaffolds hidden into the page (.brikpanel-pe-seo-native-bridge:
+     * #title / #content / #excerpt / slug). This keeps that scaffold in sync
+     * with the BrikPanel fields on every edit and pokes each plugin to
+     * re-analyse, so the SEO/readability score updates in real time exactly
+     * like it does on the native WooCommerce product editor — for Yoast,
+     * Rank Math, AIO SEO and SEOPress alike, on simple and variable products. */
+    function initSeoAnalysisBridge() {
+        // Runs before the bridge check: the analysis can be poisoned on any
+        // page carrying Rank Math's metabox, including the one hand-placed
+        // through the section picker, which ships no bridge scaffold.
+        guardRankMathContentFilter();
+
+        var $bridge = $('.brikpanel-pe-seo-native-bridge');
+        if (!$bridge.length) return; // no SEO plugin active — nothing to feed
+
+        var nTitle    = document.getElementById('title');
+        var nContent  = document.getElementById('content');
+        var nExcerpt  = document.getElementById('excerpt');
+        var nSlug     = document.getElementById('post_name');
+        var nSlugFull = document.getElementById('editable-post-name-full');
+
+        function fire(el) {
+            if (!el) return;
+            // Native + jQuery events so both addEventListener and jQuery
+            // .on() collectors (Yoast Woo binds jQuery('#excerpt')) react.
+            ['input', 'change', 'keyup'].forEach(function (type) {
+                el.dispatchEvent(new Event(type, { bubbles: true }));
+            });
+            try { $(el).trigger('input').trigger('change').trigger('keyup'); } catch (e) {}
+        }
+
+        function refreshAnalyzers() {
+            // Yoast SEO (+ WooCommerce)
+            try {
+                if (window.YoastSEO && YoastSEO.app && typeof YoastSEO.app.refresh === 'function') {
+                    YoastSEO.app.refresh();
+                }
+            } catch (e) {}
+            // Rank Math (classic assessor)
+            try {
+                if (window.rankMathEditor && typeof rankMathEditor.refresh === 'function') {
+                    rankMathEditor.refresh('content');
+                }
+            } catch (e) {}
+            // AIO SEO / SEOPress re-analyse from the #content/#title input
+            // events fired in pushToNative(), so no explicit API call needed.
+        }
+
+        /* The analysers read the featured image out of the native
+           featured-image metabox, which this editor does not render, so hand
+           them the first gallery image — the one badged "Featured" — instead.
+           Without it, every "does this page use an image?" check fails on a
+           product whose only image is the featured one, and the score here
+           lands below the one the same product gets on the native editor. */
+        var lastThumbnail = null;
+        function pushFeaturedImage() {
+            try {
+                var img = (state.images && state.images.length) ? state.images[0] : null;
+                var key = img && img.url ? img.url + '\n' + (img.alt || '') : '';
+                if (key === lastThumbnail) return; // unchanged — do not retrigger
+                var collector = window.rankMathEditor
+                    && rankMathEditor.assessor
+                    && rankMathEditor.assessor.dataCollector;
+                if (!collector || typeof collector.assessThumbnail !== 'function') return;
+                lastThumbnail = key;
+                if (!key) return;
+                collector.assessThumbnail({ src: img.url, alt: img.alt || '' });
+            } catch (e) {}
+        }
+
+        /* Only mirror a field this editor actually shows. Description, short
+           description and permalink are each independently switchable in the
+           section picker, and getEditorHtml() hands back an empty string for an
+           editor that is not on the page — so without this check, hiding the
+           Description section would wipe the real product text out of the
+           scaffold ~1.2s after load and the analysers would grade a blank page.
+           PHP already seeded the scaffold with the saved values, so leaving a
+           field alone is exactly right. Matches the save payload, which guards
+           the same way before writing description/short_description. */
+        function pushToNative() {
+            var title   = $('#bpe-name').val() || '';
+            var content = getEditorHtml('bpe-description') || '';
+            var excerpt = getEditorHtml('bpe-short-desc') || '';
+            var slug    = $('#bpe-slug').val() || '';
+
+            // #bpe-name is always rendered, so the title needs no guard.
+            if (nTitle && nTitle.value !== title) { nTitle.value = title; fire(nTitle); }
+            if (nContent && $('#bpe-description').length && nContent.value !== content) { nContent.value = content; fire(nContent); }
+            if (nExcerpt && $('#bpe-short-desc').length && nExcerpt.value !== excerpt) { nExcerpt.value = excerpt; fire(nExcerpt); }
+
+            // Keyword-in-URL is scored from the slug nodes, which PHP seeds once
+            // and never updates, so an edited permalink would keep being graded
+            // against the saved one.
+            if (nSlug && $('#bpe-slug').length && nSlug.value !== slug) {
+                nSlug.value = slug;
+                if (nSlugFull) nSlugFull.textContent = slug;
+                fire(nSlug);
+            }
+
+            pushFeaturedImage();
+            refreshAnalyzers();
+        }
+
+        var debounce = null;
+        function scheduleSync() {
+            clearTimeout(debounce);
+            debounce = setTimeout(pushToNative, 450);
+        }
+        // Reordering or replacing images changes which one is featured, so the
+        // gallery reaches the analysers through the same debounce as the text.
+        seoScheduleSync = scheduleSync;
+
+        // BrikPanel name + the two rich-text editors (contenteditable, their
+        // hidden HTML-source textareas, and paste/keystroke inside them).
+        $(document).on(
+            'input change keyup paste',
+            '#bpe-name, #bpe-short-desc, #bpe-short-desc-source, #bpe-description, #bpe-description-source, #bpe-slug',
+            scheduleSync
+        );
+
+        // Seed once the analyser is alive. Yoast emits YoastSEO:ready; for the
+        // others a short delayed first push covers their boot. Both paths are
+        // idempotent (pushToNative only fires events when a value changed).
+        $(window).on('YoastSEO:ready', pushToNative);
+        setTimeout(pushToNative, 1200);
+    }
+
+    /* SureRank "Analyze" panel. SureRank's own analysis lives in a React popup
+       BrikPanel routes around via the unified SEO fields, so we render its
+       checks server-side inside the SEO card. The Re-analyze button and a
+       post-save refresh re-fetch the panel so results track the latest saved
+       title, description, focus keyword and content. */
+    function initSurerankAnalyze() {
+        var $panel = $('#bpe-surerank-analysis');
+        if (!$panel.length) return;
+
+        var $btn  = $('#bpe-surerank-rerun');
+        var $body = $('#bpe-surerank-body');
+        var xhr = null, timer = null;
+
+        // Send the current (possibly unsaved) field values + description so
+        // the server can analyze exactly what's on screen — no save needed.
+        function payload() {
+            return {
+                action: 'brikpanel_pe_surerank_analyze',
+                security: PE.nonce,
+                product_id: $('#bpe-product-id').val() || 0,
+                seo_title: $('#bpe-seo-title').val() || '',
+                seo_description: $('#bpe-seo-desc').val() || '',
+                seo_focus_kw: $('#bpe-seo-focus-kw').val() || '',
+                seo_canonical: $('#bpe-seo-canonical').val() || '',
+                content: (typeof getEditorHtml === 'function' ? (getEditorHtml('bpe-description') || '') : '')
+            };
+        }
+
+        function analyze(silent) {
+            var data = payload();
+            if (!data.product_id) return;
+            if (xhr) { try { xhr.abort(); } catch (e) {} }
+            if (!silent) { $btn.prop('disabled', true).text(PE.i18n.analyzing || 'Analyzing...'); }
+            $panel.addClass('is-analyzing');
+            xhr = $.post(PE.ajax_url, data).done(function (r) {
+                if (r && r.success && typeof r.data.html === 'string' && r.data.html !== '') {
+                    $body.html(r.data.html);
+                }
+            }).always(function () {
+                xhr = null;
+                $panel.removeClass('is-analyzing');
+                if (!silent) { $btn.prop('disabled', false).text(PE.i18n.analyze || 'Re-analyze'); }
+            });
+        }
+
+        function scheduleLive() {
+            clearTimeout(timer);
+            timer = setTimeout(function () { analyze(true); }, 800);
+        }
+
+        // Manual re-analyze button.
+        $btn.on('click', function () { analyze(false); });
+
+        // Live, debounced updates as the user edits the SEO fields or the
+        // product description — the checks track typing without a save.
+        $(document).on('input change',
+            '#bpe-seo-title, #bpe-seo-desc, #bpe-seo-focus-kw, #bpe-seo-canonical',
+            scheduleLive);
+        $(document).on('input change keyup paste',
+            '#bpe-description, #bpe-description-source',
+            scheduleLive);
+
+        // Expose for the save-success handler to refresh after a save.
+        PE._surerankAnalyze = function () { analyze(true); };
+    }
+
+    /* Inline edit on product list page */
+    function initInlineEdit() {
+        $(document).on('dblclick', '.brikpanel-pe-stock-badge, .column-price .woocommerce-Price-amount', function () {
+            var $el = $(this);
+            if ($el.find('input').length) return; // already editing
+
+            var field = $el.data('field') || ($el.closest('.column-price').length ? 'price' : '');
+            var productId = $el.data('product-id') || $el.closest('tr').find('.check-column input').val();
+            var currentVal = $el.data('value') || $el.text().replace(/[^\d.,]/g, '');
+
+            if (!field || !productId) return;
+
+            var $input = $('<input type="text" class="brikpanel-pe-inline-input" value="' + esc(currentVal) + '">');
+            var origHtml = $el.html();
+            $el.html('').append($input);
+            $input.focus().select();
+
+            function saveInline() {
+                var newVal = $.trim($input.val());
+                if (newVal === currentVal) { $el.html(origHtml); return; }
+                $.post(PE.ajax_url, {
+                    action: 'brikpanel_inline_edit', security: PE.nonce,
+                    product_id: productId, field: field, value: newVal
+                }, function (r) {
+                    if (r.success) {
+                        $el.text(newVal).data('value', newVal);
+                        // Update stock badge class
+                        if (field === 'stock') {
+                            $el.removeClass('brikpanel-pe-stock-low brikpanel-pe-stock-out');
+                            var n = parseInt(newVal, 10);
+                            if (n === 0) $el.addClass('brikpanel-pe-stock-out');
+                            else if (n <= 5) $el.addClass('brikpanel-pe-stock-low');
+                        }
+                    } else { $el.html(origHtml); showToast(r.data.message || 'Error', 'error'); }
+                }).fail(function () { $el.html(origHtml); });
+            }
+
+            $input.on('blur', saveInline);
+            $input.on('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); saveInline(); }
+                if (e.key === 'Escape') { $el.html(origHtml); }
+            });
+        });
+    }
+
+    /* Toast */
+    function showToast(msg, type, duration) {
+        var $c = $('#bpe-toast-container');
+        if (!$c.length) { $c = $('<div id="bpe-toast-container" class="bpe-toast-container">'); $('body').append($c); }
+        var $t = $('<div class="bpe-toast bpe-toast-' + type + '">' + esc(msg) + '</div>');
+        $c.append($t);
+        requestAnimationFrame(function () { $t.addClass('show'); });
+        setTimeout(function () { $t.removeClass('show'); setTimeout(function () { $t.remove(); }, 300); }, duration || 3500);
+    }
+
+    /* Helpers */
+    function parsePrice(v, sep) {
+        if (!v) return '';
+        v = v.replace(/\s/g, '');
+        if (sep === ',') { v = v.replace(/\./g, '').replace(',', '.'); } else { v = v.replace(/,/g, ''); }
+        return v;
+    }
+
+    function slugify(t) {
+        return t.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\u0131/g, 'i').replace(/\u015f/g, 's').replace(/\u00e7/g, 'c')
+            .replace(/\u011f/g, 'g').replace(/\u00f6/g, 'o').replace(/\u00fc/g, 'u')
+            .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.appendChild(document.createTextNode(s)); return d.innerHTML; }
+
+    $(document).ready(init);
+})(jQuery);

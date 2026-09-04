@@ -1,0 +1,933 @@
+/**
+ * BrikPanel — Sidebar Navigation Customizer (settings page UI styles)
+ *
+ * Follows the BrikPanel design system: monochrome palette, soft borders,
+ * Shopify-inspired bevels on primary buttons, 0.75rem rounded cards.
+ */
+
+.brikpanel-nav-customizer {
+	--bg: #f1f1f1;
+	--card: #ffffff;
+	--text: #303030;
+	--text-secondary: #616161;
+	--text-muted: #8a8a8a;
+	--border: #e3e3e3;
+	--input-border: #8a8a8a;
+	--input-focus: #303030;
+	--primary: #303030;
+	--primary-hover: #1a1a1a;
+	--success: #1a8917;
+	--error: #d72c0d;
+
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	color: var(--text);
+	font-size: 0.875rem;
+	line-height: 1.5;
+	margin: 0 0 1rem;
+	max-width: 820px;
+}
+
+/* ----- Card shell ----- */
+.brikpanel-navc-card {
+	background: var(--card);
+	border: 1px solid var(--border);
+	border-radius: 0.75rem;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	padding: 1.25rem 1.5rem;
+}
+
+.brikpanel-navc-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1.25rem;
+	padding-bottom: 1rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.brikpanel-navc-title {
+	font-size: 1.125rem;
+	font-weight: 600;
+	margin: 0 0 0.25rem;
+	color: var(--text);
+}
+
+.brikpanel-navc-subtitle {
+	font-size: 0.8125rem;
+	color: var(--text-secondary);
+	margin: 0;
+}
+
+/* ----- Section ----- */
+.brikpanel-navc-section + .brikpanel-navc-section {
+	margin-top: 1.5rem;
+	padding-top: 1.5rem;
+	border-top: 1px dashed var(--border);
+}
+
+.brikpanel-navc-section-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.625rem;
+}
+
+.brikpanel-navc-section-title {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--text);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.brikpanel-navc-section-hint {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+}
+
+/* ----- List of items ----- */
+.brikpanel-navc-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	min-height: 0.5rem;
+}
+
+.brikpanel-navc-item {
+	display: block;
+	background: #fafafa;
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+	transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+	overflow: hidden;
+}
+
+.brikpanel-navc-row {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 0.5rem 0.625rem;
+}
+
+.brikpanel-navc-item:hover {
+	background: #f5f5f5;
+	border-color: #d0d0d0;
+}
+
+.brikpanel-navc-item.is-hidden {
+	opacity: 0.55;
+}
+
+.brikpanel-navc-item.is-hidden .brikpanel-navc-label-text {
+	text-decoration: line-through;
+}
+
+/* ----- Submenu manage panel (collapsible inside system row) ----- */
+.brikpanel-navc-submenus {
+	background: #fff;
+	border-top: 1px dashed var(--border);
+}
+
+.brikpanel-navc-submenus[hidden] {
+	display: none;
+}
+
+.brikpanel-navc-submenus-inner {
+	padding: 0.5rem 0.75rem 0.625rem 2.625rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+}
+
+.brikpanel-navc-submenus-title {
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-bottom: 0.125rem;
+}
+
+.brikpanel-navc-submenu-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.brikpanel-navc-submenu-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.25rem 0;
+	font-size: 0.8125rem;
+	color: var(--text-secondary);
+	transition: opacity 0.15s ease;
+}
+
+.brikpanel-navc-submenu-item.is-hidden {
+	opacity: 0.55;
+}
+
+.brikpanel-navc-submenu-item.is-hidden .brikpanel-navc-submenu-label {
+	text-decoration: line-through;
+}
+
+.brikpanel-navc-submenu-label {
+	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Smaller toggle for submenu rows. */
+.brikpanel-navc-toggle-sm {
+	width: 32px;
+	height: 18px;
+}
+
+.brikpanel-navc-toggle-sm .brikpanel-navc-toggle-thumb {
+	width: 12px;
+	height: 12px;
+	top: 3px;
+	left: 3px;
+}
+
+.brikpanel-navc-toggle-sm input:checked + .brikpanel-navc-toggle-track .brikpanel-navc-toggle-thumb {
+	transform: translateX(14px);
+}
+
+/* Submenu chevron rotation when expanded. */
+.brikpanel-navc-submenu-chevron {
+	transition: transform 0.15s ease;
+}
+
+.brikpanel-navc-submenu-chevron.is-open {
+	transform: rotate(180deg);
+}
+
+.brikpanel-navc-drag {
+	cursor: grab;
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+.brikpanel-navc-drag:active {
+	cursor: grabbing;
+}
+
+.brikpanel-navc-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	color: var(--text-secondary);
+	flex-shrink: 0;
+}
+
+.brikpanel-navc-icon img {
+	width: 14px;
+	height: 14px;
+	object-fit: contain;
+}
+
+.brikpanel-navc-label {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+
+.brikpanel-navc-label-text {
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: var(--text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.brikpanel-navc-label-meta {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ----- Toggle switch ----- */
+.brikpanel-navc-toggle {
+	position: relative;
+	display: inline-block;
+	width: 40px;
+	height: 22px;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.brikpanel-navc-toggle input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+	position: absolute;
+}
+
+.brikpanel-navc-toggle-track {
+	position: absolute;
+	inset: 0;
+	background: #ccc;
+	border-radius: 22px;
+	transition: background 0.15s ease;
+}
+
+.brikpanel-navc-toggle-thumb {
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 16px;
+	height: 16px;
+	background: #fff;
+	border-radius: 50%;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+	transition: transform 0.15s ease;
+}
+
+.brikpanel-navc-toggle input:checked + .brikpanel-navc-toggle-track {
+	background: var(--primary);
+}
+
+.brikpanel-navc-toggle input:checked + .brikpanel-navc-toggle-track .brikpanel-navc-toggle-thumb {
+	transform: translateX(18px);
+}
+
+.brikpanel-navc-toggle input:focus-visible + .brikpanel-navc-toggle-track {
+	box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--primary);
+}
+
+/* ----- Icon-only buttons (edit/delete on custom rows) ----- */
+.brikpanel-navc-iconbtn {
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 0.375rem;
+	padding: 0.25rem;
+	cursor: pointer;
+	color: var(--text-secondary);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+	flex-shrink: 0;
+}
+
+.brikpanel-navc-iconbtn:hover {
+	background: #ececec;
+	color: var(--text);
+}
+
+.brikpanel-navc-iconbtn-danger:hover {
+	background: #fde7e3;
+	color: var(--error);
+}
+
+/* ----- "Add custom link" button ----- */
+.brikpanel-navc-add {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	background: transparent;
+	color: var(--text-secondary);
+	border: 1px dashed #c2c2c2;
+	border-radius: 0.5rem;
+	padding: 0.5rem 0.875rem;
+	font-size: 0.8125rem;
+	font-weight: 550;
+	cursor: pointer;
+	margin-top: 0.625rem;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.brikpanel-navc-add:hover {
+	background: #fafafa;
+	border-color: var(--input-border);
+	color: var(--text);
+}
+
+/* Add-link + add-spacer buttons sit side by side under each section list. */
+.brikpanel-navc-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+.brikpanel-navc-actions .brikpanel-navc-add {
+	margin-top: 0.625rem;
+}
+
+/* ----- Global item-spacing control (header) ----- */
+.brikpanel-navc-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.5rem 0.875rem;
+	margin: 0 0 1.25rem;
+	padding: 0.875rem 1rem;
+	background: #fafafa;
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+}
+.brikpanel-navc-control {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0;
+}
+.brikpanel-navc-control-label {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--text);
+}
+.brikpanel-navc-control-hint {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+}
+.brikpanel-navc-input {
+	font-family: inherit;
+	font-size: 0.875rem;
+	padding: 0.5rem 0.625rem;
+	border: 1px solid var(--input-border);
+	border-radius: 0.5rem;
+	background: #fff;
+	color: var(--text);
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	min-width: 220px;
+	box-sizing: border-box;
+	line-height: 1.4;
+}
+.brikpanel-navc-input::placeholder {
+	color: var(--text-muted);
+}
+.brikpanel-navc-input:focus {
+	outline: none;
+	border-color: var(--input-focus);
+	box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+/* ----- Spacer row ----- */
+.brikpanel-navc-item.is-spacer {
+	background: repeating-linear-gradient(
+		-45deg,
+		#fafafa,
+		#fafafa 6px,
+		#f3f3f3 6px,
+		#f3f3f3 12px
+	);
+}
+.brikpanel-navc-item.is-spacer .brikpanel-navc-row {
+	padding: 0.375rem 0.5rem;
+}
+.brikpanel-navc-spacer-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	flex: 1;
+	min-width: 0;
+	font-size: 0.8125rem;
+	font-weight: 550;
+	color: var(--text-secondary);
+}
+.brikpanel-navc-spacer-badge svg {
+	flex: 0 0 auto;
+	color: var(--text-muted);
+}
+.brikpanel-navc-spacer-variant {
+	max-width: 9.5rem;
+}
+
+/* ----- Group heading row ----- */
+.brikpanel-navc-item.is-heading {
+	background: #f7f7f7;
+}
+.brikpanel-navc-item.is-heading .brikpanel-navc-row {
+	padding: 0.375rem 0.5rem;
+}
+.brikpanel-navc-heading-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	flex: 0 0 auto;
+	font-size: 0.8125rem;
+	font-weight: 550;
+	color: var(--text-secondary);
+}
+.brikpanel-navc-heading-badge svg {
+	flex: 0 0 auto;
+	color: var(--text-muted);
+}
+.brikpanel-navc-heading-input {
+	flex: 1;
+	min-width: 0;
+	padding: 0.3125rem 0.5rem;
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--text);
+	border: 1px solid var(--input-border);
+	border-radius: 0.375rem;
+	background: #fff;
+}
+.brikpanel-navc-heading-input:focus {
+	outline: none;
+	border-color: var(--input-focus);
+	box-shadow: 0 0 0 1px var(--input-focus);
+}
+/* Rows that follow a heading, up to the next one. Purely a reading aid so the
+   owner can see which group a row lands in while dragging; the grouping itself
+   is positional and lives in the saved order. */
+.brikpanel-navc-item.is-in-group {
+	position: relative;
+}
+.brikpanel-navc-item.is-in-group .brikpanel-navc-row {
+	padding-left: 1.5rem;
+}
+.brikpanel-navc-item.is-in-group::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0.6rem;
+	width: 2px;
+	background: var(--border);
+}
+
+/* "New" badge on newly-detected, not-yet-reviewed menu items. */
+.brikpanel-navc-new-badge {
+	display: inline-block;
+	margin-left: 0.375rem;
+	padding: 0.05rem 0.375rem;
+	font-size: 0.6875rem;
+	font-weight: 600;
+	line-height: 1.4;
+	color: #fff;
+	background: var(--primary);
+	border-radius: 0.75rem;
+	vertical-align: middle;
+}
+
+/* Saved item whose slug no longer resolves to a live admin menu entry: the
+   plugin/CPT that registered it is gone, or the config came from another site.
+   Muted so it reads as leftover config rather than a working menu item. */
+.brikpanel-navc-item.is-unavailable .brikpanel-navc-icon,
+.brikpanel-navc-item.is-unavailable .brikpanel-navc-label-text {
+	color: var(--text-muted);
+}
+/* A live row's label is a short menu title, so clipping it to one line is fine.
+   This row's label is a raw slug followed by the badge that explains why it is
+   here, and a nowrap+ellipsis line hides the badge entirely once the column
+   narrows. Let both wrap instead. */
+.brikpanel-navc-item.is-unavailable .brikpanel-navc-label-text {
+	white-space: normal;
+	overflow: visible;
+	text-overflow: clip;
+	overflow-wrap: anywhere;
+}
+/* The meta slot normally holds a custom link's URL, where a single clipped line
+   is right. Here it holds a sentence, so let it wrap instead of losing its end
+   to an ellipsis on narrower screens. */
+.brikpanel-navc-item.is-unavailable .brikpanel-navc-label-meta {
+	white-space: normal;
+	overflow: visible;
+	text-overflow: clip;
+}
+.brikpanel-navc-missing-badge {
+	display: inline-block;
+	margin-left: 0.375rem;
+	padding: 0.05rem 0.375rem;
+	font-size: 0.6875rem;
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--error);
+	background: #fce9e6;
+	border-radius: 0.75rem;
+	vertical-align: middle;
+	/* Deliberately wrappable: the label column gets narrow between the WP
+	   sidebar's fold points, and a nowrap pill would overflow its clipping
+	   parent and vanish exactly when the row most needs explaining. */
+	white-space: normal;
+}
+
+/* ----- Primary / secondary buttons ----- */
+.brikpanel-navc-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	font-size: 0.8125rem;
+	font-weight: 550;
+	border-radius: 0.5rem;
+	padding: 0.5rem 1rem;
+	cursor: pointer;
+	border: none;
+	font-family: inherit;
+	line-height: 1.2;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.brikpanel-navc-btn-primary {
+	background: var(--primary);
+	color: #fff;
+	box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.brikpanel-navc-btn-primary:hover {
+	background: var(--primary-hover);
+}
+
+.brikpanel-navc-btn-secondary {
+	background: #fff;
+	color: var(--text);
+	box-shadow: inset 0 0 0 1px var(--border), 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+
+.brikpanel-navc-btn-secondary:hover {
+	background: #f7f7f7;
+}
+
+/* ----- Sortable placeholder while dragging ----- */
+.brikpanel-navc-placeholder {
+	background: #f0f0f0;
+	border: 1px dashed #c2c2c2;
+	border-radius: 0.5rem;
+	height: 2.25rem;
+	margin: 0;
+	list-style: none;
+}
+
+.ui-sortable-helper {
+	background: #fff !important;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+	border-color: var(--input-border) !important;
+}
+
+/* ----- Dialog ----- */
+.brikpanel-navc-dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.4);
+	z-index: 100050;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.brikpanel-navc-dialog-backdrop[hidden] {
+	display: none;
+}
+
+.brikpanel-navc-dialog {
+	background: var(--card);
+	border-radius: 0.75rem;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+	width: 100%;
+	max-width: 460px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.brikpanel-navc-dialog-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem 1.25rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.brikpanel-navc-dialog-header h4 {
+	font-size: 1rem;
+	font-weight: 600;
+	margin: 0;
+	color: var(--text);
+}
+
+.brikpanel-navc-dialog-body {
+	padding: 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.875rem;
+}
+
+.brikpanel-navc-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+}
+
+.brikpanel-navc-field > span {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--text);
+}
+
+.brikpanel-navc-field input[type="text"],
+.brikpanel-navc-field select {
+	font-family: inherit;
+	font-size: 0.875rem;
+	padding: 0.625rem 0.75rem;
+	border: 1px solid var(--input-border);
+	border-radius: 0.5rem;
+	background: #fff;
+	color: var(--text);
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	width: 100%;
+	box-sizing: border-box;
+	height: auto;
+	line-height: 1.4;
+}
+
+.brikpanel-navc-field input[type="text"]:focus,
+.brikpanel-navc-field select:focus {
+	outline: none;
+	border-color: var(--input-focus);
+	box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+.brikpanel-navc-field-checkbox {
+	flex-direction: row;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.brikpanel-navc-field-checkbox input {
+	margin: 0;
+}
+
+.brikpanel-navc-field-checkbox span {
+	font-weight: 400;
+	color: var(--text-secondary);
+}
+
+/* The base .brikpanel-navc-field rule sets display:flex, which outranks the
+   browser's [hidden] { display:none }. Restore hiding for the dialog fields and
+   the custom-SVG block that JS toggles via the hidden attribute. */
+.brikpanel-navc-field[hidden],
+.brikpanel-navc-svg-field[hidden] {
+	display: none !important;
+}
+
+/* Custom SVG icon field */
+.brikpanel-navc-svg-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+}
+
+.brikpanel-navc-svg-field > span:first-child {
+	font-size: 0.8125rem;
+	font-weight: 600;
+	color: var(--text);
+}
+
+.brikpanel-navc-svg-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.625rem;
+}
+
+.brikpanel-navc-svg-preview {
+	flex: 0 0 auto;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+	background: #fafafa;
+	color: var(--text);
+	overflow: hidden;
+}
+
+.brikpanel-navc-svg-preview img {
+	display: block;
+}
+
+.brikpanel-navc-svg-row textarea {
+	flex: 1 1 auto;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.75rem;
+	padding: 0.5rem 0.625rem;
+	border: 1px solid var(--input-border);
+	border-radius: 0.5rem;
+	background: #fff;
+	color: var(--text);
+	resize: vertical;
+	min-height: 56px;
+	box-sizing: border-box;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.brikpanel-navc-svg-row textarea:focus {
+	outline: none;
+	border-color: var(--input-focus);
+	box-shadow: 0 0 0 1px var(--input-focus);
+}
+
+.brikpanel-navc-svg-hint {
+	font-size: 0.75rem;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+.brikpanel-navc-dialog-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	padding: 1rem 1.25rem;
+	border-top: 1px solid var(--border);
+	background: #fafafa;
+}
+
+/* ----- The customizer renders OUTSIDE the WC form-table (the field handler
+       closes </table> before printing this wrap and reopens a fresh
+       <table class="form-table"> after) so we get the full content width
+       instead of being squeezed into the form-table's fixed-width column. ----- */
+.brikpanel-nav-customizer-wrap {
+	margin: 1rem 0;
+}
+
+/* =============================================================================
+   Audience control — "Everyone / Admins only / Specific roles" per item.
+   The <select> sits inline in the row; the role checklist is a full-width
+   strip rendered right after the row (top-level) or wrapped below (submenu).
+   ============================================================================= */
+.brikpanel-navc-audience {
+	flex: 0 0 auto;
+	max-width: 140px;
+	padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+	font-size: 0.75rem;
+	font-weight: 550;
+	line-height: 1.2;
+	color: var(--text-secondary);
+	background-color: #fff;
+	border: 1px solid var(--input-border);
+	border-radius: 0.5rem;
+	cursor: pointer;
+	min-height: 28px;
+}
+
+.brikpanel-navc-audience:focus {
+	border-color: var(--input-focus);
+	box-shadow: 0 0 0 1px var(--input-focus);
+	outline: none;
+}
+
+/* When the row itself is hidden from everyone, the audience rule is moot. */
+.brikpanel-navc-item.is-hidden .brikpanel-navc-audience,
+.brikpanel-navc-submenu-item.is-hidden .brikpanel-navc-audience {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* Role checklist strip. */
+.brikpanel-navc-roles {
+	background: #fff;
+	border-top: 1px dashed var(--border);
+	padding: 0.5rem 0.75rem 0.625rem 2.625rem;
+}
+
+.brikpanel-navc-roles[hidden] {
+	display: none;
+}
+
+.brikpanel-navc-roles-title {
+	display: block;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-bottom: 0.375rem;
+}
+
+.brikpanel-navc-roles-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 0.25rem 0.75rem;
+}
+
+.brikpanel-navc-role {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	font-size: 0.8125rem;
+	color: var(--text-secondary);
+	cursor: pointer;
+}
+
+.brikpanel-navc-role input {
+	margin: 0;
+}
+
+/* Submenu rows are flex; let the role strip wrap to its own full-width line. */
+.brikpanel-navc-submenu-item {
+	flex-wrap: wrap;
+}
+
+.brikpanel-navc-submenu-item .brikpanel-navc-roles {
+	flex-basis: 100%;
+	width: 100%;
+	border-top: none;
+	padding: 0.375rem 0 0.25rem 0;
+}
+
+.brikpanel-navc-submenu-item .brikpanel-navc-audience {
+	max-width: 120px;
+}
+
+/* =============================================================================
+   Mobile (≤600px). The row packs a drag handle, icon, label, toggle, an
+   audience <select> (~140px, non-shrinking) and two action buttons on one line
+   — a ~480px min-content that overflowed the narrow settings column and forced
+   the whole page to scroll sideways. Let the row wrap and drop the audience
+   select onto its own full-width line (order:1 sends it past the buttons), the
+   same pattern the submenu rows already use. Tighten card/strip padding so the
+   controls keep room to breathe. */
+@media (max-width: 600px) {
+	.brikpanel-navc-card {
+		padding: 1rem 1rem 1.125rem;
+	}
+	.brikpanel-navc-header {
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.brikpanel-navc-row {
+		flex-wrap: wrap;
+		row-gap: 0.5rem;
+	}
+	.brikpanel-navc-audience {
+		order: 1;
+		flex: 1 1 100%;
+		width: 100%;
+		max-width: none;
+	}
+	/* The role checklist + submenu panels indent to clear the desktop drag rail;
+	   on a phone that wastes a third of the width, so pull them back flush. */
+	.brikpanel-navc-roles,
+	.brikpanel-navc-submenus-inner {
+		padding-left: 0.75rem;
+	}
+}
