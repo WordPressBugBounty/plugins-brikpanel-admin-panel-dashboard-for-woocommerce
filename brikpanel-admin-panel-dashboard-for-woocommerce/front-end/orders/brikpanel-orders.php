@@ -388,6 +388,13 @@ function brikpanel_settings_fields() {
             'default' => 'yes',
         ],
         [
+            'name'    => __('Merge orders', 'brikpanel'),
+            'id'      => 'brikpanel_order_merge',
+            'type'    => 'checkbox',
+            'desc'    => __('Select two or more orders in the list and combine them into one. Items move to the order you pick as the main one; the others are cancelled with a note pointing to it, never deleted. A preview screen shows what will change before anything is written.', 'brikpanel'),
+            'default' => 'yes',
+        ],
+        [
             'type' => 'sectionend',
             'id'   => 'brk_orders_title',
         ],

@@ -2966,6 +2966,70 @@ class Brikpanel_Cart_Abandonment {
 	}
 
 	/**
+	 * Is this store still entitled to the features BrikMentor unlocks here?
+	 *
+	 * Asked with a sentinel rather than has_filter() or a version number,
+	 * because the answer has to carry its own provenance: null goes in, so null
+	 * coming back PROVES nobody wrote to it. That collapses "too old to answer"
+	 * and "installed but halted" into one state, which is the correct collapse
+	 * - both mean "cannot answer", and both must leave the table exactly as it
+	 * was. A version number would only prove a file is on disk; a plugin that
+	 * halted in its own dependency guard defines its constant before it stops.
+	 *
+	 * @return array|null Sanitised answer, or null when nobody could answer.
+	 */
+	public static function mentor_entitlement() {
+		// Deliberately NOT memoized. The whole round trip is two cached option
+		// reads and one libsodium open on the other side of the filter, asked a
+		// handful of times per admin request - while a static latch would report
+		// the state from before an activation that happened in the same process,
+		// and would make the state untestable without a reset seam that exists
+		// for no other reason.
+		if ( ! self::mentor_active() ) {
+			return null;
+		}
+
+		$raw = apply_filters( 'brikpanel_brikmentor_entitlement', null );
+		if ( ! is_array( $raw ) || ! array_key_exists( 'entitled', $raw ) ) {
+			// No answer, or a malformed one. Fail open.
+			return null;
+		}
+
+		// This is another plugin's payload on its way into our page, so it is
+		// sanitised on arrival rather than at each place that prints it.
+		$url = isset( $raw['url'] ) ? esc_url_raw( (string) $raw['url'] ) : '';
+		$scheme = $url ? strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) ) : '';
+		if ( ! in_array( $scheme, [ 'http', 'https' ], true ) ) {
+			// Never wp_http_validate_url(): it rejects local hosts and would
+			// leave every development install with a dead padlock.
+			$url = function_exists( 'brikpanel_brikmentor_checkout_url' )
+				? brikpanel_brikmentor_checkout_url()
+				: '';
+		}
+
+		return [
+			'entitled' => ! empty( $raw['entitled'] ),
+			'reason'   => isset( $raw['reason'] ) ? sanitize_key( (string) $raw['reason'] ) : '',
+			'text'     => isset( $raw['text'] ) ? sanitize_text_field( (string) $raw['text'] ) : '',
+			'url'      => $url,
+		];
+	}
+
+	/**
+	 * Should the outreach cells be drawn as locked?
+	 *
+	 * mentor_active() is re-asked deliberately even though mentor_entitlement()
+	 * already returns null without it: the fail-open direction is the one that
+	 * must never rot, so it is stated twice and can be tested on its own.
+	 *
+	 * @return bool
+	 */
+	public static function mentor_locked() {
+		$entitlement = self::mentor_entitlement();
+		return self::mentor_active() && is_array( $entitlement ) && empty( $entitlement['entitled'] );
+	}
+
+	/**
 	 * Resolve, for one page of rows, the two things the WhatsApp link needs:
 	 * a phone number and the country it was written in.
 	 *
@@ -3347,6 +3411,37 @@ class Brikpanel_Cart_Abandonment {
 	 * @param string  $date_format Site date+time format.
 	 */
 	private function add_outreach( array &$items, $date_format ) {
+		// Locked store: one marker per row and nothing else. Both expensive
+		// halves are skipped - resolve_contacts() runs a user cache warm plus
+		// two batched order queries, and the stats filter runs a queue query -
+		// so a lapsed store costs the screen less than a licensed one, not more.
+		//
+		// The phone number goes too, even though it is our own column. The
+		// column only exists because BrikMentor is installed, so a lapse puts
+		// the merchant back where an install without BrikMentor already is; and
+		// a real number sitting beside a padlock reads as half-broken rather
+		// than as locked. The CSV/XLSX export still writes the raw Phone column
+		// either way, so no data is actually lost.
+		if ( self::mentor_locked() ) {
+			foreach ( $items as &$locked_row ) {
+				$locked_row['phone']        = '';
+				$locked_row['phone_source'] = '';
+				$locked_row['wa_number']    = '';
+				$locked_row['wa_text']      = '';
+				$locked_row['wa_title']     = '';
+				$locked_row['wa_locked']    = true;
+				$locked_row['mail']         = [
+					'sent'    => 0,
+					'pending' => 0,
+					'text'    => '',
+					'note'    => '',
+					'locked'  => true,
+				];
+			}
+			unset( $locked_row );
+			return;
+		}
+
 		self::resolve_contacts( $items );
 
 		/**
@@ -3493,6 +3588,11 @@ class Brikpanel_Cart_Abandonment {
 		// Phone / WhatsApp / Follow-ups ride along with BrikMentor; without it
 		// those columns are not defined at all.
 		$outreach = self::mentor_active();
+		// Page-level, not per-row: one URL in the config beats the same URL
+		// repeated in twenty-five row payloads.
+		$lock_entitlement = self::mentor_entitlement();
+		$lock_url         = is_array( $lock_entitlement ) ? (string) $lock_entitlement['url'] : '';
+		$lock_text        = is_array( $lock_entitlement ) ? (string) $lock_entitlement['text'] : '';
 
 		// Column definition plus this user's saved order and visibility. The
 		// header is rendered from the resolved order; the body is rendered by
@@ -3748,6 +3848,10 @@ class Brikpanel_Cart_Abandonment {
 			statuses: <?php echo wp_json_encode( self::display_status_labels() ); ?>,
 			sources:  <?php echo wp_json_encode( self::source_labels() ); ?>,
 			outreach: <?php echo wp_json_encode( $outreach ); ?>,
+			lockUrl:  <?php echo wp_json_encode( $lock_url ); ?>,
+			// BrikMentor's own sentence, already translated in its own domain.
+			// Shown underneath our label so each plugin keeps its vocabulary.
+			lockText: <?php echo wp_json_encode( $lock_text ); ?>,
 			// Resolved column order + visibility for this user. The body cells
 			// are built from columnOrder, so the header and the rows always
 			// agree, including after a drag-and-drop reorder.
@@ -3772,6 +3876,7 @@ class Brikpanel_Cart_Abandonment {
 				phone_account:  <?php echo wp_json_encode( __( 'From their account', 'brikpanel' ) ); ?>,
 				phone_order:    <?php echo wp_json_encode( __( 'From a past order', 'brikpanel' ) ); ?>,
 				no_followups:   <?php echo wp_json_encode( __( 'No reminders sent.', 'brikpanel' ) ); ?>,
+				locked:         <?php echo wp_json_encode( __( 'Included with BrikMentor', 'brikpanel' ) ); ?>,
 			}
 		};
 		</script>

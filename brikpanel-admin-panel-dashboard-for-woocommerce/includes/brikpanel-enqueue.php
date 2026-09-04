@@ -866,6 +866,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                     'clear_filters'     => __( 'Clear filters', 'brikpanel' ),
                     'filter_order_tag'  => __( 'order tag', 'brikpanel' ),
                     'filter_shipping_method' => __( 'shipping method', 'brikpanel' ),
+                    'merge_needs_two'   => __( 'Select at least two orders to merge.', 'brikpanel' ),
                 ],
             ] );
         }

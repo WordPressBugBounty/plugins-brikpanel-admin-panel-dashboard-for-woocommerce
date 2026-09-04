@@ -126,6 +126,49 @@
 		return svg;
 	}
 
+	// A padlock, drawn the same way and at the same size as the WhatsApp mark so
+	// the cell keeps its rhythm when a store's subscription lapses.
+	// i18n-ignore: SVG path data, not text. WA_PATH above escapes the audit's
+	// heuristic only because its coordinates happen to look less word-like.
+	var LOCK_PATH = 'M12 1.5A4.5 4.5 0 0 0 7.5 6v3H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-.5V6A4.5 4.5 0 0 0 12 1.5Zm0 2A2.5 2.5 0 0 1 14.5 6v3h-5V6A2.5 2.5 0 0 1 12 3.5Zm0 10a1.75 1.75 0 0 1 .75 3.33V19a.75.75 0 0 1-1.5 0v-2.17A1.75 1.75 0 0 1 12 13.5Z';
+
+	function lockIcon() {
+		var ns = 'http://www.w3.org/2000/svg';
+		var svg = document.createElementNS(ns, 'svg');
+		svg.setAttribute('viewBox', '0 0 24 24');
+		svg.setAttribute('aria-hidden', 'true');
+		svg.setAttribute('focusable', 'false');
+		var path = document.createElementNS(ns, 'path');
+		path.setAttribute('d', LOCK_PATH);
+		path.setAttribute('fill', 'currentColor');
+		svg.appendChild(path);
+		return svg;
+	}
+
+	// The locked stand-in for a feature BrikMentor unlocks. Every string comes
+	// from the localized config: cfg.i18n.locked is ours, cfg.lockText is
+	// BrikMentor's own already-translated sentence, added on a second line only
+	// when it is there.
+	function lockBadge() {
+		var text = cfg.i18n.locked;
+		if (cfg.lockText) {
+			text += '\n' + cfg.lockText;
+		}
+		// Without a usable URL this must not be a link: href="" reloads the
+		// admin page, which is worse than not being clickable.
+		var el = document.createElement(cfg.lockUrl ? 'a' : 'span');
+		el.className = 'brikpanel-cartab-lock';
+		if (cfg.lockUrl) {
+			el.href = cfg.lockUrl;
+			el.target = '_blank';
+			el.rel = 'noopener noreferrer';
+		}
+		el.title = text;
+		el.setAttribute('aria-label', cfg.i18n.locked);
+		el.appendChild(lockIcon());
+		return el;
+	}
+
 	function muted(text) {
 		var el = document.createElement('span');
 		el.className = 'brikpanel-cartab-muted';
@@ -135,6 +178,11 @@
 
 	function renderPhoneCell(row) {
 		var cell = colCell('phone', 'brikpanel-cartab-phone-cell');
+
+		if (row.wa_locked) {
+			cell.appendChild(lockBadge());
+			return cell;
+		}
 
 		if (!row.phone) {
 			cell.appendChild(muted('—'));
@@ -174,6 +222,11 @@
 	function renderMailCell(row) {
 		var cell = colCell('mail', 'brikpanel-cartab-mail-cell');
 		var mail = row.mail || {};
+
+		if (mail.locked) {
+			cell.appendChild(lockBadge());
+			return cell;
+		}
 
 		if (!mail.text) {
 			cell.appendChild(muted('—'));
