@@ -176,6 +176,18 @@
 		return el;
 	}
 
+	// The open count pinned to the WhatsApp button. A number only, so nothing
+	// here needs translating; the sentence it belongs to is composed in PHP and
+	// goes on the link's own aria-label, because a label there replaces
+	// whatever the badge might have said for itself.
+	function waCountBadge(count) {
+		var el = document.createElement('span');
+		el.className = 'brikpanel-cartab-wa-count';
+		el.setAttribute('aria-hidden', 'true');
+		el.textContent = String(count); // i18n-ignore: a numeral, not text
+		return el;
+	}
+
 	function renderPhoneCell(row) {
 		var cell = colCell('phone', 'brikpanel-cartab-phone-cell');
 
@@ -208,11 +220,71 @@
 			link.href = 'https://wa.me/' + row.wa_number + '?text=' + encodeURIComponent(row.wa_text || '');
 			link.target = '_blank';
 			link.rel = 'noopener noreferrer';
-			// wa_title spells out the number that will be dialled; both strings
-			// are translated in PHP, so neither is an English fallback.
-			link.title = row.wa_title || cfg.i18n.whatsapp;
-			link.setAttribute('aria-label', cfg.i18n.whatsapp);
+			link.setAttribute('data-cartab-id', String(row.id));
 			link.appendChild(whatsappIcon());
+
+			// How many times this draft has been opened, answered in PHP by
+			// whoever counts it (BrikMentor). Zero draws no badge: an old
+			// BrikMentor that cannot count shows the plain button, never a "0".
+			var opens = parseInt(row.wa_opens, 10) || 0;
+			var badge = null;
+			if (opens > 0) {
+				badge = waCountBadge(opens);
+				link.appendChild(badge);
+			}
+			// An aria-label on a link REPLACES everything inside it, so the
+			// count has to be written into the label or a screen reader never
+			// hears it - which is also why the badge itself is aria-hidden
+			// rather than left to be read twice. Both halves are composed and
+			// translated in PHP: wa_title spells out the number that will be
+			// dialled, wa_opens_title how often the draft was opened. Neither
+			// is an English fallback.
+			link.setAttribute('aria-label', [cfg.i18n.whatsapp, row.wa_opens_title || ''].filter(Boolean).join(' — '));
+			link.title = [row.wa_title || cfg.i18n.whatsapp, row.wa_opens_title || ''].filter(Boolean).join('\n');
+
+			// Nothing is sent from this page, but opening the draft is worth
+			// counting - it is the only trace this channel leaves. The tab
+			// opens whether or not the beacon lands; keepalive lets the
+			// request finish even if the merchant navigates away.
+			link.addEventListener('click', function () {
+				var body = new FormData();
+				body.append('action', 'brikpanel_cartab_outreach_click');
+				body.append('_ajax_nonce', cfg.nonce);
+				body.append('id', String(row.id));
+				body.append('channel', 'whatsapp');
+				fetch(cfg.ajax_url, { method: 'POST', credentials: 'same-origin', body: body, keepalive: true })
+					.then(function (res) { return res.json(); })
+					.then(function (json) {
+						// THE SERVER'S COUNT, NOT A GUESS. Incrementing here
+						// looked simpler and was wrong: repeat opens of the same
+						// cart are folded together for ten minutes, so a badge
+						// that moved on every click would show a number the
+						// database does not hold - and would show it too high,
+						// which is the one direction a figure we also report to
+						// ourselves may not err. A null means nobody is
+						// counting; the badge is then left exactly as drawn.
+						var n = json && json.success && json.data ? json.data.opens : null;
+						if (typeof n !== 'number' || n <= 0) {
+							return;
+						}
+						opens = n;
+						if (!badge) {
+							badge = waCountBadge(opens);
+							link.appendChild(badge);
+						} else {
+							badge.textContent = String(opens);
+						}
+					})
+					.catch(function () { /* an uncounted open is not worth interrupting the merchant */ });
+
+				// The sentence behind the count names a date that is about to be
+				// stale, and there is no composing its replacement here without
+				// shipping plural rules into JS. Drop it rather than announce
+				// something untrue; the control keeps its own name and the full
+				// sentence comes back on the next load.
+				link.title = row.wa_title || cfg.i18n.whatsapp;
+				link.setAttribute('aria-label', cfg.i18n.whatsapp);
+			});
 			cell.appendChild(link);
 		}
 

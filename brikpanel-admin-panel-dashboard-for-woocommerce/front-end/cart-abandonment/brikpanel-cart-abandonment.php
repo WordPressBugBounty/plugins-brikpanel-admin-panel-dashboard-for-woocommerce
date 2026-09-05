@@ -77,6 +77,7 @@ class Brikpanel_Cart_Abandonment {
 		add_action( 'wp_ajax_brikpanel_cartab_popup_discount', [ $this, 'ajax_popup_discount' ] );
 		add_action( 'wp_ajax_brikpanel_cartab_export',       [ $this, 'ajax_export' ] );
 		add_action( 'wp_ajax_brikpanel_cartab_save_columns', [ $this, 'ajax_save_columns' ] );
+		add_action( 'wp_ajax_brikpanel_cartab_outreach_click', [ $this, 'ajax_outreach_click' ] );
 
 		// Popup text options: WC's default text sanitizer (sanitize_text_field)
 		// strips anything that looks like a percent-encoded octet, so a title
@@ -3297,7 +3298,19 @@ class Brikpanel_Cart_Abandonment {
 			// below only fires on a placeholder standing entirely alone.
 			'{cart_total}'    => brikpanel_money_text( (float) ( $row['cart_total'] ?? 0 ), [ 'currency' => $row['currency'] ?? '' ] ),
 			'{cart_url}'      => self::cart_page_url(),
-			'{recovery_url}'  => self::cart_recovery_url( $row ),
+			/**
+			 * Filter the recovery link placed into the WhatsApp draft.
+			 *
+			 * BrikMentor wraps it in its own click tracker, so a shopper tapping
+			 * the link in WhatsApp is recorded the way a shopper clicking an
+			 * email is - the one hard signal this hand-sent channel produces.
+			 * With no listener the link is the plain restore link, as before.
+			 *
+			 * @param string $url     Plain recovery URL ('' when none).
+			 * @param array  $row     Formatted cart row.
+			 * @param string $channel 'whatsapp'.
+			 */
+			'{recovery_url}'  => (string) apply_filters( 'brikpanel_cartab_recovery_url', self::cart_recovery_url( $row ), $row, 'whatsapp' ),
 		];
 
 		$template = self::whatsapp_template();
@@ -3430,6 +3443,8 @@ class Brikpanel_Cart_Abandonment {
 				$locked_row['wa_text']      = '';
 				$locked_row['wa_title']     = '';
 				$locked_row['wa_locked']    = true;
+				$locked_row['wa_opens']     = 0;
+				$locked_row['wa_opens_title'] = '';
 				$locked_row['mail']         = [
 					'sent'    => 0,
 					'pending' => 0,
@@ -3468,6 +3483,21 @@ class Brikpanel_Cart_Abandonment {
 			wp_list_pluck( $items, 'id' )
 		);
 
+		/**
+		 * Filter: how many times has each row's WhatsApp draft been opened?
+		 *
+		 * Asked with a null sentinel, like the entitlement: null back proves
+		 * nobody answered - a BrikMentor too old to count, or one declining -
+		 * and then no badge is drawn on any row, rather than a "0" that would
+		 * read as a broken counter. An array back, even an empty one, means
+		 * the counter is live and a row without an entry simply has no opens.
+		 *
+		 * @param array|null $opens     entry_id => { opens:int, last:string GMT }.
+		 * @param int[]      $entry_ids Cart row ids on the visible page.
+		 */
+		$opens = apply_filters( 'brikpanel_cartab_outreach_stats', null, wp_list_pluck( $items, 'id' ) );
+		$opens = is_array( $opens ) ? $opens : null;
+
 		foreach ( $items as &$row ) {
 			$row['wa_number'] = self::whatsapp_number( $row['phone'], $row['phone_country'] );
 			$row['wa_text']   = '' !== $row['wa_number'] ? self::whatsapp_message( $row ) : '';
@@ -3493,6 +3523,35 @@ class Brikpanel_Cart_Abandonment {
 					__( 'Message on WhatsApp: +%s', 'brikpanel' ),
 					$row['wa_number']
 				);
+			}
+
+			// How often the draft was opened rides on the button itself.
+			// "Opened", never "sent": the merchant opened WhatsApp with a draft,
+			// and whether it went is theirs to know. Composed here so the
+			// plural and the date follow the site's locale.
+			$row['wa_opens']       = 0;
+			$row['wa_opens_title'] = '';
+			if ( null !== $opens && '' !== $row['wa_number'] ) {
+				$open  = $opens[ (int) $row['id'] ] ?? [];
+				$count = (int) ( $open['opens'] ?? 0 );
+				if ( $count > 0 ) {
+					$row['wa_opens'] = $count;
+					$last            = ! empty( $open['last'] )
+						? wp_date( $date_format, strtotime( $open['last'] . ' +00:00' ) )
+						: '';
+					$row['wa_opens_title'] = '' !== $last
+						? sprintf(
+							/* translators: 1: how many times the WhatsApp draft was opened, 2: date and time of the last time. */
+							_n( 'WhatsApp draft opened %1$s time · last %2$s', 'WhatsApp draft opened %1$s times · last %2$s', $count, 'brikpanel' ),
+							number_format_i18n( $count ),
+							$last
+						)
+						: sprintf(
+							/* translators: %s: how many times the WhatsApp draft was opened. */
+							_n( 'WhatsApp draft opened %s time', 'WhatsApp draft opened %s times', $count, 'brikpanel' ),
+							number_format_i18n( $count )
+						);
+				}
 			}
 
 			$stat    = $stats[ (int) $row['id'] ] ?? [];
@@ -4015,6 +4074,48 @@ class Brikpanel_Cart_Abandonment {
 		global $wpdb;
 		$wpdb->delete( self::table(), [ 'id' => $id ], [ '%d' ] );
 		wp_send_json_success();
+	}
+
+	/**
+	 * A store manager opened an outreach draft (today: WhatsApp) for one row.
+	 *
+	 * BrikPanel stores nothing about it. The click is handed to whoever
+	 * listens - BrikMentor, which owns the count, the badge it feeds and the
+	 * attribution that follows - and a store with no listener answers success
+	 * and forgets, which is exactly how the button behaved before it was
+	 * counted. The browser fires this and never reads the reply.
+	 */
+	public function ajax_outreach_click() {
+		$this->check_auth();
+		$id      = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
+		$channel = isset( $_POST['channel'] ) ? sanitize_key( wp_unslash( $_POST['channel'] ) ) : '';
+		if ( $id <= 0 || 'whatsapp' !== $channel ) {
+			wp_send_json_error( [ 'message' => __( 'Invalid entry.', 'brikpanel' ) ], 400 );
+		}
+
+		/**
+		 * Fires when a store manager opens an outreach draft for one cart row.
+		 *
+		 * Opening is not sending: the draft is theirs to edit or discard.
+		 *
+		 * @param int    $id      Cart row id.
+		 * @param string $channel 'whatsapp'.
+		 * @param int    $user_id The staff account that clicked.
+		 */
+		do_action( 'brikpanel_cartab_outreach_click', $id, $channel, get_current_user_id() );
+
+		// Hand back what the counter now HOLDS, not what the browser guessed.
+		// The provider folds repeat opens of the same cart together, so a
+		// badge that incremented on every click would show a number the
+		// database does not have - and it would be wrong upwards, which is the
+		// one direction a figure we also report to ourselves may not err.
+		// Re-uses the badge filter rather than adding a second hook; null back
+		// still means nobody is counting, and the browser leaves the badge
+		// exactly as it drew it.
+		$opens = apply_filters( 'brikpanel_cartab_outreach_stats', null, [ $id ] );
+		$opens = is_array( $opens ) ? (int) ( $opens[ $id ]['opens'] ?? 0 ) : null;
+
+		wp_send_json_success( [ 'opens' => $opens ] );
 	}
 
 	/**

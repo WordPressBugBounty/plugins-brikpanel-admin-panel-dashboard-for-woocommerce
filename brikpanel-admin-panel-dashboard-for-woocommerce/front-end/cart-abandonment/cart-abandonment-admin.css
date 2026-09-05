@@ -583,6 +583,35 @@
 	display: block;
 }
 
+/* How many times the draft was opened, pinned to the button's top-end corner
+   so the count sits exactly where the merchant acts and no column is added.
+   Monochrome like every other count on the page; a numeral, never a word.
+   Logical offset only, so it mirrors under RTL on its own. The white ring
+   lifts it off the icon on hover, when the button gets a background. */
+.brikpanel-cartab-wa {
+	position: relative;
+}
+
+.brikpanel-cartab-wa-count {
+	position: absolute;
+	top: -0.3125rem;
+	inset-inline-end: -0.3125rem;
+	min-width: 1rem;
+	height: 1rem;
+	padding: 0 0.25rem;
+	box-sizing: border-box;
+	border-radius: 999px;
+	background: #303030;
+	color: #fff;
+	font-size: 0.6875rem;
+	font-weight: 600;
+	line-height: 1rem;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	box-shadow: 0 0 0 2px #fff;
+	pointer-events: none;
+}
+
 .brikpanel-cartab-wa:hover,
 .brikpanel-cartab-wa:focus {
 	/* The one place brand colour earns its keep: the icon is only recognisable
