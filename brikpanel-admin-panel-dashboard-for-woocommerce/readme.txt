@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 3.2.97
+Stable tag: 3.2.98
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -459,6 +459,11 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 21. Login Page
 
 == Changelog ==
+= 3.2.98 (2026-09-06) =
+* Fix: **Yoast's SEO analysis works in the product editor again, instead of waiting forever.** On a store running Yoast WooCommerce SEO the Yoast panel showed up but nothing in it moved: the score badge never changed and the "Analysis results" list stayed empty. Yoast WooCommerce looks for the product type dropdown of the standard WooCommerce screen, and the editor prints a hidden stand-in for it, but only when Yoast arrives through the SEO card. If you had placed Yoast yourself from "Visible editor sections" the stand-in was missing, and Yoast's analysis stopped with an error before it had read a word of the page. Both routes print it now, so the score, the readability checks and the keyword checks update as you type and are saved with the product, on simple and variable products alike.
+* Fix: **Screen readers can read the Yoast score again.** Hidden wording that other plugins' panels put in for screen readers was being taken off the page entirely rather than just hidden from view. In Yoast that wording is the only text form of the coloured score dot ("OK", "Needs improvement"), so the score could not be read out at all. It is now hidden the way WordPress hides its own.
+* Fix: **Red error messages no longer disappear from the screen.** Submitting the Add User form with an email that is already registered looked like nothing had happened: WordPress printed its red error box, BrikPanel's notice tidying hid it, and because it was an error nothing moved it into the notifications bell either, so the message was gone with no trace. The same went for every error a screen prints itself, including WooCommerce's own error box on its settings pages and in the product and order editors, and WordPress's errors on Users, Plugins, Menus, Comments and the file editors. Red errors now stay on screen, on those screens as they already did elsewhere. Nothing changes if you have turned on "Also hide error notices" under WooCommerce, Settings, BrikPanel: those errors still go to the bell, and now the ones that used to vanish arrive there too.
+
 = 3.2.97 (2026-09-05) =
 * New: **The WhatsApp button on the abandoned cart list now tells you how many times you have opened that shopper's draft, and when you last did.** Until now the button left no trace at all, so the one channel most stores actually chase carts on was the one you had no record of. A small number sits on the corner of the icon and the button's tooltip spells it out ("opened 3 times, last ..."). It says opened, never sent: the draft is yours to edit or discard, and only you know whether it went. The counting itself is done by BrikMentor; on a store without it the button looks and behaves exactly as it did before, with no badge and no "0".
 * Fix: **"Merge orders" no longer shows up for staff whose BrikPanel interface is switched off.** The bulk action skipped the check every other BrikPanel addition to the orders list makes, so an account moved back to the plain WooCommerce screens still saw it in the dropdown. It is now hidden for those accounts, and opening the merge page by its address is refused with the reason.

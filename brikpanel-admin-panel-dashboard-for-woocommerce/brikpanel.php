@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.2.97
+ * Version: 3.2.98
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.2.97');
+define('BRIKPANEL_VERSION', '3.2.98');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -548,14 +548,28 @@ function brikpanel_suppress_foreign_notices() {
             //    control notices visible when core reveals them (e.g. the
             //    autosave/heartbeat "Connection lost" warning).
             //  - error notices (the red ones) are NOT hidden by default — the
-            //    `.error` selectors are gone and `.notice` carries
-            //    `:not(.notice-error)` — so urgent "something is broken" messages
-            //    stay on screen, mirroring the server-side skip. When the store
-            //    owner opts in ($hide_errors), those guards are dropped and the
-            //    legacy `.error` direct-child selectors are added back so error
-            //    notices are hidden too (the matching `lost-connection-notice`
-            //    control banner is still spared).
-            $err_guard = $hide_errors ? '' : ':not(.notice-error)';
+            //    standalone `.error` selectors are gone and both `.notice` and
+            //    `.updated` carry the error guard — so urgent "something is
+            //    broken" messages stay on screen, mirroring the server-side skip.
+            //    When the store owner opts in ($hide_errors), those guards are
+            //    dropped and the legacy `.error` direct-child selectors are added
+            //    back so error notices are hidden too (the matching
+            //    `lost-connection-notice` control banner is still spared).
+            //
+            //    The guard must name BOTH error flavours. WordPress core renders
+            //    `wp_admin_notice( $msg, array( 'additional_classes' =>
+            //    array( 'error' ) ) )` as `<div class="notice error">` — the
+            //    modern `notice-error` class is absent — and WooCommerce prints
+            //    `<div id="woocommerce_errors" class="error notice">`. Guarding
+            //    only `.notice-error` let those match the `.notice` selector and
+            //    vanish: the server collector never sees them (page templates
+            //    print them outside the notices hooks) and the topbar sweep
+            //    deliberately skips error notices, so nothing relocated them to
+            //    the bell either. Result was a silently swallowed red error — the
+            //    Add User form's "email already registered" being the clearest
+            //    case. Keep this list in sync with the server-side
+            //    $is_error_notice check and JS isErrorNotice().
+            $err_guard = $hide_errors ? '' : ':not(.notice-error):not(.error)';
             // WordPress/WooCommerce print their own first-party "updated"
             // confirmation bar with id="message" (e.g. "Order updated.", "Post
             // updated.") as a direct child of `.wrap` — the action feedback the
@@ -566,9 +580,9 @@ function brikpanel_suppress_foreign_notices() {
                 .wp-admin .wrap > .error:not(.brikpanel-notice):not(.inline):not(.below-h2):not(.hidden):not(#lost-connection-notice)' . $msg_guard . ',' : '';
             echo '<style>
                 .wp-admin #wpbody-content > .notice:not(.brikpanel-notice):not(.hidden)' . $err_guard . $msg_guard . ':not(#lost-connection-notice):not(#local-storage-notice),
-                .wp-admin #wpbody-content > .updated:not(.brikpanel-notice):not(.hidden)' . $msg_guard . ',' . $err_lines . '
+                .wp-admin #wpbody-content > .updated:not(.brikpanel-notice):not(.hidden)' . $err_guard . $msg_guard . ',' . $err_lines . '
                 .wp-admin .wrap > .notice:not(.brikpanel-notice):not(.inline):not(.below-h2):not(.hidden)' . $err_guard . $msg_guard . ':not(#lost-connection-notice):not(#local-storage-notice),
-                .wp-admin .wrap > .updated:not(.brikpanel-notice):not(.inline):not(.below-h2):not(.hidden)' . $msg_guard . ' {
+                .wp-admin .wrap > .updated:not(.brikpanel-notice):not(.inline):not(.below-h2):not(.hidden)' . $err_guard . $msg_guard . ' {
                     display: none !important;
                 }
             </style>';
