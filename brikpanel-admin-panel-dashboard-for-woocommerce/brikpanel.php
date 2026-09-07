@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.2.98
+ * Version: 3.3.0
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.2.98');
+define('BRIKPANEL_VERSION', '3.3.0');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -326,7 +326,7 @@ function brikpanel_init_admin() {
     // deletions too. The class itself still only boots on admin requests.
     brikpanel_require('front-end/orders/brikpanel-orders.php');
     // BrikMentor launch surfaces (promo FAB, dashboard/settings CTAs) live in
-    // includes/brikpanel-brikmentor-promo.php + includes/brikpanel-early-access.php.
+    // includes/brikpanel-brikmentor-promo.php.
     // Purchase is a plain link to the brksoft.com relay checkout; the plugin is
     // downloaded and installed by the merchant from the relay's own welcome page,
     // never pushed from inside wp-admin (keeps BrikPanel within wp.org Guideline 8).
@@ -817,13 +817,13 @@ brikpanel_require('includes/brikpanel-hooks-api.php');
 brikpanel_require('includes/brikpanel-review-notices.php');
 
 // =============================================================================
-// BRIKMENTOR EARLY-ACCESS CAPTURE (100 / 200 completed orders)
+// NEWSLETTER SUBSCRIPTION CAPTURE (dashboard card + settings row)
 // =============================================================================
 brikpanel_require('includes/brikpanel-early-access.php');
 
 // =============================================================================
 // BRIKMENTOR LAUNCH SURFACES (behind the brikpanel_brikmentor_live flag,
-// default off; also flips the early-access waitlist into launch CTAs)
+// default on: promo FAB, dashboard launch card, settings section)
 // =============================================================================
 brikpanel_require('includes/brikpanel-brikmentor-promo.php');
 
