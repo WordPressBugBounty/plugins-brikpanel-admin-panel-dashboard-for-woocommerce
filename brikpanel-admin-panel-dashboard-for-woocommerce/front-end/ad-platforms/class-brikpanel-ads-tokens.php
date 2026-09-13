@@ -171,7 +171,7 @@ class Brikpanel_Ads_Tokens {
 			return false;
 		}
 
-		$all      = self::load_all();
+		$all      = self::load_all_fresh();
 		$existing = isset( $all[ $platform ] ) && is_array( $all[ $platform ] ) ? $all[ $platform ] : [];
 
 		// Preserve refresh_token across refreshes if upstream omits it (Google's
@@ -231,7 +231,7 @@ class Brikpanel_Ads_Tokens {
 		if ( ! in_array( $key, $allowed, true ) ) {
 			return false;
 		}
-		$all = self::load_all();
+		$all = self::load_all_fresh();
 		if ( ! isset( $all[ $platform ] ) || ! is_array( $all[ $platform ] ) ) {
 			return false;
 		}
@@ -246,7 +246,7 @@ class Brikpanel_Ads_Tokens {
 		if ( ! self::is_valid_platform( $platform ) ) {
 			return;
 		}
-		$all = self::load_all();
+		$all = self::load_all_fresh();
 		unset( $all[ $platform ] );
 		if ( empty( $all ) ) {
 			delete_option( self::OPTION );
@@ -346,7 +346,10 @@ class Brikpanel_Ads_Tokens {
 		}
 		$tokens = self::load_platform( $platform );
 		if ( ! $tokens ) {
-			Brikpanel_Ads_Logger::log( 'oauth', 'Refresh attempted with no stored tokens for ' . $platform );
+			// Not a failure to report: a caller asked for a token on a platform
+			// that is not connected, which is exactly what happens on the retry
+			// right after we dropped a revoked grant.
+			Brikpanel_Ads_Logger::note( 'oauth', 'Refresh attempted with no stored tokens for ' . $platform );
 			return false;
 		}
 
@@ -394,6 +397,15 @@ class Brikpanel_Ads_Tokens {
 					$code
 				);
 				self::disconnect( $platform );
+
+				// A revoked grant discovered mid-backfill used to leave every
+				// remaining 90-day chunk queued. They all woke up, found no
+				// connection, and filled the log ring with identical notes
+				// while the progress bar stayed frozen with no explanation.
+				// Stop the queue and say why on the card instead.
+				if ( class_exists( 'Brikpanel_Ads_Sync' ) ) {
+					Brikpanel_Ads_Sync::cancel_backfill( $platform, Brikpanel_Ads_Sync::HALT_CONNECTION_LOST );
+				}
 			}
 			return false;
 		}
@@ -409,7 +421,16 @@ class Brikpanel_Ads_Tokens {
 		// none), and Google's refresh response usually omits one too. Preserve
 		// whatever we already had.
 
-		$all = self::load_all();
+		$all = self::load_all_fresh();
+
+		// The merchant can disconnect while the refresh call is in flight.
+		// Writing the renewed token back here would resurrect the connection
+		// they just removed, so treat a vanished platform as a failed refresh
+		// (which it is: there is nothing left to refresh).
+		if ( ! isset( $all[ $platform ] ) || ! is_array( $all[ $platform ] ) ) {
+			return false;
+		}
+
 		$all[ $platform ] = $tokens;
 		if ( ! self::persist( $all ) ) {
 			return false;
@@ -453,6 +474,47 @@ class Brikpanel_Ads_Tokens {
 		}
 		self::$cache = $data;
 		return $data;
+	}
+
+	/**
+	 * Re-read the vault from the database, ignoring this process's cache.
+	 *
+	 * Every write here is a read-modify-write of one blob holding BOTH
+	 * platforms, and load_all() answers from a static cache that can be
+	 * minutes old inside a long-lived Action Scheduler worker. So a worker that
+	 * cached the vault, then had Meta's token refreshed at the end of its
+	 * batch, wrote its stale snapshot back — resurrecting a Google connection
+	 * the merchant had disconnected in the browser meanwhile, and in the
+	 * opposite order wiping a connection they had just made. Both show up as
+	 * "I connected it and it did not stick".
+	 *
+	 * Reading fresh immediately before each write closes the realistic window
+	 * (a snapshot from minutes ago) down to the microseconds between this read
+	 * and the update_option that follows. One extra uncached read on operations
+	 * that happen a handful of times per site.
+	 *
+	 * @return array<string, array>
+	 */
+	private static function load_all_fresh() {
+		self::$cache = null;
+
+		// autoload=no, but get_option still answers from the per-request object
+		// cache once something has read it.
+		wp_cache_delete( self::OPTION, 'options' );
+
+		// And from the "notoptions" list, which is the half that actually bit:
+		// a worker that started before anything was connected recorded
+		// brikpanel_ads_tokens as non-existent, so clearing only the value
+		// cache still returned an empty vault after the merchant connected,
+		// and the next write wiped the brand-new connection. That is the exact
+		// "I connected it and it did not stick" report.
+		$notoptions = wp_cache_get( 'notoptions', 'options' );
+		if ( is_array( $notoptions ) && isset( $notoptions[ self::OPTION ] ) ) {
+			unset( $notoptions[ self::OPTION ] );
+			wp_cache_set( 'notoptions', $notoptions, 'options' );
+		}
+
+		return self::load_all();
 	}
 
 	private static function load_platform( $platform ) {

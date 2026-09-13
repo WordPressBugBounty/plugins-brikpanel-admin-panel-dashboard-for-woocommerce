@@ -13564,6 +13564,19 @@ msgstr ""
 "щелчком откроете готовое сообщение WhatsApp. Письма-напоминания уходят сами "
 "и возвращают 5-10% общей выручки в магазине, где они настроены правильно."
 
+#: includes/brikpanel-brikmentor-promo.php:278
+msgid ""
+"Writing to one shopper at a time is the slow way back. BrikMentor follows "
+"up on every abandoned cart for you: a reminder written for the cart it "
+"belongs to, sent on a schedule you set once. Cart recovery emails bring "
+"back 5-10% of total revenue in a store that runs them properly."
+msgstr ""
+"Ручная переписка с каждым покупателем возвращает их слишком медленно. "
+"BrikMentor сам напоминает о каждой брошенной корзине: письмо, написанное "
+"под конкретную корзину, уходит по расписанию, которое вы задаёте один "
+"раз. Письма для возврата корзин возвращают 5-10% общей выручки в "
+"магазине, где они настроены правильно."
+
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
 msgstr "Превратите эти данные в выручку"
@@ -17895,3 +17908,41 @@ msgstr "Строит матрицу удержания месячная кого
 #~ msgid "Choose…"
 #~ msgstr "Выберите…"
 
+
+msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
+msgstr "Импорт истории остановлен, так как подключение к этой платформе было потеряно. Подключитесь заново, чтобы продолжить."
+
+msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
+msgstr "Импорт истории остановлен, так как выбранный рекламный аккаунт изменился. Выберите аккаунт снова, чтобы запустить импорт заново."
+
+msgid "Nothing logged yet."
+msgstr "Записей пока нет."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Заметка"
+
+msgid "History import stopped"
+msgstr "Импорт истории остановлен"
+
+msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
+msgstr "Найдены только управляющие аккаунты. У управляющего аккаунта нет собственных расходов, поэтому выберите рекламный аккаунт, с которого вы действительно размещаете рекламу: укажите его ID ниже, а ID управляющего аккаунта впишите в поле «ID управляющего аккаунта (MCC)»."
+
+msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
+msgstr "Это управляющий аккаунт. Обычно у него нет собственных расходов, поэтому импорт может оказаться пустым. В этом случае укажите ID рекламного аккаунта, с которого вы размещаете рекламу."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr "Не удалось сохранить ID управляющего аккаунта. Попробуйте ещё раз."
+
+msgid "One more step"
+msgstr "Ещё один шаг"
+
+msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
+msgstr "Последние 50 записей журнала синхронизации, как ошибки, так и обычные заметки. Значения токенов скрываются перед сохранением."
+
+msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
+msgstr "Выберите рекламный аккаунт, из которого будут загружаться расходы. Нажмите \"Загрузить аккаунты\" ниже, выберите один и нажмите «Сохранить». До этого ничего не импортируется."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "Отправить письмо"

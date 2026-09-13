@@ -24,8 +24,14 @@ class Brikpanel_Ads_Logger {
 	/** Maximum number of entries kept in the buffer. */
 	const MAX_ENTRIES = 100;
 
+	/** Severity for an entry that reports a real failure. */
+	const SEVERITY_ERROR = 'error';
+
+	/** Severity for routine activity that is not a failure. */
+	const SEVERITY_INFO = 'info';
+
 	/**
-	 * Append a log entry. Older entries are evicted FIFO.
+	 * Append a failure entry. Older entries are evicted FIFO.
 	 *
 	 * @param string $flow    One of: oauth, google, meta, sync, client.
 	 * @param string $message Free-form message; redacted before storage.
@@ -33,12 +39,45 @@ class Brikpanel_Ads_Logger {
 	 * @param array  $context Optional extra fields (kept tiny). All scalar values.
 	 */
 	public static function log( $flow, $message, $code = 0, array $context = [] ) {
+		self::write( self::SEVERITY_ERROR, $flow, $message, $code, $context );
+	}
+
+	/**
+	 * Append a routine, non-failure entry.
+	 *
+	 * Background jobs that correctly decide they have nothing to do (a backfill
+	 * chunk queued before the merchant disconnected, a chunk superseded by a
+	 * newer backfill) used to land here through log(), which made the settings
+	 * card present a dozen "nothing to do" notes as a dozen errors. Merchants
+	 * read that as a broken connection and wrote in about it. Same buffer, same
+	 * retention — only the severity differs, so the card can label them.
+	 *
+	 * @param string $flow
+	 * @param string $message
+	 * @param int    $code
+	 * @param array  $context
+	 */
+	public static function note( $flow, $message, $code = 0, array $context = [] ) {
+		self::write( self::SEVERITY_INFO, $flow, $message, $code, $context );
+	}
+
+	/**
+	 * Shared writer for log() and note().
+	 *
+	 * @param string $severity self::SEVERITY_ERROR or self::SEVERITY_INFO.
+	 * @param string $flow
+	 * @param string $message
+	 * @param int    $code
+	 * @param array  $context
+	 */
+	private static function write( $severity, $flow, $message, $code, array $context ) {
 		$entry = [
-			'ts'      => time(),
-			'flow'    => (string) $flow,
-			'code'    => (int) $code,
-			'message' => self::redact( (string) $message ),
-			'context' => self::sanitize_context( $context ),
+			'ts'       => time(),
+			'flow'     => (string) $flow,
+			'code'     => (int) $code,
+			'severity' => $severity === self::SEVERITY_INFO ? self::SEVERITY_INFO : self::SEVERITY_ERROR,
+			'message'  => self::redact( (string) $message ),
+			'context'  => self::sanitize_context( $context ),
 		];
 
 		$log = (array) get_option( self::OPTION, [] );
@@ -47,6 +86,19 @@ class Brikpanel_Ads_Logger {
 			$log = array_slice( $log, -self::MAX_ENTRIES );
 		}
 		update_option( self::OPTION, $log, false );
+	}
+
+	/**
+	 * Severity of a stored entry. Entries written before severities existed
+	 * carry no field; they were all written by log(), so they are errors.
+	 *
+	 * @param array $entry
+	 * @return string
+	 */
+	public static function severity_of( array $entry ) {
+		return isset( $entry['severity'] ) && $entry['severity'] === self::SEVERITY_INFO
+			? self::SEVERITY_INFO
+			: self::SEVERITY_ERROR;
 	}
 
 	/**

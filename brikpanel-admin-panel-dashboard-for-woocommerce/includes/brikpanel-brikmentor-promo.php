@@ -269,6 +269,13 @@ function brikpanel_brikmentor_fab_screens() {
                 // by hand, one cart at a time. Only the email is automatic, and
                 // promising otherwise here would sell the wrong product.
                 'lock' => __( 'Unlocking gives you the phone number behind each cart and a ready-made WhatsApp message to open with one click. The reminder emails then go out on their own, and they bring back 5-10% of total revenue in a store that runs them properly.', 'brikpanel' ),
+                // Opened from the padlocked envelope in the Email column. It
+                // must not promise that unlocking turns that envelope into
+                // something clever: it stays a hand-off to the merchant's own
+                // mail client, one cart at a time. What is actually for sale
+                // here is not having to click it at all, so that is what this
+                // says.
+                'lock-mail' => __( 'Writing to one shopper at a time is the slow way back. BrikMentor follows up on every abandoned cart for you: a reminder written for the cart it belongs to, sent on a schedule you set once. Cart recovery emails bring back 5-10% of total revenue in a store that runs them properly.', 'brikpanel' ),
             ),
         ),
         'brikpanel-customer-analytics' => array(

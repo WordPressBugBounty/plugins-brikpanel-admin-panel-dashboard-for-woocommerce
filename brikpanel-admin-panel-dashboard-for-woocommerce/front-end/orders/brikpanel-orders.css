@@ -1017,6 +1017,154 @@ status show in the order number area. This is not needed for Brikpanel’s mobil
 	vertical-align: inherit !important;
 }
 
+/* =============================================================================
+   THIRD-PARTY ICON-ACTION COLUMNS
+   -----------------------------------------------------------------------------
+   Columns other plugins add to the orders list ("Documents", "Labels", "PDF"...)
+   often hold nothing but a short run of icon-only links. Two rules above make
+   that run collapse into a one-icon-wide vertical stack, which is how a merchant
+   running many columns at once ended up with rows four times taller than they
+   needed to be:
+
+     - `.wp-list-table { width: 100% }` pins the table to its scroll container,
+       so with many columns the auto table algorithm squeezes every flexible
+       column down towards its min-content width instead of letting the table
+       overflow and scroll.
+     - The `width: fit-content !important` rule directly above wipes out every
+       per-column width, including the 110px WooCommerce reserves for its own
+       action column, so a foreign column has nothing left holding it open.
+
+   Nothing declares `white-space` for a plain `td`, so the computed value is
+   `normal` and a squeezed column breaks the run of inline-block icons one per
+   line. brikpanelIconActionColumns() tags the cells holding such a run; these
+   rules lay it out as a two-icon-wide grid of 2rem squares, matching the action
+   buttons above.
+
+   The cell is deliberately NOT turned into a flex or grid container: `display`
+   anything on a `<td>` drops `display: table-cell`, the browser wraps the cell
+   in an anonymous cell of its own, and the column stops lining up with its
+   header and with the sticky check / order-number columns. A plain inline
+   formatting context inside a cell pinned to the width of two icons produces the
+   same grid with none of that risk.
+   ============================================================================= */
+.wp-list-table td.brikpanel-iconbar-cell {
+	--bp-iconbar-slot: 2rem;
+	--bp-iconbar-gap: .25rem;
+	/* Horizontal padding of a body cell, from the rule at the top of the file. */
+	--bp-iconbar-pad: 1.5rem;
+	/* Every icon carries its gap as a trailing margin, the last one on a line
+	   included, and that trailing margin still counts towards fitting the line --
+	   so the budget is a whole slot per icon, not slots minus one gap. The extra
+	   sliver absorbs subpixel rounding in the column algorithm and whatever a
+	   badge between two icons costs; without it the cell lands a fraction short
+	   and the second icon wraps onto its own line. */
+	--bp-iconbar-width: calc(
+		var(--bp-iconbar-cols, 2) * (var(--bp-iconbar-slot) + var(--bp-iconbar-gap))
+		+ var(--bp-iconbar-pad) + .375rem
+	);
+}
+
+/* The selector mirrors the `width: fit-content !important` rule above, plus
+   `tbody` and the marker class, on purpose: specificity is compared on class
+   count first, so a short `.wp-list-table td.brikpanel-iconbar-cell` would lose
+   to it no matter how far down the file it sits. */
+.wp-list-table tbody tr:not(.inline-edit-row):not(.no-items):not(.type-product):not(.type-shop_subscription) td.brikpanel-iconbar-cell {
+	box-sizing: border-box;
+	white-space: normal;
+	/* Line boxes hug the 2rem icons: the 13px strut is shorter than an icon, so
+	   rows butt together and the wrap gap comes from the icons' own margin. */
+	line-height: 1;
+	/* Icons are inline-level, so the newline a plugin leaves between two of them
+	   collapses to a real space that counts towards fitting the line -- enough on
+	   its own to push the second icon onto a row of its own. Cancelling it here
+	   is narrower than zeroing the cell's font size, which would also swallow a
+	   badge a plugin prints as bare text. The gap itself comes from the icons'
+	   own margin, so nothing is lost. */
+	word-spacing: -.25rem;
+	/* `min-width` is the floor the auto table algorithm cannot go below, which is
+	   what stops the column collapsing; `max-width` is what keeps the run two
+	   icons wide when the table has width to spare. The slack is there so a
+	   status dot a plugin tucks next to an icon still fits on the line, while
+	   staying far short of the 2.25rem a third icon would need. */
+	width: var(--bp-iconbar-width) !important;
+	min-width: var(--bp-iconbar-width);
+	max-width: calc(var(--bp-iconbar-width) + .75rem);
+}
+
+/* A long header label ("Dokumen Pengiriman") would hold the column open on its
+   own, so let it wrap. The blanket nowrap on `thead th` is meant for the columns
+   BrikPanel lays out itself. */
+.wp-list-table thead th.brikpanel-iconbar-col,
+.wp-list-table thead th.brikpanel-iconbar-col a {
+	white-space: normal;
+}
+
+/* Per-icon wrappers. Some plugins put each icon in its own <div> or <p>; those
+   are block boxes and stack no matter what `white-space` says. `inline-block`
+   changes only the *outer* display type, so the wrapper keeps its own box --
+   background, border, padding -- where `display: contents` would throw all three
+   away. The JS only ever flags a bare <div>/<p> with no text of its own; if the
+   icons sit in anything else -- list items, a table, a form control -- it leaves
+   the whole cell alone rather than half-treating it, so nothing here can reach a
+   wrapper whose display carries meaning. `margin-block: 0` stops the 1em margins
+   a <p> brings from inflating the row. */
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-wrap {
+	display: inline-block;
+	margin-block: 0;
+	vertical-align: middle;
+	line-height: 1;
+}
+
+/* The icons themselves, squared off to match .wc-action-button above.
+   `vertical-align: middle` is load-bearing, not cosmetic: inline-flex boxes sit
+   on their own baseline otherwise, and a run of them ends up tall enough to read
+   as two rows. Margins are logical, so the grid mirrors itself on RTL admin
+   locales with nothing added to brikpanel-rtl.css. */
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item {
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: center;
+	vertical-align: middle;
+	box-sizing: border-box;
+	width: var(--bp-iconbar-slot) !important;
+	height: var(--bp-iconbar-slot) !important;
+	min-width: 0 !important;
+	min-height: 0 !important;
+	max-width: none !important;
+	padding: 0 !important;
+	margin-block: 0 var(--bp-iconbar-gap) !important;
+	margin-inline: 0 var(--bp-iconbar-gap) !important;
+	float: none !important;
+	border: none !important;
+	border-radius: .5rem;
+	background-color: transparent;
+	box-shadow: var(--light-bevel);
+	color: #4a4a4a;
+	line-height: 0;
+	text-decoration: none;
+	/* Keeps a badge a plugin pulls over the icon edge from being clipped. */
+	overflow: visible;
+}
+
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item:hover {
+	background-color: #fafafa;
+}
+
+/* Icon artwork is clamped rather than restyled: plugins ship these at anything
+   from 14px to 32px, and only a shared size makes a row of them line up. */
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item img,
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item svg {
+	display: block;
+	flex: none;
+	width: 1.125rem !important;
+	height: 1.125rem !important;
+	min-width: 0 !important;
+	max-width: 1.125rem !important;
+	max-height: 1.125rem !important;
+	margin: 0 !important;
+	object-fit: contain;
+}
+
 .brikpanel-analytics {
 	display: flex;
 	width: fit-content;

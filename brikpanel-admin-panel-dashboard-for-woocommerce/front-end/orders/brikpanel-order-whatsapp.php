@@ -768,12 +768,18 @@ add_action( 'admin_head', function () {
 			width: 26px;
 			height: 26px;
 			border-radius: 6px;
-			color: #25d366;
+			/* Same green as the WhatsApp mark on Abandoned Carts, so one icon
+			   doing one job looks the same on both screens. A step down from the
+			   #25d366 brand value, which is built for a logo and reads as neon
+			   against an admin list's greys. The filled button further down
+			   keeps the brand value: on white-on-green it is the background, and
+			   there the bright tone is right. */
+			color: #1da851;
 			text-decoration: none;
 			transition: background-color .15s ease, transform .15s ease;
 		}
 		.brikpanel-wa-list-link:hover {
-			background: rgba(37, 211, 102, .12);
+			background: rgba(29, 168, 81, .12);
 			transform: translateY(-1px);
 		}
 		.brikpanel-wa-list-link .brikpanel-wa-glyph { display: block; }

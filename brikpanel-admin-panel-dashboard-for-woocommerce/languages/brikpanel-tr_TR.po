@@ -13484,6 +13484,19 @@ msgstr ""
 "ise kendiliğinden gider ve bunları düzgün kuran bir mağazada toplam gelirin "
 "%5-10'unu geri getirir."
 
+#: includes/brikpanel-brikmentor-promo.php:278
+msgid ""
+"Writing to one shopper at a time is the slow way back. BrikMentor follows "
+"up on every abandoned cart for you: a reminder written for the cart it "
+"belongs to, sent on a schedule you set once. Cart recovery emails bring "
+"back 5-10% of total revenue in a store that runs them properly."
+msgstr ""
+"Müşterilere tek tek yazmak, onları geri getirmenin yavaş yoludur. "
+"BrikMentor terk edilmiş her sepetin takibini sizin yerinize yapar: ait "
+"olduğu sepete göre yazılmış bir hatırlatma, bir kez kurduğunuz "
+"zamanlamayla kendiliğinden gider. Sepet kurtarma e-postaları, bunları "
+"düzgün kuran bir mağazada toplam gelirin %5-10'unu geri getirir."
+
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
 msgstr "Bu veriyi gelire dönüştürün"
@@ -17810,3 +17823,41 @@ msgstr "Aylık kohort × dönem elde tutma matrisini oluşturur."
 #~ msgid "Choose…"
 #~ msgstr "Seçin…"
 
+
+msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
+msgstr "Bu platformla bağlantı koptuğu için geçmiş verisi aktarımı durdu. Devam ettirmek için yeniden bağlanın."
+
+msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
+msgstr "Seçili reklam hesabı değiştiği için geçmiş verisi aktarımı durdu. Yeniden başlatmak için hesabı tekrar seçin."
+
+msgid "Nothing logged yet."
+msgstr "Henüz kayıt yok."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Bilgi"
+
+msgid "History import stopped"
+msgstr "Geçmiş verisi aktarımı durdu"
+
+msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
+msgstr "Yalnızca yönetici hesapları bulundu. Yönetici hesabının kendi harcaması olmaz, bu yüzden gerçekten reklam verdiğiniz hesabı seçin: kimliğini aşağıya girin, yönetici kimliğini de “Yönetici (MCC) hesap kimliği” alanına yazın."
+
+msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
+msgstr "Bu bir yönetici hesabı. Genellikle kendi harcaması olmaz, bu yüzden aktarım boş dönebilir. Böyle olursa reklam verdiğiniz hesabın kimliğini kullanın."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr "Yönetici hesap kimliği kaydedilemedi. Lütfen tekrar deneyin."
+
+msgid "One more step"
+msgstr "Bir adım kaldı"
+
+msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
+msgstr "Eşitleme kaydındaki son 50 satır, hem hatalar hem sıradan bilgiler. Jeton değerleri kaydedilmeden önce gizlenir."
+
+msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
+msgstr "Harcamanın çekileceği reklam hesabını seçin. Aşağıdaki \"Hesapları yükle\" düğmesine tıklayın, birini seçin ve Kaydet'e basın. Siz bunu yapana kadar hiçbir şey aktarılmaz."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "E-posta gönder"

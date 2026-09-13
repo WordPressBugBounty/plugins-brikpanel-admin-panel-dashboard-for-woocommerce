@@ -13573,6 +13573,19 @@ msgstr ""
 "herinneringsmails gaan daarna vanzelf de deur uit en halen in een winkel die "
 "ze netjes heeft ingericht 5 tot 10 % van de totale omzet terug."
 
+#: includes/brikpanel-brikmentor-promo.php:278
+msgid ""
+"Writing to one shopper at a time is the slow way back. BrikMentor follows "
+"up on every abandoned cart for you: a reminder written for the cart it "
+"belongs to, sent on a schedule you set once. Cart recovery emails bring "
+"back 5-10% of total revenue in a store that runs them properly."
+msgstr ""
+"Kopers één voor één aanschrijven is de trage weg terug. BrikMentor volgt "
+"elke verlaten winkelwagen voor u op: een herinnering die voor precies die "
+"winkelwagen is geschreven, verstuurd volgens een schema dat u één keer "
+"instelt. E-mails voor winkelwagenherstel halen in een winkel die ze "
+"netjes heeft ingericht 5 tot 10 % van de totale omzet terug."
+
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
 msgstr "Zet deze gegevens om in omzet"
@@ -17915,3 +17928,41 @@ msgstr "Bouwt de maandelijkse cohort × periode-retentiematrix."
 #~ msgid "Choose…"
 #~ msgstr "Kiezen…"
 
+
+msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
+msgstr "Het importeren van de geschiedenis is gestopt omdat de verbinding met dit platform verloren is gegaan. Maak opnieuw verbinding om verder te gaan."
+
+msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
+msgstr "Het importeren van de geschiedenis is gestopt omdat het gekozen advertentieaccount is gewijzigd. Kies het account opnieuw om het te herstarten."
+
+msgid "Nothing logged yet."
+msgstr "Nog niets gelogd."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Melding"
+
+msgid "History import stopped"
+msgstr "Importeren van geschiedenis gestopt"
+
+msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
+msgstr "Er zijn alleen beheerdersaccounts gevonden. Een beheerdersaccount heeft zelf geen uitgaven, kies dus het advertentieaccount waarmee u daadwerkelijk adverteert: voer hieronder het ID in en zet het beheerders-ID in het veld ‘Manager (MCC) account-ID’."
+
+msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
+msgstr "Dit is een beheerdersaccount. Het heeft meestal zelf geen uitgaven, dus de import kan leeg blijven. Gebruik in dat geval het ID van het advertentieaccount waarmee u adverteert."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr "Het beheerdersaccount-ID kon niet worden opgeslagen. Probeer het opnieuw."
+
+msgid "One more step"
+msgstr "Nog één stap"
+
+msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
+msgstr "De laatste 50 regels uit het synchronisatielogboek, zowel fouten als gewone meldingen. Tokenwaarden worden voor opslag onleesbaar gemaakt."
+
+msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
+msgstr "Kies het advertentieaccount waaruit de uitgaven worden opgehaald. Klik hieronder op \"Accounts laden\", kies er één en klik op Opslaan. Er wordt niets geïmporteerd totdat u dat doet."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "Een e-mail sturen"

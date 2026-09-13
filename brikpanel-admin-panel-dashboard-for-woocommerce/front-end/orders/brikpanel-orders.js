@@ -14,6 +14,38 @@ function makeElement(tagName, attributes = {}, properties = {}, listeners = []) 
 	return $element;
 }
 
+/**
+ * Columns WordPress, WooCommerce, WooCommerce Subscriptions and BrikPanel own.
+ * Anything else on the orders list was put there by another plugin, and is a
+ * candidate for the icon-action treatment (see brikpanelIconActionColumns).
+ */
+const BP_ICONBAR_KNOWN_COLUMNS = new Set([
+	// WordPress / WooCommerce
+	'primary', 'cb', 'comments',
+	'order_number', 'order_date', 'order_status', 'origin',
+	'billing_address', 'shipping_address', 'order_total', 'wc_actions',
+	// WooCommerce Subscriptions
+	'subscription_status', 'order_title', 'recurring_total', 'start_date',
+	'trial_end_date', 'next_payment_date', 'last_payment_date', 'end_date', 'orders',
+	// BrikPanel
+	'payment_method', 'order_items', 'tax_total', 'brikpanel_whatsapp',
+]);
+
+/* A run of this many icon controls turns the treatment on. A lone icon cannot
+   stack, so it is never worth reserving width for. */
+const BP_ICONBAR_MIN_ITEMS = 2;
+/* A cell carrying more visible text of its own than this is a content column
+   that happens to hold a couple of icons, not an action column. */
+const BP_ICONBAR_MAX_TEXT = 40;
+/* Icons per row. Two keeps the column narrow, which is the whole point: the
+   merchant who reported this needs room for many columns at once. */
+const BP_ICONBAR_COLS = 2;
+/* ...but a plugin offering a dozen documents would be twelve rows tall at two
+   per row, so the grid widens instead of growing past this many rows. */
+const BP_ICONBAR_MAX_ROWS = 3;
+/* Hard ceiling on the reserved width, counted in icon slots. */
+const BP_ICONBAR_MAX_COLS = 4;
+
 document.addEventListener('DOMContentLoaded', () => {
 	brikpanelOrderTableFilters();
 });
@@ -55,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		brikpanelEmptyTrashButton();
 		brikpanelAddFiltersToOrderLinks();
 		brikpanelListTableSearchResultCount();
+		brikpanelIconActionColumns();
 	} finally {
 		showBrikpanel();
 	}
@@ -906,6 +939,181 @@ function brikpanelOrderNumberNamePreview() {
 		const $preview = $cell.querySelector('.order-preview');
 		if ($preview) $row.append($preview);
 	});
+}
+
+/**
+ * Visible text length of a subtree: whitespace collapsed, screen-reader-only
+ * labels and icon media ignored.
+ *
+ * An icon button's accessible name normally lives in a .screen-reader-text span
+ * (and an inline icon's in <svg><title>), so counting either would misread every
+ * properly labelled icon button as a text button.
+ *
+ * @param {Element} $node Subtree root.
+ * @returns {number} Number of visible characters.
+ */
+function brikpanelIconbarTextLength($node) {
+	let length = 0;
+
+	for (const $child of $node.childNodes) {
+		if ($child.nodeType === Node.TEXT_NODE) {
+			length += $child.nodeValue.replace(/\s+/g, ' ').trim().length;
+			continue;
+		}
+
+		if ($child.nodeType !== Node.ELEMENT_NODE) continue;
+
+		if ($child.classList.contains('screen-reader-text')
+			|| $child.localName === 'svg'
+			|| $child.localName === 'script'
+			|| $child.localName === 'style'
+			|| $child.localName === 'template') {
+			continue;
+		}
+
+		length += brikpanelIconbarTextLength($child);
+	}
+
+	return length;
+}
+
+/**
+ * Reads one cell and returns the icon run this pass can lay out, or null when
+ * the cell is not one: no run, a labelled control among the icons, copy of its
+ * own, or a container between an icon and the cell that cannot be made
+ * inline-level.
+ *
+ * It is all or nothing on purpose. Half-treating a cell -- squaring the icons
+ * off but leaving them stacked because they sit in list items -- buys the
+ * merchant nothing and costs them a narrower column, so such a cell is better
+ * left exactly as the other plugin rendered it.
+ *
+ * @param {HTMLTableCellElement} $cell Body cell of a column BrikPanel does not own.
+ * @returns {{$items: Element[], $wraps: Element[]}|null}
+ */
+function brikpanelIconbarReadCell($cell) {
+	if ($cell.classList.contains('brikpanel-iconbar-cell')) return null;
+
+	const $items = [];
+	const $wraps = [];
+
+	for (const $control of $cell.querySelectorAll('a[href], button')) {
+		// WordPress' hover links ("Edit | Trash"), the order preview button and
+		// the mobile row toggle are already laid out by core and by BrikPanel.
+		if ($control.closest('.row-actions, .order-preview, .toggle-row')) continue;
+
+		// A control nested inside another control is one visual thing.
+		if ($control.parentElement?.closest('a[href], button')) continue;
+
+		// Icon-only: no visible label of its own, and some icon media inside.
+		// One labelled control in the cell rules the whole cell out, because
+		// squaring a text button off at 2rem would cut its label in half.
+		if (brikpanelIconbarTextLength($control) > 0 || !$control.querySelector('img, svg')) return null;
+
+		$items.push($control);
+	}
+
+	if ($items.length < BP_ICONBAR_MIN_ITEMS) return null;
+
+	// A cell with real copy of its own is a content column that happens to carry
+	// a couple of icons. Pinning it to the width of two icons would be a worse
+	// problem than the one being fixed. Every control above is icon-only, so
+	// whatever text the cell reports is the cell's own.
+	if (brikpanelIconbarTextLength($cell) > BP_ICONBAR_MAX_TEXT) return null;
+
+	// Every container between an icon and the cell has to be one this pass can
+	// make inline-level. Anything else -- a list item, a table, a form control --
+	// ends the attempt: changing its outer display would change what it means or
+	// drop its marker, and leaving it alone would leave the run stacked anyway.
+	for (const $item of $items) {
+		for (let $wrap = $item.parentElement; $wrap && $wrap !== $cell; $wrap = $wrap.parentElement) {
+			if (($wrap.localName !== 'div' && $wrap.localName !== 'p')
+				|| brikpanelIconbarTextLength($wrap) > 0) {
+				return null;
+			}
+
+			$wraps.push($wrap);
+		}
+	}
+
+	return { $items, $wraps };
+}
+
+/**
+ * Lays out third-party icon-action columns ("Documents", "Labels", "Invoices"...)
+ * as a compact grid instead of a one-icon-per-line stack.
+ *
+ * BrikPanel pins the table to the width of its scroll container and clears every
+ * per-column width, so a column it does not know about gets squeezed towards its
+ * min-content width. A cell holding nothing but icon links then breaks that run
+ * one icon per line, and the row grows several times taller than it needs to be.
+ * A merchant running many columns at once reported exactly this.
+ *
+ * Nothing is moved, replaced or re-emitted: the other plugin's markup keeps its
+ * exact position in the DOM, so its event handlers, its tooltips, its
+ * target="_blank" links and any CSS it scopes to `td.column-x > div > a` all keep
+ * working. This only adds marker classes and one custom property; the layout
+ * itself lives in CSS (see "THIRD-PARTY ICON-ACTION COLUMNS" in
+ * brikpanel-orders.css).
+ *
+ * Single pass, bounded per cell, and no layout reads at all, so the class and
+ * style writes cannot thrash.
+ */
+function brikpanelIconActionColumns() {
+	const $table = document.querySelector('.wp-list-table');
+	if (!$table) return;
+
+	// Which columns are not ours? Read once from the header row. On a store with
+	// no third-party order columns -- the overwhelming majority -- this loop is
+	// the entire cost of the feature.
+	for (const $th of $table.querySelectorAll('thead th.manage-column')) { // i18n-ignore: CSS selector, not user-facing text
+		for (const name of $th.classList) {
+			if (!name.startsWith('column-')) continue;
+
+			const column = name.slice('column-'.length);
+			if (!column || BP_ICONBAR_KNOWN_COLUMNS.has(column)) continue;
+
+			const runs = [];
+			let longest = 0;
+
+			for (const $cell of $table.querySelectorAll(`tbody td.column-${CSS.escape(column)}`)) {
+				const run = brikpanelIconbarReadCell($cell);
+				if (!run) continue;
+
+				runs.push(run);
+				longest = Math.max(longest, run.$items.length);
+			}
+
+			if (runs.length === 0) continue;
+
+			// One width for the whole column. A table column is as wide as its
+			// widest cell, so deciding this per cell would let a long run in one
+			// row silently re-pack every other row -- a four-icon cell would
+			// break 3 + 1 because some other row asked for three columns. The
+			// grid is two icons wide as a rule, and widens only so that a very
+			// long run cannot tower over the rest of the table.
+			const cols = String(Math.min(
+				Math.max(BP_ICONBAR_COLS, Math.ceil(longest / BP_ICONBAR_MAX_ROWS)),
+				BP_ICONBAR_MAX_COLS
+			));
+
+			for (const { $items, $wraps } of runs) {
+				for (const $wrap of $wraps) $wrap.classList.add('brikpanel-iconbar-wrap');
+
+				for (const $item of $items) $item.classList.add('brikpanel-iconbar-item');
+
+				const $cell = $items[0].closest('td');
+				$cell.classList.add('brikpanel-iconbar-cell');
+				$cell.style.setProperty('--bp-iconbar-cols', cols);
+			}
+
+			// A long header label would otherwise hold the narrowed column open
+			// on its own, and the blanket nowrap on thead th is meant for the
+			// columns BrikPanel lays out itself. Columns this pass left alone
+			// keep the header they had.
+			$th.classList.add('brikpanel-iconbar-col');
+		}
+	}
 }
 
 /**

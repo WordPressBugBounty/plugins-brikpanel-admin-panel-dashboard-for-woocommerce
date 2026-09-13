@@ -13568,6 +13568,19 @@ msgstr ""
 "sole e riportano il 5-10% del fatturato totale in un negozio che le ha "
 "configurate bene."
 
+#: includes/brikpanel-brikmentor-promo.php:278
+msgid ""
+"Writing to one shopper at a time is the slow way back. BrikMentor follows "
+"up on every abandoned cart for you: a reminder written for the cart it "
+"belongs to, sent on a schedule you set once. Cart recovery emails bring "
+"back 5-10% of total revenue in a store that runs them properly."
+msgstr ""
+"Scrivere agli acquirenti uno alla volta è la via lenta per farli tornare. "
+"BrikMentor segue per te ogni carrello abbandonato: un promemoria scritto "
+"per il carrello a cui appartiene, inviato secondo una pianificazione che "
+"imposti una volta sola. Le email di recupero carrello riportano il 5-10% "
+"del fatturato totale in un negozio che le ha configurate bene."
+
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
 msgstr "Trasforma questi dati in fatturato"
@@ -17914,3 +17927,41 @@ msgstr "Costruisce la matrice mensile coorte × periodo di retention."
 #~ msgid "Choose…"
 #~ msgstr "Scegli…"
 
+
+msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
+msgstr "L’importazione dello storico si è interrotta perché la connessione a questa piattaforma è andata persa. Riconnettiti per riprenderla."
+
+msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
+msgstr "L’importazione dello storico si è interrotta perché l’account pubblicitario selezionato è cambiato. Seleziona di nuovo l’account per riavviarla."
+
+msgid "Nothing logged yet."
+msgstr "Nessuna voce registrata finora."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Nota"
+
+msgid "History import stopped"
+msgstr "Importazione dello storico interrotta"
+
+msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
+msgstr "Sono stati trovati solo account manager. Un account manager non ha spesa propria, quindi scegli l’account pubblicitario con cui fai davvero pubblicità: inserisci il suo ID qui sotto e metti l’ID del manager nel campo «ID account manager (MCC)»."
+
+msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
+msgstr "Questo è un account manager. Di solito non ha spesa propria, quindi l’importazione potrebbe risultare vuota. In tal caso usa l’ID dell’account pubblicitario con cui fai pubblicità."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr "Impossibile salvare l’ID dell’account manager. Riprova."
+
+msgid "One more step"
+msgstr "Ancora un passaggio"
+
+msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
+msgstr "Le ultime 50 voci del log di sincronizzazione, sia errori sia note ordinarie. I valori dei token vengono oscurati prima del salvataggio."
+
+msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
+msgstr "Scegli l’account pubblicitario da cui prelevare la spesa. Fai clic su \"Carica account\" qui sotto, selezionane uno e poi su Salva. Fino ad allora non viene importato nulla."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "Invia un'email"

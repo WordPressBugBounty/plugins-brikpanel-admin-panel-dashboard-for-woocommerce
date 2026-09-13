@@ -145,6 +145,22 @@ $render_platform_card = function ( $platform, $title, $tagline, $desc, $last_syn
 					<dd><?php echo esc_html( $desc['email'] ?: __( '(email not shared)', 'brikpanel' ) ); ?></dd>
 				</dl>
 
+				<?php if ( $primary === '' ) : ?>
+					<?php /* The pill turns green the moment the tokens are stored, but nothing
+					         syncs until an ad account is chosen — and the screen used to say
+					         nothing at all about that, so merchants left the page believing
+					         they were done and came back days later to an empty dashboard. */ ?>
+					<div class="bp-ads-todo-note">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+						<div>
+							<strong><?php esc_html_e( 'One more step', 'brikpanel' ); ?></strong>
+							<p class="bp-ads-card-sub">
+								<?php esc_html_e( 'Choose the ad account to pull spend from. Click "Load accounts" below, pick one, then Save. Nothing is imported until you do.', 'brikpanel' ); ?>
+							</p>
+						</div>
+					</div>
+				<?php endif; ?>
+
 				<div class="bp-ads-field">
 					<label class="bp-ads-label" for="bp-ads-primary-<?php echo esc_attr( $platform ); ?>">
 						<?php esc_html_e( 'Primary ad account', 'brikpanel' ); ?>
@@ -236,25 +252,40 @@ $render_platform_card = function ( $platform, $title, $tagline, $desc, $last_syn
 				</dl>
 
 				<?php
-				$total     = (int) ( $backfill['total_chunks'] ?? 0 );
-				$completed = (int) ( $backfill['completed_chunks'] ?? 0 );
+				$total       = (int) ( $backfill['total_chunks'] ?? 0 );
+				$completed   = (int) ( $backfill['completed_chunks'] ?? 0 );
+				$halted      = ! empty( $backfill['halted'] );
+				$halt_reason = Brikpanel_Ads_Sync::halt_reason_text( $backfill['halt_reason'] ?? '' );
+				if ( $halt_reason === '' ) {
+					$halt_reason = (string) ( $backfill['last_error'] ?? '' );
+				}
 				if ( $total > 0 && $completed < $total ) :
 					$pct = max( 0, min( 100, (int) round( ( $completed / max( 1, $total ) ) * 100 ) ) );
 					?>
-					<div class="bp-ads-backfill">
+					<?php /* A stopped import used to leave this bar frozen at "2 of 13" with no
+					         explanation anywhere on the page, which is what merchants wrote in
+					         about. Say that it stopped, and why. */ ?>
+					<div class="bp-ads-backfill<?php echo $halted ? ' is-halted' : ''; ?>">
 						<div class="bp-ads-backfill-label">
 							<?php
-							printf(
-								/* translators: 1: completed, 2: total chunks (90 days each) */
-								esc_html__( 'Loading history… %1$d of %2$d 90-day chunks done', 'brikpanel' ),
-								(int) $completed,
-								(int) $total
-							);
+							if ( $halted ) {
+								esc_html_e( 'History import stopped', 'brikpanel' );
+							} else {
+								printf(
+									/* translators: 1: completed, 2: total chunks (90 days each) */
+									esc_html__( 'Loading history… %1$d of %2$d 90-day chunks done', 'brikpanel' ),
+									(int) $completed,
+									(int) $total
+								);
+							}
 							?>
 						</div>
 						<div class="bp-ads-backfill-bar">
 							<div class="bp-ads-backfill-fill" style="width: <?php echo esc_attr( $pct ); ?>%"></div>
 						</div>
+						<?php if ( $halt_reason !== '' ) : ?>
+							<p class="bp-ads-backfill-reason"><?php echo esc_html( $halt_reason ); ?></p>
+						<?php endif; ?>
 					</div>
 				<?php endif; ?>
 
@@ -359,9 +390,9 @@ $render_platform_card = function ( $platform, $title, $tagline, $desc, $last_syn
 		<div class="bp-ads-card bp-ads-card-wide">
 			<div class="bp-ads-card-header">
 				<div class="bp-ads-card-header-left">
-					<h2><?php esc_html_e( 'Recent errors', 'brikpanel' ); ?></h2>
+					<h2><?php esc_html_e( 'Recent activity', 'brikpanel' ); ?></h2>
 					<p class="bp-ads-card-sub">
-						<?php esc_html_e( 'Last 50 entries from the sync log. Token values are redacted before storage.', 'brikpanel' ); ?>
+						<?php esc_html_e( 'Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage.', 'brikpanel' ); ?>
 					</p>
 				</div>
 			</div>

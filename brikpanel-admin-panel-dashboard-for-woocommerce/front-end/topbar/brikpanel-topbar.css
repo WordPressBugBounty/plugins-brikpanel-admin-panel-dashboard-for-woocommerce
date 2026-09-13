@@ -76,10 +76,18 @@ body.brikpanel-has-topbar.brikpanel-native-nav #adminmenuwrap {
     overflow: visible;
 }
 /* Constrain the inner nav to the viewport-minus-topbar height, so it owns
-   the only scrollbar inside the sidebar. */
+   the only scrollbar inside the sidebar.
+
+   Do NOT add `overscroll-behavior: contain` here. The sidebar is a fixed,
+   full-height scroll container spanning the whole left edge of the screen, so
+   `contain` turns that entire column into a dead zone for the mouse wheel: the
+   browser refuses to hand the scroll to the page, and when the menu is short
+   enough to fit (the common case) it has nothing of its own to scroll either,
+   so the wheel does nothing at all on every admin screen. Letting the scroll
+   chain normally means a short menu passes the wheel straight to the page, and
+   a long menu scrolls itself first and then hands over at its end. */
 body.brikpanel-has-topbar #brikpanel-navigation {
     height: calc(100vh - var(--bp-topbar-height)) !important;
-    overscroll-behavior: contain;
     scrollbar-width: thin;
 }
 body.brikpanel-has-topbar #brikpanel-navigation::-webkit-scrollbar { width: 6px; }
@@ -988,6 +996,16 @@ body.brikpanel-mobile-nav-open .brikpanel-topbar-mobile-backdrop {
     body.brikpanel-has-topbar.brikpanel-native-nav #adminmenuwrap::-webkit-scrollbar-thumb {
         background: rgba(0, 0, 0, 0.18);
         border-radius: 3px;
+    }
+
+    /* Below this breakpoint the sidebar is an off-canvas sheet laid over the
+       page, not a column beside it, so here containing the scroll is right:
+       while the sheet is open the page behind it must stay where it is. The
+       desktop rule deliberately does NOT contain (see #brikpanel-navigation
+       above) because there the sidebar is a permanent column and containing
+       would make the whole left edge of the screen ignore the mouse wheel. */
+    body.brikpanel-mobile-nav-open #brikpanel-navigation {
+        overscroll-behavior: contain;
     }
 }
 

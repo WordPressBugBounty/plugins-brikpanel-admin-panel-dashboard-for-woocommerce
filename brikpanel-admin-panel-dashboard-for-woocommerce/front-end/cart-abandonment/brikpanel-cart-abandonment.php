@@ -3764,6 +3764,18 @@ class Brikpanel_Cart_Abandonment {
 				$locked_row['wa_locked']    = true;
 				$locked_row['wa_opens']     = 0;
 				$locked_row['wa_opens_title'] = '';
+				// The envelope beside the address goes the same way as the WhatsApp
+				// mark, and for the same reason: both are outreach, and a screen that
+				// locks one while leaving the other live reads as a bug rather than
+				// as a boundary. The address itself stays - it is what identifies the
+				// row, and the export writes it either way - so this locks the
+				// shortcut, never the data.
+				//
+				// Only set when locked, exactly like wa_locked: the flag is read for
+				// truthiness in JS, and a row that never passes through here (an
+				// install where the whole outreach column is absent) must come out
+				// unlocked rather than undefined-and-guessed-at.
+				$locked_row['email_locked'] = true;
 				$locked_row['mail']         = [
 					'sent'    => 0,
 					'pending' => 0,
@@ -3963,6 +3975,15 @@ class Brikpanel_Cart_Abandonment {
 		$popup_enabled = get_option( 'brikpanel_cartab_popup_enabled', 'no' ) === 'yes';
 		$collection_on = self::is_enabled();
 		$settings_url  = admin_url( 'admin.php?page=wc-settings&tab=brikpanel&section=cart-abandonment' );
+		// The Settings shortcut is only drawn for users who may actually open the
+		// BrikPanel tab. With the "Restrict settings to administrators" lock on
+		// (the default), a shop manager is silently redirected away from
+		// page=wc-settings&tab=brikpanel, so the button would be a dead end that
+		// wrongly implies access. Same guard the topbar shortcut already uses.
+		// function_exists() because access control is loaded through
+		// brikpanel_require() and a page must not fatal if that module is missing.
+		$can_open_settings = ! function_exists( 'brikpanel_user_can_open_settings' )
+			|| brikpanel_user_can_open_settings();
 		// Follow-ups rides along with BrikMentor; Phone / WhatsApp is our own
 		// column and is drawn locked when BrikMentor cannot unlock it.
 		$outreach = self::mentor_active();
@@ -4028,9 +4049,11 @@ class Brikpanel_Cart_Abandonment {
 					<button type="button" class="brikpanel-cartab-btn brikpanel-cartab-btn-secondary" id="brikpanel-cartab-export-xlsx">
 						<?php esc_html_e( 'Export Excel', 'brikpanel' ); ?>
 					</button>
+					<?php if ( $can_open_settings ) : ?>
 					<a class="brikpanel-cartab-btn brikpanel-cartab-btn-primary" href="<?php echo esc_url( $settings_url ); ?>">
 						<?php esc_html_e( 'Settings', 'brikpanel' ); ?>
 					</a>
+					<?php endif; ?>
 				</div>
 			</div>
 
@@ -4252,6 +4275,7 @@ class Brikpanel_Cart_Abandonment {
 				popup_off:      <?php echo wp_json_encode( __( 'Popup disabled.', 'brikpanel' ) ); ?>,
 				sku:            <?php echo wp_json_encode( __( 'SKU', 'brikpanel' ) ); ?>,
 				whatsapp:       <?php echo wp_json_encode( __( 'Message on WhatsApp', 'brikpanel' ) ); ?>,
+				email_compose:  <?php echo wp_json_encode( __( 'Send an email', 'brikpanel' ) ); ?>,
 				no_phone:       <?php echo wp_json_encode( __( 'No phone number on file.', 'brikpanel' ) ); ?>,
 				phone_account:  <?php echo wp_json_encode( __( 'From their account', 'brikpanel' ) ); ?>,
 				phone_order:    <?php echo wp_json_encode( __( 'From a past order', 'brikpanel' ) ); ?>,
