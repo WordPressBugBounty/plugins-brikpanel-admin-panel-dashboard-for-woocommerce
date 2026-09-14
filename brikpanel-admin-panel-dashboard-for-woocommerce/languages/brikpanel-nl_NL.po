@@ -17966,3 +17966,19 @@ msgstr "Kies het advertentieaccount waaruit de uitgaven worden opgehaald. Klik h
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
 msgid "Send an email"
 msgstr "Een e-mail sturen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Zijbalk verbergen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Zijbalk tonen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Knop zijbalk tonen/verbergen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Je sessie is verlopen. Laad de pagina opnieuw."

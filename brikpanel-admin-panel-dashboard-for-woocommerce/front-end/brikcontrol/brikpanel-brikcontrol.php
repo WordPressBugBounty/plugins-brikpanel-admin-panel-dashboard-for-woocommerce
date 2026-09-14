@@ -173,9 +173,11 @@ Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cartab_Bot_R
 // Boot the public façade (admin menu + AJAX).
 Brikpanel_BrikControl::instance();
 
-// Register Action Scheduler handlers + recurring schedule. Runs on init at
-// priority 20 so Brikpanel_Cron + WC's AS bootstrap have completed.
-add_action( 'init', [ 'Brikpanel_BrikControl_Runner', 'register' ], 20 );
+// Register Action Scheduler handlers + recurring schedule. The register hook
+// fires on init priority 20 once Action Scheduler is ready, and lets the
+// schedule check join Brikpanel_Cron::reconcile() instead of querying on
+// every request.
+add_action( 'brikpanel_cron_register', [ 'Brikpanel_BrikControl_Runner', 'register' ] );
 
 /**
  * One-time repair for the kickoff pile-up that shipped before 3.2.70.

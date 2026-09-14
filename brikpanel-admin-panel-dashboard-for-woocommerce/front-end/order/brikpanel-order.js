@@ -177,16 +177,27 @@
 		var lastHeight = '';
 		var lastTop = '';
 		var lastLeft = '';
+		var lastRight = '';
 
 		function applyHeaderMetrics() {
 			metricsFrame = 0;
 
 			var wpcontent = document.getElementById('wpcontent');
 			if (wpcontent) {
-				var left = wpcontent.getBoundingClientRect().left + 'px';
+				var contentRect = wpcontent.getBoundingClientRect();
+				var left = contentRect.left + 'px';
 				if (left !== lastLeft) {
 					lastLeft = left;
 					header.style.left = left;
+				}
+				// RTL docks the sidebar on the right, so the bar has to stop at the
+				// content column's right edge too, or it runs underneath the menu.
+				if (document.body.classList.contains('rtl')) {
+					var right = Math.max(0, document.documentElement.clientWidth - contentRect.right) + 'px';
+					if (right !== lastRight) {
+						lastRight = right;
+						header.style.right = right;
+					}
 				}
 			}
 

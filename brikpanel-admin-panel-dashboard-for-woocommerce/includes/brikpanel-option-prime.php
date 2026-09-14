@@ -89,6 +89,9 @@ function brikpanel_prime_keys_always() {
 		// Ad platforms.
 		'brikpanel_ads_tokens',
 
+		// Recurring job fingerprint, read on init by Brikpanel_Cron::reconcile().
+		'brikpanel_cron_reconciled',
+
 		// Front-end tracking emitter.
 		'brikpanel_frontend_tracking',
 		'brikpanel_tracking_require_consent',

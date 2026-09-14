@@ -188,6 +188,26 @@ class Brikpanel_Dashboard {
      * recomputes on the next dashboard view. Cheap; accepts any hook args.
      */
     public function bust_catalog_counts() {
+        // Coalesced per request, same pattern as brikpanel_bust_data_caches():
+        // a variable product save moves the parent and every variation through
+        // transition_post_status, one delete each.
+        static $busted = false;
+        if ( $busted ) {
+            if ( ! has_action( 'shutdown', [ __CLASS__, 'delete_catalog_counts' ] ) ) {
+                add_action( 'shutdown', [ __CLASS__, 'delete_catalog_counts' ], PHP_INT_MAX );
+            }
+            return;
+        }
+        $busted = true;
+        self::delete_catalog_counts();
+    }
+
+    /**
+     * Drop the cached catalog counts. Use bust_catalog_counts().
+     *
+     * @return void
+     */
+    public static function delete_catalog_counts() {
         delete_transient( 'brikpanel_catalog_counts' );
     }
 

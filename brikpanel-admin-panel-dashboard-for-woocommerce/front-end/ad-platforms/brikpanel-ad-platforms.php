@@ -278,16 +278,16 @@ function brikpanel_ads_map_settings_title( $map ) {
 // keeps this a no-op on every request once the queue is clean.
 // =============================================================================
 if ( ! brikpanel_ads_module_is_enabled() ) {
-	add_action( 'admin_init', function () {
+	// On the register hook so the sweep joins Brikpanel_Cron::reconcile() and
+	// stops querying Action Scheduler on every admin request once it is clean.
+	add_action( 'brikpanel_cron_register', function () {
 		if ( ! class_exists( 'Brikpanel_Cron' ) || ! Brikpanel_Cron::is_available() ) {
 			return;
 		}
 		foreach ( [ 'brikpanel_ads_daily_sync', 'brikpanel_ads_backfill_chunk' ] as $hook ) {
-			if ( Brikpanel_Cron::is_scheduled( $hook ) ) {
-				Brikpanel_Cron::cancel( $hook );
-			}
+			Brikpanel_Cron::cancel( $hook );
 		}
-	}, 20 );
+	} );
 	return;
 }
 

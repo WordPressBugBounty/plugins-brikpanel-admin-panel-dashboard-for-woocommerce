@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 3.3.4
+Stable tag: 3.3.5
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -459,6 +459,12 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 21. Login Page
 
 == Changelog ==
+= 3.3.5 (2026-09-14) =
+* Fix: **The left menu's scrollbar can be dragged again on the Plugins screen.** PDF Invoices and Packing Slips For WooCommerce by Acowebs leaves two links unclosed in its deactivation form, and the browser carried invisible copies of that link into the BrikPanel menu. One lay on top of the menu's scrollbar, so grabbing the scrollbar grabbed the link instead and the menu would not move; the copies also pushed the Dashboard label out of line. The menu now closes any link left open before it starts, and nothing inside the menu can cover its own scrollbar any more.
+* Fix: **Icon columns added by other plugins no longer stretch the orders list.** A column holding several small icons (invoice, packing slip, delivery note and so on) was squeezed so narrow that its icons stacked one under another, making every order row several times taller, and the more columns you showed the worse it got. Those icons now sit two to a row, so rows stay short. Nothing is moved or rebuilt: the other plugin's links, tooltips and click actions work exactly as before.
+* Fix: **Icons drawn as background pictures are now included.** Some plugins, such as PDF Invoices and Packing Slips For WooCommerce by Acowebs, hide each icon's label and paint the icon behind it. Those columns were not recognised and stayed stacked. They are now, and the plugin's own icon size, position and hover picture are left untouched.
+* Fix: **An error elsewhere on the orders screen can no longer skip this layout.** It now runs first and on its own, so a problem in another part of the page does not leave the icons stacked.
+
 = 3.3.4 (2026-09-13) =
 * Fix: **Scrolling works again when the mouse is over the left menu.** With the top bar on, the menu column was a separate scrolling box that refused to pass the wheel on to the page, so anywhere along the left edge of the screen the mouse wheel did nothing at all, on every admin screen. The menu now hands the scroll over: if it fits on screen the page moves straight away, and if it is longer than the screen it scrolls itself first and then lets the page carry on. The slide-in menu on phones still holds the page still behind it.
 * Fix: **The same dead spot on the Products list is gone.** That screen had a second cause of its own, which moved the page scroll somewhere the menu column could not reach it, so the wheel stayed dead over the menu there even once the menu let go. The guard that stops the quick-edit panel from widening the page now does its job without taking the page scroll with it.
@@ -533,8 +539,3 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 * Fix: **Saving a variable product no longer copies the parent's SEO settings onto its variations.** Reordering variations, or switching one on or off, could write the product's meta title, description, canonical and redirection settings onto every variation as well.
 * Fix: **A duplicate Google preview and a duplicate "Primary category" selector are gone when SEOPress is in charge.** The editor's own preview could also show a leftover template from a different SEO plugin.
 * Fix: Opening the product editor with SEOPress active no longer logs a script error in the browser, and SEOPress's editor code is no longer loaded at all on a product where the SEO section is switched off.
-
-= 3.2.90 (2026-08-28) =
-* Fix: **Saving a product no longer loses the colour and size chosen for each variation.** On a product whose attributes had been rewritten by an import, a stock sync or an ERP feed, WooCommerce stops showing the variations' choices and every row reads "Any Colour, Any Size" even though the choices are still stored. The editor believed that emptiness and wrote it back on the next save, which deleted the choices for good. It now reads what is actually stored, and a value it was never shown is left exactly as it was instead of being erased.
-* Fix: **A variable product can no longer be turned into a simple one, and its variations deleted, without anybody asking for it.** When the same kind of import left the product's attributes unusable, the editor opened with an empty variation list and took that to mean the product was no longer variable — so saving it removed every variation permanently. The editor now loads the variations regardless, and the save refuses to change the product type or remove variations unless the merchant actually made that choice.
-* Fix: **An attribute whose options were emptied by an import is repaired instead of removed.** Where the product's list of colours or sizes had been wiped but the variations still held theirs, saving used to drop the attribute from the product as well, leaving a variable product with variations and no options at all. The list is now rebuilt from the variations themselves, which restores the product in one save. Clearing an attribute's options yourself still removes it, as before.

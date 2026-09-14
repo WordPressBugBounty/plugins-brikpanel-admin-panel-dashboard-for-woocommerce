@@ -87,13 +87,20 @@
         fetchDashboardData();
         startLivePolling();
 
-        // Pause polling when tab is hidden
+        // Pause polling when tab is hidden. Coming back refreshes the live
+        // count at once, but only reloads the whole dashboard when the tab was
+        // away long enough for the numbers to have moved: flicking between
+        // tabs used to rebuild the full payload on every switch.
+        var hiddenAt = 0;
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'hidden') {
+                hiddenAt = Date.now();
                 stopLivePolling();
             } else {
                 startLivePolling();
-                fetchDashboardData();
+                if (!hiddenAt || Date.now() - hiddenAt >= 60000) {
+                    fetchDashboardData();
+                }
             }
         });
     });
@@ -2564,7 +2571,9 @@
     function startLivePolling() {
         if (liveInterval) return;
         fetchLiveVisitors();
-        liveInterval = setInterval(fetchLiveVisitors, 10000);
+        // 30s: a visitor stays "live" for at least 75s after their last ping,
+        // so a faster poll only adds server load without showing anything new.
+        liveInterval = setInterval(fetchLiveVisitors, 30000);
     }
 
     function stopLivePolling() {

@@ -119,8 +119,78 @@ function brikpanel_expense_money_kinds_sql( $alias = '' ) {
  * KPIs stay live without manual cache wiring per metric.
  */
 function brikpanel_bust_data_caches() {
+    // Coalesced per request: the first call bumps at once, and any further
+    // calls in the same request add ONE more bump at shutdown, so data changed
+    // later in the request still invalidates. A variable product save writes
+    // cost meta for every variation and used to bump (a database write each
+    // time) once per meta write.
+    static $bumped = false;
+    if ( $bumped ) {
+        if ( ! has_action( 'shutdown', 'brikpanel_bump_data_cache_ver' ) ) {
+            add_action( 'shutdown', 'brikpanel_bump_data_cache_ver', PHP_INT_MAX );
+        }
+        return;
+    }
+    $bumped = true;
+    brikpanel_bump_data_cache_ver();
+}
+
+/**
+ * Write the next shared data version. Use brikpanel_bust_data_caches().
+ *
+ * @return void
+ */
+function brikpanel_bump_data_cache_ver() {
+    // Fresh read, so a bump made by another request since this one loaded
+    // the value is not written back over.
+    wp_cache_delete( 'brikpanel_data_cache_ver', 'options' );
     update_option( 'brikpanel_data_cache_ver', (int) get_option( 'brikpanel_data_cache_ver', 1 ) + 1, false );
 }
+/**
+ * Drop the topbar notification-bell counts cache (Brikpanel_Dashboard_Topbar).
+ *
+ * New orders and status changes already invalidate it through the shared data
+ * version. These cover the rest of what the bell counts: orders trashed,
+ * restored or deleted, and products going in or out of stock or publication.
+ * Lives here, not in the topbar file, because that file only loads in wp-admin
+ * while stock and orders also change at checkout, over REST and in cron.
+ *
+ * @return void
+ */
+function brikpanel_flush_topbar_counts() {
+    // Coalesced like brikpanel_bust_data_caches(): once now, and once more at
+    // shutdown if anything else changed later in the same request.
+    static $done = false;
+    if ( $done ) {
+        if ( ! has_action( 'shutdown', 'brikpanel_delete_topbar_counts' ) ) {
+            add_action( 'shutdown', 'brikpanel_delete_topbar_counts', PHP_INT_MAX );
+        }
+        return;
+    }
+    $done = true;
+    brikpanel_delete_topbar_counts();
+}
+
+/**
+ * Delete the topbar counts transient. Use brikpanel_flush_topbar_counts().
+ *
+ * @return void
+ */
+function brikpanel_delete_topbar_counts() {
+    delete_transient( 'brikpanel_topbar_counts' );
+}
+add_action( 'woocommerce_trash_order',              'brikpanel_flush_topbar_counts' );
+add_action( 'woocommerce_untrash_order',            'brikpanel_flush_topbar_counts' );
+add_action( 'woocommerce_delete_order',             'brikpanel_flush_topbar_counts' );
+add_action( 'woocommerce_product_set_stock_status', 'brikpanel_flush_topbar_counts' );
+add_action( 'transition_post_status', static function ( $new_status, $old_status, $post ) {
+    // shop_order covers a legacy (non-HPOS) order restored from the trash,
+    // which fires no order-specific hook.
+    if ( $new_status !== $old_status && $post instanceof WP_Post && ( 'product' === $post->post_type || 'shop_order' === $post->post_type ) ) {
+        brikpanel_flush_topbar_counts();
+    }
+}, 10, 3 );
+
 add_action( 'woocommerce_new_order',            'brikpanel_bust_data_caches' );
 add_action( 'woocommerce_order_status_changed', 'brikpanel_bust_data_caches' );
 add_action( 'woocommerce_order_refunded',       'brikpanel_bust_data_caches' );

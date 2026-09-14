@@ -17861,3 +17861,19 @@ msgstr "Harcamanın çekileceği reklam hesabını seçin. Aşağıdaki \"Hesapl
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
 msgid "Send an email"
 msgstr "E-posta gönder"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Kenar çubuğunu gizle"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Kenar çubuğunu göster"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Kenar çubuğunu göster/gizle butonu"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Oturumunuzun süresi doldu. Lütfen sayfayı yenileyin."

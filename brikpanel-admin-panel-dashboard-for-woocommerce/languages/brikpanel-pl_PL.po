@@ -17950,3 +17950,19 @@ msgstr "Wybierz konto reklamowe, z którego będą pobierane wydatki. Kliknij po
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
 msgid "Send an email"
 msgstr "Wyślij e-mail"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Ukryj pasek boczny"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Pokaż pasek boczny"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Przycisk pokazywania/ukrywania paska bocznego"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Sesja wygasła. Odśwież stronę."

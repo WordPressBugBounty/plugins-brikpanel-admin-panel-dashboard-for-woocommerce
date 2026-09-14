@@ -72,6 +72,15 @@ function brikpanelOrderTableFilters() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+	// First, and behind its own guard: it needs nothing the calls below build,
+	// and any one of them throwing on a page it did not expect would otherwise
+	// skip it and leave a store's icon columns stacked.
+	try {
+		brikpanelIconActionColumns();
+	} catch (error) {
+		console.error(error);
+	}
+
 	try {
 		brikpanelTableScroll();
 		brikpanelPageHeader();
@@ -87,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		brikpanelEmptyTrashButton();
 		brikpanelAddFiltersToOrderLinks();
 		brikpanelListTableSearchResultCount();
-		brikpanelIconActionColumns();
 	} finally {
 		showBrikpanel();
 	}
@@ -949,10 +957,13 @@ function brikpanelOrderNumberNamePreview() {
  * (and an inline icon's in <svg><title>), so counting either would misread every
  * properly labelled icon button as a text button.
  *
- * @param {Element} $node Subtree root.
+ * @param {Element}      $node   Subtree root.
+ * @param {Set<Element>} [$skip] Elements whose whole subtree is left out: the
+ *                               icons themselves, when what matters is the text
+ *                               around them rather than the labels they hide.
  * @returns {number} Number of visible characters.
  */
-function brikpanelIconbarTextLength($node) {
+function brikpanelIconbarTextLength($node, $skip = null) {
 	let length = 0;
 
 	for (const $child of $node.childNodes) {
@@ -961,7 +972,7 @@ function brikpanelIconbarTextLength($node) {
 			continue;
 		}
 
-		if ($child.nodeType !== Node.ELEMENT_NODE) continue;
+		if ($child.nodeType !== Node.ELEMENT_NODE || $skip?.has($child)) continue;
 
 		if ($child.classList.contains('screen-reader-text')
 			|| $child.localName === 'svg'
@@ -971,10 +982,41 @@ function brikpanelIconbarTextLength($node) {
 			continue;
 		}
 
-		length += brikpanelIconbarTextLength($child);
+		length += brikpanelIconbarTextLength($child, $skip);
 	}
 
 	return length;
+}
+
+/**
+ * How a control shows its icon, or null when it is not an icon-only control.
+ *
+ * - 'media': an <img> or <svg> inside, and no visible label.
+ * - 'bg': the icon is a CSS background image. Plugins that draw icons this way
+ *   usually still print a label for screen readers and hide it visually with
+ *   `font-size: 0` or the classic far-negative `text-indent`, so the control
+ *   only counts when that label really is hidden: a text button that merely
+ *   has a decorative background stays a text button. "PDF Invoices and Packing
+ *   Slips For WooCommerce" by Acowebs renders its Documents column exactly like
+ *   this, and was the plugin behind the original report.
+ *
+ * Only computed style is read, and none of these properties depend on layout,
+ * so this never forces a reflow.
+ *
+ * @param {Element} $control
+ * @returns {'media'|'bg'|null}
+ */
+function brikpanelIconbarIconKind($control) {
+	const hasLabel = brikpanelIconbarTextLength($control) > 0;
+
+	if (!hasLabel && $control.querySelector('img, svg')) return 'media';
+
+	const style = getComputedStyle($control);
+	if (!style.backgroundImage.includes('url(')) return null;
+
+	const hidesLabel = parseFloat(style.fontSize) === 0 || parseFloat(style.textIndent) <= -999;
+
+	return !hasLabel || hidesLabel ? 'bg' : null;
 }
 
 /**
@@ -989,13 +1031,13 @@ function brikpanelIconbarTextLength($node) {
  * left exactly as the other plugin rendered it.
  *
  * @param {HTMLTableCellElement} $cell Body cell of a column BrikPanel does not own.
- * @returns {{$items: Element[], $wraps: Element[]}|null}
+ * @returns {{$cell: HTMLTableCellElement, $items: Element[], kinds: string[], $wraps: Element[]}|null}
  */
 function brikpanelIconbarReadCell($cell) {
 	if ($cell.classList.contains('brikpanel-iconbar-cell')) return null;
 
 	const $items = [];
-	const $wraps = [];
+	const kinds = [];
 
 	for (const $control of $cell.querySelectorAll('a[href], button')) {
 		// WordPress' hover links ("Edit | Trash"), the order preview button and
@@ -1005,21 +1047,27 @@ function brikpanelIconbarReadCell($cell) {
 		// A control nested inside another control is one visual thing.
 		if ($control.parentElement?.closest('a[href], button')) continue;
 
-		// Icon-only: no visible label of its own, and some icon media inside.
-		// One labelled control in the cell rules the whole cell out, because
+		// One control that is not an icon rules the whole cell out, because
 		// squaring a text button off at 2rem would cut its label in half.
-		if (brikpanelIconbarTextLength($control) > 0 || !$control.querySelector('img, svg')) return null;
+		const kind = brikpanelIconbarIconKind($control);
+		if (!kind) return null;
 
 		$items.push($control);
+		kinds.push(kind);
 	}
 
 	if ($items.length < BP_ICONBAR_MIN_ITEMS) return null;
 
+	// The labels background icons hide for screen readers are not text anyone
+	// sees, so they count neither as the cell's own copy nor as a wrapper's.
+	const $icons = new Set($items);
+
 	// A cell with real copy of its own is a content column that happens to carry
 	// a couple of icons. Pinning it to the width of two icons would be a worse
-	// problem than the one being fixed. Every control above is icon-only, so
-	// whatever text the cell reports is the cell's own.
-	if (brikpanelIconbarTextLength($cell) > BP_ICONBAR_MAX_TEXT) return null;
+	// problem than the one being fixed.
+	if (brikpanelIconbarTextLength($cell, $icons) > BP_ICONBAR_MAX_TEXT) return null;
+
+	const $wraps = [];
 
 	// Every container between an icon and the cell has to be one this pass can
 	// make inline-level. Anything else -- a list item, a table, a form control --
@@ -1028,7 +1076,7 @@ function brikpanelIconbarReadCell($cell) {
 	for (const $item of $items) {
 		for (let $wrap = $item.parentElement; $wrap && $wrap !== $cell; $wrap = $wrap.parentElement) {
 			if (($wrap.localName !== 'div' && $wrap.localName !== 'p')
-				|| brikpanelIconbarTextLength($wrap) > 0) {
+				|| brikpanelIconbarTextLength($wrap, $icons) > 0) {
 				return null;
 			}
 
@@ -1036,7 +1084,7 @@ function brikpanelIconbarReadCell($cell) {
 		}
 	}
 
-	return { $items, $wraps };
+	return { $cell, $items, kinds, $wraps };
 }
 
 /**
@@ -1056,12 +1104,15 @@ function brikpanelIconbarReadCell($cell) {
  * itself lives in CSS (see "THIRD-PARTY ICON-ACTION COLUMNS" in
  * brikpanel-orders.css).
  *
- * Single pass, bounded per cell, and no layout reads at all, so the class and
- * style writes cannot thrash.
+ * Every column is read before anything is written, and the reads are DOM walks
+ * plus layout-independent computed style, so the pass costs at most one style
+ * recalculation and never a reflow.
  */
 function brikpanelIconActionColumns() {
 	const $table = document.querySelector('.wp-list-table');
 	if (!$table) return;
+
+	const plans = [];
 
 	// Which columns are not ours? Read once from the header row. On a store with
 	// no third-party order columns -- the overwhelming majority -- this loop is
@@ -1097,22 +1148,29 @@ function brikpanelIconActionColumns() {
 				BP_ICONBAR_MAX_COLS
 			));
 
-			for (const { $items, $wraps } of runs) {
-				for (const $wrap of $wraps) $wrap.classList.add('brikpanel-iconbar-wrap');
-
-				for (const $item of $items) $item.classList.add('brikpanel-iconbar-item');
-
-				const $cell = $items[0].closest('td');
-				$cell.classList.add('brikpanel-iconbar-cell');
-				$cell.style.setProperty('--bp-iconbar-cols', cols);
-			}
-
-			// A long header label would otherwise hold the narrowed column open
-			// on its own, and the blanket nowrap on thead th is meant for the
-			// columns BrikPanel lays out itself. Columns this pass left alone
-			// keep the header they had.
-			$th.classList.add('brikpanel-iconbar-col');
+			plans.push({ $th, runs, cols });
 		}
+	}
+
+	// Only now write. A class added for one column would otherwise invalidate
+	// style, and the next column's computed-style reads would recalculate it.
+	for (const { $th, runs, cols } of plans) {
+		for (const { $cell, $items, kinds, $wraps } of runs) {
+			for (const $wrap of $wraps) $wrap.classList.add('brikpanel-iconbar-wrap');
+
+			$items.forEach(($item, index) => {
+				$item.classList.add('brikpanel-iconbar-item', `brikpanel-iconbar-item--${kinds[index]}`);
+			});
+
+			$cell.classList.add('brikpanel-iconbar-cell');
+			$cell.style.setProperty('--bp-iconbar-cols', cols);
+		}
+
+		// A long header label would otherwise hold the narrowed column open on
+		// its own, and the blanket nowrap on thead th is meant for the columns
+		// BrikPanel lays out itself. Columns this pass left alone keep the
+		// header they had.
+		$th.classList.add('brikpanel-iconbar-col');
 	}
 }
 

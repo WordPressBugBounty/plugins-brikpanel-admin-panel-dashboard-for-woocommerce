@@ -4,8 +4,8 @@
  * - Relocates the BrikPanel search overlay out of #wpadminbar so it still
  *   opens when the admin bar is hidden.
  * - Wires dropdown menus (Create, notifications, user).
- * - Polls the `brikpanel_topbar_stats` endpoint every 30s for today's
- *   revenue / orders / conversion / live visitors / pending order counts.
+ * - Polls the `brikpanel_topbar_stats` endpoint every 30s for live
+ *   visitors and the notification bell counts.
  *
  * @since 2.2.3
  */
@@ -399,29 +399,185 @@
     }
 
     /**
-     * Mobile hamburger → toggles the off-canvas WP sidebar.
-     * Replaces the WP admin-bar's `#wp-admin-bar-menu-toggle`, which is gone
-     * because we hide #wpadminbar entirely.
+     * Sidebar toggle.
+     *
+     * Above 960px it hides / shows the fixed desktop sidebar and remembers the
+     * choice per user. At 960px and below it is the off-canvas hamburger, which
+     * replaces the WP admin-bar's `#wp-admin-bar-menu-toggle` (gone because we
+     * hide #wpadminbar entirely). The `[` key does the same as a click.
      */
     function initMobileMenu() {
         var btn = document.getElementById('brikpanel-topbar-menu-btn');
         if (!btn) return;
 
+        var body = document.body;
+        var cfg = window.brikpanelTopbar || {};
+        var i18n = cfg.i18n || {};
+        // Must match the CSS breakpoint exactly; matchMedia (unlike innerWidth
+        // arithmetic) measures the same way the stylesheet does.
+        var desktopMql = window.matchMedia ? window.matchMedia('(min-width: 961px)') : null;
+        var isDesktop = function () {
+            return desktopMql ? desktopMql.matches : window.innerWidth > 960;
+        };
+        // wp_localize_script() sends PHP false as "" (true as "1").
+        var desktopToggleOn = cfg.sidebar_toggle !== '' && cfg.sidebar_toggle !== false
+            && !btn.classList.contains('is-desktop-off');
+
         // Insert a backdrop so tapping outside the sidebar closes it.
         var backdrop = document.createElement('div');
         backdrop.className = 'brikpanel-topbar-mobile-backdrop';
         backdrop.id = 'brikpanel-topbar-mobile-backdrop';
-        document.body.appendChild(backdrop);
+        body.appendChild(backdrop);
+
+        var tip = document.getElementById('brikpanel-topbar-sidebar-tip');
+        var tipLabel = tip ? tip.querySelector('.brikpanel-topbar-sidebar-tip-label') : null;
+        var topbarEl = document.getElementById('brikpanel-topbar');
+
+        var syncButton = function () {
+            if (isDesktop()) {
+                var hidden = body.classList.contains('brikpanel-sidebar-hidden');
+                var label = hidden ? i18n.show_sidebar : i18n.hide_sidebar;
+                if (label) {
+                    btn.setAttribute('aria-label', label);
+                    if (tipLabel) tipLabel.textContent = label;
+                }
+                btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+            } else {
+                if (i18n.toggle_nav) btn.setAttribute('aria-label', i18n.toggle_nav);
+                btn.setAttribute('aria-expanded', body.classList.contains('brikpanel-mobile-nav-open') ? 'true' : 'false');
+            }
+        };
 
         var setOpen = function (open) {
-            document.body.classList.toggle('brikpanel-mobile-nav-open', open);
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            body.classList.toggle('brikpanel-mobile-nav-open', open);
+            syncButton();
+        };
+
+        var animTimer = 0;
+        // Saving is debounced into one request carrying the final state: fast
+        // repeated toggles would otherwise fire parallel requests that can
+        // reach the server out of order and store a stale choice.
+        var saveTimer = 0;
+        var pendingHidden = null;
+        var flushSave = function () {
+            clearTimeout(saveTimer);
+            if (pendingHidden === null || !cfg.ajax_url || !cfg.nonce || !window.fetch) return;
+            var data = new URLSearchParams();
+            data.append('action', 'brikpanel_topbar_sidebar_state');
+            data.append('security', cfg.nonce);
+            data.append('hidden', pendingHidden ? 'yes' : 'no');
+            pendingHidden = null;
+            // keepalive: the choice still lands if the page is left right away.
+            // A failure only costs the memory of the choice, never the
+            // on-screen state, so it is left silent.
+            fetch(cfg.ajax_url, { method: 'POST', credentials: 'same-origin', body: data, keepalive: true })
+                .catch(function () {});
+        };
+        var saveState = function (hidden) {
+            // Bridge until the save lands: the next page request carries this
+            // cookie, so navigating right after a toggle keeps the new state.
+            var ck = cfg.sidebar_cookie;
+            if (ck && ck.name && ck.user) {
+                document.cookie = ck.name + '=' + encodeURIComponent(ck.user + ':' + (hidden ? 'yes' : 'no'))
+                    + '; path=' + (ck.path || '/') + '; max-age=120; SameSite=Lax' // i18n-ignore: cookie attributes, not UI text
+                    + (location.protocol === 'https:' ? '; Secure' : ''); // i18n-ignore: cookie attribute, not UI text
+            }
+            pendingHidden = hidden;
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(flushSave, 400);
+        };
+        window.addEventListener('pagehide', flushSave);
+
+        var setDesktopHidden = function (hidden) {
+            if (hidden === body.classList.contains('brikpanel-sidebar-hidden')) return;
+
+            // Focus must not stay on a link that is about to become invisible.
+            var nav = document.getElementById('adminmenuwrap');
+            if (hidden && nav && nav.contains(document.activeElement)) {
+                btn.focus();
+            }
+
+            // Transitions exist only while this class is present, and it has to
+            // be applied (and flushed) before the state flips or nothing animates.
+            body.classList.add('brikpanel-sidebar-animating');
+            void body.offsetWidth; // eslint-disable-line no-void
+            body.classList.toggle('brikpanel-sidebar-hidden', hidden);
+            syncButton();
+            saveState(hidden);
+
+            clearTimeout(animTimer);
+            animTimer = setTimeout(function () {
+                body.classList.remove('brikpanel-sidebar-animating');
+                // Content-width consumers that only listen to resize (charts,
+                // sticky table headers, the order edit bar) re-measure now.
+                window.dispatchEvent(new Event('resize'));
+            }, 280);
+        };
+
+        var toggle = function () {
+            if (isDesktop()) {
+                if (desktopToggleOn) setDesktopHidden(!body.classList.contains('brikpanel-sidebar-hidden'));
+            } else {
+                setOpen(!body.classList.contains('brikpanel-mobile-nav-open'));
+            }
         };
 
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
-            setOpen(!document.body.classList.contains('brikpanel-mobile-nav-open'));
+            hideTip();
+            // stopPropagation keeps the document click from closing an open
+            // top bar dropdown, so close it here like every other bar button.
+            closeAllTopbarMenus();
+            toggle();
         });
+
+        // Tooltip (label + shortcut), shown after a short hover delay.
+        var tipTimer = 0;
+        var showTip = function () {
+            if (!topbarEl || !tip || !isDesktop()) return;
+            clearTimeout(tipTimer);
+            tipTimer = setTimeout(function () { topbarEl.classList.add('is-sidebar-tip-open'); }, 350);
+        };
+        var hideTip = function () {
+            clearTimeout(tipTimer);
+            if (topbarEl) topbarEl.classList.remove('is-sidebar-tip-open');
+        };
+        btn.addEventListener('mouseenter', showTip);
+        btn.addEventListener('mouseleave', hideTip);
+        btn.addEventListener('focus', function () {
+            // Older browsers throw on an unknown pseudo-class; skip the tip there.
+            try {
+                if (btn.matches(':focus-visible')) showTip();
+            } catch (err) {}
+        });
+        btn.addEventListener('blur', hideTip);
+
+        // `[` shortcut. Skipped while typing, while a modal or the search
+        // palette is open, and for Ctrl/Cmd chords. Alt / AltGr stay allowed:
+        // on Turkish and several other layouts `[` itself is typed with them.
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== '[' || e.defaultPrevented || e.repeat || e.isComposing || e.metaKey) return;
+            if (e.ctrlKey && !e.altKey) return;
+            var t = e.target;
+            if (t && t.nodeType === 1) {
+                if (t.isContentEditable || t.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]')) return;
+            }
+            if (body.classList.contains('modal-open')) return;
+            var overlay = document.querySelector('.brikpanel-search-overlay');
+            if (overlay && !overlay.classList.contains('hidden')) return;
+            if (document.querySelector('dialog[open]')) return;
+            if (isDesktop() && !desktopToggleOn) return;
+            e.preventDefault();
+            toggle();
+        });
+
+        syncButton();
+        var onBreakpoint = function () { hideTip(); syncButton(); };
+        if (desktopMql && desktopMql.addEventListener) {
+            desktopMql.addEventListener('change', onBreakpoint);
+        } else if (desktopMql && desktopMql.addListener) {
+            desktopMql.addListener(onBreakpoint);
+        }
         backdrop.addEventListener('click', function () { setOpen(false); });
 
         // Close when navigating via a sidebar link (small screens).

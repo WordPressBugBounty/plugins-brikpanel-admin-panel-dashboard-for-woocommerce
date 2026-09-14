@@ -1115,26 +1115,33 @@ status show in the order number area. This is not needed for Brikpanel’s mobil
 	line-height: 1;
 }
 
-/* The icons themselves, squared off to match .wc-action-button above.
-   `vertical-align: middle` is load-bearing, not cosmetic: inline-flex boxes sit
-   on their own baseline otherwise, and a run of them ends up tall enough to read
-   as two rows. Margins are logical, so the grid mirrors itself on RTL admin
-   locales with nothing added to brikpanel-rtl.css. */
+/* Every icon, however it is drawn, sits on the grid: inline, vertically
+   centred and spaced by the grid gap. `vertical-align: middle` is load-bearing,
+   not cosmetic: inline-level boxes sit on their own baseline otherwise, and a run
+   of them ends up tall enough to read as two rows. Margins are logical, so the
+   grid mirrors itself on RTL admin locales with nothing added to
+   brikpanel-rtl.css. */
 .wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item {
+	vertical-align: middle;
+	margin-block: 0 var(--bp-iconbar-gap) !important;
+	margin-inline: 0 var(--bp-iconbar-gap) !important;
+	float: none !important;
+}
+
+/* Icons drawn from an <img>/<svg> inside a plain link or a WordPress .button:
+   squared off to match .wc-action-button above. */
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item--media {
 	display: inline-flex !important;
 	align-items: center;
 	justify-content: center;
-	vertical-align: middle;
 	box-sizing: border-box;
 	width: var(--bp-iconbar-slot) !important;
 	height: var(--bp-iconbar-slot) !important;
 	min-width: 0 !important;
 	min-height: 0 !important;
 	max-width: none !important;
+	max-height: none !important;
 	padding: 0 !important;
-	margin-block: 0 var(--bp-iconbar-gap) !important;
-	margin-inline: 0 var(--bp-iconbar-gap) !important;
-	float: none !important;
 	border: none !important;
 	border-radius: .5rem;
 	background-color: transparent;
@@ -1146,14 +1153,14 @@ status show in the order number area. This is not needed for Brikpanel’s mobil
 	overflow: visible;
 }
 
-.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item:hover {
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item--media:hover {
 	background-color: #fafafa;
 }
 
 /* Icon artwork is clamped rather than restyled: plugins ship these at anything
    from 14px to 32px, and only a shared size makes a row of them line up. */
-.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item img,
-.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item svg {
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item--media img,
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item--media svg {
 	display: block;
 	flex: none;
 	width: 1.125rem !important;
@@ -1163,6 +1170,23 @@ status show in the order number area. This is not needed for Brikpanel’s mobil
 	max-height: 1.125rem !important;
 	margin: 0 !important;
 	object-fit: contain;
+}
+
+/* Icons a plugin paints as a CSS background. Here the artwork already is the
+   button -- its frame, colour, size and hover image -- and it may be a sprite
+   that only lines up at the plugin's own box size and background position, so
+   nothing about the look is touched: resizing the box or the image would blur a
+   small raster icon, crop a large one or show the wrong slice of a sprite. Only
+   the outer display changes, so a plugin that made these blocks cannot stack
+   them. `inline-block` rather than flex, and `overflow` left alone, because the
+   label these controls carry is hidden with `font-size: 0` or a far-negative
+   `text-indent`: text-indent only behaves inside a block container, and forcing
+   overflow visible would bring an indented label back into view.
+   The cell's width budget assumes the 2rem slot, which is what these icons
+   usually are (the Acowebs Documents column is exactly 32px); icons a good deal
+   smaller or larger than that simply get as many to a row as fit. */
+.wp-list-table td.brikpanel-iconbar-cell .brikpanel-iconbar-item--bg {
+	display: inline-block !important;
 }
 
 .brikpanel-analytics {

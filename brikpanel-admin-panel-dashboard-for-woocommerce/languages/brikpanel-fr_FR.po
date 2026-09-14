@@ -18076,3 +18076,19 @@ msgstr "Choisissez le compte publicitaire dont les dépenses seront récupérée
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
 msgid "Send an email"
 msgstr "Envoyer un e-mail"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Masquer la barre latérale"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Afficher la barre latérale"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Bouton afficher/masquer la barre latérale"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Votre session a expiré. Veuillez recharger la page."

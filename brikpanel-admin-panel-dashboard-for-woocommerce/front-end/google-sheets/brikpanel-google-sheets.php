@@ -127,15 +127,15 @@ if ( ! brikpanel_gs_module_is_enabled() ) {
 	// the module was re-enabled. Sweep them once, here, where we know the
 	// module is off. Hook names are inlined deliberately: the classes that own
 	// the constants are exactly what we are refusing to load.
-	add_action( 'init', 'brikpanel_gs_unschedule_when_disabled', 30 );
+	add_action( 'brikpanel_cron_register', 'brikpanel_gs_unschedule_when_disabled' );
 	return;
 }
 
 /**
  * Cancel the module's recurring jobs while it is switched off.
  *
- * Runs once per request but only ever touches Action Scheduler when something
- * is actually still pending, so the disabled path stays cheap.
+ * Runs from the register hook, so Brikpanel_Cron::reconcile() only lets it
+ * reach Action Scheduler when the job set changed or once an hour.
  */
 function brikpanel_gs_unschedule_when_disabled() {
 	if ( ! class_exists( 'Brikpanel_Cron' ) || ! Brikpanel_Cron::is_available() ) {
@@ -151,13 +151,11 @@ function brikpanel_gs_unschedule_when_disabled() {
 		'brikpanel_gs_reports_snapshot',
 	];
 	foreach ( $hooks as $hook ) {
-		// Asked through the wrapper, never as_has_scheduled_action() directly:
-		// that function arrived in Action Scheduler 3.3.0 and this plugin's
-		// declared floor (WooCommerce 4.0) ships 3.1.2, where calling it from
-		// this `init` hook was a fatal on every front-end page view.
-		if ( Brikpanel_Cron::has_any_scheduled( $hook ) ) {
-			Brikpanel_Cron::cancel( $hook );
-		}
+		// Through the wrapper, never as_* directly: the declared floor
+		// (WooCommerce 4.0) ships Action Scheduler 3.1.2, where a direct call
+		// from this `init` path was a fatal on every front-end page view.
+		// cancel() is already a no-op when nothing is pending.
+		Brikpanel_Cron::cancel( $hook );
 	}
 }
 

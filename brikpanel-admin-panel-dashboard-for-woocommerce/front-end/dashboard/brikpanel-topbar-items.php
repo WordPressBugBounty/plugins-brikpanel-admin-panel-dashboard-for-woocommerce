@@ -119,6 +119,7 @@ function brikpanel_topbar_item_audience_allows( $key ) {
  */
 function brikpanel_topbar_builtin_item_keys() {
     return [
+        'sidebar_toggle',
         'brand',
         'live',
         'search',
@@ -537,6 +538,10 @@ add_action( 'admin_bar_menu', 'brikpanel_topbar_bridge_to_admin_bar', 100 );
  */
 function brikpanel_topbar_items_label_map() {
     $map = [
+        'sidebar_toggle' => [
+            'label' => __( 'Sidebar show/hide button', 'brikpanel' ),
+            'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9" y1="4" x2="9" y2="20"/></svg>',
+        ],
         'brand'         => [
             'label' => __( 'Logo &amp; store name', 'brikpanel' ),
             'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/></svg>',

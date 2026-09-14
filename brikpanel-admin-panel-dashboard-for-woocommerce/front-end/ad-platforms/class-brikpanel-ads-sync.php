@@ -54,7 +54,9 @@ class Brikpanel_Ads_Sync {
 		add_action( 'brikpanel_cron_register', [ $this, 'register_handlers' ] );
 
 		// Schedule the recurring daily sync (idempotent; AS dedupes by group+hook).
-		add_action( 'init', [ $this, 'schedule_daily' ], 20 );
+		// On the register hook so the check joins Brikpanel_Cron::reconcile()
+		// instead of querying Action Scheduler on every request.
+		add_action( 'brikpanel_cron_register', [ $this, 'schedule_daily' ] );
 
 		// Hook OAuth completion → kick off backfill for the just-connected
 		// platform. The OAuth handler sets a `brikpanel_ads_needs_backfill_*`
@@ -106,9 +108,8 @@ class Brikpanel_Ads_Sync {
 			|| Brikpanel_Ads_Tokens::is_connected( Brikpanel_Ads_Tokens::PLATFORM_META );
 
 		if ( ! $connected ) {
-			if ( Brikpanel_Cron::is_scheduled( self::HOOK_DAILY ) ) {
-				Brikpanel_Cron::cancel( self::HOOK_DAILY );
-			}
+			// cancel() is already a no-op when nothing is pending.
+			Brikpanel_Cron::cancel( self::HOOK_DAILY );
 			return;
 		}
 

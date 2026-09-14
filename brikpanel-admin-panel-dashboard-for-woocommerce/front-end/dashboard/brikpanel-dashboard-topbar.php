@@ -18,6 +18,10 @@ class Brikpanel_Dashboard_Topbar {
     const OPTION_KEY   = 'brikpanel_dashboard_topbar';
     const NONCE_ACTION = 'brikpanel_topbar_nonce';
 
+    /** Cached notification-bell counts, see get_notification_counts() and brikpanel_flush_topbar_counts(). */
+    const COUNTS_TRANSIENT = 'brikpanel_topbar_counts';
+    const COUNTS_TTL       = MINUTE_IN_SECONDS;
+
     private static $instance = null;
 
     public static function instance() {
@@ -45,7 +49,52 @@ class Brikpanel_Dashboard_Topbar {
 
         // AJAX endpoint for live topbar stats.
         add_action( 'wp_ajax_brikpanel_topbar_stats', [ $this, 'ajax_stats' ] );
+
+        // AJAX endpoint that remembers the per-user "hide sidebar" choice.
+        add_action( 'wp_ajax_brikpanel_topbar_sidebar_state', [ $this, 'ajax_sidebar_state' ] );
     }
+
+    /** User meta holding the per-user "hide sidebar" choice ('yes' or absent). */
+    const SIDEBAR_HIDDEN_META = 'brikpanel_sidebar_hidden';
+
+    /** Short-lived cookie bridging a toggle and its AJAX save, see sidebar_starts_hidden(). */
+    const SIDEBAR_STATE_COOKIE = 'brikpanel_sidebar_state';
+
+    /**
+     * Whether the desktop sidebar should start hidden for the current user.
+     *
+     * The saved choice only counts while the toggle button is on screen for
+     * this user: if the owner hides the button (or its audience rule excludes
+     * this role), the user would otherwise be left with no sidebar and no way
+     * to bring it back.
+     *
+     * @return bool
+     */
+    private function sidebar_starts_hidden() {
+        if ( ! $this->sidebar_toggle_visible() ) {
+            return false;
+        }
+        $user_id = get_current_user_id();
+
+        // The toggle also writes a short-lived "<user id>:yes|no" cookie. It
+        // rides along with the very next page request, while the AJAX save may
+        // still be in flight; without it a quick toggle-then-navigate renders
+        // the previous state. A display hint only, so reading it is harmless.
+        if ( isset( $_COOKIE[ self::SIDEBAR_STATE_COOKIE ] ) ) {
+            $cookie = sanitize_text_field( wp_unslash( $_COOKIE[ self::SIDEBAR_STATE_COOKIE ] ) );
+            if ( preg_match( '/^(\d+):(yes|no)$/', $cookie, $m ) && (int) $m[1] === $user_id ) {
+                return $m[2] === 'yes';
+            }
+        }
+
+        return get_user_meta( $user_id, self::SIDEBAR_HIDDEN_META, true ) === 'yes';
+    }
+
+    /** @return bool */
+    private function sidebar_toggle_visible() {
+        return ! function_exists( 'brikpanel_topbar_item_is_visible' ) || brikpanel_topbar_item_is_visible( 'sidebar_toggle' );
+    }
+
 
     // =========================================================================
     // GATING
@@ -139,6 +188,11 @@ class Brikpanel_Dashboard_Topbar {
     public function add_body_class( $classes ) {
         if ( $this->should_render() ) {
             $classes .= ' brikpanel-has-topbar';
+            // Printed by the server so a hidden sidebar never flashes in on load.
+            // The CSS only honours it above the 960px off-canvas breakpoint.
+            if ( $this->sidebar_starts_hidden() ) {
+                $classes .= ' brikpanel-sidebar-hidden';
+            }
         }
         return $classes;
     }
@@ -193,7 +247,16 @@ class Brikpanel_Dashboard_Topbar {
             // When on, red error notices are collected into the bell too instead
             // of staying on screen (off by default).
             'hide_errors'     => get_option( 'brikpanel_hide_error_notices', 'no' ) === 'yes',
+            'sidebar_toggle'  => $this->sidebar_toggle_visible(),
+            'sidebar_cookie'  => [
+                'name' => self::SIDEBAR_STATE_COOKIE,
+                'path' => (string) wp_parse_url( admin_url(), PHP_URL_PATH ),
+                'user' => get_current_user_id(),
+            ],
             'i18n'            => [
+                'hide_sidebar'   => __( 'Hide sidebar', 'brikpanel' ),
+                'show_sidebar'   => __( 'Show sidebar', 'brikpanel' ),
+                'toggle_nav'     => __( 'Toggle navigation', 'brikpanel' ),
                 'cache_clearing' => __( 'Clearing cache…', 'brikpanel' ),
                 'cache_failed'   => __( 'Cache could not be cleared.', 'brikpanel' ),
                 'close'          => __( 'Close', 'brikpanel' ),
@@ -244,12 +307,22 @@ class Brikpanel_Dashboard_Topbar {
 
                 <!-- ========== LEFT ========== -->
                 <div class="brikpanel-topbar-left">
-                    <!-- Mobile: hamburger to toggle the WP sidebar (replaces the
-                         #wp-admin-bar-menu-toggle that lives inside the now-hidden
-                         WP admin bar). -->
-                    <button type="button" class="brikpanel-topbar-menu-btn" id="brikpanel-topbar-menu-btn" aria-label="<?php esc_attr_e( 'Toggle navigation', 'brikpanel' ); ?>" aria-expanded="false">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    <!-- Sidebar toggle. Above 960px it hides / shows the desktop
+                         sidebar (remembered per user); at 960px and below it is
+                         the off-canvas hamburger, which replaces the
+                         #wp-admin-bar-menu-toggle of the now-hidden WP admin bar.
+                         The hamburger is always rendered there, since it is the
+                         only way to reach the menu on small screens. -->
+                    <?php
+                    $brikpanel_sidebar_hidden = $this->sidebar_starts_hidden();
+                    $brikpanel_toggle_class   = 'brikpanel-topbar-menu-btn' . ( $this->sidebar_toggle_visible() ? '' : ' is-desktop-off' );
+                    ?>
+                    <?php $slot( 'left', 'before', 'sidebar_toggle' ); ?>
+                    <button type="button" class="<?php echo esc_attr( $brikpanel_toggle_class ); ?>" id="brikpanel-topbar-menu-btn" aria-controls="adminmenuwrap" aria-label="<?php echo esc_attr( $brikpanel_sidebar_hidden ? __( 'Show sidebar', 'brikpanel' ) : __( 'Hide sidebar', 'brikpanel' ) ); ?>" aria-expanded="<?php echo $brikpanel_sidebar_hidden ? 'false' : 'true'; ?>" aria-keyshortcuts="[">
+                        <svg class="brikpanel-topbar-menu-icon-bars" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                        <svg class="brikpanel-topbar-menu-icon-panel" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9" y1="4" x2="9" y2="20"/><polyline class="brikpanel-topbar-menu-chev-close" points="16 9.5 13.5 12 16 14.5"/><polyline class="brikpanel-topbar-menu-chev-open" points="13.5 9.5 16 12 13.5 14.5"/></svg>
                     </button>
+                    <?php $slot( 'left', 'after', 'sidebar_toggle' ); ?>
 
                     <?php $slot( 'left', 'before', 'brand' ); ?>
 
@@ -578,6 +651,11 @@ class Brikpanel_Dashboard_Topbar {
                     <?php $slot( 'right' ); ?>
                 </div>
             </div>
+            <!-- Sits outside .brikpanel-topbar-left, which clips its overflow. -->
+            <span class="brikpanel-topbar-sidebar-tip" id="brikpanel-topbar-sidebar-tip" aria-hidden="true">
+                <span class="brikpanel-topbar-sidebar-tip-label"><?php echo esc_html( $brikpanel_sidebar_hidden ? __( 'Show sidebar', 'brikpanel' ) : __( 'Hide sidebar', 'brikpanel' ) ); ?></span>
+                <kbd class="brikpanel-topbar-sidebar-tip-kbd">[</kbd>
+            </span>
         </header>
         <?php
     }
@@ -672,7 +750,7 @@ class Brikpanel_Dashboard_Topbar {
     }
 
     // =========================================================================
-    // AJAX: LIVE STATS (revenue / orders / conv / live visitors / notifications)
+    // AJAX: LIVE STATS (live visitors / notification counts)
     // =========================================================================
 
     public function ajax_stats() {
@@ -683,18 +761,75 @@ class Brikpanel_Dashboard_Topbar {
             wp_send_json_error( [ 'message' => 'Unauthorized.' ] );
         }
 
-        $start_local = wp_date( 'Y-m-d 00:00:00' );
-        $end_local   = wp_date( 'Y-m-d 23:59:59' );
-        $start_gmt   = get_gmt_from_date( $start_local );
-        $end_gmt     = get_gmt_from_date( $end_local );
-        $start_date  = substr( $start_local, 0, 10 );
-        $end_date    = substr( $end_local, 0, 10 );
+        $counts = $this->get_notification_counts();
 
-        $revenue    = function_exists( 'brikpanel_get_total_revenue' ) ? (float) brikpanel_get_total_revenue( $start_gmt, $end_gmt ) : 0;
-        $orders     = function_exists( 'brikpanel_get_order_count' ) ? (int) brikpanel_get_order_count( $start_gmt, $end_gmt ) : 0;
-        $visitors   = function_exists( 'brikpanel_get_visitor_count' ) ? (int) brikpanel_get_visitor_count( $start_date, $end_date ) : 0;
-        $conversion = $visitors > 0 ? round( ( $orders / $visitors ) * 100, 1 ) : 0;
-        $aov        = $orders > 0 ? round( $revenue / $orders, 2 ) : 0;
+        // Live visitors (shared transient with the dashboard live panel).
+        $live = 0;
+        $visitors_data = get_transient( 'brikpanel_live_visitors' );
+        if ( is_array( $visitors_data ) ) {
+            if ( ! defined( 'BRIKPANEL_VISITOR_TIMEOUT' ) ) {
+                define( 'BRIKPANEL_VISITOR_TIMEOUT', 75 );
+            }
+            $cutoff = time() - BRIKPANEL_VISITOR_TIMEOUT;
+            foreach ( $visitors_data as $v ) {
+                if ( isset( $v['last_active'] ) && $v['last_active'] >= $cutoff ) {
+                    $live++;
+                }
+            }
+        }
+
+        wp_send_json_success( [
+            'live'          => $live,
+            'notifications' => $counts,
+        ] );
+    }
+
+    // =========================================================================
+    // AJAX: SIDEBAR HIDDEN / SHOWN (per user)
+    // =========================================================================
+
+    public function ajax_sidebar_state() {
+        if ( ! check_ajax_referer( self::NONCE_ACTION, 'security', false ) ) {
+            wp_send_json_error( [ 'message' => __( 'Your session has expired. Please reload the page.', 'brikpanel' ) ], 403 );
+        }
+        // Same audience as the bar itself (see should_render()).
+        if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => __( 'You are not allowed to do this.', 'brikpanel' ) ], 403 );
+        }
+
+        $raw = isset( $_POST['hidden'] ) ? sanitize_key( wp_unslash( $_POST['hidden'] ) ) : '';
+        if ( ! in_array( $raw, [ 'yes', 'no' ], true ) ) {
+            wp_send_json_error( [ 'message' => __( 'Invalid request.', 'brikpanel' ) ], 400 );
+        }
+
+        $user_id = get_current_user_id();
+        if ( $raw === 'yes' ) {
+            update_user_meta( $user_id, self::SIDEBAR_HIDDEN_META, 'yes' );
+        } else {
+            delete_user_meta( $user_id, self::SIDEBAR_HIDDEN_META );
+        }
+
+        wp_send_json_success( [ 'hidden' => $raw === 'yes' ] );
+    }
+
+    /**
+     * Store-wide counts behind the notification bell.
+     *
+     * The bar polls every 30 seconds from every open admin tab, so these six
+     * queries used to run on each poll of each tab. They are cached for a
+     * minute and keyed to the shared data version, which every new order and
+     * every order status change bumps, so order counts still move on the very
+     * next poll. Only the out-of-stock and new-customer numbers can lag, by at
+     * most COUNTS_TTL.
+     *
+     * @return array{processing:int, pending:int, onhold:int, oos:int, customers:int, total:int}
+     */
+    private function get_notification_counts() {
+        $ver    = function_exists( 'brikpanel_data_cache_ver' ) ? (int) brikpanel_data_cache_ver() : 0;
+        $cached = get_transient( self::COUNTS_TRANSIENT );
+        if ( is_array( $cached ) && isset( $cached['ver'], $cached['data'] ) && (int) $cached['ver'] === $ver && is_array( $cached['data'] ) ) {
+            return $cached['data'];
+        }
 
         $counts = [
             'processing' => 0,
@@ -726,7 +861,11 @@ class Brikpanel_Dashboard_Topbar {
         // a registration-date query (WP_User_Query) silently misses, so the two numbers
         // stay consistent. Falls back to user-registration count if WC analytics is off.
         global $wpdb;
-        $stats_table = $wpdb->prefix . 'wc_order_stats';
+        $start_local   = wp_date( 'Y-m-d 00:00:00' );
+        $end_local     = wp_date( 'Y-m-d 23:59:59' );
+        $start_gmt     = get_gmt_from_date( $start_local );
+        $end_gmt       = get_gmt_from_date( $end_local );
+        $stats_table   = $wpdb->prefix . 'wc_order_stats';
         $new_customers = 0;
         $has_stats     = function_exists( 'brikpanel_paid_statuses_sql' )
             && $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $stats_table ) );
@@ -751,41 +890,18 @@ class Brikpanel_Dashboard_Topbar {
             $new_customers = (int) $cu_query->get_total();
         }
 
-        // Live visitors (shared transient with the dashboard live panel).
-        $live = 0;
-        $visitors_data = get_transient( 'brikpanel_live_visitors' );
-        if ( is_array( $visitors_data ) ) {
-            if ( ! defined( 'BRIKPANEL_VISITOR_TIMEOUT' ) ) {
-                define( 'BRIKPANEL_VISITOR_TIMEOUT', 75 );
-            }
-            $cutoff = time() - BRIKPANEL_VISITOR_TIMEOUT;
-            foreach ( $visitors_data as $v ) {
-                if ( isset( $v['last_active'] ) && $v['last_active'] >= $cutoff ) {
-                    $live++;
-                }
-            }
-        }
+        $data = [
+            'processing' => $counts['processing'],
+            'pending'    => $counts['pending'],
+            'onhold'     => $counts['onhold'],
+            'oos'        => $oos,
+            'customers'  => $new_customers,
+            'total'      => $counts['processing'] + $counts['pending'] + $counts['onhold'],
+        ];
 
-        $notif_total = $counts['processing'] + $counts['pending'] + $counts['onhold'];
+        set_transient( self::COUNTS_TRANSIENT, [ 'ver' => $ver, 'data' => $data ], self::COUNTS_TTL );
 
-        wp_send_json_success( [
-            'revenue'     => wc_price( $revenue ),
-            'revenue_raw' => $revenue,
-            'orders'      => $orders,
-            'aov'         => wc_price( $aov ),
-            'aov_raw'     => $aov,
-            'visitors'    => $visitors,
-            'conversion'  => $conversion,
-            'live'        => $live,
-            'notifications' => [
-                'processing' => $counts['processing'],
-                'pending'    => $counts['pending'],
-                'onhold'     => $counts['onhold'],
-                'oos'        => $oos,
-                'customers'  => $new_customers,
-                'total'      => $notif_total,
-            ],
-        ] );
+        return $data;
     }
 }
 

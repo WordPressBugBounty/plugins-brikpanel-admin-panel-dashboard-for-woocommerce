@@ -288,6 +288,16 @@ function brikpanel_render_navigation() {
     $items = brikpanel_get_navigation_items();
     // Global item-spacing preference → CSS class on the sidebar shell.
     $brikpanel_nav_spacing = function_exists( 'brikpanel_nav_config_spacing' ) ? brikpanel_nav_config_spacing() : 'comfortable';
+    // Close a link that markup printed earlier on the page left open. The
+    // sidebar is printed in admin_footer, after other plugins' footer output,
+    // and the HTML parser re-opens an unclosed <a> inside every block that
+    // follows it until the next <a> start tag. Those invisible copies landed
+    // in front of our first row, pushed the Dashboard label out of line, and
+    // their full-row click overlay covered the sidebar's own scrollbar so it
+    // could not be dragged (PDF Invoices and Packing Slips by Acowebs 1.4.10
+    // closes two <a> tags with </button> in its deactivation form on the
+    // Plugins screen). A lone </a> is ignored when no link is open.
+    echo '</a>';
     echo '<nav id="brikpanel-navigation" class="' . esc_attr( 'brikpanel-nav-space-' . $brikpanel_nav_spacing ) . '">';
     // Allow the `data:` protocol so user-supplied custom SVG icons (stored as
     // sanitised base64 data URIs and rendered inside <img> tags, where SVG

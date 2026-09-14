@@ -18090,3 +18090,19 @@ msgstr "Wählen Sie das Werbekonto, aus dem die Ausgaben abgerufen werden. Klick
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
 msgid "Send an email"
 msgstr "E-Mail senden"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Seitenleiste ausblenden"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Seitenleiste einblenden"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Schaltfläche zum Ein-/Ausblenden der Seitenleiste"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Deine Sitzung ist abgelaufen. Bitte lade die Seite neu."
