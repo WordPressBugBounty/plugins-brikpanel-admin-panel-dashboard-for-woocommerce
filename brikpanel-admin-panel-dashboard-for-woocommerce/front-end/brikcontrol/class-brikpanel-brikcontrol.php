@@ -670,6 +670,9 @@ class Brikpanel_BrikControl {
             'check_id' => $check_id,
             'removed'  => (int) ( $outcome['removed'] ?? 0 ),
             'has_more' => ! empty( $outcome['has_more'] ),
+            // A check can explain a partial or refused run (restore point full,
+            // another operation running). Already translated server-side.
+            'message'  => (string) ( $outcome['message'] ?? '' ),
         ] );
     }
 

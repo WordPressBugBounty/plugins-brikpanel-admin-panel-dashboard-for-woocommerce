@@ -164,6 +164,7 @@ function brikpanel_prime_keys_admin() {
 		// One-shot migration / backfill markers.
 		'brikpanel_native_cogs_backfilled',
 		'brikpanel_cogs_unified_native',
+		'brikpanel_meta_fanout_refresh_done',
 		'brikpanel_qe_field_order_migrated_v1',
 		'brikpanel_qe_field_backfilled_cogs',
 		'brikpanel_pe_metaboxes_merged',
@@ -229,6 +230,7 @@ function brikpanel_prime_keys_admin() {
 
 		// Misc screen gates measured hitting the DB.
 		'brikpanel_orders_enhancements',
+		'brikpanel_orders_compact_list',
 		'brikpanel_order_merge',
 		'brikpanel_modern_segments',
 		'brikpanel_whatsapp_order_message',
@@ -311,6 +313,7 @@ function brikpanel_option_autoload_map() {
 	return array(
 		'brikpanel_native_cogs_backfilled'          => true,
 		'brikpanel_cogs_unified_native'             => true,
+		'brikpanel_meta_fanout_refresh_done'        => true,
 		'brikpanel_qe_field_order_migrated_v1'      => true,
 		'brikpanel_qe_field_backfilled_cogs'        => true,
 		'brikpanel_pe_metaboxes_merged'             => true,

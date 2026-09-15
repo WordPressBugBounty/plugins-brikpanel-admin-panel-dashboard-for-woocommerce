@@ -388,6 +388,13 @@ function brikpanel_settings_fields() {
             'default' => 'yes',
         ],
         [
+            'name'    => __('Compact order list', 'brikpanel'),
+            'id'      => 'brikpanel_orders_compact_list',
+            'type'    => 'checkbox',
+            'desc'    => __('Show each order as one short row. Click the arrow next to an order to see its addresses, phone number and items without leaving the list. Works when Enhanced orders page is on.', 'brikpanel'),
+            'default' => 'yes',
+        ],
+        [
             'name'    => __('Merge orders', 'brikpanel'),
             'id'      => 'brikpanel_order_merge',
             'type'    => 'checkbox',
@@ -2298,7 +2305,10 @@ function brikpanel_fill_order_column_legacy($column, $post_id) {
 function brikpanel_fill_order_column_content($column, $order) {
     switch ($column) {
         case 'payment_method':
-            echo esc_html($order->get_payment_method_title() ?? '—');
+            $payment_title = (string) $order->get_payment_method_title();
+            echo '' !== $payment_title
+                ? '<span class="bp-order-method bp-order-method--payment">' . esc_html($payment_title) . '</span>'
+                : '<span class="bp-order-muted">' . esc_html__('None', 'brikpanel') . '</span>';
             break;
 
         case 'order_items':

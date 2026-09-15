@@ -2777,7 +2777,10 @@ msgid ""
 "The fields above are what shoppers reading %s see. Write the same popup here "
 "for each of your other languages. Anything you leave empty falls back to the "
 "wording above."
-msgstr "De velden hierboven zien kopers die %s lezen. Schrijf hier dezelfde pop-up voor elk van je andere talen. Alles wat je leeg laat, valt terug op de tekst hierboven."
+msgstr ""
+"De velden hierboven zien kopers die %s lezen. Schrijf hier dezelfde pop-up "
+"voor elk van je andere talen. Alles wat je leeg laat, valt terug op de tekst "
+"hierboven."
 
 #. translators: %s: the store's default language, e.g. "Eesti".
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4804
@@ -2787,7 +2790,10 @@ msgid ""
 "here is the wording the popup writes on its own, which follows your site "
 "language. Translate it if your language is not one BrikPanel ships a "
 "translation for."
-msgstr "De pop-up is in de velden hierboven al in %s geschreven. Hier blijft de tekst over die de pop-up zelf schrijft en die de taal van je site volgt. Vertaal die als BrikPanel geen vertaling voor jouw taal meelevert."
+msgstr ""
+"De pop-up is in de velden hierboven al in %s geschreven. Hier blijft de "
+"tekst over die de pop-up zelf schrijft en die de taal van je site volgt. "
+"Vertaal die als BrikPanel geen vertaling voor jouw taal meelevert."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4826
 msgid "Coupon panel and messages"
@@ -2797,7 +2803,9 @@ msgstr "Kortingsbonpaneel en meldingen"
 msgid ""
 "Written by the popup itself. Translate these too, or leave them to your site "
 "language."
-msgstr "Deze schrijft de pop-up zelf. Vertaal ze ook, of laat ze de taal van je site volgen."
+msgstr ""
+"Deze schrijft de pop-up zelf. Vertaal ze ook, of laat ze de taal van je site "
+"volgen."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5021
 msgid ""
@@ -13575,16 +13583,16 @@ msgstr ""
 
 #: includes/brikpanel-brikmentor-promo.php:278
 msgid ""
-"Writing to one shopper at a time is the slow way back. BrikMentor follows "
-"up on every abandoned cart for you: a reminder written for the cart it "
-"belongs to, sent on a schedule you set once. Cart recovery emails bring "
-"back 5-10% of total revenue in a store that runs them properly."
+"Writing to one shopper at a time is the slow way back. BrikMentor follows up "
+"on every abandoned cart for you: a reminder written for the cart it belongs "
+"to, sent on a schedule you set once. Cart recovery emails bring back 5-10% "
+"of total revenue in a store that runs them properly."
 msgstr ""
 "Kopers één voor één aanschrijven is de trage weg terug. BrikMentor volgt "
 "elke verlaten winkelwagen voor u op: een herinnering die voor precies die "
 "winkelwagen is geschreven, verstuurd volgens een schema dat u één keer "
-"instelt. E-mails voor winkelwagenherstel halen in een winkel die ze "
-"netjes heeft ingericht 5 tot 10 % van de totale omzet terug."
+"instelt. E-mails voor winkelwagenherstel halen in een winkel die ze netjes "
+"heeft ingericht 5 tot 10 % van de totale omzet terug."
 
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
@@ -17666,6 +17674,382 @@ msgstr "Cohortretentie opnieuw berekenen"
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Bouwt de maandelijkse cohort × periode-retentiematrix."
 
+msgid ""
+"The history import stopped because the connection to this platform was lost. "
+"Connect again to resume it."
+msgstr ""
+"Het importeren van de geschiedenis is gestopt omdat de verbinding met dit "
+"platform verloren is gegaan. Maak opnieuw verbinding om verder te gaan."
+
+msgid ""
+"The history import stopped because the selected ad account changed. Pick the "
+"account again to restart it."
+msgstr ""
+"Het importeren van de geschiedenis is gestopt omdat het gekozen "
+"advertentieaccount is gewijzigd. Kies het account opnieuw om het te "
+"herstarten."
+
+msgid "Nothing logged yet."
+msgstr "Nog niets gelogd."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Melding"
+
+msgid "History import stopped"
+msgstr "Importeren van geschiedenis gestopt"
+
+msgid ""
+"Only manager accounts were found. A manager account holds no spend of its "
+"own, so pick the ad account you actually advertise from: enter its ID below "
+"and put the manager ID in the Manager (MCC) field."
+msgstr ""
+"Er zijn alleen beheerdersaccounts gevonden. Een beheerdersaccount heeft zelf "
+"geen uitgaven, kies dus het advertentieaccount waarmee u daadwerkelijk "
+"adverteert: voer hieronder het ID in en zet het beheerders-ID in het veld "
+"‘Manager (MCC) account-ID’."
+
+msgid ""
+"This is a manager account. It usually holds no spend of its own, so the "
+"import may come back empty. If it does, use the ID of the ad account you "
+"advertise from instead."
+msgstr ""
+"Dit is een beheerdersaccount. Het heeft meestal zelf geen uitgaven, dus de "
+"import kan leeg blijven. Gebruik in dat geval het ID van het "
+"advertentieaccount waarmee u adverteert."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr ""
+"Het beheerdersaccount-ID kon niet worden opgeslagen. Probeer het opnieuw."
+
+msgid "One more step"
+msgstr "Nog één stap"
+
+msgid ""
+"Last 50 entries from the sync log, errors and routine notes alike. Token "
+"values are redacted before storage."
+msgstr ""
+"De laatste 50 regels uit het synchronisatielogboek, zowel fouten als gewone "
+"meldingen. Tokenwaarden worden voor opslag onleesbaar gemaakt."
+
+msgid ""
+"Choose the ad account to pull spend from. Click \"Load accounts\" below, "
+"pick one, then Save. Nothing is imported until you do."
+msgstr ""
+"Kies het advertentieaccount waaruit de uitgaven worden opgehaald. Klik "
+"hieronder op \"Accounts laden\", kies er één en klik op Opslaan. Er wordt "
+"niets geïmporteerd totdat u dat doet."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "Een e-mail sturen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Zijbalk verbergen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Zijbalk tonen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Knop zijbalk tonen/verbergen"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Je sessie is verlopen. Laad de pagina opnieuw."
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:706
+msgid "Store coming soon"
+msgstr "Winkel binnenkort beschikbaar"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:707
+msgctxt "store visibility badge"
+msgid "Coming soon"
+msgstr "Binnenkort beschikbaar"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:709
+msgid "Your store is hidden from visitors. Click to change site visibility."
+msgstr ""
+"Uw winkel is verborgen voor bezoekers. Klik om de zichtbaarheid van de site "
+"te wijzigen."
+
+#, php-format
+msgid "%s ×"
+msgstr "%s ×"
+
+#, php-format
+msgid "via %s"
+msgstr "via %s"
+
+msgid "No billing address"
+msgstr "Geen factuuradres"
+
+#, php-format
+msgid "(Phone: %s)"
+msgstr "(Telefoon: %s)"
+
+msgid "No shipping address"
+msgstr "Geen verzendadres"
+
+msgid "No shipping needed"
+msgstr "Geen verzending nodig"
+
+msgid "+ %d more item"
+msgid_plural "+ %d more items"
+msgstr[0] "+ nog %d artikel"
+msgstr[1] "+ nog %d artikelen"
+
+#, php-format
+msgid "Items (%s)"
+msgstr "Artikelen (%s)"
+
+msgid "No items"
+msgstr "Geen artikelen"
+
+msgid "Open order"
+msgstr "Bestelling openen"
+
+msgid "Billing"
+msgstr "Facturatie"
+
+msgid "Ship to"
+msgstr "Verzenden naar"
+
+msgid "Compact order list"
+msgstr "Compacte bestellijst"
+
+msgid ""
+"Show each order as one short row. Click the arrow next to an order to see "
+"its addresses, phone number and items without leaving the list. Works when "
+"Enhanced orders page is on."
+msgstr ""
+"Toont elke bestelling als één korte rij. Klik op de pijl naast een "
+"bestelling om de adressen, het telefoonnummer en de artikelen te zien zonder "
+"de lijst te verlaten. Werkt wanneer de verbeterde bestellingenpagina aan "
+"staat."
+
+msgid "Show order details"
+msgstr "Bestelgegevens tonen"
+
+msgid "Hide order details"
+msgstr "Bestelgegevens verbergen"
+
+msgid "Compact Order List"
+msgstr "Compacte bestellijst"
+
+msgid "Preview"
+msgstr "Voorbeeld"
+
+#, php-format
+msgid "Selected: %d"
+msgstr "Geselecteerd: %d"
+
+msgid "Order sections"
+msgstr "Bestelonderdelen"
+
+msgctxt "order page tab"
+msgid "Items"
+msgstr "Artikelen"
+
+msgctxt "order page tab"
+msgid "Customer"
+msgstr "Klant"
+
+msgctxt "order page tab"
+msgid "Notes"
+msgstr "Notities"
+
+msgctxt "order page tab for boxes from other plugins"
+msgid "More"
+msgstr "Meer"
+
+msgctxt "order payment state"
+msgid "Paid"
+msgstr "Betaald"
+
+msgid "Not paid yet"
+msgstr "Nog niet betaald"
+
+#, php-format
+msgid "Paid on %s"
+msgstr "Betaald op %s"
+
+msgid "No customer yet"
+msgstr "Nog geen klant"
+
+#, php-format
+msgid "Orders: %d"
+msgstr "Bestellingen: %d"
+
+#: includes/brikpanel-enqueue.php:979
+msgid "Bulk actions"
+msgstr "Bulkacties"
+
+msgctxt "product attributes table column"
+msgid "Name"
+msgstr "Naam"
+
+msgctxt "product attributes table column"
+msgid "Slug"
+msgstr "Slug"
+
+msgctxt "product attributes table column"
+msgid "Type"
+msgstr "Type"
+
+msgctxt "product attributes table column"
+msgid "Order by"
+msgstr "Sorteren op"
+
+msgctxt "product attributes table column"
+msgid "Terms"
+msgstr "Termen"
+
+msgid "Added."
+msgstr "Toegevoegd."
+
+msgid "Attribute added."
+msgstr "Attribuut toegevoegd."
+
+msgid "Clear search"
+msgstr "Zoekopdracht wissen"
+
+msgid "Product Cost Records"
+msgstr "Kostprijsregistraties van producten"
+
+msgid "Remove extra copies"
+msgstr "Extra kopieën verwijderen"
+
+msgid "Every product cost is saved once."
+msgstr "De kostprijs van elk product is één keer opgeslagen."
+
+msgid "No product or variation has a copy of its cost stored more than once."
+msgstr ""
+"Geen enkel product of variatie heeft de kostprijs meer dan één keer "
+"opgeslagen."
+
+#, php-format
+msgid "%s product has its cost saved more than once"
+msgid_plural "%s products have their cost saved more than once"
+msgstr[0] "Bij %s product is de kostprijs meer dan één keer opgeslagen"
+msgstr[1] "Bij %s producten is de kostprijs meer dan één keer opgeslagen"
+
+msgid ""
+"Your reports already count each cost once, so your profit figures are "
+"correct. The extra copies can still confuse exports and other plugins. "
+"Removing them keeps the copy your product pages show today, so no cost "
+"changes."
+msgstr ""
+"Uw rapporten tellen elke kostprijs al één keer, dus uw winstcijfers kloppen. "
+"De extra kopieën kunnen exports en andere plugins wel in de war brengen. Bij "
+"verwijderen blijft de kopie over die uw productpagina’s vandaag tonen, dus "
+"er verandert geen kostprijs."
+
+#, php-format
+msgid ""
+"%s of these holds different numbers in its copies; the first saved number is "
+"the one in use and the one that stays."
+msgid_plural ""
+"%s of these hold different numbers in their copies; the first saved number "
+"is the one in use and the one that stays."
+msgstr[0] ""
+"%s daarvan bevat verschillende getallen in de kopieën; het eerst opgeslagen "
+"getal is het gebruikte en blijft staan."
+msgstr[1] ""
+"%s daarvan bevatten verschillende getallen in de kopieën; het eerst "
+"opgeslagen getal is het gebruikte en blijft staan."
+
+msgid ""
+"Open the list below to see which products are affected. Products are often "
+"copied this way by an import or by duplicating a product."
+msgstr ""
+"Open de lijst hieronder om te zien welke producten het betreft. Zulke "
+"kopieën ontstaan vaak bij een import of bij het dupliceren van een product."
+
+#, php-format
+msgid ""
+"Remove %1$s extra cost copies from %2$s product(s)? The cost each product "
+"shows today does not change, and the removed copies are kept so you can undo "
+"this."
+msgstr ""
+"%1$s extra kostprijskopieën verwijderen van %2$s product(en)? De kostprijs "
+"die elk product vandaag toont verandert niet, en de verwijderde kopieën "
+"worden bewaard zodat u dit ongedaan kunt maken."
+
+msgid ""
+"Put the removed cost copies back? This restores {count} row(s) exactly as "
+"they were."
+msgstr ""
+"De verwijderde kostprijskopieën terugzetten? Hiermee worden {count} rij(en) "
+"precies zo hersteld als ze waren."
+
+msgid "Products affected"
+msgstr "Betrokken producten"
+
+msgid "Extra copies"
+msgstr "Extra kopieën"
+
+msgid "Copies with different numbers"
+msgstr "Kopieën met verschillende getallen"
+
+msgid "Affected products"
+msgstr "Betrokken producten"
+
+msgid "Field"
+msgstr "Veld"
+
+msgid "Copies"
+msgstr "Kopieën"
+
+msgid "Saved numbers (first one stays)"
+msgstr "Opgeslagen getallen (de eerste blijft)"
+
+msgid "(empty)"
+msgstr "(leeg)"
+
+msgid "Cost of goods (WooCommerce)"
+msgstr "Kostprijs verkopen (WooCommerce)"
+
+msgid "Cost of goods (BrikPanel)"
+msgstr "Kostprijs verkopen (BrikPanel)"
+
+msgid "Adds to parent cost"
+msgstr "Wordt opgeteld bij de kostprijs van het hoofdproduct"
+
+#, php-format
+msgid "Cost of goods (%s)"
+msgstr "Kostprijs verkopen (%s)"
+
+msgid ""
+"The restore point is full. Undo the last correction or leave it in place, "
+"then run the check again."
+msgstr ""
+"Het herstelpunt is vol. Maak de laatste correctie ongedaan of laat deze "
+"staan, en voer de controle daarna opnieuw uit."
+
+msgid "An undo is running for this check. Try again in a moment."
+msgstr ""
+"Voor deze controle wordt iets ongedaan gemaakt. Probeer het zo opnieuw."
+
+msgid "A cleanup is running for this check. Try again in a moment."
+msgstr "Voor deze controle loopt een opschoning. Probeer het zo opnieuw."
+
+#, php-format
+msgid ""
+"%s copy was not put back because that cost was changed or cleared after the "
+"cleanup."
+msgid_plural ""
+"%s copies were not put back because those costs were changed or cleared "
+"after the cleanup."
+msgstr[0] ""
+"%s kopie is niet teruggezet omdat die kostprijs na de opschoning is "
+"gewijzigd of gewist."
+msgstr[1] ""
+"%s kopieën zijn niet teruggezet omdat die kostprijzen na de opschoning zijn "
+"gewijzigd of gewist."
+
 #~ msgid "Dismiss for 7 days"
 #~ msgstr "Negeren voor 7 dagen"
 
@@ -17927,58 +18311,3 @@ msgstr "Bouwt de maandelijkse cohort × periode-retentiematrix."
 
 #~ msgid "Choose…"
 #~ msgstr "Kiezen…"
-
-
-msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
-msgstr "Het importeren van de geschiedenis is gestopt omdat de verbinding met dit platform verloren is gegaan. Maak opnieuw verbinding om verder te gaan."
-
-msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
-msgstr "Het importeren van de geschiedenis is gestopt omdat het gekozen advertentieaccount is gewijzigd. Kies het account opnieuw om het te herstarten."
-
-msgid "Nothing logged yet."
-msgstr "Nog niets gelogd."
-
-msgctxt "log entry severity"
-msgid "Note"
-msgstr "Melding"
-
-msgid "History import stopped"
-msgstr "Importeren van geschiedenis gestopt"
-
-msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
-msgstr "Er zijn alleen beheerdersaccounts gevonden. Een beheerdersaccount heeft zelf geen uitgaven, kies dus het advertentieaccount waarmee u daadwerkelijk adverteert: voer hieronder het ID in en zet het beheerders-ID in het veld ‘Manager (MCC) account-ID’."
-
-msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
-msgstr "Dit is een beheerdersaccount. Het heeft meestal zelf geen uitgaven, dus de import kan leeg blijven. Gebruik in dat geval het ID van het advertentieaccount waarmee u adverteert."
-
-msgid "Could not save the manager account ID. Please try again."
-msgstr "Het beheerdersaccount-ID kon niet worden opgeslagen. Probeer het opnieuw."
-
-msgid "One more step"
-msgstr "Nog één stap"
-
-msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
-msgstr "De laatste 50 regels uit het synchronisatielogboek, zowel fouten als gewone meldingen. Tokenwaarden worden voor opslag onleesbaar gemaakt."
-
-msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
-msgstr "Kies het advertentieaccount waaruit de uitgaven worden opgehaald. Klik hieronder op \"Accounts laden\", kies er één en klik op Opslaan. Er wordt niets geïmporteerd totdat u dat doet."
-
-#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
-msgid "Send an email"
-msgstr "Een e-mail sturen"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Hide sidebar"
-msgstr "Zijbalk verbergen"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Show sidebar"
-msgstr "Zijbalk tonen"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Sidebar show/hide button"
-msgstr "Knop zijbalk tonen/verbergen"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Your session has expired. Please reload the page."
-msgstr "Je sessie is verlopen. Laad de pagina opnieuw."

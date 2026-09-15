@@ -158,6 +158,7 @@ require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brik
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-product-lookup-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cart-count-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cartab-bot-rows-check.php';
+require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cost-duplicates-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-registry.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-runner.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol.php';
@@ -169,6 +170,7 @@ Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Image_Health
 Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Product_Lookup_Check() );
 Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cart_Count_Check() );
 Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cartab_Bot_Rows_Check() );
+Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cost_Duplicates_Check() );
 
 // Boot the public façade (admin menu + AJAX).
 Brikpanel_BrikControl::instance();

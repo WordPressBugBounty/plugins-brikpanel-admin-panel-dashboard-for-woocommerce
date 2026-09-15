@@ -189,6 +189,7 @@ function brikpanel_access_gated_options() {
 		'brikpanel_modern_dashboard',
 		'brikpanel_dashboard_topbar',
 		'brikpanel_orders_enhancements',
+		'brikpanel_orders_compact_list',
 		'brikpanel_modern_order_edit',
 		'brikpanel_simple_product_editor',
 		'brikpanel_modern_products_list',

@@ -2783,7 +2783,10 @@ msgid ""
 "The fields above are what shoppers reading %s see. Write the same popup here "
 "for each of your other languages. Anything you leave empty falls back to the "
 "wording above."
-msgstr "Поля выше видят покупатели, читающие на языке %s. Напишите здесь то же окно для каждого из остальных ваших языков. Всё, что вы оставите пустым, возьмётся из текста выше."
+msgstr ""
+"Поля выше видят покупатели, читающие на языке %s. Напишите здесь то же окно "
+"для каждого из остальных ваших языков. Всё, что вы оставите пустым, "
+"возьмётся из текста выше."
 
 #. translators: %s: the store's default language, e.g. "Eesti".
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4804
@@ -2793,7 +2796,10 @@ msgid ""
 "here is the wording the popup writes on its own, which follows your site "
 "language. Translate it if your language is not one BrikPanel ships a "
 "translation for."
-msgstr "Само окно уже написано на языке %s в полях выше. Здесь остаётся текст, который окно пишет само и который следует языку вашего сайта. Переведите его, если BrikPanel не поставляет перевод для вашего языка."
+msgstr ""
+"Само окно уже написано на языке %s в полях выше. Здесь остаётся текст, "
+"который окно пишет само и который следует языку вашего сайта. Переведите "
+"его, если BrikPanel не поставляет перевод для вашего языка."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4826
 msgid "Coupon panel and messages"
@@ -2803,7 +2809,8 @@ msgstr "Блок промокода и сообщения"
 msgid ""
 "Written by the popup itself. Translate these too, or leave them to your site "
 "language."
-msgstr "Их пишет само окно. Переведите их тоже или оставьте на языке вашего сайта."
+msgstr ""
+"Их пишет само окно. Переведите их тоже или оставьте на языке вашего сайта."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5021
 msgid ""
@@ -13566,16 +13573,16 @@ msgstr ""
 
 #: includes/brikpanel-brikmentor-promo.php:278
 msgid ""
-"Writing to one shopper at a time is the slow way back. BrikMentor follows "
-"up on every abandoned cart for you: a reminder written for the cart it "
-"belongs to, sent on a schedule you set once. Cart recovery emails bring "
-"back 5-10% of total revenue in a store that runs them properly."
+"Writing to one shopper at a time is the slow way back. BrikMentor follows up "
+"on every abandoned cart for you: a reminder written for the cart it belongs "
+"to, sent on a schedule you set once. Cart recovery emails bring back 5-10% "
+"of total revenue in a store that runs them properly."
 msgstr ""
 "Ручная переписка с каждым покупателем возвращает их слишком медленно. "
-"BrikMentor сам напоминает о каждой брошенной корзине: письмо, написанное "
-"под конкретную корзину, уходит по расписанию, которое вы задаёте один "
-"раз. Письма для возврата корзин возвращают 5-10% общей выручки в "
-"магазине, где они настроены правильно."
+"BrikMentor сам напоминает о каждой брошенной корзине: письмо, написанное под "
+"конкретную корзину, уходит по расписанию, которое вы задаёте один раз. "
+"Письма для возврата корзин возвращают 5-10% общей выручки в магазине, где "
+"они настроены правильно."
 
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
@@ -17644,6 +17651,387 @@ msgstr "Пересчитать удержание по когортам"
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Строит матрицу удержания месячная когорта × период."
 
+msgid ""
+"The history import stopped because the connection to this platform was lost. "
+"Connect again to resume it."
+msgstr ""
+"Импорт истории остановлен, так как подключение к этой платформе было "
+"потеряно. Подключитесь заново, чтобы продолжить."
+
+msgid ""
+"The history import stopped because the selected ad account changed. Pick the "
+"account again to restart it."
+msgstr ""
+"Импорт истории остановлен, так как выбранный рекламный аккаунт изменился. "
+"Выберите аккаунт снова, чтобы запустить импорт заново."
+
+msgid "Nothing logged yet."
+msgstr "Записей пока нет."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Заметка"
+
+msgid "History import stopped"
+msgstr "Импорт истории остановлен"
+
+msgid ""
+"Only manager accounts were found. A manager account holds no spend of its "
+"own, so pick the ad account you actually advertise from: enter its ID below "
+"and put the manager ID in the Manager (MCC) field."
+msgstr ""
+"Найдены только управляющие аккаунты. У управляющего аккаунта нет собственных "
+"расходов, поэтому выберите рекламный аккаунт, с которого вы действительно "
+"размещаете рекламу: укажите его ID ниже, а ID управляющего аккаунта впишите "
+"в поле «ID управляющего аккаунта (MCC)»."
+
+msgid ""
+"This is a manager account. It usually holds no spend of its own, so the "
+"import may come back empty. If it does, use the ID of the ad account you "
+"advertise from instead."
+msgstr ""
+"Это управляющий аккаунт. Обычно у него нет собственных расходов, поэтому "
+"импорт может оказаться пустым. В этом случае укажите ID рекламного аккаунта, "
+"с которого вы размещаете рекламу."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr "Не удалось сохранить ID управляющего аккаунта. Попробуйте ещё раз."
+
+msgid "One more step"
+msgstr "Ещё один шаг"
+
+msgid ""
+"Last 50 entries from the sync log, errors and routine notes alike. Token "
+"values are redacted before storage."
+msgstr ""
+"Последние 50 записей журнала синхронизации, как ошибки, так и обычные "
+"заметки. Значения токенов скрываются перед сохранением."
+
+msgid ""
+"Choose the ad account to pull spend from. Click \"Load accounts\" below, "
+"pick one, then Save. Nothing is imported until you do."
+msgstr ""
+"Выберите рекламный аккаунт, из которого будут загружаться расходы. Нажмите "
+"\"Загрузить аккаунты\" ниже, выберите один и нажмите «Сохранить». До этого "
+"ничего не импортируется."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "Отправить письмо"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Скрыть боковую панель"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Показать боковую панель"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Кнопка показа/скрытия боковой панели"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Срок действия сеанса истёк. Перезагрузите страницу."
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:706
+msgid "Store coming soon"
+msgstr "Магазин скоро откроется"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:707
+msgctxt "store visibility badge"
+msgid "Coming soon"
+msgstr "Скоро"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:709
+msgid "Your store is hidden from visitors. Click to change site visibility."
+msgstr ""
+"Ваш магазин скрыт от посетителей. Нажмите, чтобы изменить видимость сайта."
+
+#, php-format
+msgid "%s ×"
+msgstr "%s ×"
+
+#, php-format
+msgid "via %s"
+msgstr "через %s"
+
+msgid "No billing address"
+msgstr "Нет адреса для счёта"
+
+#, php-format
+msgid "(Phone: %s)"
+msgstr "(Телефон: %s)"
+
+msgid "No shipping address"
+msgstr "Нет адреса доставки"
+
+msgid "No shipping needed"
+msgstr "Доставка не нужна"
+
+msgid "+ %d more item"
+msgid_plural "+ %d more items"
+msgstr[0] "+ ещё %d товар"
+msgstr[1] "+ ещё %d товара"
+msgstr[2] "+ ещё %d товаров"
+
+#, php-format
+msgid "Items (%s)"
+msgstr "Товары (%s)"
+
+msgid "No items"
+msgstr "Нет товаров"
+
+msgid "Open order"
+msgstr "Открыть заказ"
+
+msgid "Billing"
+msgstr "Оплата"
+
+msgid "Ship to"
+msgstr "Доставка"
+
+msgid "Compact order list"
+msgstr "Компактный список заказов"
+
+msgid ""
+"Show each order as one short row. Click the arrow next to an order to see "
+"its addresses, phone number and items without leaving the list. Works when "
+"Enhanced orders page is on."
+msgstr ""
+"Показывает каждый заказ одной короткой строкой. Нажмите на стрелку рядом с "
+"заказом, чтобы увидеть адреса, номер телефона и товары, не покидая список. "
+"Работает, когда включена улучшенная страница заказов."
+
+msgid "Show order details"
+msgstr "Показать детали заказа"
+
+msgid "Hide order details"
+msgstr "Скрыть детали заказа"
+
+msgid "Compact Order List"
+msgstr "Компактный список заказов"
+
+msgid "Preview"
+msgstr "Просмотр"
+
+#, php-format
+msgid "Selected: %d"
+msgstr "Выбрано: %d"
+
+msgid "Order sections"
+msgstr "Разделы заказа"
+
+msgctxt "order page tab"
+msgid "Items"
+msgstr "Товары"
+
+msgctxt "order page tab"
+msgid "Customer"
+msgstr "Клиент"
+
+msgctxt "order page tab"
+msgid "Notes"
+msgstr "Заметки"
+
+msgctxt "order page tab for boxes from other plugins"
+msgid "More"
+msgstr "Прочее"
+
+msgctxt "order payment state"
+msgid "Paid"
+msgstr "Оплачен"
+
+msgid "Not paid yet"
+msgstr "Ещё не оплачен"
+
+#, php-format
+msgid "Paid on %s"
+msgstr "Оплачен %s"
+
+msgid "No customer yet"
+msgstr "Клиент не выбран"
+
+#, php-format
+msgid "Orders: %d"
+msgstr "Заказы: %d"
+
+#: includes/brikpanel-enqueue.php:979
+msgid "Bulk actions"
+msgstr "Массовые действия"
+
+msgctxt "product attributes table column"
+msgid "Name"
+msgstr "Название"
+
+msgctxt "product attributes table column"
+msgid "Slug"
+msgstr "Ярлык"
+
+msgctxt "product attributes table column"
+msgid "Type"
+msgstr "Тип"
+
+msgctxt "product attributes table column"
+msgid "Order by"
+msgstr "Сортировка"
+
+msgctxt "product attributes table column"
+msgid "Terms"
+msgstr "Элементы"
+
+msgid "Added."
+msgstr "Добавлено."
+
+msgid "Attribute added."
+msgstr "Атрибут добавлен."
+
+msgid "Clear search"
+msgstr "Очистить поиск"
+
+msgid "Product Cost Records"
+msgstr "Записи себестоимости товаров"
+
+msgid "Remove extra copies"
+msgstr "Удалить лишние копии"
+
+msgid "Every product cost is saved once."
+msgstr "Себестоимость каждого товара сохранена один раз."
+
+msgid "No product or variation has a copy of its cost stored more than once."
+msgstr ""
+"Ни у одного товара или вариации себестоимость не сохранена больше одного "
+"раза."
+
+#, php-format
+msgid "%s product has its cost saved more than once"
+msgid_plural "%s products have their cost saved more than once"
+msgstr[0] "У %s товара себестоимость сохранена больше одного раза"
+msgstr[1] "У %s товаров себестоимость сохранена больше одного раза"
+msgstr[2] "У %s товаров себестоимость сохранена больше одного раза"
+
+msgid ""
+"Your reports already count each cost once, so your profit figures are "
+"correct. The extra copies can still confuse exports and other plugins. "
+"Removing them keeps the copy your product pages show today, so no cost "
+"changes."
+msgstr ""
+"Ваши отчёты уже учитывают каждую себестоимость один раз, поэтому показатели "
+"прибыли верны. Однако лишние копии могут сбивать с толку экспорт и другие "
+"плагины. При удалении остаётся та копия, которую сегодня показывают страницы "
+"товаров, поэтому ни одна себестоимость не меняется."
+
+#, php-format
+msgid ""
+"%s of these holds different numbers in its copies; the first saved number is "
+"the one in use and the one that stays."
+msgid_plural ""
+"%s of these hold different numbers in their copies; the first saved number "
+"is the one in use and the one that stays."
+msgstr[0] ""
+"В копиях %s из них разные числа; используется и сохраняется первое "
+"сохранённое число."
+msgstr[1] ""
+"В копиях %s из них разные числа; используется и сохраняется первое "
+"сохранённое число."
+msgstr[2] ""
+"В копиях %s из них разные числа; используется и сохраняется первое "
+"сохранённое число."
+
+msgid ""
+"Open the list below to see which products are affected. Products are often "
+"copied this way by an import or by duplicating a product."
+msgstr ""
+"Откройте список ниже, чтобы увидеть, каких товаров это касается. Такие копии "
+"часто появляются при импорте или дублировании товара."
+
+#, php-format
+msgid ""
+"Remove %1$s extra cost copies from %2$s product(s)? The cost each product "
+"shows today does not change, and the removed copies are kept so you can undo "
+"this."
+msgstr ""
+"Удалить лишние копии себестоимости (%1$s) у товаров (%2$s)? Себестоимость, "
+"которую сегодня показывает каждый товар, не изменится, а удалённые копии "
+"сохраняются, чтобы это можно было отменить."
+
+msgid ""
+"Put the removed cost copies back? This restores {count} row(s) exactly as "
+"they were."
+msgstr ""
+"Вернуть удалённые копии себестоимости? Будет восстановлено строк: {count}, "
+"точно в прежнем виде."
+
+msgid "Products affected"
+msgstr "Затронутые товары"
+
+msgid "Extra copies"
+msgstr "Лишние копии"
+
+msgid "Copies with different numbers"
+msgstr "Копии с разными числами"
+
+msgid "Affected products"
+msgstr "Затронутые товары"
+
+msgid "Field"
+msgstr "Поле"
+
+msgid "Copies"
+msgstr "Копии"
+
+msgid "Saved numbers (first one stays)"
+msgstr "Сохранённые числа (остаётся первое)"
+
+msgid "(empty)"
+msgstr "(пусто)"
+
+msgid "Cost of goods (WooCommerce)"
+msgstr "Себестоимость товаров (WooCommerce)"
+
+msgid "Cost of goods (BrikPanel)"
+msgstr "Себестоимость товаров (BrikPanel)"
+
+msgid "Adds to parent cost"
+msgstr "Добавляется к себестоимости основного товара"
+
+#, php-format
+msgid "Cost of goods (%s)"
+msgstr "Себестоимость товаров (%s)"
+
+msgid ""
+"The restore point is full. Undo the last correction or leave it in place, "
+"then run the check again."
+msgstr ""
+"Точка восстановления заполнена. Отмените последнее исправление или оставьте "
+"его, затем снова запустите проверку."
+
+msgid "An undo is running for this check. Try again in a moment."
+msgstr ""
+"Для этой проверки уже выполняется отмена. Повторите попытку через минуту."
+
+msgid "A cleanup is running for this check. Try again in a moment."
+msgstr ""
+"Для этой проверки уже выполняется очистка. Повторите попытку через минуту."
+
+#, php-format
+msgid ""
+"%s copy was not put back because that cost was changed or cleared after the "
+"cleanup."
+msgid_plural ""
+"%s copies were not put back because those costs were changed or cleared "
+"after the cleanup."
+msgstr[0] ""
+"%s копия не восстановлена, потому что эта себестоимость была изменена или "
+"удалена после очистки."
+msgstr[1] ""
+"%s копии не восстановлены, потому что эта себестоимость была изменена или "
+"удалена после очистки."
+msgstr[2] ""
+"%s копий не восстановлено, потому что эта себестоимость была изменена или "
+"удалена после очистки."
+
 #~ msgid "Dismiss for 7 days"
 #~ msgstr "Скрыть на 7 дней"
 
@@ -17907,58 +18295,3 @@ msgstr "Строит матрицу удержания месячная кого
 
 #~ msgid "Choose…"
 #~ msgstr "Выберите…"
-
-
-msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
-msgstr "Импорт истории остановлен, так как подключение к этой платформе было потеряно. Подключитесь заново, чтобы продолжить."
-
-msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
-msgstr "Импорт истории остановлен, так как выбранный рекламный аккаунт изменился. Выберите аккаунт снова, чтобы запустить импорт заново."
-
-msgid "Nothing logged yet."
-msgstr "Записей пока нет."
-
-msgctxt "log entry severity"
-msgid "Note"
-msgstr "Заметка"
-
-msgid "History import stopped"
-msgstr "Импорт истории остановлен"
-
-msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
-msgstr "Найдены только управляющие аккаунты. У управляющего аккаунта нет собственных расходов, поэтому выберите рекламный аккаунт, с которого вы действительно размещаете рекламу: укажите его ID ниже, а ID управляющего аккаунта впишите в поле «ID управляющего аккаунта (MCC)»."
-
-msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
-msgstr "Это управляющий аккаунт. Обычно у него нет собственных расходов, поэтому импорт может оказаться пустым. В этом случае укажите ID рекламного аккаунта, с которого вы размещаете рекламу."
-
-msgid "Could not save the manager account ID. Please try again."
-msgstr "Не удалось сохранить ID управляющего аккаунта. Попробуйте ещё раз."
-
-msgid "One more step"
-msgstr "Ещё один шаг"
-
-msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
-msgstr "Последние 50 записей журнала синхронизации, как ошибки, так и обычные заметки. Значения токенов скрываются перед сохранением."
-
-msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
-msgstr "Выберите рекламный аккаунт, из которого будут загружаться расходы. Нажмите \"Загрузить аккаунты\" ниже, выберите один и нажмите «Сохранить». До этого ничего не импортируется."
-
-#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
-msgid "Send an email"
-msgstr "Отправить письмо"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Hide sidebar"
-msgstr "Скрыть боковую панель"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Show sidebar"
-msgstr "Показать боковую панель"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Sidebar show/hide button"
-msgstr "Кнопка показа/скрытия боковой панели"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Your session has expired. Please reload the page."
-msgstr "Срок действия сеанса истёк. Перезагрузите страницу."

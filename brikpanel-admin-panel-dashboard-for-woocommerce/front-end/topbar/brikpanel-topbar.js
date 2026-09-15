@@ -93,6 +93,7 @@
         initCacheClear();
         initHiddenNotices(topbar);
         initActionOverflow(topbar);
+        initComingSoonBadge(topbar);
 
         fetchTopbarStats();
         startTopbarPolling();
@@ -396,6 +397,70 @@
 
         pin();
         window.addEventListener('resize', pin);
+    }
+
+    /**
+     * Coming soon badge: fall back to the icon when the bar is too crowded.
+     *
+     * At 960px and below the stylesheet always shows the icon alone. Above
+     * that the label normally fits, but extra controls in the bar (cache clear,
+     * a custom shortcut, third-party items), a long store name or a wide logo
+     * can run the left cluster out of room. The store name gives way first by
+     * ellipsizing, so "crowded" means the name is cut short by the layout or
+     * the cluster still clips. The badge then drops its label, and only gets it
+     * back once showing it no longer crowds the bar.
+     */
+    function initComingSoonBadge(topbar) {
+        var badge = topbar.querySelector('.brikpanel-topbar-coming-soon');
+        var left = topbar.querySelector('.brikpanel-topbar-left');
+        if (!badge || !left) return;
+
+        var right = topbar.querySelector('.brikpanel-topbar-right');
+        var name = topbar.querySelector('.brikpanel-topbar-brand-name');
+        var iconOnly = window.matchMedia('(max-width: 960px)');
+        var frame = 0;
+
+        // Smallest max-width the stylesheet gives the store name: clamp(180px, ...).
+        var READABLE_NAME = 180;
+
+        var crowded = function () {
+            if (left.scrollWidth > left.clientWidth) return true;
+            if (!name || !name.getClientRects().length) return false;
+            if (name.scrollWidth <= name.clientWidth) return false;
+            // A short name should show in full. A long one is cut at its own
+            // max-width anyway, so it only has to keep a readable part.
+            return name.getBoundingClientRect().width < Math.min(name.scrollWidth, READABLE_NAME) - 0.5;
+        };
+
+        var fit = function () {
+            frame = 0;
+            if (iconOnly.matches) return;
+            if (!badge.classList.contains('is-compact')) {
+                if (crowded()) badge.classList.add('is-compact');
+                return;
+            }
+            // Try the label again and keep it only if everything still fits.
+            // Both steps land before the next paint, so nothing flickers.
+            badge.classList.remove('is-compact');
+            if (crowded()) badge.classList.add('is-compact');
+        };
+
+        var schedule = function () {
+            if (!frame) frame = window.requestAnimationFrame(fit);
+        };
+
+        fit();
+
+        if (typeof window.ResizeObserver === 'function') {
+            // The bar follows the viewport; the clusters change width when a
+            // control appears later (hidden notices bell) or a count grows.
+            var observer = new window.ResizeObserver(schedule);
+            observer.observe(topbar);
+            observer.observe(left);
+            if (right) observer.observe(right);
+        } else {
+            window.addEventListener('resize', schedule);
+        }
     }
 
     /**

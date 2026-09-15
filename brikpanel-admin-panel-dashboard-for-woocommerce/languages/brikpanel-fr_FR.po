@@ -2790,7 +2790,10 @@ msgid ""
 "The fields above are what shoppers reading %s see. Write the same popup here "
 "for each of your other languages. Anything you leave empty falls back to the "
 "wording above."
-msgstr "Les champs ci-dessus sont ceux que voient les acheteurs qui lisent %s. Rédigez ici la même fenêtre pour chacune de vos autres langues. Tout ce que vous laissez vide reprend le texte ci-dessus."
+msgstr ""
+"Les champs ci-dessus sont ceux que voient les acheteurs qui lisent %s. "
+"Rédigez ici la même fenêtre pour chacune de vos autres langues. Tout ce que "
+"vous laissez vide reprend le texte ci-dessus."
 
 #. translators: %s: the store's default language, e.g. "Eesti".
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4804
@@ -2800,7 +2803,10 @@ msgid ""
 "here is the wording the popup writes on its own, which follows your site "
 "language. Translate it if your language is not one BrikPanel ships a "
 "translation for."
-msgstr "La fenêtre est déjà rédigée en %s dans les champs ci-dessus. Il reste ici le texte que la fenêtre écrit elle-même, qui suit la langue de votre site. Traduisez-le si BrikPanel ne fournit pas de traduction pour votre langue."
+msgstr ""
+"La fenêtre est déjà rédigée en %s dans les champs ci-dessus. Il reste ici le "
+"texte que la fenêtre écrit elle-même, qui suit la langue de votre site. "
+"Traduisez-le si BrikPanel ne fournit pas de traduction pour votre langue."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4826
 msgid "Coupon panel and messages"
@@ -2810,7 +2816,9 @@ msgstr "Panneau du code de remise et messages"
 msgid ""
 "Written by the popup itself. Translate these too, or leave them to your site "
 "language."
-msgstr "Rédigés par la fenêtre elle-même. Traduisez-les aussi, ou laissez-les suivre la langue de votre site."
+msgstr ""
+"Rédigés par la fenêtre elle-même. Traduisez-les aussi, ou laissez-les suivre "
+"la langue de votre site."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5021
 msgid ""
@@ -13653,17 +13661,16 @@ msgstr ""
 
 #: includes/brikpanel-brikmentor-promo.php:278
 msgid ""
-"Writing to one shopper at a time is the slow way back. BrikMentor follows "
-"up on every abandoned cart for you: a reminder written for the cart it "
-"belongs to, sent on a schedule you set once. Cart recovery emails bring "
-"back 5-10% of total revenue in a store that runs them properly."
+"Writing to one shopper at a time is the slow way back. BrikMentor follows up "
+"on every abandoned cart for you: a reminder written for the cart it belongs "
+"to, sent on a schedule you set once. Cart recovery emails bring back 5-10% "
+"of total revenue in a store that runs them properly."
 msgstr ""
 "Écrire aux acheteurs un par un est la façon lente de les faire revenir. "
-"BrikMentor relance chaque panier abandonné à votre place : un message "
-"écrit pour le panier concerné, envoyé selon un calendrier que vous "
-"définissez une seule fois. Les e-mails de récupération de panier "
-"récupèrent 5 à 10 % du chiffre d'affaires total dans une boutique qui les "
-"a correctement configurés."
+"BrikMentor relance chaque panier abandonné à votre place : un message écrit "
+"pour le panier concerné, envoyé selon un calendrier que vous définissez une "
+"seule fois. Les e-mails de récupération de panier récupèrent 5 à 10 % du "
+"chiffre d'affaires total dans une boutique qui les a correctement configurés."
 
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
@@ -17766,6 +17773,386 @@ msgstr "Recalculer la rétention par cohorte"
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Construit la matrice de rétention cohorte mensuelle × période."
 
+msgid ""
+"The history import stopped because the connection to this platform was lost. "
+"Connect again to resume it."
+msgstr ""
+"L’import de l’historique s’est arrêté car la connexion à cette plateforme a "
+"été perdue. Reconnectez-vous pour le reprendre."
+
+msgid ""
+"The history import stopped because the selected ad account changed. Pick the "
+"account again to restart it."
+msgstr ""
+"L’import de l’historique s’est arrêté car le compte publicitaire sélectionné "
+"a changé. Choisissez de nouveau le compte pour le relancer."
+
+msgid "Nothing logged yet."
+msgstr "Rien n’a encore été journalisé."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Info"
+
+msgid "History import stopped"
+msgstr "Import de l’historique arrêté"
+
+msgid ""
+"Only manager accounts were found. A manager account holds no spend of its "
+"own, so pick the ad account you actually advertise from: enter its ID below "
+"and put the manager ID in the Manager (MCC) field."
+msgstr ""
+"Seuls des comptes administrateur ont été trouvés. Un compte administrateur "
+"n’a pas de dépenses propres : choisissez donc le compte publicitaire avec "
+"lequel vous diffusez réellement, saisissez son identifiant ci-dessous et "
+"placez l’identifiant administrateur dans le champ « Identifiant de compte "
+"administrateur (MCC) »."
+
+msgid ""
+"This is a manager account. It usually holds no spend of its own, so the "
+"import may come back empty. If it does, use the ID of the ad account you "
+"advertise from instead."
+msgstr ""
+"Il s’agit d’un compte administrateur. Il n’a généralement pas de dépenses "
+"propres, l’import peut donc revenir vide. Dans ce cas, utilisez plutôt "
+"l’identifiant du compte publicitaire avec lequel vous diffusez."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr ""
+"Impossible d’enregistrer l’identifiant du compte administrateur. Veuillez "
+"réessayer."
+
+msgid "One more step"
+msgstr "Encore une étape"
+
+msgid ""
+"Last 50 entries from the sync log, errors and routine notes alike. Token "
+"values are redacted before storage."
+msgstr ""
+"Les 50 dernières entrées du journal de synchronisation, erreurs et "
+"informations courantes comprises. Les valeurs des jetons sont masquées avant "
+"enregistrement."
+
+msgid ""
+"Choose the ad account to pull spend from. Click \"Load accounts\" below, "
+"pick one, then Save. Nothing is imported until you do."
+msgstr ""
+"Choisissez le compte publicitaire dont les dépenses seront récupérées. "
+"Cliquez sur \"Charger les comptes\" ci-dessous, sélectionnez-en un, puis "
+"cliquez sur Enregistrer. Rien n’est importé tant que vous ne l’avez pas fait."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "Envoyer un e-mail"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Masquer la barre latérale"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Afficher la barre latérale"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Bouton afficher/masquer la barre latérale"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Votre session a expiré. Veuillez recharger la page."
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:706
+msgid "Store coming soon"
+msgstr "Boutique bientôt disponible"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:707
+msgctxt "store visibility badge"
+msgid "Coming soon"
+msgstr "Bientôt disponible"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:709
+msgid "Your store is hidden from visitors. Click to change site visibility."
+msgstr ""
+"Votre boutique est masquée aux visiteurs. Cliquez pour modifier la "
+"visibilité du site."
+
+#, php-format
+msgid "%s ×"
+msgstr "%s ×"
+
+#, php-format
+msgid "via %s"
+msgstr "via %s"
+
+msgid "No billing address"
+msgstr "Aucune adresse de facturation"
+
+#, php-format
+msgid "(Phone: %s)"
+msgstr "(Téléphone : %s)"
+
+msgid "No shipping address"
+msgstr "Aucune adresse de livraison"
+
+msgid "No shipping needed"
+msgstr "Aucune livraison nécessaire"
+
+msgid "+ %d more item"
+msgid_plural "+ %d more items"
+msgstr[0] "+ %d article de plus"
+msgstr[1] "+ %d articles de plus"
+
+#, php-format
+msgid "Items (%s)"
+msgstr "Articles (%s)"
+
+msgid "No items"
+msgstr "Aucun article"
+
+msgid "Open order"
+msgstr "Ouvrir la commande"
+
+msgid "Billing"
+msgstr "Facturation"
+
+msgid "Ship to"
+msgstr "Livrer à"
+
+msgid "Compact order list"
+msgstr "Liste de commandes compacte"
+
+msgid ""
+"Show each order as one short row. Click the arrow next to an order to see "
+"its addresses, phone number and items without leaving the list. Works when "
+"Enhanced orders page is on."
+msgstr ""
+"Affiche chaque commande sur une seule ligne courte. Cliquez sur la flèche à "
+"côté d’une commande pour voir ses adresses, son numéro de téléphone et ses "
+"articles sans quitter la liste. Fonctionne lorsque la page de commandes "
+"améliorée est activée."
+
+msgid "Show order details"
+msgstr "Afficher les détails de la commande"
+
+msgid "Hide order details"
+msgstr "Masquer les détails de la commande"
+
+msgid "Compact Order List"
+msgstr "Liste de commandes compacte"
+
+msgid "Preview"
+msgstr "Aperçu"
+
+#, php-format
+msgid "Selected: %d"
+msgstr "Sélectionnées : %d"
+
+msgid "Order sections"
+msgstr "Sections de la commande"
+
+msgctxt "order page tab"
+msgid "Items"
+msgstr "Articles"
+
+msgctxt "order page tab"
+msgid "Customer"
+msgstr "Client"
+
+msgctxt "order page tab"
+msgid "Notes"
+msgstr "Notes"
+
+msgctxt "order page tab for boxes from other plugins"
+msgid "More"
+msgstr "Plus"
+
+msgctxt "order payment state"
+msgid "Paid"
+msgstr "Payée"
+
+msgid "Not paid yet"
+msgstr "Pas encore payée"
+
+#, php-format
+msgid "Paid on %s"
+msgstr "Payée le %s"
+
+msgid "No customer yet"
+msgstr "Pas encore de client"
+
+#, php-format
+msgid "Orders: %d"
+msgstr "Commandes : %d"
+
+#: includes/brikpanel-enqueue.php:979
+msgid "Bulk actions"
+msgstr "Actions groupées"
+
+msgctxt "product attributes table column"
+msgid "Name"
+msgstr "Nom"
+
+msgctxt "product attributes table column"
+msgid "Slug"
+msgstr "Slug"
+
+msgctxt "product attributes table column"
+msgid "Type"
+msgstr "Type"
+
+msgctxt "product attributes table column"
+msgid "Order by"
+msgstr "Trier par"
+
+msgctxt "product attributes table column"
+msgid "Terms"
+msgstr "Termes"
+
+msgid "Added."
+msgstr "Ajouté."
+
+msgid "Attribute added."
+msgstr "Attribut ajouté."
+
+msgid "Clear search"
+msgstr "Effacer la recherche"
+
+msgid "Product Cost Records"
+msgstr "Enregistrements de coût des produits"
+
+msgid "Remove extra copies"
+msgstr "Supprimer les copies en trop"
+
+msgid "Every product cost is saved once."
+msgstr "Le coût de chaque produit est enregistré une seule fois."
+
+msgid "No product or variation has a copy of its cost stored more than once."
+msgstr ""
+"Aucun produit ni aucune variation n’a son coût enregistré plus d’une fois."
+
+#, php-format
+msgid "%s product has its cost saved more than once"
+msgid_plural "%s products have their cost saved more than once"
+msgstr[0] "%s produit a son coût enregistré plus d’une fois"
+msgstr[1] "%s produits ont leur coût enregistré plus d’une fois"
+
+msgid ""
+"Your reports already count each cost once, so your profit figures are "
+"correct. The extra copies can still confuse exports and other plugins. "
+"Removing them keeps the copy your product pages show today, so no cost "
+"changes."
+msgstr ""
+"Vos rapports comptent déjà chaque coût une seule fois, vos chiffres de "
+"bénéfice sont donc justes. Les copies en trop peuvent toutefois perturber "
+"les exports et d’autres extensions. Les supprimer conserve la copie affichée "
+"aujourd’hui sur vos pages produit, aucun coût ne change donc."
+
+#, php-format
+msgid ""
+"%s of these holds different numbers in its copies; the first saved number is "
+"the one in use and the one that stays."
+msgid_plural ""
+"%s of these hold different numbers in their copies; the first saved number "
+"is the one in use and the one that stays."
+msgstr[0] ""
+"%s d’entre eux contient des nombres différents dans ses copies ; le premier "
+"nombre enregistré est celui utilisé et celui qui est conservé."
+msgstr[1] ""
+"%s d’entre eux contiennent des nombres différents dans leurs copies ; le "
+"premier nombre enregistré est celui utilisé et celui qui est conservé."
+
+msgid ""
+"Open the list below to see which products are affected. Products are often "
+"copied this way by an import or by duplicating a product."
+msgstr ""
+"Ouvrez la liste ci-dessous pour voir quels produits sont concernés. Ces "
+"copies apparaissent souvent lors d’une importation ou de la duplication d’un "
+"produit."
+
+#, php-format
+msgid ""
+"Remove %1$s extra cost copies from %2$s product(s)? The cost each product "
+"shows today does not change, and the removed copies are kept so you can undo "
+"this."
+msgstr ""
+"Supprimer %1$s copies de coût en trop sur %2$s produit(s) ? Le coût affiché "
+"aujourd’hui pour chaque produit ne change pas, et les copies supprimées sont "
+"conservées pour que vous puissiez annuler."
+
+msgid ""
+"Put the removed cost copies back? This restores {count} row(s) exactly as "
+"they were."
+msgstr ""
+"Remettre les copies de coût supprimées ? Cela restaure {count} ligne(s) "
+"exactement comme elles étaient."
+
+msgid "Products affected"
+msgstr "Produits concernés"
+
+msgid "Extra copies"
+msgstr "Copies en trop"
+
+msgid "Copies with different numbers"
+msgstr "Copies avec des nombres différents"
+
+msgid "Affected products"
+msgstr "Produits concernés"
+
+msgid "Field"
+msgstr "Champ"
+
+msgid "Copies"
+msgstr "Copies"
+
+msgid "Saved numbers (first one stays)"
+msgstr "Nombres enregistrés (le premier est conservé)"
+
+msgid "(empty)"
+msgstr "(vide)"
+
+msgid "Cost of goods (WooCommerce)"
+msgstr "Coût des biens (WooCommerce)"
+
+msgid "Cost of goods (BrikPanel)"
+msgstr "Coût des biens (BrikPanel)"
+
+msgid "Adds to parent cost"
+msgstr "S’ajoute au coût du produit parent"
+
+#, php-format
+msgid "Cost of goods (%s)"
+msgstr "Coût des biens (%s)"
+
+msgid ""
+"The restore point is full. Undo the last correction or leave it in place, "
+"then run the check again."
+msgstr ""
+"Le point de restauration est plein. Annulez la dernière correction ou "
+"laissez-la en place, puis relancez la vérification."
+
+msgid "An undo is running for this check. Try again in a moment."
+msgstr ""
+"Une annulation est en cours pour cette vérification. Réessayez dans un "
+"instant."
+
+msgid "A cleanup is running for this check. Try again in a moment."
+msgstr ""
+"Un nettoyage est en cours pour cette vérification. Réessayez dans un instant."
+
+#, php-format
+msgid ""
+"%s copy was not put back because that cost was changed or cleared after the "
+"cleanup."
+msgid_plural ""
+"%s copies were not put back because those costs were changed or cleared "
+"after the cleanup."
+msgstr[0] ""
+"%s copie n’a pas été remise, car ce coût a été modifié ou effacé après le "
+"nettoyage."
+msgstr[1] ""
+"%s copies n’ont pas été remises, car ces coûts ont été modifiés ou effacés "
+"après le nettoyage."
+
 #~ msgid "Dismiss for 7 days"
 #~ msgstr "Ignorer pendant 7 jours"
 
@@ -18037,58 +18424,3 @@ msgstr "Construit la matrice de rétention cohorte mensuelle × période."
 
 #~ msgid "Choose…"
 #~ msgstr "Choisir…"
-
-
-msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
-msgstr "L’import de l’historique s’est arrêté car la connexion à cette plateforme a été perdue. Reconnectez-vous pour le reprendre."
-
-msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
-msgstr "L’import de l’historique s’est arrêté car le compte publicitaire sélectionné a changé. Choisissez de nouveau le compte pour le relancer."
-
-msgid "Nothing logged yet."
-msgstr "Rien n’a encore été journalisé."
-
-msgctxt "log entry severity"
-msgid "Note"
-msgstr "Info"
-
-msgid "History import stopped"
-msgstr "Import de l’historique arrêté"
-
-msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
-msgstr "Seuls des comptes administrateur ont été trouvés. Un compte administrateur n’a pas de dépenses propres : choisissez donc le compte publicitaire avec lequel vous diffusez réellement, saisissez son identifiant ci-dessous et placez l’identifiant administrateur dans le champ « Identifiant de compte administrateur (MCC) »."
-
-msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
-msgstr "Il s’agit d’un compte administrateur. Il n’a généralement pas de dépenses propres, l’import peut donc revenir vide. Dans ce cas, utilisez plutôt l’identifiant du compte publicitaire avec lequel vous diffusez."
-
-msgid "Could not save the manager account ID. Please try again."
-msgstr "Impossible d’enregistrer l’identifiant du compte administrateur. Veuillez réessayer."
-
-msgid "One more step"
-msgstr "Encore une étape"
-
-msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
-msgstr "Les 50 dernières entrées du journal de synchronisation, erreurs et informations courantes comprises. Les valeurs des jetons sont masquées avant enregistrement."
-
-msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
-msgstr "Choisissez le compte publicitaire dont les dépenses seront récupérées. Cliquez sur \"Charger les comptes\" ci-dessous, sélectionnez-en un, puis cliquez sur Enregistrer. Rien n’est importé tant que vous ne l’avez pas fait."
-
-#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
-msgid "Send an email"
-msgstr "Envoyer un e-mail"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Hide sidebar"
-msgstr "Masquer la barre latérale"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Show sidebar"
-msgstr "Afficher la barre latérale"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Sidebar show/hide button"
-msgstr "Bouton afficher/masquer la barre latérale"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Your session has expired. Please reload the page."
-msgstr "Votre session a expiré. Veuillez recharger la page."

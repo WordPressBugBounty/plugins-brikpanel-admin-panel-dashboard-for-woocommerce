@@ -173,6 +173,12 @@ body.brikpanel-has-topbar.woocommerce-embed-page .woocommerce-layout {
     padding: 0.25rem 0.375rem;
     border-radius: 0.5rem;
     transition: background 0.15s ease;
+    /* Give way when the left cluster runs out of room: without min-width the
+       store name never reaches its ellipsis and the cluster clips whatever
+       follows the brand (live pill, coming soon badge) instead. overflow keeps
+       the logo from spilling over those neighbours once the name is gone. */
+    min-width: 0;
+    overflow: hidden;
 }
 
 .brikpanel-topbar-brand:hover,
@@ -225,6 +231,8 @@ body.brikpanel-has-topbar.woocommerce-embed-page .woocommerce-layout {
     font-size: 0.6875rem;
     font-weight: 500;
     color: var(--bp-topbar-text-3);
+    /* A multi-word translation must not wrap when the brand gives way. */
+    white-space: nowrap;
 }
 
 .brikpanel-topbar-live-pill {
@@ -269,6 +277,44 @@ body.brikpanel-has-topbar.woocommerce-embed-page .woocommerce-layout {
     animation: none;
     box-shadow: none;
 }
+
+/* Shown only while WooCommerce Site visibility is set to "Coming soon".
+   Drops to its icon at 960px and below (the live pill leaves the bar there
+   too) and whenever the script finds the bar too crowded (`.is-compact`); the
+   label stays available through the link's aria-label and title. */
+.brikpanel-topbar-coming-soon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    height: 28px;
+    padding: 0 0.625rem;
+    border-radius: 999px;
+    background: #fff6e6;
+    border: 1px solid #f3dcae;
+    color: #7a4f01;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.brikpanel-topbar-coming-soon:hover,
+.brikpanel-topbar-coming-soon:focus {
+    background: #ffedc9;
+    border-color: #e8c47f;
+    color: #5e3c00;
+}
+/* Core's `a:focus` squares the corners to 2px; keep the pill round. */
+.brikpanel-topbar-coming-soon:focus { outline: none; box-shadow: none; border-radius: 999px; }
+/* Inset: the left cluster clips overflow, so an outer ring would be cut. */
+.brikpanel-topbar-coming-soon:focus-visible { box-shadow: inset 0 0 0 2px currentColor; }
+.brikpanel-topbar-coming-soon svg { flex-shrink: 0; }
+.brikpanel-topbar-coming-soon.is-compact { width: 28px; padding: 0; }
+.brikpanel-topbar-coming-soon.is-compact .brikpanel-topbar-coming-soon-label { display: none; }
 
 /* ---------- Right ---------- */
 
@@ -1070,6 +1116,8 @@ body.brikpanel-mobile-nav-open .brikpanel-topbar-mobile-backdrop {
 
 @media (max-width: 960px) {
     .brikpanel-topbar-live-pill { display: none; }
+    .brikpanel-topbar-coming-soon { width: 28px; padding: 0; }
+    .brikpanel-topbar-coming-soon-label { display: none; }
 }
 
 /* ===== Sidebar access (matches WP's REAL auto-fold breakpoint, 960px) =====

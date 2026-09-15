@@ -555,7 +555,8 @@ class Brikpanel_Products_List {
                 $wpdb->prepare(
                     "SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta}
                      WHERE meta_key IN ($key_holders)
-                       AND post_id IN ($placeholders)",
+                       AND post_id IN ($placeholders)
+                     ORDER BY meta_id ASC",
                     ...array_merge($key_list, array_map('intval', $children))
                 )
             );
@@ -566,18 +567,29 @@ class Brikpanel_Products_List {
             // filter, so a site could in principle name a key that collides
             // with the price/additive keys we fetch alongside them. Cost is the
             // contract here, so it wins the row rather than being routed away.
+            // A key stored more than once keeps its FIRST row (rows arrive in
+            // meta_id order), which is the one get_post_meta() and the product
+            // editor show, so this column never disagrees with the editor.
             $costs = $additive = $prices = $child_skus = [];
             foreach ((array) $rows as $r) {
                 $pid = (int) $r->post_id;
                 $key = (string) $r->meta_key;
                 if (in_array($key, $cost_keys, true)) {
-                    $costs[$pid][$key] = (string) $r->meta_value;
+                    if (!isset($costs[$pid][$key])) {
+                        $costs[$pid][$key] = (string) $r->meta_value;
+                    }
                 } elseif ('_cogs_value_is_additive' === $key) {
-                    $additive[$pid] = (string) $r->meta_value;
+                    if (!isset($additive[$pid])) {
+                        $additive[$pid] = (string) $r->meta_value;
+                    }
                 } elseif ('_price' === $key || '_regular_price' === $key) {
-                    $prices[$pid][$key] = (string) $r->meta_value;
+                    if (!isset($prices[$pid][$key])) {
+                        $prices[$pid][$key] = (string) $r->meta_value;
+                    }
                 } elseif ('_sku' === $key) {
-                    $child_skus[$pid] = trim((string) $r->meta_value);
+                    if (!isset($child_skus[$pid])) {
+                        $child_skus[$pid] = trim((string) $r->meta_value);
+                    }
                 }
             }
             // "Set" means the meta row exists. Explicit 0 (free sample, comp

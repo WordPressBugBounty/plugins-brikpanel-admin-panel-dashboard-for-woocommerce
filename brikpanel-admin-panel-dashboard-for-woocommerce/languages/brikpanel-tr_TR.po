@@ -2759,7 +2759,10 @@ msgid ""
 "The fields above are what shoppers reading %s see. Write the same popup here "
 "for each of your other languages. Anything you leave empty falls back to the "
 "wording above."
-msgstr "Yukarıdaki alanlar %s okuyan alışverişçilerin gördüğü metinlerdir. Diğer dillerinizin her biri için aynı pencereyi buraya yazın. Boş bıraktığınız her şey yukarıdaki metne geri döner."
+msgstr ""
+"Yukarıdaki alanlar %s okuyan alışverişçilerin gördüğü metinlerdir. Diğer "
+"dillerinizin her biri için aynı pencereyi buraya yazın. Boş bıraktığınız her "
+"şey yukarıdaki metne geri döner."
 
 #. translators: %s: the store's default language, e.g. "Eesti".
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4804
@@ -2769,7 +2772,10 @@ msgid ""
 "here is the wording the popup writes on its own, which follows your site "
 "language. Translate it if your language is not one BrikPanel ships a "
 "translation for."
-msgstr "Pencerenin kendisi yukarıdaki alanlarda zaten %s yazılmıştır. Burada kalan, pencerenin kendi yazdığı ve site dilinizi izleyen metindir. BrikPanel sizin diliniz için çeviri sunmuyorsa bunu çevirin."
+msgstr ""
+"Pencerenin kendisi yukarıdaki alanlarda zaten %s yazılmıştır. Burada kalan, "
+"pencerenin kendi yazdığı ve site dilinizi izleyen metindir. BrikPanel sizin "
+"diliniz için çeviri sunmuyorsa bunu çevirin."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4826
 msgid "Coupon panel and messages"
@@ -2779,7 +2785,9 @@ msgstr "Kupon paneli ve iletiler"
 msgid ""
 "Written by the popup itself. Translate these too, or leave them to your site "
 "language."
-msgstr "Bunları pencerenin kendisi yazar. Bunları da çevirin ya da site dilinize bırakın."
+msgstr ""
+"Bunları pencerenin kendisi yazar. Bunları da çevirin ya da site dilinize "
+"bırakın."
 
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5021
 msgid ""
@@ -13486,16 +13494,16 @@ msgstr ""
 
 #: includes/brikpanel-brikmentor-promo.php:278
 msgid ""
-"Writing to one shopper at a time is the slow way back. BrikMentor follows "
-"up on every abandoned cart for you: a reminder written for the cart it "
-"belongs to, sent on a schedule you set once. Cart recovery emails bring "
-"back 5-10% of total revenue in a store that runs them properly."
+"Writing to one shopper at a time is the slow way back. BrikMentor follows up "
+"on every abandoned cart for you: a reminder written for the cart it belongs "
+"to, sent on a schedule you set once. Cart recovery emails bring back 5-10% "
+"of total revenue in a store that runs them properly."
 msgstr ""
-"Müşterilere tek tek yazmak, onları geri getirmenin yavaş yoludur. "
-"BrikMentor terk edilmiş her sepetin takibini sizin yerinize yapar: ait "
-"olduğu sepete göre yazılmış bir hatırlatma, bir kez kurduğunuz "
-"zamanlamayla kendiliğinden gider. Sepet kurtarma e-postaları, bunları "
-"düzgün kuran bir mağazada toplam gelirin %5-10'unu geri getirir."
+"Müşterilere tek tek yazmak, onları geri getirmenin yavaş yoludur. BrikMentor "
+"terk edilmiş her sepetin takibini sizin yerinize yapar: ait olduğu sepete "
+"göre yazılmış bir hatırlatma, bir kez kurduğunuz zamanlamayla kendiliğinden "
+"gider. Sepet kurtarma e-postaları, bunları düzgün kuran bir mağazada toplam "
+"gelirin %5-10'unu geri getirir."
 
 #: includes/brikpanel-brikmentor-promo.php:276
 msgid "Turn this data into revenue"
@@ -17564,6 +17572,374 @@ msgstr "Kohort Elde Tutmayı Yeniden Hesapla"
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Aylık kohort × dönem elde tutma matrisini oluşturur."
 
+msgid ""
+"The history import stopped because the connection to this platform was lost. "
+"Connect again to resume it."
+msgstr ""
+"Bu platformla bağlantı koptuğu için geçmiş verisi aktarımı durdu. Devam "
+"ettirmek için yeniden bağlanın."
+
+msgid ""
+"The history import stopped because the selected ad account changed. Pick the "
+"account again to restart it."
+msgstr ""
+"Seçili reklam hesabı değiştiği için geçmiş verisi aktarımı durdu. Yeniden "
+"başlatmak için hesabı tekrar seçin."
+
+msgid "Nothing logged yet."
+msgstr "Henüz kayıt yok."
+
+msgctxt "log entry severity"
+msgid "Note"
+msgstr "Bilgi"
+
+msgid "History import stopped"
+msgstr "Geçmiş verisi aktarımı durdu"
+
+msgid ""
+"Only manager accounts were found. A manager account holds no spend of its "
+"own, so pick the ad account you actually advertise from: enter its ID below "
+"and put the manager ID in the Manager (MCC) field."
+msgstr ""
+"Yalnızca yönetici hesapları bulundu. Yönetici hesabının kendi harcaması "
+"olmaz, bu yüzden gerçekten reklam verdiğiniz hesabı seçin: kimliğini aşağıya "
+"girin, yönetici kimliğini de “Yönetici (MCC) hesap kimliği” alanına yazın."
+
+msgid ""
+"This is a manager account. It usually holds no spend of its own, so the "
+"import may come back empty. If it does, use the ID of the ad account you "
+"advertise from instead."
+msgstr ""
+"Bu bir yönetici hesabı. Genellikle kendi harcaması olmaz, bu yüzden aktarım "
+"boş dönebilir. Böyle olursa reklam verdiğiniz hesabın kimliğini kullanın."
+
+msgid "Could not save the manager account ID. Please try again."
+msgstr "Yönetici hesap kimliği kaydedilemedi. Lütfen tekrar deneyin."
+
+msgid "One more step"
+msgstr "Bir adım kaldı"
+
+msgid ""
+"Last 50 entries from the sync log, errors and routine notes alike. Token "
+"values are redacted before storage."
+msgstr ""
+"Eşitleme kaydındaki son 50 satır, hem hatalar hem sıradan bilgiler. Jeton "
+"değerleri kaydedilmeden önce gizlenir."
+
+msgid ""
+"Choose the ad account to pull spend from. Click \"Load accounts\" below, "
+"pick one, then Save. Nothing is imported until you do."
+msgstr ""
+"Harcamanın çekileceği reklam hesabını seçin. Aşağıdaki \"Hesapları yükle\" "
+"düğmesine tıklayın, birini seçin ve Kaydet'e basın. Siz bunu yapana kadar "
+"hiçbir şey aktarılmaz."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
+msgid "Send an email"
+msgstr "E-posta gönder"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Hide sidebar"
+msgstr "Kenar çubuğunu gizle"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Show sidebar"
+msgstr "Kenar çubuğunu göster"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Sidebar show/hide button"
+msgstr "Kenar çubuğunu göster/gizle butonu"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php
+msgid "Your session has expired. Please reload the page."
+msgstr "Oturumunuzun süresi doldu. Lütfen sayfayı yenileyin."
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:706
+msgid "Store coming soon"
+msgstr "Mağaza çok yakında"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:707
+msgctxt "store visibility badge"
+msgid "Coming soon"
+msgstr "Çok yakında"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:709
+msgid "Your store is hidden from visitors. Click to change site visibility."
+msgstr ""
+"Mağazanız şu an ziyaretçilere kapalı. Site görünürlüğünü değiştirmek için "
+"tıklayın."
+
+#, php-format
+msgid "%s ×"
+msgstr "%s ×"
+
+#, php-format
+msgid "via %s"
+msgstr "%s ile"
+
+msgid "No billing address"
+msgstr "Fatura adresi yok"
+
+#, php-format
+msgid "(Phone: %s)"
+msgstr "(Telefon: %s)"
+
+msgid "No shipping address"
+msgstr "Teslimat adresi yok"
+
+msgid "No shipping needed"
+msgstr "Teslimat gerekmiyor"
+
+msgid "+ %d more item"
+msgid_plural "+ %d more items"
+msgstr[0] "+ %d ürün daha"
+msgstr[1] "+ %d ürün daha"
+
+#, php-format
+msgid "Items (%s)"
+msgstr "Ürünler (%s)"
+
+msgid "No items"
+msgstr "Ürün yok"
+
+msgid "Open order"
+msgstr "Siparişi aç"
+
+msgid "Billing"
+msgstr "Fatura"
+
+msgid "Ship to"
+msgstr "Teslimat"
+
+msgid "Compact order list"
+msgstr "Kısa sipariş listesi"
+
+msgid ""
+"Show each order as one short row. Click the arrow next to an order to see "
+"its addresses, phone number and items without leaving the list. Works when "
+"Enhanced orders page is on."
+msgstr ""
+"Her siparişi tek kısa satır olarak gösterir. Listeden çıkmadan adresleri, "
+"telefon numarasını ve ürünleri görmek için siparişin yanındaki oka tıklayın. "
+"Geliştirilmiş siparişler sayfası açıkken çalışır."
+
+msgid "Show order details"
+msgstr "Sipariş ayrıntılarını göster"
+
+msgid "Hide order details"
+msgstr "Sipariş ayrıntılarını gizle"
+
+msgid "Compact Order List"
+msgstr "Kısa Sipariş Listesi"
+
+msgid "Preview"
+msgstr "Önizle"
+
+#, php-format
+msgid "Selected: %d"
+msgstr "Seçili: %d"
+
+msgid "Order sections"
+msgstr "Sipariş bölümleri"
+
+msgctxt "order page tab"
+msgid "Items"
+msgstr "Ürünler"
+
+msgctxt "order page tab"
+msgid "Customer"
+msgstr "Müşteri"
+
+msgctxt "order page tab"
+msgid "Notes"
+msgstr "Notlar"
+
+msgctxt "order page tab for boxes from other plugins"
+msgid "More"
+msgstr "Diğer"
+
+msgctxt "order payment state"
+msgid "Paid"
+msgstr "Ödendi"
+
+msgid "Not paid yet"
+msgstr "Henüz ödenmedi"
+
+#, php-format
+msgid "Paid on %s"
+msgstr "%s tarihinde ödendi"
+
+msgid "No customer yet"
+msgstr "Henüz müşteri yok"
+
+#, php-format
+msgid "Orders: %d"
+msgstr "Siparişler: %d"
+
+#: includes/brikpanel-enqueue.php:979
+msgid "Bulk actions"
+msgstr "Toplu işlemler"
+
+msgctxt "product attributes table column"
+msgid "Name"
+msgstr "Ad"
+
+msgctxt "product attributes table column"
+msgid "Slug"
+msgstr "Kısa ad"
+
+msgctxt "product attributes table column"
+msgid "Type"
+msgstr "Tür"
+
+msgctxt "product attributes table column"
+msgid "Order by"
+msgstr "Sıralama"
+
+msgctxt "product attributes table column"
+msgid "Terms"
+msgstr "Terimler"
+
+msgid "Added."
+msgstr "Eklendi."
+
+msgid "Attribute added."
+msgstr "Öznitelik eklendi."
+
+msgid "Clear search"
+msgstr "Aramayı temizle"
+
+msgid "Product Cost Records"
+msgstr "Ürün Maliyet Kayıtları"
+
+msgid "Remove extra copies"
+msgstr "Fazla kopyaları kaldır"
+
+msgid "Every product cost is saved once."
+msgstr "Her ürünün maliyeti bir kez kayıtlı."
+
+msgid "No product or variation has a copy of its cost stored more than once."
+msgstr "Hiçbir ürün veya varyasyonun maliyeti birden fazla kez kayıtlı değil."
+
+#, php-format
+msgid "%s product has its cost saved more than once"
+msgid_plural "%s products have their cost saved more than once"
+msgstr[0] "%s ürünün maliyeti birden fazla kez kayıtlı"
+msgstr[1] "%s ürünün maliyeti birden fazla kez kayıtlı"
+
+msgid ""
+"Your reports already count each cost once, so your profit figures are "
+"correct. The extra copies can still confuse exports and other plugins. "
+"Removing them keeps the copy your product pages show today, so no cost "
+"changes."
+msgstr ""
+"Raporlarınız her maliyeti zaten bir kez sayıyor, yani kâr rakamlarınız "
+"doğru. Fazla kopyalar yine de dışa aktarımları ve başka eklentileri "
+"yanıltabilir. Kaldırınca ürün sayfalarınızda bugün görünen kopya kalır, "
+"hiçbir maliyet değişmez."
+
+#, php-format
+msgid ""
+"%s of these holds different numbers in its copies; the first saved number is "
+"the one in use and the one that stays."
+msgid_plural ""
+"%s of these hold different numbers in their copies; the first saved number "
+"is the one in use and the one that stays."
+msgstr[0] ""
+"Bunlardan %s tanesinin kopyalarında farklı sayılar var; kullanılan ve kalan, "
+"ilk kaydedilen sayıdır."
+msgstr[1] ""
+"Bunlardan %s tanesinin kopyalarında farklı sayılar var; kullanılan ve kalan, "
+"ilk kaydedilen sayıdır."
+
+msgid ""
+"Open the list below to see which products are affected. Products are often "
+"copied this way by an import or by duplicating a product."
+msgstr ""
+"Hangi ürünlerin etkilendiğini görmek için aşağıdaki listeyi açın. Ürünler "
+"genelde içe aktarma veya ürün kopyalama sırasında bu şekilde çoğalır."
+
+#, php-format
+msgid ""
+"Remove %1$s extra cost copies from %2$s product(s)? The cost each product "
+"shows today does not change, and the removed copies are kept so you can undo "
+"this."
+msgstr ""
+"%2$s üründen %1$s fazla maliyet kopyası kaldırılsın mı? Her ürünün bugün "
+"gösterdiği maliyet değişmez ve kaldırılan kopyalar saklanır, böylece geri "
+"alabilirsiniz."
+
+msgid ""
+"Put the removed cost copies back? This restores {count} row(s) exactly as "
+"they were."
+msgstr ""
+"Kaldırılan maliyet kopyaları geri konsun mu? {count} satır tam olarak eski "
+"haline döner."
+
+msgid "Products affected"
+msgstr "Etkilenen ürünler"
+
+msgid "Extra copies"
+msgstr "Fazla kopyalar"
+
+msgid "Copies with different numbers"
+msgstr "Farklı sayı içeren kopyalar"
+
+msgid "Affected products"
+msgstr "Etkilenen ürünler"
+
+msgid "Field"
+msgstr "Alan"
+
+msgid "Copies"
+msgstr "Kopya"
+
+msgid "Saved numbers (first one stays)"
+msgstr "Kayıtlı sayılar (ilki kalır)"
+
+msgid "(empty)"
+msgstr "(boş)"
+
+msgid "Cost of goods (WooCommerce)"
+msgstr "Mal maliyeti (WooCommerce)"
+
+msgid "Cost of goods (BrikPanel)"
+msgstr "Mal maliyeti (BrikPanel)"
+
+msgid "Adds to parent cost"
+msgstr "Ana ürün maliyetine eklenir"
+
+#, php-format
+msgid "Cost of goods (%s)"
+msgstr "Mal maliyeti (%s)"
+
+msgid ""
+"The restore point is full. Undo the last correction or leave it in place, "
+"then run the check again."
+msgstr ""
+"Geri yükleme noktası dolu. Son düzeltmeyi geri alın ya da olduğu gibi "
+"bırakın, sonra kontrolü yeniden çalıştırın."
+
+msgid "An undo is running for this check. Try again in a moment."
+msgstr "Bu kontrol için geri alma işlemi sürüyor. Birazdan tekrar deneyin."
+
+msgid "A cleanup is running for this check. Try again in a moment."
+msgstr "Bu kontrol için temizlik işlemi sürüyor. Birazdan tekrar deneyin."
+
+#, php-format
+msgid ""
+"%s copy was not put back because that cost was changed or cleared after the "
+"cleanup."
+msgid_plural ""
+"%s copies were not put back because those costs were changed or cleared "
+"after the cleanup."
+msgstr[0] ""
+"%s kopya geri konmadı, çünkü o maliyet temizlikten sonra değiştirildi veya "
+"silindi."
+msgstr[1] ""
+"%s kopya geri konmadı, çünkü o maliyetler temizlikten sonra değiştirildi "
+"veya silindi."
+
 #~ msgid "Dismiss for 7 days"
 #~ msgstr "7 gün boyunca gösterme"
 
@@ -17822,58 +18198,3 @@ msgstr "Aylık kohort × dönem elde tutma matrisini oluşturur."
 
 #~ msgid "Choose…"
 #~ msgstr "Seçin…"
-
-
-msgid "The history import stopped because the connection to this platform was lost. Connect again to resume it."
-msgstr "Bu platformla bağlantı koptuğu için geçmiş verisi aktarımı durdu. Devam ettirmek için yeniden bağlanın."
-
-msgid "The history import stopped because the selected ad account changed. Pick the account again to restart it."
-msgstr "Seçili reklam hesabı değiştiği için geçmiş verisi aktarımı durdu. Yeniden başlatmak için hesabı tekrar seçin."
-
-msgid "Nothing logged yet."
-msgstr "Henüz kayıt yok."
-
-msgctxt "log entry severity"
-msgid "Note"
-msgstr "Bilgi"
-
-msgid "History import stopped"
-msgstr "Geçmiş verisi aktarımı durdu"
-
-msgid "Only manager accounts were found. A manager account holds no spend of its own, so pick the ad account you actually advertise from: enter its ID below and put the manager ID in the Manager (MCC) field."
-msgstr "Yalnızca yönetici hesapları bulundu. Yönetici hesabının kendi harcaması olmaz, bu yüzden gerçekten reklam verdiğiniz hesabı seçin: kimliğini aşağıya girin, yönetici kimliğini de “Yönetici (MCC) hesap kimliği” alanına yazın."
-
-msgid "This is a manager account. It usually holds no spend of its own, so the import may come back empty. If it does, use the ID of the ad account you advertise from instead."
-msgstr "Bu bir yönetici hesabı. Genellikle kendi harcaması olmaz, bu yüzden aktarım boş dönebilir. Böyle olursa reklam verdiğiniz hesabın kimliğini kullanın."
-
-msgid "Could not save the manager account ID. Please try again."
-msgstr "Yönetici hesap kimliği kaydedilemedi. Lütfen tekrar deneyin."
-
-msgid "One more step"
-msgstr "Bir adım kaldı"
-
-msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
-msgstr "Eşitleme kaydındaki son 50 satır, hem hatalar hem sıradan bilgiler. Jeton değerleri kaydedilmeden önce gizlenir."
-
-msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
-msgstr "Harcamanın çekileceği reklam hesabını seçin. Aşağıdaki \"Hesapları yükle\" düğmesine tıklayın, birini seçin ve Kaydet'e basın. Siz bunu yapana kadar hiçbir şey aktarılmaz."
-
-#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4266
-msgid "Send an email"
-msgstr "E-posta gönder"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Hide sidebar"
-msgstr "Kenar çubuğunu gizle"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Show sidebar"
-msgstr "Kenar çubuğunu göster"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Sidebar show/hide button"
-msgstr "Kenar çubuğunu göster/gizle butonu"
-
-#: front-end/dashboard/brikpanel-dashboard-topbar.php
-msgid "Your session has expired. Please reload the page."
-msgstr "Oturumunuzun süresi doldu. Lütfen sayfayı yenileyin."

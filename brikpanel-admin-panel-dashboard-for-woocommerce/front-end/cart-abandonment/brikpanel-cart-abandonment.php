@@ -1824,8 +1824,7 @@ class Brikpanel_Cart_Abandonment {
 		}
 
 		// Kept in a local so the caller can be told when the code dies without
-		// re-reading the coupon. Never set_individual_use(): that would let this
-		// coupon evict, or be evicted by, a companion plugin's own coupon.
+		// re-reading the coupon.
 		$expires_at = time() + 30 * DAY_IN_SECONDS;
 
 		try {
@@ -1835,6 +1834,11 @@ class Brikpanel_Cart_Abandonment {
 			$coupon->set_amount( $discount );
 			$coupon->set_usage_limit( 1 );
 			$coupon->set_usage_limit_per_user( 1 );
+			// "Individual use only" is not this plugin's call. BrikMentor issues
+			// the store's other marketing codes and decides whether any of them
+			// may share a basket; asked per coupon, at mint time. Left alone
+			// (no BrikMentor), the popup code stacks as it always has.
+			$coupon->set_individual_use( self::popup_coupon_individual_use( $email ) );
 			$coupon->set_email_restrictions( [ $email ] );
 			$coupon->set_date_expires( $expires_at );
 			$coupon->set_description( __( 'Signup popup coupon (BrikPanel cart abandonment)', 'brikpanel' ) );
@@ -1845,6 +1849,28 @@ class Brikpanel_Cart_Abandonment {
 		}
 
 		return [ 'code' => $code, 'amount' => $discount, 'expires' => $expires_at ];
+	}
+
+	/**
+	 * Should the signup popup coupon be "individual use only" (WooCommerce's
+	 * checkbox: cannot be combined with any other coupon)? Off on its own; a
+	 * companion plugin that manages the store's marketing codes answers
+	 * through the filter. Public and named so that plugin can tell whether
+	 * this BrikPanel asks at all before promising the merchant it does.
+	 *
+	 * @since 3.3.6
+	 * @param string $email Recipient, for filters that decide per address.
+	 * @return bool
+	 */
+	public static function popup_coupon_individual_use( $email = '' ) {
+		/**
+		 * Whether the signup popup coupon may NOT be combined with other coupons.
+		 *
+		 * @since 3.3.6
+		 * @param bool   $individual_use Default false: the code stacks.
+		 * @param string $email          Recipient.
+		 */
+		return (bool) apply_filters( 'brikpanel_cartab_popup_coupon_individual_use', false, (string) $email );
 	}
 
 	/**

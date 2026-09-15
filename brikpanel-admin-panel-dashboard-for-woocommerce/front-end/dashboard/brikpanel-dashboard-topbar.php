@@ -350,6 +350,9 @@ class Brikpanel_Dashboard_Topbar {
                     <?php endif; ?>
 
                     <?php $slot( 'left', 'after', 'live' ); ?>
+
+                    <?php $this->render_coming_soon_badge(); ?>
+
                     <?php $slot( 'left' ); ?>
                 </div>
 
@@ -657,6 +660,56 @@ class Brikpanel_Dashboard_Topbar {
                 <kbd class="brikpanel-topbar-sidebar-tip-kbd">[</kbd>
             </span>
         </header>
+        <?php
+    }
+
+    // =========================================================================
+    // COMING SOON BADGE
+    // =========================================================================
+
+    /**
+     * Renders a "Coming soon" badge while WooCommerce Site visibility keeps the
+     * store hidden from shoppers. WooCommerce puts the same badge in the native
+     * WP toolbar, which BrikPanel hides, so without this the owner has no sign
+     * that the store is closed. Mirrors WooCommerce's own rules: shown only to
+     * users who can manage WooCommerce, and only while its badge is not
+     * switched off. Nothing is rendered when the store is live.
+     */
+    private function render_coming_soon_badge() {
+        if ( get_option( 'woocommerce_coming_soon' ) !== 'yes' ) {
+            return;
+        }
+        if ( get_option( 'woocommerce_feature_site_visibility_badge_enabled', 'yes' ) !== 'yes' ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            return;
+        }
+        // Before WooCommerce 11.1 the Launch Your Store feature itself could be
+        // switched off, and the store then stays live whatever the option says.
+        // 11.1 retired that flag (asking for it logs a deprecation notice) and
+        // always follows the option, so it is only consulted on older versions.
+        if ( defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '11.1.0-dev', '<' )
+            && class_exists( '\Automattic\WooCommerce\Admin\Features\Features' ) ) {
+            try {
+                if ( ! \Automattic\WooCommerce\Admin\Features\Features::is_enabled( 'launch-your-store' ) ) {
+                    return;
+                }
+            } catch ( \Throwable $e ) {
+                // Keep trusting the option; this only decides whether to warn.
+            }
+        }
+
+        // Context keeps this apart from the ad platforms' "Coming soon" pill,
+        // which means a feature that is not available yet.
+        $label = get_option( 'woocommerce_store_pages_only' ) === 'yes'
+            ? __( 'Store coming soon', 'brikpanel' )
+            : _x( 'Coming soon', 'store visibility badge', 'brikpanel' );
+        ?>
+        <a class="brikpanel-topbar-coming-soon" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-settings&tab=site-visibility' ) ); ?>" aria-label="<?php echo esc_attr( $label ); ?>" title="<?php esc_attr_e( 'Your store is hidden from visitors. Click to change site visibility.', 'brikpanel' ); ?>">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            <span class="brikpanel-topbar-coming-soon-label"><?php echo esc_html( $label ); ?></span>
+        </a>
         <?php
     }
 

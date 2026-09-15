@@ -711,6 +711,49 @@ function brikpanel_aes_callback_redeclares_function($function) {
     }
 }
 
+/**
+ * Which single-order screen this request is, if any.
+ *
+ * The modern order screen covers editing an order and adding a new one, on
+ * both order storages:
+ *   - HPOS:   admin.php?page=wc-orders&action=edit&id=N / &action=new
+ *   - legacy: post.php?post=N&action=edit (shop_order) / post-new.php?post_type=shop_order
+ * It used to recognise only the HPOS edit URL, so "Add order" opened a screen
+ * with none of the order styling and the orders LIST assets loaded on it.
+ *
+ * @return array{new:bool,legacy:bool,order_id:int}|null
+ */
+function brikpanel_order_screen_context() {
+    static $context = false;
+    if ( false !== $context ) {
+        return $context;
+    }
+    $context = null;
+
+    global $pagenow;
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only screen detection.
+    $page   = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+    $action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
+
+    if ( 'admin.php' === $pagenow && 'wc-orders' === $page && in_array( $action, [ 'edit', 'new' ], true ) ) {
+        $context = [
+            'new'      => 'new' === $action,
+            'legacy'   => false,
+            'order_id' => 'edit' === $action ? absint( $_GET['id'] ?? 0 ) : 0,
+        ];
+    } elseif ( 'post-new.php' === $pagenow && isset( $_GET['post_type'] ) && 'shop_order' === sanitize_key( wp_unslash( $_GET['post_type'] ) ) ) {
+        $context = [ 'new' => true, 'legacy' => true, 'order_id' => 0 ];
+    } elseif ( 'post.php' === $pagenow && isset( $_GET['post'] ) ) {
+        $post_id = absint( $_GET['post'] );
+        if ( $post_id && 'shop_order' === get_post_type( $post_id ) ) {
+            $context = [ 'new' => false, 'legacy' => true, 'order_id' => $post_id ];
+        }
+    }
+    // phpcs:enable
+
+    return $context;
+}
+
 // =============================================================================
 // WOOCOMMERCE PAGE SPECIFIC ASSETS (PREMIUM)
 // =============================================================================
@@ -720,18 +763,19 @@ function brikpanel_enqueue_woo_assets($hook) {
     $is_hpos_orders = ($hook === 'woocommerce_page_wc-orders');
     $is_legacy_orders = (isset($_GET['post_type']) && sanitize_key($_GET['post_type']) === 'shop_order' && $hook === 'edit.php');
 
-    // Detect order edit page
-    $is_order_edit = ($is_hpos_orders && isset($_GET['action']) && sanitize_key($_GET['action']) === 'edit');
+    // Detect the single-order screen (edit or new, HPOS or legacy).
+    $order_screen  = brikpanel_order_screen_context();
+    $is_order_edit = null !== $order_screen;
 
     // Orders page assets
-    if (($is_hpos_orders || $is_legacy_orders)) {
+    if ($is_hpos_orders || $is_legacy_orders || $is_order_edit) {
 
         // ── Inline status change (always loaded on orders list) ──────
         wp_enqueue_script(
             'brikpanel_order_status_inline',
             BRIKPANEL_URL . 'front-end/orders/brikpanel-order-status-inline.js',
             [],
-            BRIKPANEL_VERSION,
+            @filemtime( BRIKPANEL_PATH . 'front-end/orders/brikpanel-order-status-inline.js' ) ?: BRIKPANEL_VERSION,
             true
         );
 
@@ -739,7 +783,7 @@ function brikpanel_enqueue_woo_assets($hook) {
             'brikpanel_order_status_inline_styles',
             BRIKPANEL_URL . 'front-end/orders/brikpanel-order-status-inline.css',
             [],
-            BRIKPANEL_VERSION
+            @filemtime( BRIKPANEL_PATH . 'front-end/orders/brikpanel-order-status-inline.css' ) ?: BRIKPANEL_VERSION
         );
 
         wp_localize_script('brikpanel_order_status_inline', 'brikpanelStatusInline', [
@@ -770,8 +814,16 @@ function brikpanel_enqueue_woo_assets($hook) {
                 ['woocommerce_admin_styles'],
                 $order_css_ver
             );
-            $order_id = absint( $_GET['id'] ?? 0 );
+            $order_id = (int) $order_screen['order_id'];
             $order    = $order_id ? wc_get_order( $order_id ) : null;
+
+            // Tabbed layout (Items / Customer / Notes / More + summary column).
+            wp_enqueue_style(
+                'brikpanel_order_tabs_styles',
+                BRIKPANEL_URL . 'front-end/order/brikpanel-order-tabs.css',
+                ['brikpanel_order_styles'],
+                @filemtime( BRIKPANEL_PATH . 'front-end/order/brikpanel-order-tabs.css' ) ?: BRIKPANEL_VERSION
+            );
 
             wp_enqueue_script(
                 'brikpanel_order_edit',
@@ -787,6 +839,41 @@ function brikpanel_enqueue_woo_assets($hook) {
 
             $item_downloads = $order ? brikpanel_collect_order_item_downloads( $order ) : [];
 
+            // Summary column: facts that do not change while the page is open.
+            // The total is read from the items box instead, so it follows
+            // recalculations without a reload.
+            $summary = [
+                'paid'            => false,
+                'date_paid'       => '',
+                'payment'         => '',
+                'customer_name'   => '',
+                'customer_orders' => null,
+                'whatsapp_url'    => '',
+            ];
+            if ( $order ) {
+                $date_paid            = $order->get_date_paid();
+                // Same rule WooCommerce uses for its "Paid" line: a paid date on
+                // an order that went back to pending or on hold does not count.
+                $paid_statuses        = array_merge( wc_get_is_paid_statuses(), [ 'refunded' ] );
+                $summary['paid']      = $date_paid && in_array( $order->get_status(), $paid_statuses, true );
+                $summary['date_paid'] = $date_paid ? $date_paid->date_i18n( get_option( 'date_format' ) ) : '';
+                $summary['payment']   = (string) $order->get_payment_method_title();
+                $summary['customer_name'] = trim( $order->get_formatted_billing_full_name() );
+                if ( '' === $summary['customer_name'] ) {
+                    $summary['customer_name'] = trim( (string) $order->get_billing_company() );
+                }
+                if ( $order->get_customer_id() ) {
+                    $summary['customer_orders'] = (int) wc_get_customer_order_count( $order->get_customer_id() );
+                    if ( '' === $summary['customer_name'] ) {
+                        $user                     = get_user_by( 'id', $order->get_customer_id() );
+                        $summary['customer_name'] = $user ? $user->display_name : '';
+                    }
+                }
+                if ( function_exists( 'brikpanel_whatsapp_visible_for_user' ) && brikpanel_whatsapp_visible_for_user() && function_exists( 'brikpanel_order_whatsapp_url' ) ) {
+                    $summary['whatsapp_url'] = (string) brikpanel_order_whatsapp_url( $order );
+                }
+            }
+
             wp_localize_script( 'brikpanel_order_edit', 'brikpanelOrderEdit', [
                 'ajax_url'       => admin_url( 'admin-ajax.php' ),
                 'nonce'          => wp_create_nonce( 'brikpanel_order_status_nonce' ),
@@ -795,11 +882,16 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'status_label'   => $status_label,
                 'order_date'     => ($order && $order->get_date_created()) ? $order->get_date_created()->date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) : '',
                 'statuses'       => $all_statuses,
-                'orders_url'     => admin_url( 'admin.php?page=wc-orders' ),
+                'orders_url'     => $order_screen['legacy'] ? admin_url( 'edit.php?post_type=shop_order' ) : admin_url( 'admin.php?page=wc-orders' ),
+                'is_new'         => (bool) $order_screen['new'],
                 'item_downloads' => (object) $item_downloads,
+                'downloads_nonce' => wp_create_nonce( 'brikpanel_order_item_downloads' ),
+                'summary'        => $summary,
                 'i18n'           => [
                     'orders'              => __( 'Orders', 'brikpanel' ),
                     'save'                => __( 'Save', 'brikpanel' ),
+                    'new_order'           => __( 'New order', 'brikpanel' ),
+                    'create'              => __( 'Create', 'brikpanel' ),
                     'copy'                => __( 'Copy', 'brikpanel' ),
                     'copied'              => __( 'Copied!', 'brikpanel' ),
                     'address_copied'      => __( 'Address copied to clipboard', 'brikpanel' ),
@@ -813,12 +905,28 @@ function brikpanel_enqueue_woo_assets($hook) {
                     'expires'             => __( 'Expires %s', 'brikpanel' ),
                     'never_expires'       => __( 'Never expires', 'brikpanel' ),
                     'never_downloaded'    => __( 'Never downloaded', 'brikpanel' ),
+                    'tabs_label'          => __( 'Order sections', 'brikpanel' ),
+                    'tab_items'           => _x( 'Items', 'order page tab', 'brikpanel' ),
+                    'tab_customer'        => _x( 'Customer', 'order page tab', 'brikpanel' ),
+                    'tab_notes'           => _x( 'Notes', 'order page tab', 'brikpanel' ),
+                    'tab_more'            => _x( 'More', 'order page tab for boxes from other plugins', 'brikpanel' ),
+                    'order_total'         => __( 'Order total', 'brikpanel' ),
+                    'paid'                => _x( 'Paid', 'order payment state', 'brikpanel' ),
+                    'not_paid'            => __( 'Not paid yet', 'brikpanel' ),
+                    /* translators: %s: date the order was paid. */
+                    'paid_on'             => __( 'Paid on %s', 'brikpanel' ),
+                    'no_customer'         => __( 'No customer yet', 'brikpanel' ),
+                    /* translators: %d: number of orders the customer has placed. */
+                    'customer_orders'     => __( 'Orders: %d', 'brikpanel' ),
+                    'whatsapp'            => __( 'Message the customer on WhatsApp', 'brikpanel' ),
+                    'access_granted'      => __( 'Download access granted', 'brikpanel' ),
+                    'access_revoked'      => __( 'Download access revoked', 'brikpanel' ),
                 ],
             ] );
         }
 
-        // ── Enhanced orders page (conditional, skip on edit page) ──
-        if (!$is_order_edit && get_option('brikpanel_orders_enhancements', 'yes') !== 'no') {
+        // ── Enhanced orders page (list only, never the single-order screen) ──
+        if (($is_hpos_orders || $is_legacy_orders) && !$is_order_edit && get_option('brikpanel_orders_enhancements', 'yes') !== 'no') {
             $orders_css_ver = @filemtime( BRIKPANEL_PATH . 'front-end/orders/brikpanel-orders.css' ) ?: BRIKPANEL_VERSION;
             $orders_js_ver  = @filemtime( BRIKPANEL_PATH . 'front-end/orders/brikpanel-orders.js' ) ?: BRIKPANEL_VERSION;
             wp_enqueue_script(
@@ -867,6 +975,11 @@ function brikpanel_enqueue_woo_assets($hook) {
                     'filter_order_tag'  => __( 'order tag', 'brikpanel' ),
                     'filter_shipping_method' => __( 'shipping method', 'brikpanel' ),
                     'merge_needs_two'   => __( 'Select at least two orders to merge.', 'brikpanel' ),
+                    'show_details'      => __( 'Show order details', 'brikpanel' ),
+                    'hide_details'      => __( 'Hide order details', 'brikpanel' ),
+                    /* translators: %d: number of selected orders. */
+                    'selected_count'    => __( 'Selected: %d', 'brikpanel' ),
+                    'bulk_actions'      => __( 'Bulk actions', 'brikpanel' ),
                 ],
             ] );
         }
@@ -909,6 +1022,59 @@ function brikpanel_enqueue_woo_assets($hook) {
             [],
             $tax_css_ver
         );
+
+        // Page head (Screen Options + "Add new" button), the slide-in add
+        // panel, the table card toolbar and the bulk action bar. Same look as
+        // the orders list; see front-end/products/brikpanel-taxonomy-screen.js.
+        if ($is_attributes_page) {
+            $tax_mode = empty($_GET['edit']) ? 'attributes' : 'attribute-edit'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        } else {
+            $tax_mode = ('term.php' === $hook) ? 'term-edit' : 'terms';
+        }
+
+        $tax_back_url   = '';
+        $tax_back_label = '';
+        if ('attribute-edit' === $tax_mode) {
+            $tax_back_url   = admin_url('edit.php?post_type=product&page=product_attributes');
+            $tax_back_label = __('Attributes', 'brikpanel');
+        } elseif ('term-edit' === $tax_mode) {
+            $tax_object = get_taxonomy(sanitize_key(wp_unslash($_GET['taxonomy']))); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if ($tax_object) {
+                $tax_back_url   = admin_url('edit-tags.php?taxonomy=' . $tax_object->name . '&post_type=product');
+                $tax_back_label = $tax_object->labels->name;
+            }
+        }
+
+        $tax_screen_ver = @filemtime( BRIKPANEL_PATH . 'front-end/products/brikpanel-taxonomy-screen.js' ) ?: BRIKPANEL_VERSION;
+        wp_enqueue_script(
+            'brikpanel_taxonomy_screen',
+            BRIKPANEL_URL . 'front-end/products/brikpanel-taxonomy-screen.js',
+            ['jquery'],
+            $tax_screen_ver,
+            true
+        );
+
+        wp_localize_script('brikpanel_taxonomy_screen', 'brikpanelTaxScreen', [
+            'mode'           => $tax_mode,
+            'back_url'       => $tax_back_url,
+            'back_label'     => $tax_back_label,
+            // The attributes table is not a WP_List_Table, so the columns a
+            // user hid in Screen Options are applied on the client.
+            'hidden_columns' => 'attributes' === $tax_mode ? array_values(get_hidden_columns('product_page_product_attributes')) : [],
+            'has_type'       => 'attributes' === $tax_mode && function_exists('wc_has_custom_attribute_types') && wc_has_custom_attribute_types(),
+            'submitted'      => 'attributes' === $tax_mode && !empty($_POST['add_new_attribute']), // phpcs:ignore WordPress.Security.NonceVerification.Missing
+            'i18n'           => [
+                'close'           => __('Close', 'brikpanel'),
+                'cancel'          => __('Cancel', 'brikpanel'),
+                'search'          => __('Search', 'brikpanel'),
+                'clear_search'    => __('Clear search', 'brikpanel'),
+                'added'           => __('Added.', 'brikpanel'),
+                'attribute_added' => __('Attribute added.', 'brikpanel'),
+                /* translators: %d: number of selected items. */
+                'selected_count'  => __('Selected: %d', 'brikpanel'),
+                'bulk_actions'    => __('Bulk actions', 'brikpanel'),
+            ],
+        ]);
     }
 
     // Category tree JS (folder tree, drag-drop nesting, instant filter)
@@ -930,7 +1096,10 @@ function brikpanel_enqueue_woo_assets($hook) {
         wp_enqueue_script(
             'brikpanel_category_enhancements',
             BRIKPANEL_URL . 'front-end/products/brikpanel-category-enhancements.js',
-            ['jquery'],
+            // After the screen script, which builds the card toolbar the tree
+            // controls sit in. A taxonomy added through the
+            // brikpanel_term_screen_taxonomies filter may not get that script.
+            wp_script_is('brikpanel_taxonomy_screen', 'enqueued') ? ['jquery', 'brikpanel_taxonomy_screen'] : ['jquery'],
             $ce_js_ver,
             true
         );
@@ -1979,13 +2148,17 @@ function brikpanel_admin_body_class( $classes ) {
     $screen = get_current_screen();
     if ( ! $screen ) return $classes;
 
-    $is_order_edit = (
-        $screen->id === 'woocommerce_page_wc-orders'
-        && isset( $_GET['action'] ) && sanitize_key( $_GET['action'] ) === 'edit'
-    );
+    $is_order_edit = null !== brikpanel_order_screen_context();
 
     if ( $is_order_edit && get_option( 'brikpanel_modern_order_edit', 'yes' ) !== 'no' ) {
         $classes .= ' brikpanel-modern-edit';
+        // Keeps the page hidden until brikpanel-order.js has built the header
+        // and tabs, so the untouched layout never flashes first. Only when the
+        // script is really on the page; the CSS reveals it anyway after a
+        // short delay if the script never runs.
+        if ( wp_script_is( 'brikpanel_order_edit', 'enqueued' ) ) {
+            $classes .= ' bp-order-booting';
+        }
     }
 
     if ( get_option( 'brikpanel_modern_navigation', 'yes' ) === 'no' ) {
