@@ -4304,6 +4304,13 @@ class Brikpanel_Cart_Abandonment {
 			// Server-side, because a store that already has BrikMentor is never
 			// pitched - see outreach_lock().
 			lockPitch: <?php echo wp_json_encode( (bool) $lock['pitch'] ); ?>,
+			// Is the envelope beside each address drawn at all? Same gate as the
+			// Phone / WhatsApp column: both are outreach, and a store that has
+			// switched the BrikMentor promotion off (and has no BrikMentor to
+			// unlock them) gets neither - not a padlock, and not a free envelope
+			// as a reward for switching the promotion off. The address itself is
+			// the row's identity and always stays.
+			emailShortcut: <?php echo wp_json_encode( self::outreach_column_available() ); ?>,
 			// Resolved column order + visibility for this user. The body cells
 			// are built from columnOrder, so the header and the rows always
 			// agree, including after a drag-and-drop reorder.

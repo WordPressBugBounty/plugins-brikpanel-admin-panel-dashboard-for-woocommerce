@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.8
+Stable tag: 3.3.9
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -460,6 +460,9 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 22. Order Page
 
 == Changelog ==
+= 3.3.9 (2026-09-16) =
+* New: **A switch to hide every BrikMentor promotion.** WooCommerce → Settings → BrikPanel → General → "Show BrikMentor promotion". Turn it off and the dashboard card, the menu item, the corner button, the launch notice and the padlocked contact buttons on Abandoned Carts all go, and the screen is what it was before. Agencies can pin it for every client store with `define( 'BRIKPANEL_BRIKMENTOR_PROMO', false );` in wp-config.php. The setting travels with Import / Export.
+
 = 3.3.8 (2026-09-16) =
 * New: **BrikMentor in the left menu.** A "BrikMentor · New" item sits under Marketing and opens a short page: your own store's numbers, the offer, the eight ready flows (abandoned cart, win-back, post-purchase, back in stock and more) and what you do not need to set up. It only shows while BrikMentor is not installed, and you can hide it from Settings → Navigation.
 * New: **Dashboard card with your own numbers.** Under the KPI cards, a card shows how much was left in abandoned carts over the last 30 days. It only appears when there are abandoned carts, and the X hides it for 30 days.

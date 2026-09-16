@@ -455,6 +455,13 @@
 			text.textContent = row.email;
 			td.appendChild(text);
 
+			// Promotion off and nothing to unlock it: no envelope at all, the
+			// screen is what it was before the shortcut existed. The Phone /
+			// WhatsApp column is absent on the same store for the same reason.
+			if (!cfg.emailShortcut) {
+				return td;
+			}
+
 			// Locked store: the padlocked envelope replaces the live one. After the
 			// address, never instead of it - this column identifies the row, and a
 			// cell that lost its address would break the table rather than gate it.

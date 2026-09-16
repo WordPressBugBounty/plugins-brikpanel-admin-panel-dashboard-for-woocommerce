@@ -18,9 +18,12 @@
  *                 Abandoned Carts screen.
  *   - Flag OFF  → this module renders nothing and the early-access waitlist
  *                 (includes/brikpanel-early-access.php) behaves as it did
- *                 before launch. Nothing writes this value: it exists so a
- *                 store that does not want the promotion can set the option
- *                 to 'no' and be left alone.
+ *                 before launch. The Abandoned Carts screen also drops its
+ *                 padlocked WhatsApp column and envelope. The flag is the
+ *                 "Show BrikMentor promotion" switch under WooCommerce →
+ *                 Settings → BrikPanel, and `define(
+ *                 'BRIKPANEL_BRIKMENTOR_PROMO', false )` in wp-config.php
+ *                 pins it for agencies that deploy by config.
  *   - BrikMentor plugin installed → every promotional surface auto-hides,
  *                 regardless of the flag.
  *
@@ -50,8 +53,29 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return bool
  */
 function brikpanel_brikmentor_is_live() {
+    if ( brikpanel_brikmentor_promo_is_pinned() ) {
+        // wp-config.php wins over the option: an agency that deploys the same
+        // config to every client store gets the same answer on every one of
+        // them, whatever a later settings save writes.
+        return (bool) BRIKPANEL_BRIKMENTOR_PROMO;
+    }
     $value = get_option( 'brikpanel_brikmentor_live', 'yes' );
     return in_array( $value, array( 'yes', '1', 1, true ), true );
+}
+
+/**
+ * Has wp-config.php pinned the promotion on or off?
+ *
+ * `define( 'BRIKPANEL_BRIKMENTOR_PROMO', false );` hides every launch surface
+ * without anyone having to open the settings screen, and the settings toggle
+ * shows as read-only while it is set. Only a real boolean counts, so a typo
+ * such as `'no'` (a non-empty string, i.e. true) cannot switch the promotion
+ * ON by mistake: anything that is not a boolean is treated as "not pinned".
+ *
+ * @return bool
+ */
+function brikpanel_brikmentor_promo_is_pinned() {
+    return defined( 'BRIKPANEL_BRIKMENTOR_PROMO' ) && is_bool( BRIKPANEL_BRIKMENTOR_PROMO );
 }
 
 /**
@@ -626,7 +650,9 @@ function brikpanel_bm_ajax_card_dismiss() {
  */
 add_filter( 'brikpanel_settings_fields', 'brikpanel_brikmentor_settings_field', 998 );
 function brikpanel_brikmentor_settings_field( $fields ) {
-    if ( ! brikpanel_brikmentor_promo_active() ) {
+    // With BrikMentor installed there is nothing to promote and nothing to
+    // switch off, so the whole section stays out of the way.
+    if ( brikpanel_brikmentor_installed() ) {
         return $fields;
     }
     $fields[] = array(
@@ -634,17 +660,58 @@ function brikpanel_brikmentor_settings_field( $fields ) {
         'id'    => 'brk_brikmentor_title',
         'title' => __( 'BrikMentor', 'brikpanel' ),
     );
-    $fields[] = array(
-        // Pseudo-field: it stores nothing, so it is excluded from the
-        // import/export option map (see brikpanel-import-export.php).
-        'type' => 'brikpanel_brikmentor_promo',
-        'id'   => 'brikpanel_brikmentor_promo_field',
+
+    // The on/off switch is drawn whether or not the promotion is currently on:
+    // a switch that disappears the moment it is turned off could never be
+    // turned back on. A store where wp-config.php has pinned the value sees
+    // the switch read-only, with a line saying where the value comes from.
+    $pinned = brikpanel_brikmentor_promo_is_pinned();
+    $toggle = array(
+        'name'    => __( 'Show BrikMentor promotion', 'brikpanel' ),
+        'id'      => 'brikpanel_brikmentor_live',
+        'type'    => 'checkbox',
+        'desc'    => __( 'Show the BrikMentor card, menu item, corner button and the locked contact buttons on BrikPanel screens. Turn this off to hide every BrikMentor promotion, for example when you set up BrikPanel for a client.', 'brikpanel' ),
+        'default' => 'yes',
     );
+    if ( $pinned ) {
+        $toggle['value']             = BRIKPANEL_BRIKMENTOR_PROMO ? 'yes' : 'no';
+        $toggle['disabled']          = true;
+        $toggle['desc_tip']          = __( 'Set by the BRIKPANEL_BRIKMENTOR_PROMO constant in wp-config.php, so it cannot be changed here.', 'brikpanel' );
+    }
+    $fields[] = $toggle;
+
+    if ( brikpanel_brikmentor_promo_active() ) {
+        $fields[] = array(
+            // Pseudo-field: it stores nothing, so it is excluded from the
+            // import/export option map (see brikpanel-import-export.php).
+            'type' => 'brikpanel_brikmentor_promo',
+            'id'   => 'brikpanel_brikmentor_promo_field',
+        );
+    }
     $fields[] = array(
         'type' => 'sectionend',
         'id'   => 'brk_brikmentor_title',
     );
     return $fields;
+}
+
+/**
+ * Keep the stored switch untouched while wp-config.php pins the value.
+ *
+ * A disabled checkbox is not posted, so a plain save of the General section
+ * would write 'no' underneath the constant; the day the constant is removed
+ * the store would then wake up with the promotion off for no reason it can
+ * see. Returning the current stored value makes the save a no-op instead.
+ *
+ * @param mixed $value  Sanitised value about to be saved.
+ * @return mixed
+ */
+add_filter( 'woocommerce_admin_settings_sanitize_option_brikpanel_brikmentor_live', 'brikpanel_brikmentor_keep_pinned_switch' );
+function brikpanel_brikmentor_keep_pinned_switch( $value ) {
+    if ( brikpanel_brikmentor_promo_is_pinned() ) {
+        return get_option( 'brikpanel_brikmentor_live', 'yes' );
+    }
+    return $value;
 }
 
 /**

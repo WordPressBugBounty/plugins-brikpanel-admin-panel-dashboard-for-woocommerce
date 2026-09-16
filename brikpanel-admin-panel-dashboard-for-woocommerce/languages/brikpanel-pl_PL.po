@@ -18527,3 +18527,15 @@ msgstr[2] "%s klientów się oddala"
 
 #~ msgid "Choose…"
 #~ msgstr "Wybierz…"
+
+#: includes/brikpanel-brikmentor-promo.php
+msgid "Show BrikMentor promotion"
+msgstr "Pokaż promocję BrikMentor"
+
+#: includes/brikpanel-brikmentor-promo.php
+msgid "Show the BrikMentor card, menu item, corner button and the locked contact buttons on BrikPanel screens. Turn this off to hide every BrikMentor promotion, for example when you set up BrikPanel for a client."
+msgstr "Pokazuje kartę BrikMentor, pozycję menu, przycisk w rogu i zablokowane przyciski kontaktu na ekranach BrikPanel. Wyłącz, aby ukryć każdą promocję BrikMentor, na przykład gdy konfigurujesz BrikPanel dla klienta."
+
+#: includes/brikpanel-brikmentor-promo.php
+msgid "Set by the BRIKPANEL_BRIKMENTOR_PROMO constant in wp-config.php, so it cannot be changed here."
+msgstr "Ustawione przez stałą BRIKPANEL_BRIKMENTOR_PROMO w pliku wp-config.php, więc nie można tego zmienić tutaj."
