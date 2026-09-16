@@ -766,6 +766,17 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 
 		$title = wptexturize( $item[0] ?? '' );
 
+		/**
+		 * Filter a top-level item's sidebar label. Companion surfaces add a
+		 * badge here at render time, so the registered title (what the nav
+		 * customizer, the native menu and screen readers see) stays plain.
+		 * The value is HTML and goes through the sidebar's wp_kses().
+		 *
+		 * @param string $title Label HTML.
+		 * @param string $slug  Top-level menu slug ($item[2]).
+		 */
+		$title = apply_filters( 'brikpanel_nav_item_title', $title, $item_slug );
+
 		// Separator için erişilebilirlik ayarı:
 		if ( $is_separator ) {
 			$aria_hidden = ' aria-hidden="true"';
@@ -897,6 +908,7 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 			'brikpanel-vendors' => 'invoice',
 			'brikpanel-expenses' => 'payments',
 			'brikpanel-abandoned-carts' => 'orders',
+			'brikpanel-brikmentor' => 'star',
 			'wf_woocommerce_packing_list' => 'invoice',
 			'admin.php?page=wc-settings&tab=checkout' => 'payments',
 			'wc-admin&path=/wc-pay-welcome-page' => 'payments',

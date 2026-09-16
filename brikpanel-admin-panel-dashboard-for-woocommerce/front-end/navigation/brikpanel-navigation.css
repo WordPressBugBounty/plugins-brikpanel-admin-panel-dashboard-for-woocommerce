@@ -328,6 +328,21 @@
 	padding: 0 0.5rem;
 	margin-top: 0.06rem;
 }
+/* "New" pill beside a freshly added sidebar item (BrikMentor). Sized like the
+   count bubbles above so a badged row stays exactly as tall as its neighbours;
+   filled dark like the nav customizer's own new-item badge. */
+#brikpanel-navigation a > .brikpanel-nav-badge-new {
+	display: inline-block;
+	font-size: 0.6875rem;
+	font-weight: 600;
+	line-height: 16px;
+	color: #fff;
+	background: #303030;
+	border-radius: 0.5rem;
+	padding: 0 0.45rem;
+	margin-top: 0.06rem;
+	letter-spacing: 0.02em;
+}
 /* This ensures that no submenu item will get an icon, except for the
 WooCommerce submenu which we move out of a submenu visually. */
 #brikpanel-navigation .wp-submenu:not(#toplevel_page_woocommerce ul) img {

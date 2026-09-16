@@ -23,8 +23,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Whether the BrikControl (Store Health) module is enabled in BrikPanel
- * settings. Defaults to "yes" so existing installs keep working untouched;
- * admins can turn it off from WooCommerce → Settings → BrikPanel → Store Health.
+ * settings. A missing row reads as "yes" so installs that pre-date the toggle
+ * keep working untouched. Fresh installs are different: brikpanel_provision_site()
+ * writes 'no' at activation, so a new store starts with the module OFF and the
+ * admin opts in from WooCommerce → Settings → BrikPanel → Store Health.
  *
  * @return bool
  */

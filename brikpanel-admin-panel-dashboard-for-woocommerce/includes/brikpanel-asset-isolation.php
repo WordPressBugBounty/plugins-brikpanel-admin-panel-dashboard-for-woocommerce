@@ -216,3 +216,25 @@ function brikpanel_isolation_sweep_assets() {
 	}
 }
 add_action( 'admin_enqueue_scripts', 'brikpanel_isolation_sweep_assets', PHP_INT_MAX );
+
+/**
+ * Keep the theme's hidden-until-opened markup hidden.
+ *
+ * Some themes print modal forms into every admin page and rely on a
+ * stylesheet to hide them until a button opens them. Porto, for example,
+ * prints its "New Porto Builder" form (`#porto-builders-input`) on every
+ * screen and hides it with Magnific Popup's `.mfp-hide`. That stylesheet is a
+ * theme asset, so on BrikPanel's own pages the sweep above removes it and the
+ * raw form shows at the foot of the page. Magnific's rule is exactly
+ * `.mfp-hide { display: none !important; }`; restating it here costs nothing
+ * on themes that never use it and needs no per-theme list.
+ *
+ * @return void
+ */
+add_action( 'admin_head', 'brikpanel_isolation_hidden_markup_css' );
+function brikpanel_isolation_hidden_markup_css() {
+	if ( ! brikpanel_isolation_active() ) {
+		return;
+	}
+	echo '<style id="brikpanel-isolation-hidden-markup">.mfp-hide{display:none!important}</style>' . "\n";
+}

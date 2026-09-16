@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.7
+ * Version: 3.3.8
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.7');
+define('BRIKPANEL_VERSION', '3.3.8');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -1335,6 +1335,15 @@ function brikpanel_provision_site() {
     // and can then remove them from the Order statuses settings screen.
     if ($is_fresh_install) {
         update_option('brikpanel_cos_legacy_migrated', 1);
+        // Store Health (BrikControl) starts OFF on a fresh install: a new
+        // merchant should not meet a topbar shield, a dashboard banner and a
+        // daily background scan before they have even seen the dashboard.
+        // Existing installs never reach this block (db_version is stamped),
+        // and brikpanel_brikcontrol_is_enabled() still falls back to 'yes'
+        // when the row is missing, so nothing changes for them. add_option()
+        // is a no-op if a row somehow exists already. Autoloaded, matching
+        // what WooCommerce's own checkbox handler writes.
+        add_option('brikpanel_brikcontrol_enabled', 'no', '', true);
     }
 }
 

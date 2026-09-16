@@ -222,6 +222,41 @@
 	color: #303030;
 }
 
+/* BrikMentor pitch under the "Abandoned" figure: a plain text link that reads
+   as the next step for that figure, not as an advert. It opens the floating
+   BrikMentor panel and is only printed while BrikMentor is being promoted. */
+.brikpanel-cartab-summary-cta {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	align-self: flex-start;
+	margin-top: 0.625rem;
+	font-size: 0.75rem;
+	font-weight: 550;
+	color: #303030;
+	text-decoration: none;
+	border-radius: 0.375rem;
+}
+
+.brikpanel-cartab-summary-cta:hover,
+.brikpanel-cartab-summary-cta:focus {
+	color: #1a1a1a;
+	text-decoration: underline;
+}
+
+.brikpanel-cartab-summary-cta:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 2px #303030;
+}
+
+.brikpanel-cartab-summary-cta svg {
+	flex: 0 0 auto;
+}
+
+[dir="rtl"] .brikpanel-cartab-summary-cta svg {
+	transform: scaleX(-1);
+}
+
 /* Filters — one toolbar row; every control applies itself, so no Apply button.
    Labels live inside the controls ("All statuses"), which keeps the bar to a
    single line and removes the stack of tiny headings above it. */

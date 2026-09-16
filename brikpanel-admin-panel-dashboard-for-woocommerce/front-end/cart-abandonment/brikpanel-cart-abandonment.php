@@ -3272,7 +3272,7 @@ class Brikpanel_Cart_Abandonment {
 			// Never wp_http_validate_url(): it rejects local hosts and would
 			// leave every development install with a dead padlock.
 			$url = function_exists( 'brikpanel_brikmentor_checkout_url' )
-				? brikpanel_brikmentor_checkout_url()
+				? brikpanel_brikmentor_checkout_url( 'lock' )
 				: '';
 		}
 
@@ -3296,6 +3296,23 @@ class Brikpanel_Cart_Abandonment {
 	public static function mentor_locked() {
 		$entitlement = self::mentor_entitlement();
 		return self::mentor_active() && is_array( $entitlement ) && empty( $entitlement['entitled'] );
+	}
+
+	/**
+	 * May the "Recover these carts on autopilot" link print under the
+	 * "Abandoned" figure?
+	 *
+	 * Only while BrikMentor is being promoted here: not installed, promotion
+	 * switched on, and a user who could buy it. With BrikMentor present the
+	 * carts on this screen are already being followed up, and the link opens
+	 * a panel that then does not exist.
+	 *
+	 * @return bool
+	 */
+	private static function mentor_pitch_available() {
+		return function_exists( 'brikpanel_brikmentor_promo_active' )
+			&& brikpanel_brikmentor_promo_active()
+			&& current_user_can( 'manage_woocommerce' );
 	}
 
 	/**
@@ -4124,6 +4141,12 @@ class Brikpanel_Cart_Abandonment {
 						<span class="brikpanel-cartab-summary-meta-label"><?php esc_html_e( 'Recoverable value', 'brikpanel' ); ?></span>
 						<span class="brikpanel-cartab-summary-meta-value" id="brikpanel-cartab-amount-abandoned">—</span>
 					</div>
+					<?php if ( self::mentor_pitch_available() ) : ?>
+					<a class="brikpanel-cartab-summary-cta" href="<?php echo esc_url( brikpanel_brikmentor_url() ); ?>" data-bm-open data-bm-via="carts-stat" target="_blank" rel="noopener noreferrer">
+						<?php esc_html_e( 'Recover these carts on autopilot', 'brikpanel' ); ?>
+						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+					</a>
+					<?php endif; ?>
 				</div>
 				<div class="brikpanel-cartab-summary-card">
 					<div class="brikpanel-cartab-summary-label"><?php esc_html_e( 'Recovered', 'brikpanel' ); ?></div>
