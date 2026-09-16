@@ -1149,6 +1149,12 @@ function brikpanelCompactRows() {
 	const ROW_COLUMNS = new Set(['cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_customer', 'order_date', 'order_status', 'payment_method', 'brikpanel_shipping_method', 'order_total']);
 	// Columns whose content never moves to the panel.
 	const DROPPED_COLUMNS = new Set();
+	// Columns the user keeps in the row ("Show in the row" in Screen Options).
+	const rowColumnsConfig = window.brikpanelOrdersOverview?.row_columns;
+	const pinned = new Set(Array.isArray(rowColumnsConfig) ? rowColumnsConfig.map(String) : []);
+	// Phones show a fixed card, so every extra column opens in the panel there.
+	const phoneQuery = window.matchMedia('(max-width: 782px)');
+	const inRow = key => pinned.has(key) && !phoneQuery.matches;
 
 	const columnKey = $cell => {
 		const name = [...$cell.classList].find(cls => cls.startsWith('column-'));
@@ -1169,8 +1175,7 @@ function brikpanelCompactRows() {
 	for (const $th of $headRow?.children || []) {
 		const key = columnKey($th);
 		if (!key || ROW_COLUMNS.has(key) || $th.classList.contains('check-column')) continue;
-		$th.classList.add('bp-col-extra');
-		extraColumns.push({ key, label: headerLabel($th) });
+		extraColumns.push({ key, label: headerLabel($th), $th });
 	}
 	const totalLabel = headerLabel($headRow?.querySelector('.column-order_total'));
 	const dateLabel = headerLabel($headRow?.querySelector('.column-order_date'));
@@ -1197,6 +1202,13 @@ function brikpanelCompactRows() {
 	};
 
 	const extrasByRow = new WeakMap();
+	const movesByRow = new WeakMap();
+	// Rows whose panel has been built; only those hold column content.
+	const builtRows = new WeakSet();
+	// Panel item -> the cell it came from. WordPress's Screen Options only
+	// updates the column classes of elements in the page, and a panel that was
+	// never opened is not, so the item copies the cell's state when shown.
+	const itemSource = new WeakMap();
 
 	$list.querySelectorAll(':scope > tr').forEach($row => {
 		const $cell = $row.querySelector('.column-order_number');
@@ -1215,16 +1227,24 @@ function brikpanelCompactRows() {
 		($cell.querySelector('.brikpanel-order-number') || $cell).prepend($button);
 
 		const extras = [];
+		const moves = [];
 		extraColumns.forEach(({ key, label }) => {
 			const $source = $row.querySelector(`:scope > .column-${CSS.escape(key)}`);
 			if (!$source) return;
-			$source.classList.add('bp-col-extra');
-			if (DROPPED_COLUMNS.has(key) || !hasContent($source)) return;
+			if (DROPPED_COLUMNS.has(key)) {
+				moves.push({ key, $source, $item: null, $value: null });
+				return;
+			}
+			// The content stays in its (hidden) cell until the panel is first
+			// opened: other plugins that bind their buttons or fill the cell once
+			// the page is ready still find it in the page.
 			const [$item, $value] = makeExtra(key, label);
 			if ($source.classList.contains('hidden')) $item.classList.add('hidden');
-			while ($source.firstChild) $value.append($source.firstChild);
+			itemSource.set($item, $source);
+			moves.push({ key, $source, $item, $value });
 			extras.push($item);
 		});
+		movesByRow.set($row, moves);
 
 		// Anything other plugins print next to the amount (e.g. a currency
 		// note) would make the short row tall; it moves to the panel too.
@@ -1262,13 +1282,15 @@ function brikpanelCompactRows() {
 		const $wrap = makeElement('div', { class: 'bp-order-detail-wrap' });
 		$wrap.append($template.content.cloneNode(true));
 
+		builtRows.add($row);
+		placeRow($row);
 		const extras = extrasByRow.get($row) || [];
 		const $card = $wrap.querySelector('.bp-od');
 		if ($card && extras.length) {
-			const phoneOnly = extras.every($item => $item.classList.contains('bp-od-extra--phone'));
-			const $extras = makeElement('div', { class: `bp-od-extras${phoneOnly ? ' bp-od-extras--phone' : ''}` });
+			const $extras = makeElement('div', { class: 'bp-od-extras' });
 			$extras.append(...extras);
 			$card.append($extras);
+			syncExtras($extras);
 		}
 
 		$cell.append($wrap);
@@ -1277,6 +1299,113 @@ function brikpanelCompactRows() {
 		$row.after($detail);
 		return $detail;
 	};
+
+	// The extras block hides when every item sits in the row, and shows only on
+	// narrow widths when all that is left is the date.
+	const syncExtras = $extras => {
+		[...$extras.children].forEach($item => {
+			const $source = itemSource.get($item);
+			if ($source) $item.classList.toggle('hidden', $source.classList.contains('hidden'));
+		});
+		const live = [...$extras.children].filter($item => !['bp-od-extra--in-row', 'bp-od-extra--empty', 'hidden'].some(cls => $item.classList.contains(cls)));
+		$extras.hidden = live.length === 0;
+		$extras.classList.toggle('bp-od-extras--phone', live.length > 0 && live.every($item => $item.classList.contains('bp-od-extra--phone')));
+	};
+
+	// Put each extra column's content where it belongs: in its own cell when the
+	// user keeps the column in the row, otherwise in the order's panel. Content is
+	// moved, never copied, so other plugins' buttons keep their handlers.
+	const placeRow = $row => {
+		const moves = movesByRow.get($row);
+		if (!moves) return;
+		const built = builtRows.has($row);
+		moves.forEach(({ key, $source, $item, $value }) => {
+			const row = inRow(key);
+			$source.classList.toggle('bp-col-extra', !row);
+			if (!$item) return;
+			if (row) {
+				while ($value.firstChild) $source.append($value.firstChild);
+			} else if (built) {
+				while ($source.firstChild) $value.append($source.firstChild);
+			}
+			$item.classList.toggle('bp-od-extra--in-row', row);
+			$item.classList.toggle('bp-od-extra--empty', !row && built && !hasContent($value));
+		});
+	};
+
+	const applyPlacement = () => {
+		extraColumns.forEach(({ key, $th }) => $th.classList.toggle('bp-col-extra', !inRow(key)));
+		$list.querySelectorAll(':scope > tr').forEach($row => {
+			if (!movesByRow.has($row)) return;
+			placeRow($row);
+			const $extras = document.getElementById(`bp-order-detail-${($row.id || '').replace(/^(order|post)-/, '')}`)?.querySelector('.bp-od-extras');
+			if ($extras) syncExtras($extras);
+		});
+		syncColspans();
+		document.dispatchEvent(new CustomEvent('brikpanel:order-columns-changed'));
+	};
+	applyPlacement();
+	phoneQuery.addEventListener?.('change', applyPlacement);
+
+	// Screen Options "Show in the row" boxes: apply at once, then save for the user.
+	const $rowPrefs = document.querySelector('#screen-options-wrap .bp-row-columns');
+	if ($rowPrefs) {
+		// Right under WordPress's own Columns list.
+		const $columnPrefs = $rowPrefs.parentElement?.querySelector(':scope > .metabox-prefs:not(.bp-row-columns)');
+		if ($columnPrefs) $columnPrefs.after($rowPrefs);
+
+		const $error = makeElement('p', { class: 'bp-row-columns__error', role: 'alert', hidden: '' });
+		$rowPrefs.append($error);
+		const $boxes = [...$rowPrefs.querySelectorAll('.bp-row-column-tog')];
+
+		// One request at a time, always carrying the latest choice, so quick
+		// clicks can never reach the server out of order and store an old set.
+		let saved = new Set(pinned);
+		let busy = false;
+		let dirty = false;
+		const save = () => {
+			if (busy) {
+				dirty = true;
+				return;
+			}
+			busy = true;
+			dirty = false;
+			const sent = new Set(pinned);
+			const body = new URLSearchParams({ action: 'brikpanel_orders_row_columns', nonce: $rowPrefs.dataset.nonce || '' });
+			sent.forEach(key => body.append('columns[]', key));
+			fetch(window.brikpanelOrdersOverview?.ajax_url || '', { method: 'POST', credentials: 'same-origin', body })
+				.then(response => response.json())
+				.then(result => {
+					if (!result?.success) throw new Error();
+					saved = sent;
+				})
+				.catch(() => {
+					// Put back what is stored, so the page never shows a choice that
+					// will be gone after a reload.
+					dirty = false;
+					pinned.clear();
+					saved.forEach(key => pinned.add(key));
+					$boxes.forEach($box => { $box.checked = pinned.has($box.value); });
+					applyPlacement();
+					$error.textContent = _ordersI18n.row_columns_error || '';
+					$error.hidden = false;
+				})
+				.finally(() => {
+					busy = false;
+					if (dirty) save();
+				});
+		};
+
+		$rowPrefs.addEventListener('change', event => {
+			const $box = event.target;
+			if (!$box.matches?.('.bp-row-column-tog')) return;
+			if ($box.checked) pinned.add($box.value);
+			else pinned.delete($box.value);
+			applyPlacement();
+			$error.hidden = true;
+			save();
+		});
+	}
 
 	const toggleRow = ($row, $button) => {
 		const open = $button.getAttribute('aria-expanded') !== 'true';
@@ -1292,8 +1421,6 @@ function brikpanelCompactRows() {
 		$button.setAttribute('aria-label', open ? labelHide : labelShow);
 		$button.title = open ? labelHide : labelShow;
 	};
-
-	const phoneQuery = window.matchMedia('(max-width: 782px)');
 
 	$list.addEventListener('click', event => {
 		const $button = event.target.closest('.bp-order-toggle');
@@ -1322,6 +1449,7 @@ function brikpanelCompactRows() {
 		setTimeout(() => {
 			const span = String(visibleColumns());
 			$list.querySelectorAll(':scope > tr.bp-order-detail > td').forEach($cell => $cell.setAttribute('colspan', span));
+			$list.querySelectorAll(':scope > tr.bp-order-detail .bp-od-extras').forEach(syncExtras);
 		});
 	});
 
@@ -1388,6 +1516,7 @@ function brikpanelStickyOrderColumn() {
 	document.addEventListener('change', event => {
 		if (event.target.matches?.('.hide-column-tog')) setTimeout(sync);
 	});
+	document.addEventListener('brikpanel:order-columns-changed', sync);
 }
 
 /**

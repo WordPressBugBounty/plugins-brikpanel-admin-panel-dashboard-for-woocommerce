@@ -2,6 +2,12 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.7 (2026-09-16) =
+* New: **Keep any column in the order row.** With the compact order list, columns from other plugins (such as Profit, Tracking Number or Invoice) and WooCommerce's Actions only showed under the order. Screen Options now has a "Show in the row" group: tick a column and it stays in the row. The choice is saved per user, and nothing changes until you tick one.
+* Fix: **Buttons from other plugins work in the order details panel,** a column hidden in Screen Options no longer shows there, and column names with capital letters are remembered.
+* Fix: **Measurement Price Calculator works in the product editor.** Its options no longer stack, the unit price shows in the price box, and the Pricing Table, Area and Volume settings, calculator settings and variation minimum price, area and volume are no longer lost on save. Yoast WooCommerce SEO no longer moves the calculator card into the SEO box.
+* Fix: **Multi-currency (CURCY) prices on the product page.** The extra currency fields show once, variation and sale prices in the extra currency are saved, and opening a product no longer counts as an unsaved change, which made published products autosave every minute.
+
 = 3.3.6 (2026-09-15) =
 * Fix: **Product costs are no longer counted twice.** When a product's cost was stored twice in the database, reports added both copies, so 5 items at £8.99 showed as £89.90 on the dashboard. Every report now reads the same single cost the product page shows: dashboard, cost coverage, Store Summary, the ads dashboard and the products list. WooCommerce's Duplicate and CSV imports with a cost column no longer write the cost twice, for simple products and every variation.
 * New: **BrikControl check "Product Cost Records".** It lists products carrying extra copies of their cost and removes them with "Remove extra copies". The cost you see does not change, and "Undo" puts the copies back.

@@ -76,6 +76,121 @@ if ( get_option( 'woocommerce_custom_orders_table_enabled' ) === 'yes' ) {
 }
 add_filter( 'woocommerce_admin_order_buyer_name', 'brikpanel_orders_compact_buyer_name', PHP_INT_MAX, 2 );
 add_filter( 'admin_body_class', 'brikpanel_orders_compact_body_class' );
+add_filter( 'screen_settings', 'brikpanel_orders_compact_screen_settings', 10, 2 );
+add_action( 'wp_ajax_brikpanel_orders_row_columns', 'brikpanel_orders_compact_save_row_columns' );
+
+/**
+ * Columns the short row always shows. Every other column opens in the detail
+ * panel unless the user picks it in Screen Options (see
+ * brikpanel_orders_compact_user_row_columns()). Mirrors ROW_COLUMNS in
+ * brikpanel-orders.js.
+ *
+ * @return string[]
+ */
+function brikpanel_orders_compact_base_row_columns() {
+	return array( 'cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_customer', 'order_date', 'order_status', 'payment_method', 'brikpanel_shipping_method', 'order_total' );
+}
+
+/**
+ * Clean a column key for storage.
+ *
+ * sanitize_key() would lowercase it, but column keys are matched exactly
+ * against the table's "column-KEY" classes, and other plugins do use capitals.
+ *
+ * @param mixed $key Raw key.
+ * @return string Key, or '' when unusable.
+ */
+function brikpanel_orders_compact_clean_column_key( $key ) {
+	if ( ! is_string( $key ) && ! is_int( $key ) ) {
+		return '';
+	}
+	return (string) preg_replace( '/[^A-Za-z0-9_\-.:]/', '', substr( (string) $key, 0, 100 ) );
+}
+
+/**
+ * Extra columns the current user keeps in the short row (e.g. a tracking
+ * number or profit column from another plugin). Stored per user and per site,
+ * like WordPress's own hidden columns; empty by default.
+ *
+ * @return string[]
+ */
+function brikpanel_orders_compact_user_row_columns() {
+	$keys = get_user_option( 'brikpanel_orders_row_columns' );
+	if ( ! is_array( $keys ) ) {
+		return array();
+	}
+	return array_values( array_unique( array_filter( array_map( 'brikpanel_orders_compact_clean_column_key', $keys ), 'strlen' ) ) );
+}
+
+/**
+ * Screen Options: a "Show in the row" group listing the columns that open in
+ * the detail panel, so a user can keep any of them in the short row.
+ *
+ * @param string    $settings Screen settings HTML.
+ * @param WP_Screen $screen   Current screen.
+ * @return string
+ */
+function brikpanel_orders_compact_screen_settings( $settings, $screen ) {
+	if ( ! $screen instanceof WP_Screen || ! brikpanel_orders_compact_enabled() || ! brikpanel_orders_compact_is_list_screen() ) {
+		return $settings;
+	}
+
+	$columns = get_column_headers( $screen );
+	if ( ! is_array( $columns ) || ! $columns ) {
+		return $settings;
+	}
+
+	$base    = brikpanel_orders_compact_base_row_columns();
+	$picked  = brikpanel_orders_compact_user_row_columns();
+	$options = '';
+	foreach ( $columns as $key => $title ) {
+		$key   = (string) $key;
+		$title = trim( wp_strip_all_tags( (string) $title ) );
+		// A key that cannot be stored as-is could never stay ticked; leave it out.
+		if ( '' === $title || '_title' === $key || in_array( $key, $base, true ) || brikpanel_orders_compact_clean_column_key( $key ) !== $key ) {
+			continue;
+		}
+		$options .= '<label><input type="checkbox" class="bp-row-column-tog" value="' . esc_attr( $key ) . '"' . checked( in_array( $key, $picked, true ), true, false ) . ' />' . esc_html( $title ) . '</label>';
+	}
+	if ( '' === $options ) {
+		return $settings;
+	}
+
+	return $settings
+		. '<fieldset class="metabox-prefs bp-row-columns" data-nonce="' . esc_attr( wp_create_nonce( 'brikpanel_orders_row_columns' ) ) . '">'
+		. '<legend>' . esc_html__( 'Show in the row', 'brikpanel' ) . '</legend>'
+		. '<p class="bp-row-columns__hint">' . esc_html__( 'Ticked columns stay in the order row instead of opening under the order.', 'brikpanel' ) . '</p>'
+		. $options
+		. '</fieldset>';
+}
+
+/**
+ * AJAX: save the columns the current user keeps in the short row.
+ */
+function brikpanel_orders_compact_save_row_columns() {
+	check_ajax_referer( 'brikpanel_orders_row_columns', 'nonce' );
+	if ( ! current_user_can( 'edit_shop_orders' ) ) {
+		wp_send_json_error( null, 403 );
+	}
+
+	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each key is sanitized below.
+	$raw  = isset( $_POST['columns'] ) && is_array( $_POST['columns'] ) ? wp_unslash( $_POST['columns'] ) : array();
+	$keys = array();
+	foreach ( array_slice( $raw, 0, 100 ) as $key ) {
+		$key = brikpanel_orders_compact_clean_column_key( $key );
+		if ( '' !== $key ) {
+			$keys[ $key ] = true;
+		}
+	}
+	$keys = array_diff( array_keys( $keys ), brikpanel_orders_compact_base_row_columns() );
+
+	if ( $keys ) {
+		update_user_option( get_current_user_id(), 'brikpanel_orders_row_columns', array_values( $keys ) );
+	} else {
+		delete_user_option( get_current_user_id(), 'brikpanel_orders_row_columns' );
+	}
+	wp_send_json_success( array( 'columns' => array_values( $keys ) ) );
+}
 
 /**
  * Rebuild the column set: a short row with the customer and shipping method,

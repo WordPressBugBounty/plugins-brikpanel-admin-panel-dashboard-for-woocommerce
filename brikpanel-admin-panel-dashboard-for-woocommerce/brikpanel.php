@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.6
+ * Version: 3.3.7
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.6');
+define('BRIKPANEL_VERSION', '3.3.7');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -851,6 +851,17 @@ brikpanel_require('front-end/brikcontrol/brikpanel-brikcontrol.php');
 // is_admin() at the bottom of that file.
 // =============================================================================
 brikpanel_require('front-end/search/brikpanel-search.php');
+
+// Orders list "Show in the row" choice (front-end/orders/brikpanel-orders-compact.php)
+// is a per-site user option in the shared user meta table; a deleted subsite
+// must take it along on every request type, WP-CLI included.
+add_action( 'wp_delete_site', function ( $old_site ) {
+    global $wpdb;
+    if ( ! is_object( $old_site ) || empty( $old_site->blog_id ) ) {
+        return;
+    }
+    delete_metadata( 'user', 0, $wpdb->get_blog_prefix( (int) $old_site->blog_id ) . 'brikpanel_orders_row_columns', '', true );
+} );
 
 // =============================================================================
 // GOOGLE SHEETS — must load outside is_admin so:

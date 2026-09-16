@@ -949,6 +949,8 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'nonce'         => wp_create_nonce( 'brikpanel_nonce_action' ),
                 'hide_overview' => function_exists( 'brikpanel_orders_overview_hidden_for_user' )
                     && brikpanel_orders_overview_hidden_for_user(),
+                'row_columns'   => function_exists( 'brikpanel_orders_compact_user_row_columns' )
+                    ? brikpanel_orders_compact_user_row_columns() : [],
                 'i18n'     => [
                     'today'             => __( 'Today', 'brikpanel' ),
                     'last_24_hours'     => __( 'Last 24 hours', 'brikpanel' ),
@@ -980,6 +982,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                     /* translators: %d: number of selected orders. */
                     'selected_count'    => __( 'Selected: %d', 'brikpanel' ),
                     'bulk_actions'      => __( 'Bulk actions', 'brikpanel' ),
+                    'row_columns_error' => __( 'Could not save this choice. Please try again.', 'brikpanel' ),
                 ],
             ] );
         }

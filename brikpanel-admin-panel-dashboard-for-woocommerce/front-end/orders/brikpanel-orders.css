@@ -2152,6 +2152,23 @@ body .wrap .brikpanel-page-top .wp-heading-inline {
 	background: #1a1a1a;
 }
 
+/* "Show in the row" group (compact order list). */
+.wrap > #screen-meta .bp-row-columns__hint {
+	margin: 0 0 6px;
+	color: #616161;
+	font-size: .75rem;
+}
+
+.wrap > #screen-meta .bp-row-columns__error {
+	margin: 6px 0 0;
+	color: #d72c0d;
+	font-size: .75rem;
+}
+
+.wrap > #screen-meta .bp-row-columns__error[hidden] {
+	display: none;
+}
+
 /* While a WooCommerce modal is open (see brikpanelModalScrollLock). */
 html.brikpanel-modal-lock {
 	overflow-y: hidden !important;
@@ -3441,6 +3458,29 @@ body.bp-orders-compact .wp-list-table tbody tr.bp-order-detail:not(.inline-edit-
 .bp-od-extra--phone,
 .bp-od-extras--phone {
 	display: none;
+}
+
+/* Action buttons kept in the row sit side by side. */
+body.bp-orders-compact .wp-list-table td.column-wc_actions {
+	white-space: nowrap;
+}
+
+body.bp-orders-compact .wp-list-table td.column-wc_actions p {
+	display: inline-flex;
+	gap: 4px;
+	margin: 0;
+}
+
+body.bp-orders-compact .wp-list-table td.column-wc_actions .wc-action-button {
+	float: none !important;
+	margin: 0 !important;
+}
+
+/* Kept in the row by the user (Screen Options "Show in the row"). */
+.bp-od-extras > .bp-od-extra--in-row,
+.bp-od-extras > .bp-od-extra--empty,
+.bp-od-extras[hidden] {
+	display: none !important;
 }
 
 .bp-od-extra-value {
