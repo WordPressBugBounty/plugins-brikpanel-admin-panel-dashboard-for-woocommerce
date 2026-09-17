@@ -2575,7 +2575,7 @@ body.rtl.brikpanel-tax-panel-open .brikpanel-cat-toast-container {
 
     body.brikpanel-tax .brikpanel-tax-card .wp-list-table td.column-primary,
     body.brikpanel-tax .brikpanel-tax-card .wp-list-table th.column-primary {
-        padding-right: 50px;
+        padding-inline-end: 50px;
     }
 
     body.brikpanel-tax .brikpanel-tax-card .wp-list-table tr:not(.inline-edit-row):not(.no-items) td:not(.column-primary):not(.check-column)::before {
@@ -2640,7 +2640,11 @@ body.rtl.brikpanel-tax-panel-open .brikpanel-cat-toast-container {
         position: relative;
         display: block;
         width: auto !important;
-        padding: 4px 12px 4px 38% !important;
+        /* Logical sides: the column label sits at the start edge in both
+           directions. Physical left/right put it under the value on RTL
+           stores (Persian customer, 2026-09-17). */
+        padding: 4px 12px !important;
+        padding-inline-start: 38% !important;
         border-top: 0 !important;
     }
 
@@ -2664,7 +2668,8 @@ body.rtl.brikpanel-tax-panel-open .brikpanel-cat-toast-container {
     body.brikpanel-tax .attributes-table tbody tr:not(.no-items) td:not(.column-name)::before {
         content: attr(data-colname);
         position: absolute;
-        left: 12px;
+        inset-inline-start: 12px;
+        inset-inline-end: auto;
         width: 32%;
         overflow: hidden;
         color: var(--bpl-text-secondary);

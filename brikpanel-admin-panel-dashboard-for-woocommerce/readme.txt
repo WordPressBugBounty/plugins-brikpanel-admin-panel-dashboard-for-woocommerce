@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.10
+Stable tag: 3.3.11
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -460,7 +460,11 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 22. Order Page
 
 == Changelog ==
+= 3.3.11 (2026-09-17) =
+* Fix: **Attributes page on phones no longer overlaps the column names and their values on right-to-left languages** (Persian, Arabic, Hebrew). The same applied to the expand arrow in the tag and category tables.
+
 = 3.3.10 (2026-09-17) =
+* Fix: **Other plugins' product fields now work in the automatic mode of "Additional product data".** When that card was switched on with "Show these fields" on a store with no SEO card and no hand-picked box, the scripts of the plugins behind those fields were never loaded, so their controls did nothing. Measurement Price Calculator showed every calculator section at once instead of only the selected one; it now behaves like the native WooCommerce screen, including the per-unit price label ("$ / sq cm") on right-to-left stores.
 * Fix: **The "Ship to" box in the order list no longer repeats the customer's name.** Some shipping plugins (for example AgenWebsite Shipping) add the phone number to the name line of the address, such as "Jane Doe (Phone: +62...)". The expanded order panel did not recognise that as the name line and printed it again inside the address. It now shows the name once, then the phone, then the address.
 * Fix: **Three PHP 8.4 deprecation notices removed** (Store Health and Google Sheets order sync used an older way of writing an optional parameter).
 
