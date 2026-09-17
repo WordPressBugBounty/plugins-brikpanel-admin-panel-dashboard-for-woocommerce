@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.9
+Stable tag: 3.3.10
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -460,6 +460,10 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 22. Order Page
 
 == Changelog ==
+= 3.3.10 (2026-09-17) =
+* Fix: **The "Ship to" box in the order list no longer repeats the customer's name.** Some shipping plugins (for example AgenWebsite Shipping) add the phone number to the name line of the address, such as "Jane Doe (Phone: +62...)". The expanded order panel did not recognise that as the name line and printed it again inside the address. It now shows the name once, then the phone, then the address.
+* Fix: **Three PHP 8.4 deprecation notices removed** (Store Health and Google Sheets order sync used an older way of writing an optional parameter).
+
 = 3.3.9 (2026-09-16) =
 * New: **A switch to hide every BrikMentor promotion.** WooCommerce → Settings → BrikPanel → General → "Show BrikMentor promotion". Turn it off and the dashboard card, the menu item, the corner button, the launch notice and the padlocked contact buttons on Abandoned Carts all go, and the screen is what it was before. Agencies can pin it for every client store with `define( 'BRIKPANEL_BRIKMENTOR_PROMO', false );` in wp-config.php. The setting travels with Import / Export.
 

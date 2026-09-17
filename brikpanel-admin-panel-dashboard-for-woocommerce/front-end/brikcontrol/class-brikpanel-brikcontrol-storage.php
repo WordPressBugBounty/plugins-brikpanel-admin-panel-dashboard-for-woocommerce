@@ -223,7 +223,7 @@ class Brikpanel_BrikControl_Storage {
      *                           hold one a second option read.
      * @return string[]
      */
-    public static function critical_check_ids( array $bundle = null ) {
+    public static function critical_check_ids( ?array $bundle = null ) {
         if ( $bundle === null ) {
             $bundle = self::get_results();
         }
@@ -342,7 +342,7 @@ class Brikpanel_BrikControl_Storage {
      * @param int|null      $user_id
      * @return bool
      */
-    public static function is_dismissed( $check_id, array $scope_ids = null, $user_id = null ) {
+    public static function is_dismissed( $check_id, ?array $scope_ids = null, $user_id = null ) {
         $stored = self::get_dismissals( $user_id );
         if ( ! isset( $stored[ $check_id ] ) ) {
             return false;

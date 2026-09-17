@@ -408,6 +408,11 @@ function brikpanel_orders_compact_plain( $text ) {
  * state, postcode and country, which many country formats spread over one
  * line each, are joined into a single line. The country's own order is kept.
  *
+ * The name line is left out because the panel shows the name (and phone) on
+ * its own. Some shipping plugins decorate that line, e.g. "Name (Phone: +62…)",
+ * so a line that merely starts with the name followed by punctuation is treated
+ * as the name line too; otherwise the name would appear twice.
+ *
  * @param string   $formatted Address with <br/> separators.
  * @param string   $skip      A line to leave out (the name, shown separately).
  * @param string[] $street    Company and address line values of this address.
@@ -426,16 +431,31 @@ function brikpanel_orders_compact_address_lines( $formatted, $skip = '', $street
 		}
 	}
 
+	$skip       = brikpanel_orders_compact_plain( $skip );
+	$skip_lower = '' !== $skip ? $lower( $skip ) : '';
+	$skip_len   = '' !== $skip ? strlen( $skip_lower ) : 0;
+	// "Name (Phone: …)", "Name, phone" and similar third-party decorations.
+	$is_decorated_name = static function ( $line_lower ) use ( $skip_lower, $skip_len ) {
+		return '' !== $skip_lower
+			&& strlen( $line_lower ) > $skip_len
+			&& 0 === strncmp( $line_lower, $skip_lower, $skip_len )
+			&& 1 === preg_match( '/^[\s\p{P}]/u', substr( $line_lower, $skip_len ) );
+	};
+
 	$street_lines = array();
 	$place_parts  = array();
 	foreach ( preg_split( '#<br\s*/?>#i', (string) $formatted ) as $line ) {
 		$line = brikpanel_orders_compact_plain( $line );
-		if ( '' === $line || ( '' !== $skip && $line === $skip ) ) {
+		if ( '' === $line ) {
 			continue;
 		}
-		if ( in_array( $lower( $line ), $street_values, true ) ) {
+		$line_lower = $lower( $line );
+		if ( '' !== $skip_lower && $line_lower === $skip_lower ) {
+			continue;
+		}
+		if ( in_array( $line_lower, $street_values, true ) ) {
 			$street_lines[] = $line;
-		} else {
+		} elseif ( ! $is_decorated_name( $line_lower ) ) {
 			$place_parts[] = $line;
 		}
 	}

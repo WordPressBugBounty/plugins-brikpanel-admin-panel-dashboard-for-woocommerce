@@ -291,7 +291,17 @@
 
             if (box) {
                 if (!box.hasAttribute('data-bpe-base')) box.setAttribute('data-bpe-base', box.textContent);
-                box.textContent = changed ? unit : box.getAttribute('data-bpe-base');
+                box.textContent = '';
+                if (changed) {
+                    // "$ / sq cm" is symbols and Latin letters only, so an RTL
+                    // page reorders it into "sq cm / $". Isolate it as LTR.
+                    var bdi = document.createElement('bdi');
+                    bdi.dir = 'ltr';
+                    bdi.textContent = unit;
+                    box.appendChild(bdi);
+                } else {
+                    box.textContent = box.getAttribute('data-bpe-base');
+                }
                 return;
             }
             var fieldLabel = document.querySelector('label[for="' + input.id + '"]');

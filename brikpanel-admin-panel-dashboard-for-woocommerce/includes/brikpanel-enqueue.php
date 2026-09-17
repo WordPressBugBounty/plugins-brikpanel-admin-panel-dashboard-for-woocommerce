@@ -1328,6 +1328,17 @@ function brikpanel_enqueue_woo_assets($hook) {
             (array) get_option('brikpanel_pe_wc_tabs_selected', []),
             static function ($k) { return is_string($k) && strpos($k, 'tab:') === 0; }
         );
+        // Automatic mode surfaces every third-party product-data tab the store
+        // has (Brikpanel_Product_Editor::augment_sections_auto), so those
+        // panels need their scripts exactly as a hand-picked tab does. This
+        // gate only knew the hand-picked list: on a store with no SEO card and
+        // no picked metabox, the "Show these fields" button rendered
+        // Measurement Price Calculator's panel with none of its JS, and every
+        // one of its ten calculator sections stayed open at once (customer
+        // report, 2026-09-17). Same filter as the render path, so a site that
+        // switches auto surfacing off there gets no re-fire here either.
+        $auto_wc_tabs = get_option('brikpanel_pe_wc_tabs_auto', 'no') === 'yes'
+            && apply_filters('brikpanel_pe_auto_surface_thirdparty', true, 'product');
         $auto_seo = class_exists('Brikpanel_Product_Editor')
             ? Brikpanel_Product_Editor::get_active_seo_plugin()
             : null;
@@ -1383,7 +1394,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                 )));
             }
         }
-        if (!empty($selected_metaboxes) || !empty($selected_wc_tabs)) {
+        if (!empty($selected_metaboxes) || !empty($selected_wc_tabs) || $auto_wc_tabs) {
             // Spoof screen + post globals as if we were on /wp-admin/post.php
             // so SEO plugins (Yoast, Rank Math, AIOSEO, SEOPress) register
             // their metabox + enqueue scripts the way they do natively.
