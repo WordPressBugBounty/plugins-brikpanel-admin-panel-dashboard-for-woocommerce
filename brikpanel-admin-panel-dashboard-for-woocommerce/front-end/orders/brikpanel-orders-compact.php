@@ -80,10 +80,12 @@ add_filter( 'screen_settings', 'brikpanel_orders_compact_screen_settings', 10, 2
 add_action( 'wp_ajax_brikpanel_orders_row_columns', 'brikpanel_orders_compact_save_row_columns' );
 
 /**
- * Columns the short row always shows. Every other column opens in the detail
- * panel unless the user picks it in Screen Options (see
- * brikpanel_orders_compact_user_row_columns()). Mirrors ROW_COLUMNS in
- * brikpanel-orders.js.
+ * Columns the short row always shows, in the order they are laid out. Every
+ * other column opens in the detail panel unless the user picks it in Screen
+ * Options (see brikpanel_orders_compact_user_row_columns()). Mirrors
+ * ROW_COLUMNS in brikpanel-orders.js, and brikpanel_orders_compact_columns()
+ * builds the table from it, so the amount keeps its place ahead of columns
+ * other plugins add.
  *
  * @return string[]
  */
@@ -214,8 +216,14 @@ function brikpanel_orders_compact_columns( $columns ) {
 
 	// WhatsApp sits right after the order number, next to the quick preview
 	// button, so the two small actions read as one group.
-	$lead = array( 'cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_customer', 'order_date', 'order_status', 'payment_method', 'brikpanel_shipping_method' );
-	$tail = array( 'order_total', 'wc_actions' );
+	//
+	// The short row ends with the amount, exactly as WooCommerce orders its own
+	// columns: `order_total` closes the lead group, so a column another plugin
+	// added (a profit or tracking number column) reads after the amount, both
+	// in the detail panel and when the user keeps it in the row through
+	// "Show in the row". Only Actions stays behind everything.
+	$lead = brikpanel_orders_compact_base_row_columns();
+	$tail = array( 'wc_actions' );
 
 	$out = array();
 	foreach ( $lead as $key ) {

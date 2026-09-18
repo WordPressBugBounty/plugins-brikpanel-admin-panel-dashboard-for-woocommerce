@@ -6,8 +6,7 @@
  *   - polls progress while a scan is running and updates the bar + chips
  *   - reloads the page once the scan finishes so the freshly-rendered cards
  *     come from the server (avoids client-side rendering parity bugs)
- *   - handles dashboard banner dismiss button (when banner is on this page —
- *     normally not, but the dismiss button uses the same mechanism)
+ *   - per-check repair and undo buttons
  */
 (function () {
     'use strict';
@@ -143,10 +142,6 @@
     if (progressEl && !progressEl.hasAttribute('hidden')) {
         startPolling();
     }
-
-    // No banner dismiss handler here: the banner renders on the dashboard, not
-    // on this page, so the copy that used to sit here was dead code. Its owner
-    // is brikpanel-bc-banner.js.
 
     // Per-check repair action. The button only exists for checks that opted in
     // via supports_fix() and that currently have something to clean.

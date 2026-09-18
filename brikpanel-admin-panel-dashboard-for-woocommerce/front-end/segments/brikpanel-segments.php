@@ -398,7 +398,7 @@ class Brikpanel_Segments {
 		$this->check_auth();
 
 		$filters = $this->parse_filters( $_POST );
-		$result  = $this->query_orders( $filters );
+		$result  = $this->query_orders( $filters, true );
 
 		wp_send_json_success( $result );
 	}
@@ -413,7 +413,16 @@ class Brikpanel_Segments {
 	 * Legacy: queries posts + postmeta. Product/category filters still use
 	 * wc_order_product_lookup when available (WC populates it for both stores).
 	 */
-	private function query_orders( array $f ) {
+	/**
+	 * @param array $f            Filters.
+	 * @param bool  $with_numbers Resolve each row's displayed order number. Only
+	 *                            the on-screen table needs it; the CSV export
+	 *                            prints the raw "Order ID" and asks for every
+	 *                            matching order at once, so making it resolve
+	 *                            numbers it then discards would load the whole
+	 *                            result set as order objects.
+	 */
+	private function query_orders( array $f, $with_numbers = false ) {
 		global $wpdb;
 
 		$hpos   = $this->is_hpos();
@@ -657,11 +666,20 @@ class Brikpanel_Segments {
 		$page_params = array_merge( $params, [ $f['per_page'], $offset ] );
 		$rows        = $wpdb->get_results( $wpdb->prepare( $select, $page_params ) ); // phpcs:ignore
 
+		// The rows come straight from SQL, so they carry the raw ID. The orders
+		// list shows whatever `woocommerce_order_number` returns, and this table
+		// has to match it. Resolved for the whole page at once, and for free on
+		// the stores where nothing renumbers orders.
+		$numbers = $with_numbers
+			? brikpanel_order_numbers_for_ids( wp_list_pluck( $rows, 'order_id' ) )
+			: [];
+
 		$items = [];
 		foreach ( $rows as $r ) {
 			$status_slug = preg_replace( '/^wc-/', '', $r->status );
 			$items[] = [
 				'id'            => (int) $r->order_id,
+				'number'        => (string) ( $numbers[ (int) $r->order_id ] ?? $r->order_id ),
 				'date'          => $r->date_created_gmt ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $r->date_created_gmt ) : '',
 				'date_iso'      => $r->date_created_gmt,
 				'status'        => $status_slug,

@@ -64,7 +64,32 @@ class Brikpanel_BrikControl_Storage {
         if ( ! is_array( $stored ) ) {
             return self::default_results();
         }
-        return wp_parse_args( $stored, self::default_results() );
+        $bundle = wp_parse_args( $stored, self::default_results() );
+
+        // A check that no longer exists (the Bot Traffic check replaced
+        // Add-to-Cart History in 3.3.11) must not keep rendering its last
+        // result, and its status must not keep colouring the shield, until
+        // the next scan happens to overwrite the bundle.
+        if ( class_exists( 'Brikpanel_BrikControl_Registry' ) && is_array( $bundle['checks'] ) ) {
+            $known   = Brikpanel_BrikControl_Registry::get_all();
+            $dropped = false;
+            foreach ( array_keys( $bundle['checks'] ) as $check_id ) {
+                if ( ! isset( $known[ $check_id ] ) ) {
+                    unset( $bundle['checks'][ $check_id ] );
+                    $dropped = true;
+                }
+            }
+            if ( $dropped ) {
+                $summary = [ 'ok' => 0, 'warning' => 0, 'critical' => 0, 'unknown' => 0 ];
+                foreach ( $bundle['checks'] as $r ) {
+                    $status = isset( $r['status'] ) && isset( $summary[ $r['status'] ] ) ? (string) $r['status'] : 'unknown';
+                    $summary[ $status ]++;
+                }
+                $bundle['status_summary'] = $summary;
+            }
+        }
+
+        return $bundle;
     }
 
     /**

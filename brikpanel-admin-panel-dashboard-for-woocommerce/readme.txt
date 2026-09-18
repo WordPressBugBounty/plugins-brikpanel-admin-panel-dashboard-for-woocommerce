@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.11
+Stable tag: 3.3.13
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -303,6 +303,19 @@ What visitor tracking stores in the browser, and only after consent when the set
 
 This setting governs analytics. Abandoned-cart email capture is a separate feature with its own switch under **Cart abandonment**, and it stores nothing at all until a customer types their email address themselves; when they do, it reuses the same `brikpanel_vid` id to tie the cart to that address.
 
+= Does the signup popup appear on top of my cookie banner? =
+
+No. **Wait for cookie banner** under **WooCommerce → Settings → BrikPanel → Cart abandonment** is on by default, and the popup then holds back until the visitor has answered the banner. Accepting and declining both release it, because signing up for an offer is not tracking. On a store with no cookie banner nothing changes at all: the popup opens after its normal delay, exactly as before.
+
+It cannot be lost. Whatever happens with the banner, the popup opens no later than 30 seconds after the page loads, and the small floating tab that holds a visitor's own coupon code is never held back.
+
+Banners that speak the WordPress Consent API (**Complianz**, **CookieYes**, **GDPR Cookie Compliance (Moove)**, **WPConsent**, **Cookiebot**, **iubenda**, **Beautiful Cookie Consent Banner**) need no setup. For a banner that does not, such as **CookieAdmin**, **Real Cookie Banner** or **Termly**, tell the popup when your banner was answered:
+
+`document.addEventListener('click', function (e) {`
+`    var answered = e.target.closest('#my-banner-accept') || e.target.closest('#my-banner-reject');`
+`    if (answered && window.brikpanel_popup_consent_answered) window.brikpanel_popup_consent_answered();`
+`}, true);`
+
 = Does BrikPanel support WordPress multisite? =
 
 Yes, both ways: network-activate it to run on every store in the network, or activate it on individual subsites only. Each site gets its own tables and settings either way. When network-activated, super admins additionally get network-wide access rules under **Network Admin → Settings → BrikPanel Access**.
@@ -460,6 +473,19 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 22. Order Page
 
 == Changelog ==
+= 3.3.13 (2026-09-18) =
+* New: **The signup popup waits for your cookie banner.** On a store with a cookie banner, visitors used to meet two things at once: the banner and, seconds later, the signup popup on top of it. The popup now holds back until the visitor has answered the banner, and accepting or declining both release it, because signing up for an offer is not tracking. Nothing changes on a store without a banner, the floating coupon tab is never held back, and the popup opens after 30 seconds whatever the banner does, so no signup can be lost. Turn it off under WooCommerce → Settings → BrikPanel → Cart abandonment → "Wait for cookie banner".
+* Fix: **Orders renumbered by a sequential order number plugin now show that number everywhere, not just in the orders list.** Opening an order showed WooCommerce's internal ID in the header instead of the number the list had just shown. The dashboard's recent orders, the Segments table, the recovered-order link on Abandoned Carts and the status-change bar on the orders list had the same problem.
+* Fix: **Cmd/Ctrl + K finds an order by phone number however it was typed.** A number kept as "+44 7911 123456" was not found by typing "07911 123456", or the other way round. Spaces, dashes, brackets and a leading 0 or 00 no longer matter, and the last digits of a number are enough to find it. Names now match inside a word and across spellings, so "yilmaz" finds "Yılmaz", and an exact name comes before a partial one. Trashed and draft orders no longer take up result slots, an order that matches twice is listed once, the closest match is first again, and a search beginning with "-" no longer fails. On a store with 700,000 orders a search by customer name went from 761 ms to 1 ms.
+* Dev: **New filters `brikpanel_search_terms`** (add your own spellings of what was typed) **and `brikpanel_search_order_ids`** (add or drop the orders the palette found), and **`window.brikpanel_popup_consent_answered()`**, which tells the signup popup that a banner not speaking the WordPress Consent API has been answered. All three are documented on the Developer page.
+
+= 3.3.12 (2026-09-17) =
+* Fix: **The order total is back in front of the columns other plugins add.** With the compact order list, a column you keep in the row through Screen Options ("Show in the row"), such as a profit or tracking number column, was placed ahead of Total, so the amount ended up at the far right of the row. Total now sits right after Shipping, where WooCommerce has always put it, and those columns follow it. Nothing changes for stores that keep no extra column in the row.
+* New: **One button cleans bot traffic out of your figures, with undo.** The Store Health check "Bot Traffic" replaces "Add-to-Cart History" and now covers everything a scripted crawl can inflate: daily visitors, product views, page views, traffic sources, device counts, store and per-product add-to-carts, checkout visits, and the abandoned-cart entries the "Abandoned Cart Entries" check rates as certainly scripted. One click lowers each flagged day to the highest figure it could honestly have had and deletes the scripted entries. Everything it changes is kept in a restore point that never expires on its own, so "Undo last correction" puts it all back whenever you want. A restore point left by the old check is replayed by the same undo.
+* Tweak: **Store Health (BrikControl) is on by default again.** New installs start with it enabled, the same as stores that installed BrikPanel earlier. Turn it off under WooCommerce → Settings → BrikPanel → Store Health if you do not want it.
+* Tweak: **The red "critical store health issue" banner on the dashboard is gone.** Store Health findings now show only on the topbar shield and the Store Health page.
+* Fix: **Visitor, product-view and Live figures are no longer inflated by scripted browsers.** The "one visitor, once a day" rule lived only in the browser's own storage, so a crawler that runs the page but starts every visit with a blank profile was counted as a new visitor on every page it opened, and every one of its pings became a new entry in the Live view; one store with under a hundred real visitors a day showed eleven thousand and forty people live at once. The rule is now also kept on the server, the same way the add-to-cart and checkout counters have been since 3.3.1: a browser with no memory of the store gets one visitor count and one product-view count per day and at most one Live entry at a time. Returning browsers and signed-in customers are unaffected, and browsers that declare themselves automated are not counted at all. Figures already recorded are left as they are.
+
 = 3.3.11 (2026-09-17) =
 * Fix: **Attributes page on phones no longer overlaps the column names and their values on right-to-left languages** (Persian, Arabic, Hebrew). The same applied to the expand arrow in the tag and category tables.
 

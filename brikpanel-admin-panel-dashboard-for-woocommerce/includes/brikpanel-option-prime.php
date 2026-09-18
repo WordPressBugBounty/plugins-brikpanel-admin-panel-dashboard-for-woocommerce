@@ -106,6 +106,10 @@ function brikpanel_prime_keys_always() {
 		// Read by the abandoned-cart sweep, which runs under wp-cron.php and the
 		// Action Scheduler queue runner — neither of them an admin request.
 		'brikpanel_cartab_abandon_minutes',
+		// Decided on the storefront enqueue path, before the popup's assets are
+		// chosen. Stores that never saved the section have no row for either.
+		'brikpanel_cartab_popup_enabled',
+		'brikpanel_cartab_popup_wait_consent',
 
 		// One-shot migration guards evaluated on plugins_loaded / init, i.e.
 		// on EVERY request including the storefront, before the marker they

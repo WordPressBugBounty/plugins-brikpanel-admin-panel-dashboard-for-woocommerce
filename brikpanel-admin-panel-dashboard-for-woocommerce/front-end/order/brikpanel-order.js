@@ -55,6 +55,10 @@
 
 		var isNew = !!cfg.is_new;
 		var orderId = cfg.order_id || '';
+		// What the header prints. A sequential-order-number plugin can make the
+		// shop's number differ from the ID, and the orders list already shows
+		// that number, so the two screens have to agree.
+		var orderNumber = cfg.order_number || orderId;
 		var orderDate = cfg.order_date || '';
 		var currentStatus = cfg.current_status || '';
 		var statusLabel = cfg.status_label || '';
@@ -82,7 +86,7 @@
 				'<span class="brk-back-label">' + escHtml(cfg.i18n.orders) + '</span>' +
 			'</a>' +
 			'<div class="brikpanel-order-header__divider"></div>' +
-			'<span class="brikpanel-order-header__title">' + (isNew ? escHtml(cfg.i18n.new_order || '') : '#' + escHtml(String(orderId))) + '</span>' +
+			'<span class="brikpanel-order-header__title">' + (isNew ? escHtml(cfg.i18n.new_order || '') : '#' + escHtml(String(orderNumber))) + '</span>' +
 			(orderDate && !isNew ? ' <span class="brikpanel-order-header__date">&middot; ' + escHtml(orderDate) + '</span>' : '');
 
 		// Right side

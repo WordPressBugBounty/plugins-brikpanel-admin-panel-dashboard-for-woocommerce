@@ -23,10 +23,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Whether the BrikControl (Store Health) module is enabled in BrikPanel
- * settings. A missing row reads as "yes" so installs that pre-date the toggle
- * keep working untouched. Fresh installs are different: brikpanel_provision_site()
- * writes 'no' at activation, so a new store starts with the module OFF and the
- * admin opts in from WooCommerce → Settings → BrikPanel → Store Health.
+ * settings. A missing row reads as "yes", so every install, new or old, starts
+ * with the module ON until the admin turns it off from WooCommerce → Settings
+ * → BrikPanel → Store Health.
  *
  * @return bool
  */
@@ -93,13 +92,13 @@ function brikpanel_brikcontrol_register_settings_field( $fields ) {
             'name' => __( 'Store Health', 'brikpanel' ),
             'type' => 'title',
             'id'   => 'brk_brikcontrol_title',
-            'desc' => __( 'BrikControl scans your store in the background and flags issues, like products missing images, from the topbar shield, a dashboard banner, and its own Store Health page. Turn it off to hide all of that and stop the scheduled scans. Your latest results stay saved, so turning it back on restores them.', 'brikpanel' ),
+            'desc' => __( 'BrikControl scans your store in the background and flags issues, like products missing images or bot traffic in your figures, from the topbar shield and its own Store Health page. Turn it off to hide all of that and stop the scheduled scans. Your latest results stay saved, so turning it back on restores them.', 'brikpanel' ),
         ],
         [
             'name'    => __( 'Enable Store Health (BrikControl)', 'brikpanel' ),
             'id'      => 'brikpanel_brikcontrol_enabled',
             'type'    => 'checkbox',
-            'desc'    => __( 'When on, the Store Health page, topbar shield, dashboard banner and daily background scans are active. When off, the entire module is dormant: no menu item, no topbar icon, no banner, and no scheduled scans.', 'brikpanel' ),
+            'desc'    => __( 'When on, the Store Health page, topbar shield and daily background scans are active. When off, the entire module is dormant: no menu item, no topbar icon, and no scheduled scans.', 'brikpanel' ),
             'default' => 'yes',
         ],
         [
@@ -158,8 +157,8 @@ require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/abstract-class-brikpanel-brikcontrol-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-image-health-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-product-lookup-check.php';
-require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cart-count-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cartab-bot-rows-check.php';
+require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-bot-traffic-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cost-duplicates-check.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-registry.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-runner.php';
@@ -170,7 +169,7 @@ require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol
 // Brikpanel_BrikControl_Registry::register() before runner registration.
 Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Image_Health_Check() );
 Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Product_Lookup_Check() );
-Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cart_Count_Check() );
+Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Bot_Traffic_Check() );
 Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cartab_Bot_Rows_Check() );
 Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cost_Duplicates_Check() );
 

@@ -211,9 +211,4 @@
 
     // First refresh on load (in case server-rendered cache was stale).
     setTimeout(fetchStatus, 800);
-
-    // The dashboard banner's dismiss handler deliberately does NOT live here.
-    // Everything above is behind an early return that fires when the shield
-    // element is missing, which silently killed the banner's X. It now lives
-    // in brikpanel-bc-banner.js, enqueued on the dashboard on its own.
 })();

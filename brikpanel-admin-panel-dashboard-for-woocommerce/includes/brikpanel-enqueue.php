@@ -878,6 +878,12 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'ajax_url'       => admin_url( 'admin-ajax.php' ),
                 'nonce'          => wp_create_nonce( 'brikpanel_order_status_nonce' ),
                 'order_id'       => $order_id,
+                // The number the shop shows, which a sequential-order-number
+                // plugin can make differ from the ID. Display only: every other
+                // field here, and the AJAX calls, keep using the real ID.
+                // instanceof WC_Order, not a bare truth check: get_order_number()
+                // is a WC_Order method, and a refund is an order object without it.
+                'order_number'   => $order instanceof WC_Order ? (string) $order->get_order_number() : '',
                 'current_status' => $current_status,
                 'status_label'   => $status_label,
                 'order_date'     => ($order && $order->get_date_created()) ? $order->get_date_created()->date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) : '',

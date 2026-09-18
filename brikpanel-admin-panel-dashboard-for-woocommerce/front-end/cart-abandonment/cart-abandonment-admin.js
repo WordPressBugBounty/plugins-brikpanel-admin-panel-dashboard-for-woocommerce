@@ -579,7 +579,7 @@
 			var orderLink = document.createElement('a');
 			orderLink.className = 'brikpanel-cartab-details-order';
 			orderLink.href = row.order_url;
-			orderLink.textContent = cfg.i18n.order + ' #' + row.order_id;
+			orderLink.textContent = cfg.i18n.order + ' #' + (row.order_number || row.order_id);
 			box.appendChild(orderLink);
 		}
 

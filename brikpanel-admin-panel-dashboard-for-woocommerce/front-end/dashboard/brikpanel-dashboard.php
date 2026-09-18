@@ -488,15 +488,6 @@ class Brikpanel_Dashboard {
         <div id="brikpanel-dashboard" class="brikpanel-dashboard">
             <?php wp_nonce_field( 'brikpanel_dashboard_nonce', 'security' ); ?>
 
-            <?php
-            // Critical-only, 7-day-dismissable Store Health banner. Renders
-            // nothing when there are no critical findings or the user has
-            // already dismissed it within the suppression window.
-            if ( class_exists( 'Brikpanel_BrikControl' ) ) {
-                Brikpanel_BrikControl::instance()->render_dashboard_banner();
-            }
-            ?>
-
             <!-- Header -->
             <div class="brikpanel-dash-header">
                 <h1>
@@ -3852,6 +3843,9 @@ class Brikpanel_Dashboard {
 
             $data[] = [
                 'id'         => $order->get_id(),
+                // Display only. A sequential-order-number plugin can make this
+                // differ from the ID; the row's link still uses the ID.
+                'number'     => (string) $order->get_order_number(),
                 'customer'   => $customer,
                 'status'     => $order->get_status(),
                 'total'      => wc_price( $order->get_total(), [ 'currency' => $order_currency ] ),

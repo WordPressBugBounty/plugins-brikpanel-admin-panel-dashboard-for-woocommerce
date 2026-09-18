@@ -2448,3 +2448,67 @@ if ( ! function_exists( 'brikpanel_csv_safe_row' ) ) {
 		return array_map( 'brikpanel_csv_safe_cell', $row );
 	}
 }
+
+
+if ( ! function_exists( 'brikpanel_order_numbers_for_ids' ) ) {
+	/**
+	 * Resolve a batch of order IDs to the order numbers the shop actually shows.
+	 *
+	 * WooCommerce runs every displayed order number through the
+	 * `woocommerce_order_number` filter, which is what sequential-order-number
+	 * plugins hook to replace the raw database ID with their own series. Screens
+	 * that read orders straight out of the database with $wpdb never go through
+	 * an order object, so they would print the ID and disagree with the orders
+	 * list, which WooCommerce renders itself.
+	 *
+	 * Loading an order object per row just to ask for its number would be a
+	 * pointless cost on the stores that have no such plugin, and those are most
+	 * of them. So the filter is checked first: with nothing hooked the number IS
+	 * the ID and the map is built without touching the database at all. Only
+	 * when a plugin is actually renumbering orders are the page's orders loaded,
+	 * in one batch rather than one query per row.
+	 *
+	 * @param int[] $ids Order IDs.
+	 * @return array<int,string> Order ID => order number, one entry per valid ID.
+	 */
+	function brikpanel_order_numbers_for_ids( array $ids ) {
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+
+		$map = array();
+		foreach ( $ids as $id ) {
+			$map[ $id ] = (string) $id;
+		}
+
+		if ( ! $ids || ! has_filter( 'woocommerce_order_number' ) || ! function_exists( 'wc_get_orders' ) ) {
+			return $map;
+		}
+
+		// 'post__in' is the ID list key both storage backends understand: the
+		// HPOS query reads it, and the legacy one hands it to WP_Query. 'include'
+		// looks like the modern spelling but HPOS ignores it and returns the
+		// whole table.
+		$orders = wc_get_orders(
+			array(
+				'post__in' => $ids,
+				'limit'    => -1,
+				'type'     => 'shop_order',
+				'status'   => 'any',
+			)
+		);
+
+		if ( ! is_array( $orders ) ) {
+			return $map;
+		}
+
+		// WC_Order, not WC_Abstract_Order: get_order_number() lives on WC_Order
+		// alone, and a refund is an abstract order without it. 'type' should keep
+		// refunds out already, but a fatal is too high a price for trusting that.
+		foreach ( $orders as $order ) {
+			if ( $order instanceof WC_Order ) {
+				$map[ $order->get_id() ] = (string) $order->get_order_number();
+			}
+		}
+
+		return $map;
+	}
+}

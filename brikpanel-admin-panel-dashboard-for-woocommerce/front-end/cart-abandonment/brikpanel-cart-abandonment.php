@@ -210,6 +210,51 @@ class Brikpanel_Cart_Abandonment {
 		);
 	}
 
+	/**
+	 * Whether the popup waits for the visitor to answer the cookie banner
+	 * before it opens. Split out from popup_config() for the same reason
+	 * popup_enabled() is: it is read on the enqueue path, not while building
+	 * the wording.
+	 *
+	 * @return bool
+	 */
+	public static function popup_wait_consent() {
+		/**
+		 * Opt out of waiting for the cookie banner.
+		 *
+		 * Named apart from the option id on purpose, so a call site can never
+		 * confuse it with WordPress' own option_{$id} filter.
+		 *
+		 * @param bool $enabled Whether the popup waits for an answer.
+		 */
+		return (bool) apply_filters(
+			'brikpanel_cartab_popup_wait_consent_enabled',
+			get_option( 'brikpanel_cartab_popup_wait_consent', 'yes' ) === 'yes'
+		);
+	}
+
+	/**
+	 * How long the popup may wait for a banner answer before it opens anyway.
+	 *
+	 * This cap is the feature's safety valve, not a preference: a banner that
+	 * never reports, a platform we cannot read, or a visitor who simply
+	 * ignores the banner must all end with the popup on screen. Deliberately
+	 * not a setting — a merchant raising it to "never" would silently lose
+	 * every signup.
+	 *
+	 * @return int Seconds.
+	 */
+	public static function popup_consent_max_wait() {
+		/**
+		 * Change how long the popup waits for a cookie banner answer.
+		 *
+		 * @param int $seconds Clamped to 1..120 afterwards.
+		 */
+		$seconds = (int) apply_filters( 'brikpanel_cartab_popup_consent_max_wait', 30 );
+
+		return max( 1, min( 120, $seconds ) );
+	}
+
 	/** Popup configuration with translatable fallbacks for unset options. */
 	public static function popup_config() {
 		$lang = self::popup_language_texts();
@@ -1061,10 +1106,45 @@ class Brikpanel_Cart_Abandonment {
 				file_exists( $css ) ? (string) filemtime( $css ) : BRIKPANEL_VERSION
 			);
 		}
+		// The popup waits for the visitor to answer the cookie banner, so it
+		// needs the consent signal beside it. Loaded as a dependency rather
+		// than inline: WordPress then guarantees the order, and checkout — where
+		// this same script runs with the popup branch dead — ships none of it.
+		$deps   = [];
+		$signal = $dir . 'brikpanel-consent-signal.js';
+		if ( $popup_here && self::popup_wait_consent() ) {
+			wp_enqueue_script(
+				'brikpanel_consent_signal',
+				$url . 'brikpanel-consent-signal.js',
+				[],
+				file_exists( $signal ) ? (string) filemtime( $signal ) : BRIKPANEL_VERSION,
+				true
+			);
+			// Site-level values only, exactly like the tracker's footer script:
+			// this markup is baked into page-cached HTML, so it must never vary
+			// with one visitor's consent state.
+			wp_localize_script(
+				'brikpanel_consent_signal',
+				'brikpanelConsent',
+				[
+					'category'     => function_exists( 'brikpanel_consent_category' )
+						? brikpanel_consent_category()
+						: 'statistics',
+					'cookiePrefix' => function_exists( 'brikpanel_consent_cookie_prefix' )
+						? brikpanel_consent_cookie_prefix()
+						: 'wp_consent',
+					'ownCookie'    => defined( 'BRIKPANEL_CONSENT_COOKIE' )
+						? BRIKPANEL_CONSENT_COOKIE
+						: 'brikpanel_consent',
+				]
+			);
+			$deps[] = 'brikpanel_consent_signal';
+		}
+
 		wp_enqueue_script(
 			'brikpanel_cartab_scripts',
 			$url . 'cart-abandonment.js',
-			[],
+			$deps,
 			file_exists( $js ) ? (string) filemtime( $js ) : BRIKPANEL_VERSION,
 			true
 		);
@@ -1101,6 +1181,8 @@ class Brikpanel_Cart_Abandonment {
 				'enabled'     => 1,
 				'autoapply'   => self::popup_autoapply() ? 1 : 0,
 				'delay'       => $popup['delay'],
+				'waitConsent' => self::popup_wait_consent() ? 1 : 0,
+				'maxWait'     => self::popup_consent_max_wait(),
 				'cooldown'    => $popup['cooldown'],
 				'discount'    => $popup['discount'],
 				'style'       => $popup['style'],
@@ -4376,6 +4458,15 @@ class Brikpanel_Cart_Abandonment {
 		$result = self::query_entries( $args );
 
 		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+
+		// Recovered rows link to a real order, and the number shown has to be the
+		// one the orders list shows, which a sequential-order-number plugin can
+		// move away from the ID. Resolved for the whole page in one go, and at no
+		// cost when nothing renumbers orders.
+		$order_numbers = function_exists( 'brikpanel_order_numbers_for_ids' )
+			? brikpanel_order_numbers_for_ids( wp_list_pluck( $result['rows'], 'order_id' ) )
+			: [];
+
 		$items       = [];
 		foreach ( $result['rows'] as $row ) {
 			$row['updated_h'] = $row['updated_at'] !== ''
@@ -4386,8 +4477,10 @@ class Brikpanel_Cart_Abandonment {
 				: '';
 			$row['total_h'] = brikpanel_money_text( $row['cart_total'], [ 'currency' => $row['currency'] ] );
 			// HPOS-aware edit link (legacy storage uses post.php).
-			$row['order_url'] = '';
+			$row['order_url']    = '';
+			$row['order_number'] = '';
 			if ( $row['order_id'] > 0 ) {
+				$row['order_number'] = (string) ( $order_numbers[ (int) $row['order_id'] ] ?? $row['order_id'] );
 				$hpos = class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' )
 					&& \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
 				$row['order_url'] = $hpos
@@ -5289,6 +5382,14 @@ class Brikpanel_Cart_Abandonment {
 				'is_option' => false,
 			];
 		}
+		$fields[] = [
+			'title'    => __( 'Wait for cookie banner', 'brikpanel' ),
+			'desc'     => __( 'Show the popup only after the visitor answers the cookie banner', 'brikpanel' ),
+			'desc_tip' => __( 'Stops the popup from landing on top of a cookie banner the visitor has not dealt with yet. Accepting and declining both release it, because signing up for an offer is not tracking. On a store with no cookie banner nothing changes, and the popup opens after 30 seconds in any case, so it can never be lost.', 'brikpanel' ),
+			'id'       => 'brikpanel_cartab_popup_wait_consent',
+			'type'     => 'checkbox',
+			'default'  => 'yes',
+		];
 		$fields[] = [
 			'title'             => __( 'Popup delay', 'brikpanel' ),
 			'desc'              => __( 'seconds after the page loads', 'brikpanel' ),

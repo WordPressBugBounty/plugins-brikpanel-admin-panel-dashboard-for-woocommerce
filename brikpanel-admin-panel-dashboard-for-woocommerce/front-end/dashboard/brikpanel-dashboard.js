@@ -1618,7 +1618,7 @@
                 : '';
 
             html += '<tr' + rowAttr + '>' +
-                '<td>#' + o.id + '</td>' +
+                '<td>#' + escapeHtml(String(o.number || o.id)) + '</td>' +
                 '<td>' + escapeHtml(o.customer) + '</td>' +
                 '<td>' + sourceHtml + '</td>' +
                 '<td><span class="brikpanel-dash-status ' + escapeHtml(o.status) + '">' + escapeHtml(o.status) + '</span></td>' +
