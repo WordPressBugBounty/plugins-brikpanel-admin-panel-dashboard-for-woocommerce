@@ -10381,3 +10381,20 @@ class Brikpanel_Product_Editor {
 }
 
 new Brikpanel_Product_Editor();
+
+/**
+ * Tell Import / Export about the product editor's parked-tabs buffer.
+ *
+ * Internal, not portable: it is the undo state of one click on one site ("what
+ * the third-party fields looked like before they were hidden"), and it is
+ * deleted the moment that undo is used. Carrying it to another store would
+ * offer to restore a state that store was never in.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter('brikpanel_exportable_option_keys', 'brikpanel_pe_register_internal_export_keys');
+function brikpanel_pe_register_internal_export_keys($map) {
+    $map[Brikpanel_Product_Editor::TABS_PARKED_OPTION] = ['class' => 'internal'];
+    return $map;
+}

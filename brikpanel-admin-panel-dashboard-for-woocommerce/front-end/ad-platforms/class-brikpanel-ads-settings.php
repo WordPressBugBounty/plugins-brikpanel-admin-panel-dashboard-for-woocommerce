@@ -76,6 +76,13 @@ class Brikpanel_Ads_Settings {
 		$google_stale = Brikpanel_Ads_Tokens::needs_reconnect( Brikpanel_Ads_Tokens::PLATFORM_GOOGLE ) !== '';
 		$meta_stale   = Brikpanel_Ads_Tokens::needs_reconnect( Brikpanel_Ads_Tokens::PLATFORM_META ) !== '';
 
+		// There ARE stored credentials, but this site cannot decrypt them — an
+		// address change, a salt rotation, a server without libsodium. Without
+		// this the card just said "Not connected", which is what sent the
+		// merchant who reported the bug digging through the database for hours.
+		// It is a property of the whole vault, so both cards show it.
+		$vault_unreadable = Brikpanel_Ads_Tokens::is_unreadable();
+
 		$flash = [
 			'tone'    => isset( $_GET['brikpanel_ads_flash'] ) ? sanitize_key( wp_unslash( $_GET['brikpanel_ads_flash'] ) ) : '',
 			'message' => isset( $_GET['brikpanel_msg'] ) ? sanitize_text_field( wp_unslash( $_GET['brikpanel_msg'] ) ) : '',
@@ -234,6 +241,10 @@ class Brikpanel_Ads_Settings {
 	public function ajax_status() {
 		$this->check_auth();
 		$out = [];
+		// A vault-wide property, reported per platform so a consumer reading
+		// connected=false is never left guessing whether the merchant never
+		// connected or the site just cannot open what it stored.
+		$unreadable = Brikpanel_Ads_Tokens::is_unreadable();
 		foreach ( [ Brikpanel_Ads_Tokens::PLATFORM_GOOGLE, Brikpanel_Ads_Tokens::PLATFORM_META ] as $p ) {
 			$desc = Brikpanel_Ads_Tokens::describe( $p );
 			$last = (array) get_option( 'brikpanel_ads_last_sync_' . $p, [] );
@@ -244,6 +255,7 @@ class Brikpanel_Ads_Settings {
 				'primary_account'   => (string) $desc['primary_account'],
 				'login_customer_id' => (string) $desc['login_customer_id'],
 				'needs_reconnect'   => Brikpanel_Ads_Tokens::needs_reconnect( $p ) !== '',
+				'vault_unreadable'  => $unreadable,
 				'last_sync_ts'      => (int)    ( $last['ts'] ?? 0 ),
 				'last_sync_ok'      => (bool)   ( $last['ok'] ?? false ),
 				'backfill'          => [

@@ -856,6 +856,34 @@ function brikpanel_payment_fee_currency_meta_keys() {
 const BRIKPANEL_PAYMENT_FEES_OPTION = 'brikpanel_payment_fees_enabled';
 
 /**
+ * Tell Import / Export about the payment-fee switch.
+ *
+ * It is toggled from the Expenses screen rather than the settings tab, which
+ * is why the settings-field walk never saw it, and why a cloned store used to
+ * end up counting card commission differently from the one it was cloned from.
+ *
+ * The declared default is 'no', not the 'yes' that the upgrade routine writes:
+ * 'no' is what brikpanel_payment_fees_enabled() reads when there is no row, and
+ * the registry's job is to describe the code, not the install history. A source
+ * site with no row is therefore a site with the feature off, and clearing the
+ * target's row reproduces exactly that. The coverage audit compares these two
+ * for a living, which is how the first draft of this entry — 'yes' — was caught.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter( 'brikpanel_exportable_option_keys', 'brikpanel_payment_fees_register_export_keys' );
+function brikpanel_payment_fees_register_export_keys( $map ) {
+	$map[ BRIKPANEL_PAYMENT_FEES_OPTION ] = [
+		'class'   => 'portable',
+		'group'   => 'expenses',
+		'type'    => 'checkbox',
+		'default' => 'no',
+	];
+	return $map;
+}
+
+/**
  * Whether real gateway transaction fees are counted as an expense.
  *
  * The stored default is written on upgrade (brikpanel_enable_payment_fees_default

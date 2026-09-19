@@ -277,6 +277,13 @@ function brikpanel_get_developer_hooks() {
             'description' => __( 'Override which SEO plugin BrikPanel surfaces inside the product editor. Return an array with keys slug, label, metabox_ids, or null to disable integration.', 'brikpanel' ),
             'example'     => "add_filter( 'brikpanel_pe_active_seo_plugin', function ( \$detected ) {\n    // Force Rank Math even if another plugin is also active\n    return [\n        'slug'        => 'rank-math',\n        'label'       => 'Rank Math',\n        'metabox_ids' => [ 'rank_math_metabox' ],\n    ];\n} );",
         ],
+        [
+            'name'        => 'brikpanel_order_sidebar_boxes',
+            'type'        => 'filter',
+            'signature'   => 'apply_filters( "brikpanel_order_sidebar_boxes", array $metabox_ids )',
+            'description' => __( 'Which metaboxes open in the right column of the order screen instead of under the "More" tab. BrikPanel ships a list of well known invoice, packing slip, shipping label and tracking boxes, so the things a merchant needs on every order stay one glance away. Use this to add a box BrikPanel does not know about — a local courier plugin, or your own — or to remove one it places wrongly for your shop. Pass metabox ids, exactly as the plugin registered them with add_meta_box(). Only short boxes belong here: a wide table or a long form has more room under "More". Everyone can still override the result for themselves under Screen Options → "Show in the sidebar", and a personal choice always wins over this filter.', 'brikpanel' ),
+            'example'     => "// Put our courier's AWB box in the right column, and take the\n// downloadable permissions table back out of it.\nadd_filter( 'brikpanel_order_sidebar_boxes', function ( \$ids ) {\n    \$ids[] = 'my_courier_awb_box';\n\n    return array_values( array_diff( \$ids, [ 'woocommerce-order-downloads' ] ) );\n} );",
+        ],
     ];
 }
 

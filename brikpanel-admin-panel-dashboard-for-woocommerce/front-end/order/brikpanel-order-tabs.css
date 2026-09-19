@@ -10,7 +10,7 @@
    ================================================================= */
 
 /* ---- Page grid ---- */
-.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body.columns-2 {
+.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 320px;
 	grid-template-areas:
@@ -21,14 +21,14 @@
 	margin-right: 0 !important;
 }
 
-.brikpanel-modern-edit.bp-order-tabs #post-body.columns-2 > #post-body-content {
+.brikpanel-modern-edit.bp-order-tabs #post-body > #post-body-content {
 	grid-area: content;
 	float: none !important;
 	width: auto !important;
 	margin: 0 !important;
 }
 
-.brikpanel-modern-edit.bp-order-tabs #post-body.columns-2 > #postbox-container-2 {
+.brikpanel-modern-edit.bp-order-tabs #post-body > #postbox-container-2 {
 	grid-area: main;
 	float: none !important;
 	width: auto !important;
@@ -36,7 +36,7 @@
 	margin: 0 !important;
 }
 
-.brikpanel-modern-edit.bp-order-tabs #post-body.columns-2 > #postbox-container-1 {
+.brikpanel-modern-edit.bp-order-tabs #post-body > #postbox-container-1 {
 	grid-area: side;
 	float: none !important;
 	width: auto !important;
@@ -44,12 +44,12 @@
 	margin: 0 !important;
 }
 
-.brikpanel-modern-edit.bp-order-tabs.bp-order-side-sticky #post-body.columns-2 > #postbox-container-1 {
+.brikpanel-modern-edit.bp-order-tabs.bp-order-side-sticky #post-body > #postbox-container-1 {
 	position: sticky;
 	top: calc(var(--bp-otabs-top, 104px) + 16px);
 }
 
-.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body.columns-2 #side-sortables,
+.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body #side-sortables,
 .brikpanel-modern-edit.bp-order-tabs #normal-sortables,
 .brikpanel-modern-edit.bp-order-tabs #advanced-sortables {
 	width: auto !important;
@@ -674,14 +674,14 @@
 
 /* ---- Narrower screens ---- */
 @media screen and (max-width: 1100px) {
-	.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body.columns-2 {
+	.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body {
 		grid-template-columns: minmax(0, 1fr) 280px;
 	}
 }
 
 @media screen and (max-width: 850px) {
 	/* One column: the tabs first, then the summary and the side boxes. */
-	.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body.columns-2 {
+	.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body {
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:
 			"content"
@@ -728,7 +728,7 @@
 /* One column: summary first (total, payment, customer at a glance), then the
    tabs, then order actions and the side boxes. */
 @container bp-order (max-width: 1080px) {
-	.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body.columns-2 {
+	.brikpanel-modern-edit.bp-order-tabs #poststuff #post-body {
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:
 			"content"
@@ -737,7 +737,7 @@
 			"side";
 	}
 
-	.brikpanel-modern-edit.bp-order-tabs #post-body.columns-2 > #postbox-container-1 {
+	.brikpanel-modern-edit.bp-order-tabs #post-body > #postbox-container-1 {
 		display: contents;
 	}
 
@@ -777,19 +777,23 @@
 
 /* Below the tabs, the side boxes sit two by two instead of stretching. */
 @container bp-order (min-width: 700px) and (max-width: 1080px) {
+	/* `auto-fit` rather than a fixed two, and no `:only-child` rule, because
+	   a box switched off in Screen Options is still a child: with two boxes
+	   and one hidden, `:only-child` never matched and the surviving box sat
+	   at half width beside an empty gap. A hidden box is not a grid item at
+	   all, so auto-fit collapses the spare track on its own.
+	   The track floor is half the row rather than a pixel width, which keeps
+	   it to two columns: a plain `minmax(260px, 1fr)` fitted three narrow
+	   columns on a wide screen, below the width these cards are drawn for. */
 	.brikpanel-modern-edit.bp-order-tabs #postbox-container-1 > #side-sortables {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(calc(50% - 8px), 1fr));
 		align-items: start;
 		gap: 16px;
 	}
 
 	.brikpanel-modern-edit.bp-order-tabs #postbox-container-1 > #side-sortables > .postbox {
 		margin: 0 !important;
-	}
-
-	.brikpanel-modern-edit.bp-order-tabs #postbox-container-1 > #side-sortables > .postbox:only-child {
-		grid-column: 1 / -1;
 	}
 }
 
@@ -1595,6 +1599,45 @@
 	margin-right: 0;
 }
 
+/* ---- Other plugins' boxes in the right column ----
+   Invoice, shipping label and tracking boxes open here rather than under More.
+   They were written for whatever width they happened to get, so nothing may
+   escape 320px: a control that overflows this column pushes the page sideways
+   and can leave a field the merchant cannot reach. Widths only — colours,
+   borders and spacing stay with the plugin that owns the box. */
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside {
+	overflow-wrap: anywhere;
+}
+
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside input:not([type="checkbox"]):not([type="radio"]),
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside select,
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside textarea,
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside .select2-container {
+	box-sizing: border-box;
+	max-width: 100%;
+}
+
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside img,
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside svg,
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside canvas {
+	max-width: 100%;
+	height: auto;
+}
+
+/* A table cannot be made narrow without hiding a column, so it scrolls. */
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside > table,
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside > * > table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+/* Two buttons side by side rarely fit; let them wrap instead of overflowing. */
+.brikpanel-modern-edit.bp-order-tabs #side-sortables .postbox .inside .button {
+	max-width: 100%;
+	white-space: normal;
+}
+
 /* ---- Order header: status colours as on the orders list, quiet focus ---- */
 .brikpanel-order-header__status-badge.status--processing::before,
 .brikpanel-status-dropdown__item[data-status="processing"]::before { background: #1a8917; }
@@ -1660,4 +1703,37 @@
 	.brikpanel-order-header .brk-save-btn svg {
 		display: none;
 	}
+}
+
+/* ---- Screen Options: "Show in the sidebar" ----
+   Scoped to #wpbody-content rather than `.wrap > #screen-meta` like the orders
+   list, because only the Screen Options LINK is moved into the sticky header
+   here; the panel itself stays where WordPress printed it, outside .wrap. */
+#wpbody-content #screen-meta .bp-side-boxes__hint {
+	margin: 0 0 6px;
+	color: #616161;
+	font-size: .75rem;
+}
+
+#wpbody-content #screen-meta .bp-side-boxes__foot {
+	margin: 6px 0 0;
+}
+
+#wpbody-content #screen-meta .bp-side-boxes__reset {
+	color: #616161;
+	font-size: .75rem;
+}
+
+#wpbody-content #screen-meta .bp-side-boxes__reset:hover {
+	color: #303030;
+}
+
+#wpbody-content #screen-meta .bp-side-boxes__error {
+	margin: 6px 0 0;
+	color: #d72c0d;
+	font-size: .75rem;
+}
+
+#wpbody-content #screen-meta .bp-side-boxes__error[hidden] {
+	display: none;
 }

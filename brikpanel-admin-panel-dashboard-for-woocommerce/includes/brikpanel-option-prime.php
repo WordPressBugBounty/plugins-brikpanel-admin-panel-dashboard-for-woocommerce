@@ -88,6 +88,11 @@ function brikpanel_prime_keys_always() {
 
 		// Ad platforms.
 		'brikpanel_ads_tokens',
+		// Throttle stamps for the "credentials unreadable" log line. Read on
+		// the same requests as the vaults themselves, so priming them keeps an
+		// unreadable vault from adding a query per request.
+		'brikpanel_ads_vault_alert',
+		'brikpanel_gs_vault_alert',
 
 		// Recurring job fingerprint, read on init by Brikpanel_Cron::reconcile().
 		'brikpanel_cron_reconciled',
@@ -343,6 +348,8 @@ function brikpanel_option_autoload_denylist() {
 	return array(
 		'brikpanel_gs_tokens'                           => 'OAuth credentials',
 		'brikpanel_ads_tokens'                          => 'OAuth credentials',
+		'brikpanel_gs_tokens_unreadable'                => 'OAuth credentials (quarantined ciphertext)',
+		'brikpanel_ads_tokens_unreadable'               => 'OAuth credentials (quarantined ciphertext)',
 		'brikpanel_ea_lead'                             => 'PII payload',
 		'brikpanel_gs_error_log'                        => 'log, grows without bound',
 		'brikpanel_ads_error_log'                       => 'log, grows without bound',

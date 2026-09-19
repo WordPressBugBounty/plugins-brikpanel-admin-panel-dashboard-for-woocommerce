@@ -52,6 +52,37 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @return bool
  */
+/**
+ * Tell Import / Export about the BrikMentor promotion switch.
+ *
+ * Registered HERE, at file scope, and not inside the settings-field callback
+ * that draws the checkbox — because that callback returns early on a site that
+ * has BrikMentor installed, and the field does not exist there at all. Exporting
+ * from such a site would then omit the key entirely, and a strict "make the
+ * target match the source" import would delete the target's `no` and switch the
+ * promotion back on. That is the opposite of what the agency who asked for this
+ * switch wants, on the exact stores they asked for it on.
+ *
+ * `clear => never` closes the other half of the same hole: the value travels
+ * when the source has one, and the target's own choice is left alone when it
+ * does not. A promotion nobody asked to see again should never come back by
+ * itself.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter( 'brikpanel_exportable_option_keys', 'brikpanel_brikmentor_register_export_keys' );
+function brikpanel_brikmentor_register_export_keys( $map ) {
+    $map['brikpanel_brikmentor_live'] = [
+        'class'   => 'portable',
+        'group'   => 'general',
+        'type'    => 'checkbox',
+        'default' => 'yes',
+        'clear'   => 'never',
+    ];
+    return $map;
+}
+
 function brikpanel_brikmentor_is_live() {
     if ( brikpanel_brikmentor_promo_is_pinned() ) {
         // wp-config.php wins over the option: an agency that deploys the same

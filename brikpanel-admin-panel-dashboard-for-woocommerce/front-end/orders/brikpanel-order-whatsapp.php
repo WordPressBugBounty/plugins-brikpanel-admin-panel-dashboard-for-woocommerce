@@ -185,6 +185,62 @@ const BRIKPANEL_WHATSAPP_OPT_ORDER_MESSAGE  = 'brikpanel_whatsapp_order_message'
 const BRIKPANEL_WHATSAPP_OPT_ORDER_STATUSES = 'brikpanel_whatsapp_order_status_messages';
 
 /**
+ * Tell Import / Export how to carry the per-status WhatsApp drafts.
+ *
+ * This card has always declared its field id AS the option name, which is why
+ * the export saw it before the registry existed. The shape still needs an owner:
+ * it is a nested map, and the generic cleaner would flatten it into a list of
+ * strings.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter( 'brikpanel_exportable_option_keys', 'brikpanel_whatsapp_register_export_keys' );
+function brikpanel_whatsapp_register_export_keys( $map ) {
+	$map[ BRIKPANEL_WHATSAPP_OPT_ORDER_STATUSES ] = [
+		'class'    => 'portable',
+		'group'    => 'orders',
+		'sanitize' => 'brikpanel_whatsapp_sanitize_import_status_messages',
+		'default'  => [],
+	];
+	return $map;
+}
+
+/**
+ * Clean an imported per-status WhatsApp draft map: status slug => on/off + text.
+ *
+ * Unknown status slugs are kept. The target may register them later — a custom
+ * status, a shipping plugin — and BrikPanel only ever reads the slug an order
+ * actually has, so a draft waiting for a status that does not exist yet costs
+ * nothing and saves retyping.
+ *
+ * @param mixed $value
+ * @return array<string, array{enabled:bool, message:string}>
+ */
+function brikpanel_whatsapp_sanitize_import_status_messages( $value ) {
+	if ( ! is_array( $value ) ) {
+		return [];
+	}
+	$out = [];
+	foreach ( $value as $slug => $cfg ) {
+		$slug = sanitize_key( (string) $slug );
+		if ( '' === $slug || ! is_array( $cfg ) ) {
+			continue;
+		}
+		$message = isset( $cfg['message'] ) && is_scalar( $cfg['message'] ) ? (string) $cfg['message'] : '';
+		$out[ $slug ] = [
+			'enabled' => ! empty( $cfg['enabled'] ),
+			// The cleaner the settings screen uses, so an imported message can
+			// never carry markup a typed one could not.
+			'message' => function_exists( 'brikpanel_whatsapp_clean_message' )
+				? brikpanel_whatsapp_clean_message( $message )
+				: sanitize_textarea_field( $message ),
+		];
+	}
+	return $out;
+}
+
+/**
  * The general draft shipped with the plugin, used until a merchant edits it.
  *
  * Kept as a __() string (rather than a stored default) so a store that never

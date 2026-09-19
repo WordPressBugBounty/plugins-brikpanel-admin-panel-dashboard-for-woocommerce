@@ -1717,6 +1717,33 @@ const BRIKPANEL_EXCLUDED_USERS_OPTION = 'brikpanel_excluded_user_ids';
 const BRIKPANEL_EXCLUDED_ROLES_OPTION = 'brikpanel_excluded_roles';
 
 /**
+ * Tell Import / Export about the analytics exclusions.
+ *
+ * The two halves of one screen part company here, and deliberately. Roles are
+ * a rule ("never count staff orders") and mean the same thing on every store,
+ * so they travel. The user list is a set of local user IDs: ID 14 is a
+ * warehouse account on one site and a customer on the next, so copying it
+ * across would quietly delete a real customer from somebody else's analytics.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter( 'brikpanel_exportable_option_keys', 'brikpanel_analytics_register_export_keys' );
+function brikpanel_analytics_register_export_keys( $map ) {
+	$map[ BRIKPANEL_EXCLUDED_ROLES_OPTION ] = [
+		'class'    => 'portable',
+		'group'    => 'analytics',
+		'type'     => 'multiselect',
+		'default'  => [],
+	];
+	$map[ BRIKPANEL_EXCLUDED_USERS_OPTION ] = [
+		'class' => 'site',
+		'group' => 'analytics',
+	];
+	return $map;
+}
+
+/**
  * Translated display label for a role slug (e.g. 'shop_manager' →
  * "Shop manager"). Falls back to a humanised slug if the role is unknown.
  *

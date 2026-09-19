@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.13
+ * Version: 3.3.15
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.13');
+define('BRIKPANEL_VERSION', '3.3.15');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -187,6 +187,19 @@ if (!function_exists('brikpanel_update_option')) {
 }
 
 // =============================================================================
+// SETTINGS EXPORT REGISTRY (must load before any module registers its keys)
+//
+// Modules classify their own options at file scope, above their own gates, so
+// a module that is switched off can still answer for the keys it owns while an
+// import is about to overwrite them. That only works if the registry exists
+// before the first module file is required — hence this position, next to the
+// option-prime registry it is the sibling of, rather than inside
+// brikpanel_init_admin(). It is pure data plus pure functions: no hooks, no
+// queries, so loading it on a storefront request costs nothing.
+// =============================================================================
+brikpanel_require('includes/brikpanel-export-registry.php');
+
+// =============================================================================
 // SEO PLUGIN COMPATIBILITY BOOTSTRAP (must run before plugins_loaded listeners)
 // =============================================================================
 /**
@@ -337,6 +350,7 @@ function brikpanel_init_admin() {
     brikpanel_require('front-end/currency/brikpanel-currency-settings.php');
     brikpanel_require('front-end/order/brikpanel-order-fields.php');
     brikpanel_require('front-end/order/brikpanel-order-shipping-cost.php');
+    brikpanel_require('front-end/order/brikpanel-order-box-placement.php');
     brikpanel_require('front-end/import-export/brikpanel-import-export.php');
     brikpanel_require('front-end/products/brikpanel-section-order.php');
     brikpanel_require('front-end/products/brikpanel-qe-order.php');
@@ -860,7 +874,11 @@ add_action( 'wp_delete_site', function ( $old_site ) {
     if ( ! is_object( $old_site ) || empty( $old_site->blog_id ) ) {
         return;
     }
-    delete_metadata( 'user', 0, $wpdb->get_blog_prefix( (int) $old_site->blog_id ) . 'brikpanel_orders_row_columns', '', true );
+    $brikpanel_blog_prefix = $wpdb->get_blog_prefix( (int) $old_site->blog_id );
+    delete_metadata( 'user', 0, $brikpanel_blog_prefix . 'brikpanel_orders_row_columns', '', true );
+    // Order screen "Show in the sidebar" choice
+    // (front-end/order/brikpanel-order-box-placement.php), stored the same way.
+    delete_metadata( 'user', 0, $brikpanel_blog_prefix . 'brikpanel_order_side_boxes', '', true );
 } );
 
 // =============================================================================

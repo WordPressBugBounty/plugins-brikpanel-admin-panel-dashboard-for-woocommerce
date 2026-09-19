@@ -692,9 +692,18 @@
 			});
 		});
 
+		// The boxes a merchant reaches for on every single order — the invoice,
+		// the shipping label, the tracking number — open in the right column
+		// instead of costing a click under More. Which ones is decided on the
+		// server (front-end/order/brikpanel-order-box-placement.php): a curated
+		// list of well known plugins, plus whatever this person chose for
+		// themselves under Screen Options. Always a plain list; anything else
+		// would throw and cost the whole tabbed layout.
+		var sidebarBoxes = Array.isArray(cfg.sidebar_boxes) ? cfg.sidebar_boxes : [];
+
 		// Everything else (downloads, attribution, other plugins' boxes from
 		// either column) goes to More, in the order WordPress printed it.
-		var keep = SIDE_BOXES.concat(HIDDEN_BOXES);
+		var keep = SIDE_BOXES.concat(HIDDEN_BOXES, sidebarBoxes);
 		var rest = Array.prototype.slice.call(
 			document.querySelectorAll('#normal-sortables > .postbox, #advanced-sortables > .postbox, #side-sortables > .postbox, #post-body-content > .postbox')
 		);
@@ -703,15 +712,37 @@
 			panels.more.appendChild(box);
 		});
 
-		// Summary card at the top of the right column; the kept side boxes
-		// follow it in a fixed order.
+		// Summary card at the top of the right column, then order actions, then
+		// the boxes chosen for that column.
 		var summary = buildSummary();
 		sideCol.insertBefore(summary, sideCol.firstChild);
 		var sideSortables = document.getElementById('side-sortables');
-		SIDE_BOXES.forEach(function (id) {
-			var box = document.getElementById(id);
-			if (box && sideSortables) sideSortables.appendChild(box);
-		});
+		if (sideSortables) {
+			// Prepended rather than appended: now that other boxes stay in this
+			// column, appending would push order actions under them, and
+			// registration order is no guide (WooCommerce Tax hooks
+			// `add_meta_boxes` at priority 5, WooCommerce's own order boxes at
+			// 30 on the legacy screen). Reversed so the list order is kept.
+			SIDE_BOXES.slice().reverse().forEach(function (id) {
+				var box = document.getElementById(id);
+				if (box) sideSortables.insertBefore(box, sideSortables.firstChild);
+			});
+			sidebarBoxes.forEach(function (id) {
+				var box = document.getElementById(id);
+				// A box WordPress already printed here is left exactly where it
+				// is. Some plugins find their own box by walking the DOM, and
+				// re-parenting a node reloads any iframe inside it, so the
+				// cheapest move is the one not made.
+				if (box && box.parentElement !== sideSortables) sideSortables.appendChild(box);
+			});
+			// Anything that measured itself before this ran — every
+			// `wp.domReady` consumer enqueued ahead of this script — is now in a
+			// 320px column and has to look again. Queued as a jQuery ready
+			// callback, which lands after every other plugin's own setup.
+			if (window.jQuery) {
+				window.jQuery(function () { window.dispatchEvent(new Event('resize')); });
+			}
+		}
 
 		function isShown(box) {
 			// Computed only: a box saved as hidden keeps its hide-if-js class after
@@ -782,6 +813,110 @@
 			}
 		});
 
+		// Screen Options → "Show in the sidebar". The curated default cannot know
+		// every shipping plugin in every country, so each person can move any
+		// box either way. The box moves at once and the choice is saved after.
+		var sidePrefs = document.querySelector('#screen-options-wrap .bp-side-boxes');
+		if (sidePrefs && sideSortables) {
+			var prefError = sidePrefs.querySelector('.bp-side-boxes__error');
+			var prefToggles = Array.prototype.slice.call(sidePrefs.querySelectorAll('.bp-side-box-tog'));
+			var prefBusy = false;
+			var prefDirty = false;
+			var prefSaved = prefToggles.map(function (toggle) { return toggle.checked; });
+
+			// Only ever the box that was just toggled. Walking the whole list
+			// would drag boxes nobody asked about: a plugin is free to move its
+			// own box after this script runs (WP Overnight puts its document
+			// data next to the order details), and re-homing that on an
+			// unrelated click would undo it.
+			var moveBox = function (toggle) {
+				var box = document.getElementById(toggle.value);
+				if (!box) return;
+				var target = toggle.checked ? sideSortables : panels.more;
+				if (box.parentElement !== target) target.appendChild(box);
+			};
+
+			var applyPrefs = function (toggles) {
+				toggles.forEach(moveBox);
+				refreshCounts();
+				// A box that just changed column has to measure itself again.
+				window.dispatchEvent(new Event('resize'));
+			};
+
+			// One request at a time, always carrying the latest state, so quick
+			// clicks cannot reach the server out of order and store an old set.
+			var savePrefs = function () {
+				if (prefBusy) { prefDirty = true; return; }
+				prefBusy = true;
+				prefDirty = false;
+				var body = new window.URLSearchParams({
+					action: 'brikpanel_order_side_boxes',
+					nonce: sidePrefs.dataset.nonce || ''
+				});
+				prefToggles.forEach(function (toggle) {
+					body.append('boxes[' + toggle.value + ']', toggle.checked ? 'side' : 'more');
+				});
+				window.fetch(cfg.ajax_url, { method: 'POST', credentials: 'same-origin', body: body })
+					.then(function (response) { return response.json(); })
+					.then(function (result) {
+						if (!result || !result.success) throw new Error();
+						prefSaved = prefToggles.map(function (toggle) { return toggle.checked; });
+					})
+					.catch(function () {
+						// Put back what is stored, so the screen never shows an
+						// arrangement that would be gone after a reload. Only the
+						// boxes this session actually moved are put back.
+						prefDirty = false;
+						var reverted = [];
+						prefToggles.forEach(function (toggle, index) {
+							if (toggle.checked === prefSaved[index]) return;
+							toggle.checked = prefSaved[index];
+							reverted.push(toggle);
+						});
+						applyPrefs(reverted);
+						if (prefError) {
+							prefError.textContent = (cfg.i18n && cfg.i18n.error) || '';
+							prefError.hidden = false;
+						}
+					})
+					.then(function () {
+						prefBusy = false;
+						if (prefDirty) savePrefs();
+					});
+			};
+
+			sidePrefs.addEventListener('change', function (e) {
+				if (!e.target.classList || !e.target.classList.contains('bp-side-box-tog')) return;
+				applyPrefs([e.target]);
+				if (prefError) prefError.hidden = true;
+				savePrefs();
+			});
+
+			var prefReset = sidePrefs.querySelector('.bp-side-boxes__reset');
+			if (prefReset) {
+				prefReset.addEventListener('click', function () {
+					// The shipped defaults are not in the page — only the result
+					// of applying them — so the server clears the choices and
+					// the screen is drawn again from scratch.
+					var body = new window.URLSearchParams({
+						action: 'brikpanel_order_side_boxes',
+						nonce: sidePrefs.dataset.nonce || '',
+						reset: '1'
+					});
+					prefReset.disabled = true;
+					window.fetch(cfg.ajax_url, { method: 'POST', credentials: 'same-origin', body: body })
+						.then(function () { window.location.reload(); })
+						.catch(function () {
+							prefReset.disabled = false;
+							if (prefError) {
+								prefError.textContent = (cfg.i18n && cfg.i18n.error) || '';
+								prefError.hidden = false;
+							}
+						});
+				});
+			}
+		}
+
 		// WordPress saves which boxes are hidden (Screen Options, collapse toggles)
 		// by collecting every `.postbox` that is `:hidden` on screen. Boxes in an
 		// inactive tab match that, so the first Screen Options click stored the
@@ -800,6 +935,61 @@
 				}
 			};
 			window.postboxes.bpTabsPatched = true;
+		}
+
+		// WordPress also persists WHICH COLUMN each box sits in. `save_order`
+		// reads `$('.meta-box-sortables').sortable('toArray')` straight off the
+		// live DOM and posts it as `order[side]` / `order[normal]`, which
+		// `wp_ajax_meta_box_order` writes to the `meta-box-order_<screen>` user
+		// meta. `do_meta_boxes()` then replays that on every load — including
+		// with this feature switched off, and even with BrikPanel deactivated.
+		// Since this screen arranges the boxes itself, persisting its own
+		// arrangement would silently rewrite the merchant's native layout for
+		// good. Dropping the `order[*]` vars stops that: the handler only writes
+		// the meta `if ( $order )`, while `page_columns` still saves, so the
+		// legacy 1/2-column picker keeps working.
+		if (window.postboxes && typeof window.postboxes.save_order === 'function' && !window.postboxes.bpOrderPatched) {
+			window.postboxes.save_order = function (page) {
+				if (!window.jQuery) return;
+				var $ = window.jQuery;
+				$.post(window.ajaxurl || cfg.ajax_url, {
+					action: 'meta-box-order',
+					_ajax_nonce: $('#meta-box-order-nonce').val(),
+					page_columns: $('.columns-prefs input:checked').val() || 0,
+					page: page
+				});
+			};
+			window.postboxes.bpOrderPatched = true;
+		}
+
+		// Nothing on this screen is meant to be dragged: the right column is
+		// built from a saved preference and the boxes inside the tabs are not in
+		// a sortable at all. A drag that cannot be saved would just snap back on
+		// the next load, so the drag itself is switched off.
+		//
+		// `sortable('disable')` does NOT work here: core's own
+		// `columns.enableSortables()` (wp-admin/js/common.js) re-enables every
+		// `.meta-box-sortables` on each `wp-window-resized`, and this file fires
+		// synthetic resize events of its own. `cancel` is the option core never
+		// touches, and matching everything stops a drag from ever starting.
+		//
+		// jQuery UI binds the sortable inside `postboxes.init()`, so this wraps
+		// that call rather than racing it on jQuery ready: the script runs on
+		// DOMContentLoaded, always before any ready callback, so the wrapper is
+		// in place in time.
+		if (window.postboxes && typeof window.postboxes.init === 'function' && !window.postboxes.bpInitPatched) {
+			var postboxInit = window.postboxes.init;
+			window.postboxes.init = function () {
+				var result = postboxInit.apply(this, arguments);
+				try {
+					var $side = window.jQuery && window.jQuery('#side-sortables');
+					if ($side && $side.length && $side.data('ui-sortable')) {
+						$side.sortable('option', 'cancel', '*');
+					}
+				} catch (error) { /* jQuery UI missing; nothing to lock */ }
+				return result;
+			};
+			window.postboxes.bpInitPatched = true;
 		}
 
 		// A required field inside a hidden tab would block saving without the

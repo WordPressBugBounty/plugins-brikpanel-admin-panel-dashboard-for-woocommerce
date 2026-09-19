@@ -892,6 +892,14 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'is_new'         => (bool) $order_screen['new'],
                 'item_downloads' => (object) $item_downloads,
                 'downloads_nonce' => wp_create_nonce( 'brikpanel_order_item_downloads' ),
+                // Which boxes open in the right column instead of the "More"
+                // tab. Resolved here rather than in the browser because the
+                // metaboxes are already registered by now on both order
+                // storages, so the script only needs the handful of ids that
+                // apply to this screen instead of the whole known list.
+                'sidebar_boxes'  => function_exists( 'brikpanel_order_sidebar_resolved' )
+                    ? brikpanel_order_sidebar_resolved()
+                    : [],
                 'summary'        => $summary,
                 'i18n'           => [
                     'orders'              => __( 'Orders', 'brikpanel' ),

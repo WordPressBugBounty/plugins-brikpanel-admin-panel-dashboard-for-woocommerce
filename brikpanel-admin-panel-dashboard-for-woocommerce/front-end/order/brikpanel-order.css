@@ -1758,13 +1758,18 @@ body.brikpanel-modern-edit.bp-order-ready #poststuff {
 	padding: 0.3125rem 0.375rem !important;
 }
 
-/* General links in sidebar cards */
-.brikpanel-modern-edit #side-sortables .postbox .inside a {
+/* General links in sidebar cards.
+   The exclusions matter: other plugins' boxes live in this column too, and
+   plenty of them render an action as `<a class="button button-primary">`.
+   Without the guard this quietly repaints white button text grey — invisible
+   on a coloured button. Same exclusions as the tabbed sibling in
+   brikpanel-order-tabs.css. */
+.brikpanel-modern-edit #side-sortables .postbox .inside a:not(.button):not(.button-primary):not(.button-secondary):not(.submitdelete) {
 	color: var(--brk-text-secondary);
 	transition: color 0.15s;
 }
 
-.brikpanel-modern-edit #side-sortables .postbox .inside a:hover {
+.brikpanel-modern-edit #side-sortables .postbox .inside a:not(.button):not(.button-primary):not(.button-secondary):not(.submitdelete):hover {
 	color: var(--brk-text);
 }
 

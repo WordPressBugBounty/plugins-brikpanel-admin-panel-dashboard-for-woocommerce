@@ -81,7 +81,31 @@ class Brikpanel_Ads_Logger {
 		];
 
 		$log = (array) get_option( self::OPTION, [] );
-		$log[] = $entry;
+
+		// Collapse an immediate repeat instead of appending it. The buffer only
+		// holds MAX_ENTRIES, and several call sites are polls: a backfill chunk
+		// that skips, a status the API keeps rejecting, or a vault that cannot
+		// be decrypted re-logs the identical line every pass and evicts the
+		// whole history — including the OAuth failure that explains why the
+		// sync stopped — within minutes. Keep the newest timestamp and count
+		// the repeats so the signal survives. Ported from
+		// Brikpanel_Sheets_Logger, with severity added to the comparison
+		// because this buffer carries two of them.
+		$last_idx = count( $log ) - 1;
+		if ( $last_idx >= 0
+			&& isset( $log[ $last_idx ] )
+			&& is_array( $log[ $last_idx ] )
+			&& ( $log[ $last_idx ]['message'] ?? null ) === $entry['message']
+			&& ( $log[ $last_idx ]['flow'] ?? null ) === $entry['flow']
+			&& (int) ( $log[ $last_idx ]['code'] ?? 0 ) === $entry['code']
+			&& self::severity_of( $log[ $last_idx ] ) === $entry['severity']
+		) {
+			$log[ $last_idx ]['ts']    = $entry['ts'];
+			$log[ $last_idx ]['count'] = (int) ( $log[ $last_idx ]['count'] ?? 1 ) + 1;
+		} else {
+			$log[] = $entry;
+		}
+
 		if ( count( $log ) > self::MAX_ENTRIES ) {
 			$log = array_slice( $log, -self::MAX_ENTRIES );
 		}

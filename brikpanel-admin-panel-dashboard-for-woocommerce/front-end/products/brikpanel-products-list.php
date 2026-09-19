@@ -4805,3 +4805,30 @@ class Brikpanel_Products_List {
 }
 
 new Brikpanel_Products_List();
+
+/**
+ * Clean an imported products-list column layout for one person.
+ *
+ * Shape is { column id => bool }. Locked columns are dropped, because the save
+ * path never stores them and a stored value for one would be read as a choice
+ * nobody can make. Ids this build does not define are dropped too: an unknown
+ * column cannot be drawn, so keeping it would only leave dead entries behind.
+ *
+ * @param mixed $value
+ * @return array<string,bool>|null
+ */
+function brikpanel_products_sanitize_import_columns($value) {
+    if (!is_array($value) || !class_exists('Brikpanel_Products_List')) {
+        return null;
+    }
+    $defs  = Brikpanel_Products_List::get_column_defs();
+    $clean = [];
+    foreach ($defs as $id => $def) {
+        if (!empty($def['locked']) || !array_key_exists($id, $value)) {
+            continue;
+        }
+        $on = $value[$id];
+        $clean[$id] = !empty($on) && 'false' !== $on && '0' !== $on;
+    }
+    return $clean ? $clean : null;
+}

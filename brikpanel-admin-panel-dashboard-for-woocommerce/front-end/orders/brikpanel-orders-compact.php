@@ -167,6 +167,31 @@ function brikpanel_orders_compact_screen_settings( $settings, $screen ) {
 }
 
 /**
+ * Clean an imported "keep in the row" column list for one person.
+ *
+ * Runs the same key cleaner the AJAX save uses, and strips the base columns the
+ * row always shows — the stored list is the EXTRA columns only, so letting a
+ * base column in would duplicate it in the row.
+ *
+ * @param mixed $value
+ * @return string[]|null
+ */
+function brikpanel_orders_sanitize_import_row_columns( $value ) {
+	if ( ! is_array( $value ) ) {
+		return null;
+	}
+	$keys = array();
+	foreach ( array_slice( $value, 0, 100 ) as $key ) {
+		$key = brikpanel_orders_compact_clean_column_key( $key );
+		if ( '' !== $key ) {
+			$keys[ $key ] = true;
+		}
+	}
+	$keys = array_values( array_diff( array_keys( $keys ), brikpanel_orders_compact_base_row_columns() ) );
+	return $keys ? $keys : null;
+}
+
+/**
  * AJAX: save the columns the current user keeps in the short row.
  */
 function brikpanel_orders_compact_save_row_columns() {

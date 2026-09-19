@@ -5458,3 +5458,123 @@ add_action( 'brikpanel_cron_register', function () {
 
 	Brikpanel_Cron::schedule_recurring( 'brikpanel_cartab_flip_abandoned', 10 * MINUTE_IN_SECONDS );
 } );
+
+// =============================================================================
+// SETTINGS EXPORT — the signup popup's other-language wording
+// =============================================================================
+
+/**
+ * Tell Import / Export how to carry the popup wording per language.
+ *
+ * The card renders its own inputs per locale, so the settings-field walk sees a
+ * placeholder and nothing else. Without this a multilingual store's export
+ * carried the default-language wording and silently left every translation
+ * behind.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter( 'brikpanel_exportable_option_keys', 'brikpanel_cartab_register_export_keys' );
+function brikpanel_cartab_register_export_keys( $map ) {
+	$map['brikpanel_cartab_popup_i18n'] = [
+		'class'    => 'portable',
+		'group'    => 'cart-abandonment',
+		'sanitize' => 'brikpanel_cartab_sanitize_import_popup_i18n',
+		'default'  => [],
+	];
+	return $map;
+}
+
+/**
+ * Clean imported popup wording: locale => slot => text.
+ *
+ * Locales the target does not speak yet are KEPT. A merchant who adds the
+ * language next week should find the wording already waiting rather than have
+ * to retype it — the import is the one moment where that text exists.
+ *
+ * Locale keys are not option keys: `pt_BR` and `zh-Hant` both have to survive,
+ * and sanitize_key() would lowercase them apart.
+ *
+ * @param mixed $value
+ * @return array<string, array<string,string>>
+ */
+function brikpanel_cartab_sanitize_import_popup_i18n( $value ) {
+	if ( ! is_array( $value ) ) {
+		return [];
+	}
+	$slots = class_exists( 'Brikpanel_Cart_Abandonment' )
+		? array_flip( Brikpanel_Cart_Abandonment::popup_i18n_slots() )
+		: [];
+
+	$out = [];
+	foreach ( $value as $locale => $texts ) {
+		$locale = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $locale );
+		if ( '' === $locale || ! is_array( $texts ) ) {
+			continue;
+		}
+		$bucket = [];
+		foreach ( $texts as $slot => $text ) {
+			$slot = (string) $slot;
+			if ( ( $slots && ! isset( $slots[ $slot ] ) ) || ! is_scalar( $text ) ) {
+				continue;
+			}
+			// The cleaner the settings screen uses, so imported wording can
+			// never carry markup a typed one could not.
+			$clean = class_exists( 'Brikpanel_Cart_Abandonment' )
+				? Brikpanel_Cart_Abandonment::sanitize_popup_text( null, [ 'id' => 'brikpanel_cartab_popup_i18n' ], (string) $text )
+				: sanitize_textarea_field( (string) $text );
+			if ( '' !== $clean ) {
+				$bucket[ $slot ] = $clean;
+			}
+		}
+		if ( $bucket ) {
+			$out[ $locale ] = $bucket;
+		}
+	}
+	return $out;
+}
+
+/**
+ * Clean an imported abandoned-carts column layout for one person.
+ *
+ * Shape is { visible: { id => bool }, order: [ id, … ] }, and both halves are
+ * filtered against the columns this build defines: a column id that does not
+ * exist cannot be drawn, and leaving it in the order array would shift the
+ * rest.
+ *
+ * @param mixed $value
+ * @return array|null
+ */
+function brikpanel_cartab_sanitize_import_columns( $value ) {
+	if ( ! is_array( $value ) || ! class_exists( 'Brikpanel_Cart_Abandonment' ) ) {
+		return null;
+	}
+	$known   = array_keys( Brikpanel_Cart_Abandonment::get_column_defs() );
+	$visible = [];
+	$order   = [];
+
+	if ( isset( $value['visible'] ) && is_array( $value['visible'] ) ) {
+		foreach ( $value['visible'] as $id => $on ) {
+			$id = sanitize_key( (string) $id );
+			if ( '' !== $id && in_array( $id, $known, true ) ) {
+				$visible[ $id ] = (bool) $on;
+			}
+		}
+	}
+	if ( isset( $value['order'] ) && is_array( $value['order'] ) ) {
+		foreach ( $value['order'] as $id ) {
+			if ( ! is_string( $id ) ) {
+				continue;
+			}
+			$id = sanitize_key( $id );
+			if ( '' !== $id && in_array( $id, $known, true ) && ! in_array( $id, $order, true ) ) {
+				$order[] = $id;
+			}
+		}
+	}
+
+	if ( ! $visible && ! $order ) {
+		return null;
+	}
+	return [ 'visible' => $visible, 'order' => $order ];
+}

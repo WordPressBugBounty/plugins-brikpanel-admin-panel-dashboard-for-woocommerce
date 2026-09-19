@@ -35,6 +35,35 @@ if ( ! defined( 'BRIKPANEL_NAV_CONFIG_OPTION' ) ) {
 	define( 'BRIKPANEL_NAV_CONFIG_OPTION', 'brikpanel_nav_config' );
 }
 
+/**
+ * Tell Import / Export how to carry the sidebar layout.
+ *
+ * Stored as a JSON string, so the generic json_string cleaner is the right one.
+ * `rewrite_urls` is what makes an imported sidebar usable: a custom link the
+ * source admin added usually points either at the agency's own site (left
+ * alone) or at a page of the store it was built on (repointed at this store).
+ * Only links whose host matches the exporting site are touched.
+ *
+ * Menu rows for plugins this site does not have are NOT stripped on import.
+ * The customizer already shows them as "Not available on this site" with a
+ * delete button, which is a decision for the merchant looking at the screen,
+ * not one to make silently during a file read.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter( 'brikpanel_exportable_option_keys', 'brikpanel_nav_register_export_keys' );
+function brikpanel_nav_register_export_keys( $map ) {
+	$map[ BRIKPANEL_NAV_CONFIG_OPTION ] = [
+		'class'        => 'portable',
+		'group'        => 'navigation',
+		'type'         => 'json_string',
+		'default'      => '',
+		'rewrite_urls' => true,
+	];
+	return $map;
+}
+
 // =============================================================================
 // CONFIG: GET / SAVE
 // =============================================================================
