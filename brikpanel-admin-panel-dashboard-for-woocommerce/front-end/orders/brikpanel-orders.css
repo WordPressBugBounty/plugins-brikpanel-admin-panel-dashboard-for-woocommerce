@@ -3182,6 +3182,14 @@ body.bp-orders-compact #the-list .brikpanel-order-number .order-preview.disabled
 	transition: background-color .15s ease, color .15s ease;
 }
 
+/* With the order number column hidden the arrow sits in another cell, where
+   the negative margin that tucks it into the number cell's padding would
+   push it under the column before it. */
+body.bp-orders-compact .wp-list-table td:not(.column-order_number) > .bp-order-toggle {
+	margin-block: -6px;
+	margin-inline: 0 6px;
+}
+
 .bp-order-toggle:hover {
 	background: #ebebeb;
 	color: #303030;
@@ -3529,7 +3537,7 @@ body.bp-orders-compact .wp-list-table td.column-wc_actions .wc-action-button {
 	}
 
 	body.bp-orders-compact .wp-list-table thead tr > .check-column,
-	body.bp-orders-compact .wp-list-table thead tr > .column-order_number {
+	body.bp-orders-compact .wp-list-table thead tr > .column-order_number:not(.hidden) {
 		display: block !important;
 		position: static !important;
 		box-sizing: border-box;
@@ -3598,7 +3606,7 @@ body.bp-orders-compact .wp-list-table td.column-wc_actions .wc-action-button {
 		padding-inline: 12px 10px !important;
 	}
 
-	body.bp-orders-compact .wp-list-table #the-list > tr:not(.bp-order-detail):not(.inline-edit-row):not(.no-items) > .column-order_number {
+	body.bp-orders-compact .wp-list-table #the-list > tr:not(.bp-order-detail):not(.inline-edit-row):not(.no-items) > .column-order_number:not(.hidden) {
 		display: block !important;
 		position: static !important;
 		order: 1;

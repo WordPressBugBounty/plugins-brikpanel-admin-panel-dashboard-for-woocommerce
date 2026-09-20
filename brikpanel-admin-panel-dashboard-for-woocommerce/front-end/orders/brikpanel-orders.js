@@ -1161,6 +1161,20 @@ function brikpanelCompactRows() {
 		return name ? name.slice('column-'.length) : '';
 	};
 
+	// Where the open/close arrow lives. Normally the order number cell, but
+	// Screen Options can hide that column: the cell is then display:none and
+	// the arrow with it, leaving no way at all to open an order's panel.
+	// It falls back to the customer cell, then to the first cell still shown.
+	const toggleHost = $row => {
+		const usable = $cell => !!$cell && !$cell.classList.contains('hidden') && !$cell.classList.contains('bp-col-extra');
+		const $number = $row.querySelector(':scope > .column-order_number');
+		if (usable($number)) return $number.querySelector('.brikpanel-order-number') || $number;
+		const $customer = $row.querySelector(':scope > .column-brikpanel_customer');
+		if (usable($customer)) return $customer;
+		const $spare = [...$row.children].find($cell => usable($cell) && !$cell.classList.contains('check-column') && !$cell.classList.contains('column-cb'));
+		return $spare || $number || $row.firstElementChild;
+	};
+
 	const headerLabel = $th => {
 		if (!$th) return '';
 		const $copy = $th.cloneNode(true);
@@ -1184,9 +1198,12 @@ function brikpanelCompactRows() {
 	// spans the whole row.
 	// Counted by rendered width: narrow screens hide some columns with CSS.
 	const visibleColumns = () => [...$table.querySelectorAll('thead tr:first-child > *')].filter($th => $th.getBoundingClientRect().width > 0).length || 1;
+	// The panel row spans the table; so does WordPress's "no items found"
+	// row, whose own count does not know about the columns compact mode
+	// hides with `bp-col-extra`.
 	const syncColspans = () => {
 		const span = String(visibleColumns());
-		$list.querySelectorAll(':scope > tr.bp-order-detail > td').forEach($cell => {
+		$list.querySelectorAll(':scope > tr.bp-order-detail > td, :scope > tr.no-items > td').forEach($cell => {
 			if ($cell.getAttribute('colspan') !== span) $cell.setAttribute('colspan', span);
 		});
 	};
@@ -1211,8 +1228,8 @@ function brikpanelCompactRows() {
 	const itemSource = new WeakMap();
 
 	$list.querySelectorAll(':scope > tr').forEach($row => {
-		const $cell = $row.querySelector('.column-order_number');
-		if (!$cell || !$row.querySelector('template.bp-order-detail-tpl') || $cell.querySelector('.bp-order-toggle')) return;
+		const $host = toggleHost($row);
+		if (!$host || !$row.querySelector('template.bp-order-detail-tpl') || $row.querySelector('.bp-order-toggle')) return;
 
 		const id = ($row.id || '').replace(/^(order|post)-/, '');
 		const $button = makeElement('button', {
@@ -1224,7 +1241,7 @@ function brikpanelCompactRows() {
 			title: labelShow,
 		});
 		$button.append(makeChevron());
-		($cell.querySelector('.brikpanel-order-number') || $cell).prepend($button);
+		$host.prepend($button);
 
 		const extras = [];
 		const moves = [];
@@ -1333,6 +1350,18 @@ function brikpanelCompactRows() {
 		});
 	};
 
+	// Move the arrow, never rebuild it, so its expanded state and the panel it
+	// controls survive a Screen Options change.
+	const placeToggles = () => {
+		$list.querySelectorAll(':scope > tr').forEach($row => {
+			if (!movesByRow.has($row)) return;
+			const $button = $row.querySelector('.bp-order-toggle');
+			if (!$button) return;
+			const $host = toggleHost($row);
+			if ($host && $button.parentElement !== $host) $host.prepend($button);
+		});
+	};
+
 	const applyPlacement = () => {
 		extraColumns.forEach(({ key, $th }) => $th.classList.toggle('bp-col-extra', !inRow(key)));
 		$list.querySelectorAll(':scope > tr').forEach($row => {
@@ -1341,6 +1370,7 @@ function brikpanelCompactRows() {
 			const $extras = document.getElementById(`bp-order-detail-${($row.id || '').replace(/^(order|post)-/, '')}`)?.querySelector('.bp-od-extras');
 			if ($extras) syncExtras($extras);
 		});
+		placeToggles();
 		syncColspans();
 		document.dispatchEvent(new CustomEvent('brikpanel:order-columns-changed'));
 	};
@@ -1442,13 +1472,14 @@ function brikpanelCompactRows() {
 		toggleRow($row, $rowButton);
 	});
 
-	// Screen Options: keep open panels spanning the row after a column is
-	// shown or hidden. WordPress updates the header in its own change handler.
+	// Screen Options: after a column is shown or hidden, re-home the arrow (its
+	// cell may have just disappeared) and keep the full-width rows spanning the
+	// table. WordPress updates the header in its own change handler.
 	document.addEventListener('change', event => {
 		if (!event.target.matches?.('.hide-column-tog')) return;
 		setTimeout(() => {
-			const span = String(visibleColumns());
-			$list.querySelectorAll(':scope > tr.bp-order-detail > td').forEach($cell => $cell.setAttribute('colspan', span));
+			placeToggles();
+			syncColspans();
 			$list.querySelectorAll(':scope > tr.bp-order-detail .bp-od-extras').forEach(syncExtras);
 		});
 	});
@@ -1486,12 +1517,19 @@ function brikpanelStickyOrderColumn() {
 	document.head.append($style);
 
 	const sync = () => {
+		// Screen Options can hide the order number column. There is then nothing
+		// to pin, and the loop below would never reach its anchor: skipping a
+		// cell must not skip the stop condition, or every column turns sticky.
+		if ($head.classList.contains('hidden')) {
+			$style.textContent = '';
+			return;
+		}
 		const rules = [];
 		let left = 0;
 		for (const $cell of $head.parentElement.children) {
-			if ($cell.classList.contains('hidden') || $cell.classList.contains('bp-col-extra')) continue;
+			const skipped = $cell.classList.contains('hidden') || $cell.classList.contains('bp-col-extra');
 			const key = [...$cell.classList].find(name => name.startsWith('column-'));
-			if ($cell === $head || (key && !$cell.classList.contains('check-column') && key !== 'column-cb')) {
+			if (!skipped && ($cell === $head || (key && !$cell.classList.contains('check-column') && key !== 'column-cb'))) {
 				if (key && /^column-[a-z0-9_-]+$/i.test(key)) {
 					rules.push(`table.wp-list-table .${key}{position:sticky!important;left:${Math.floor(left)}px!important;}`);
 					if ($cell !== $head) {
@@ -1500,7 +1538,7 @@ function brikpanelStickyOrderColumn() {
 				}
 			}
 			if ($cell === $head) break;
-			left += $cell.getBoundingClientRect().width;
+			if (!skipped) left += $cell.getBoundingClientRect().width;
 		}
 		$style.textContent = rules.join('\n');
 	};

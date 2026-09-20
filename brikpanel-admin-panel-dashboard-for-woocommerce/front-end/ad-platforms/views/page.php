@@ -136,12 +136,31 @@ $render_platform_card = function ( $platform, $title, $tagline, $desc, $last_syn
 				<p class="bp-ads-card-sub">
 					<?php
 					if ( $platform === Brikpanel_Ads_Tokens::PLATFORM_GOOGLE ) {
-						esc_html_e( 'BrikPanel will request read-only access to your Google Ads accounts. We only pull total daily spend, impressions and clicks. No campaign management.', 'brikpanel' );
+						esc_html_e( 'BrikPanel only reads your ad results: total daily spend, impressions and clicks. It never creates, edits or deletes anything in your account.', 'brikpanel' );
 					} else {
 						esc_html_e( 'BrikPanel will request read-only access (ads_read) to your Meta ad accounts. We only pull total daily spend, impressions and clicks.', 'brikpanel' );
 					}
 					?>
 				</p>
+				<?php if ( $platform === Brikpanel_Ads_Tokens::PLATFORM_GOOGLE ) : ?>
+					<?php
+					// This paragraph exists because the card used to promise
+					// "read-only access", and Google's consent screen then asked
+					// for "See, edit, create, and delete your Google Ads accounts
+					// and data". A merchant reported the two as contradicting each
+					// other, and assumed we had configured too wide a scope.
+					//
+					// We had not: https://www.googleapis.com/auth/adwords is the
+					// only scope the Google Ads API has, and Google renders it with
+					// that sentence. There is nothing narrower to ask for. The old
+					// wording described what BrikPanel does, not what Google grants,
+					// so it read as a promise we were visibly breaking. Say what
+					// Google will actually show, and why.
+					?>
+					<p class="bp-ads-card-sub">
+						<?php esc_html_e( 'Google’s permission screen still asks for broad access (“See, edit, create, and delete your Google Ads accounts and data”) because the Google Ads API has only one permission and offers no read-only option. If you want the permission itself narrowed, connect with a Google account that has Read-only access to the Ads account.', 'brikpanel' ); ?>
+					</p>
+				<?php endif; ?>
 				<div class="bp-ads-actions">
 					<button type="button" class="bp-ads-btn bp-ads-btn-primary" data-action="connect">
 						<?php

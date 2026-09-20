@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:wordpress.org)",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:ibb.co)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:support.google.com)"
     ]
   }
 }

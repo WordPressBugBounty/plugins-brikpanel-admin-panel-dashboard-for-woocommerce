@@ -822,8 +822,8 @@ class Brikpanel_Ads_Tokens {
 		update_option( self::ALERT_OPTION, [ 'sig' => $sig, 'at' => time() ], false );
 
 		$message = $reason === 'corrupt_payload'
-			? 'Stored credentials decrypted but the contents were not readable — kept, not deleted.'
-			: 'Stored credentials could not be decrypted with this site key — kept, not deleted. Check the site address (http vs https, www vs non-www) and the wp-config salts, then reconnect.';
+			? 'Stored credentials decrypted but the contents were not readable. Kept, not deleted.'
+			: 'Stored credentials could not be decrypted with this site key. Kept, not deleted. Check the site address (http vs https, www vs non-www) and the wp-config salts, then reconnect.';
 
 		// scheme/host/ctx ARE the diagnosis: two entries differing in either
 		// column is the whole bug report, readable without a database client.

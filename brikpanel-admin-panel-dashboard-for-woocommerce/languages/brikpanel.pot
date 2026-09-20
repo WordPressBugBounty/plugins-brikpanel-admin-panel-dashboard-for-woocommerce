@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0+.
 msgid ""
 msgstr ""
-"Project-Id-Version: BrikPanel: WooCommerce Admin Dashboard Theme 3.3.14\n"
+"Project-Id-Version: BrikPanel: WooCommerce Admin Dashboard Theme 3.3.15\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/brikpanel\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-19T11:59:27+00:00\n"
+"POT-Creation-Date: 2026-09-20T13:54:49+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: brikpanel\n"
@@ -111,8 +111,8 @@ msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-google-client.php:277
 #: front-end/ad-platforms/class-brikpanel-ads-meta-client.php:347
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:149
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:302
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:165
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:318
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:111
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:209
 msgid "The BrikPanel proxy returned an unverifiable response and was rejected."
@@ -203,8 +203,8 @@ msgstr ""
 msgid "Meta could not find that ad account. Check the ad account ID and try again."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:77
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:166
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:93
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:182
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:206
 #: front-end/brikcontrol/class-brikpanel-brikcontrol.php:634
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4093
@@ -270,100 +270,104 @@ msgstr ""
 msgid "Permission denied."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:82
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:170
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:98
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:186
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:284
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:388
 msgid "Unknown platform."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:89
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:271
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:105
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:287
 msgid "This connection is not available yet, it is pending platform approval."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:142
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:158
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:104
 msgid "Could not reach the BrikPanel proxy. Please try again in a moment."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:152
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:168
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:114
 msgid "Could not start OAuth: proxy returned an error."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:215
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:231
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:143
 msgid "Disconnected."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:258
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:274
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:177
 msgid "OAuth session expired. Please try connecting again."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:265
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:281
 msgid "Unknown platform in OAuth state."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:277
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:293
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:185
 msgid "OAuth callback was for a different user. Aborted."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:295
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:311
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:202
 msgid "Could not reach the BrikPanel proxy."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:304
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:320
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:211
 msgid "OAuth redemption failed. Please try connecting again."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:327
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:349
 #: front-end/google-sheets/class-brikpanel-sheets-oauth.php:250
 msgid "Could not save tokens. Please try again."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:357
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:382
 msgid "Google Ads connected."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:358
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:383
 msgid "Meta Ads connected."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:391
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:416
 msgid "Connection cancelled: the permission request was declined on the platform’s consent screen. Nothing was saved. Click Connect to try again."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:394
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:419
 msgid "The platform needs you to complete the consent screen. Click Connect to try again."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:397
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:422
 msgid "The advertising platform is temporarily unavailable. Please try connecting again in a few minutes."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:400
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:425
 msgid "The connection did not complete. Nothing was saved. Please try again."
 msgstr ""
 
 #. translators: %s = raw error code reported by the advertising platform.
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:403
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:428
 #, php-format
 msgid "The connection did not complete (%s). Nothing was saved. Please try again."
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:433
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:458
 msgid "Meta connected, but the advertising permission (ads_read) was not granted, so no spend can be imported. Click Re-authorize and leave the advertising permission enabled."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:552
+msgid "Google Ads connected, but the Google Ads permission was not granted, so no spend can be imported. Click Connect again and leave the Google Ads permission ticked on Google’s permission screen."
 msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:49
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:50
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:59
-#: front-end/ad-platforms/views/page.php:336
+#: front-end/ad-platforms/views/page.php:355
 msgid "Ad Platforms"
 msgstr ""
 
@@ -420,7 +424,7 @@ msgid "Error"
 msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:157
-#: front-end/ad-platforms/views/page.php:288
+#: front-end/ad-platforms/views/page.php:307
 msgid "History import stopped"
 msgstr ""
 
@@ -462,7 +466,7 @@ msgstr ""
 #. translators: %1$d = chunks completed, %2$d = total chunks (each chunk is 90 days).
 #. translators: 1: completed, 2: total chunks (90 days each)
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:166
-#: front-end/ad-platforms/views/page.php:292
+#: front-end/ad-platforms/views/page.php:311
 #, php-format
 msgid "Loading history… %1$d of %2$d 90-day chunks done"
 msgstr ""
@@ -472,7 +476,7 @@ msgid "Just now"
 msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:168
-#: front-end/ad-platforms/views/page.php:350
+#: front-end/ad-platforms/views/page.php:369
 #: front-end/dashboard/brikpanel-dashboard.php:2000
 #: front-end/expenses/brikpanel-expenses.php:1508
 #: front-end/expenses/brikpanel-expenses.php:1539
@@ -484,7 +488,7 @@ msgid "Google Ads"
 msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:169
-#: front-end/ad-platforms/views/page.php:362
+#: front-end/ad-platforms/views/page.php:381
 #: front-end/dashboard/brikpanel-dashboard.php:2001
 #: front-end/expenses/brikpanel-expenses.php:1509
 #: front-end/expenses/brikpanel-expenses.php:1540
@@ -659,7 +663,7 @@ msgid "Google Ads needs to approve our API access before this connection can go 
 msgstr ""
 
 #: front-end/ad-platforms/views/page.php:43
-#: front-end/ad-platforms/views/page.php:149
+#: front-end/ad-platforms/views/page.php:168
 msgid "Connect Google Ads"
 msgstr ""
 
@@ -672,7 +676,7 @@ msgid "Meta needs to review our app before this connection can go live. It will 
 msgstr ""
 
 #: front-end/ad-platforms/views/page.php:47
-#: front-end/ad-platforms/views/page.php:151
+#: front-end/ad-platforms/views/page.php:170
 msgid "Connect Meta Ads"
 msgstr ""
 
@@ -699,50 +703,54 @@ msgid "The stored authorisation stopped working, so no new spend is being import
 msgstr ""
 
 #: front-end/ad-platforms/views/page.php:139
-msgid "BrikPanel will request read-only access to your Google Ads accounts. We only pull total daily spend, impressions and clicks. No campaign management."
+msgid "BrikPanel only reads your ad results: total daily spend, impressions and clicks. It never creates, edits or deletes anything in your account."
 msgstr ""
 
 #: front-end/ad-platforms/views/page.php:141
 msgid "BrikPanel will request read-only access (ads_read) to your Meta ad accounts. We only pull total daily spend, impressions and clicks."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:160
+#: front-end/ad-platforms/views/page.php:161
+msgid "Google’s permission screen still asks for broad access (“See, edit, create, and delete your Google Ads accounts and data”) because the Google Ads API has only one permission and offers no read-only option. If you want the permission itself narrowed, connect with a Google account that has Read-only access to the Ads account."
+msgstr ""
+
+#: front-end/ad-platforms/views/page.php:179
 #: front-end/google-sheets/views/page.php:105
 msgid "Connected as"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:161
+#: front-end/ad-platforms/views/page.php:180
 #: front-end/google-sheets/views/page.php:106
 msgid "(email not shared)"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:172
+#: front-end/ad-platforms/views/page.php:191
 msgid "One more step"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:174
+#: front-end/ad-platforms/views/page.php:193
 msgid "Choose the ad account to pull spend from. Click \"Load accounts\" below, pick one, then Save. Nothing is imported until you do."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:182
+#: front-end/ad-platforms/views/page.php:201
 msgid "Primary ad account"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:185
+#: front-end/ad-platforms/views/page.php:204
 msgid "BrikPanel pulls spend from this one account. To switch later, choose another from the list and click Save."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:192
+#: front-end/ad-platforms/views/page.php:211
 msgid "Click \"Load accounts\" to choose…"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:196
+#: front-end/ad-platforms/views/page.php:215
 msgid "Load accounts"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:199
-#: front-end/ad-platforms/views/page.php:223
-#: front-end/ad-platforms/views/page.php:246
+#: front-end/ad-platforms/views/page.php:218
+#: front-end/ad-platforms/views/page.php:242
+#: front-end/ad-platforms/views/page.php:265
 #: front-end/expenses/brikpanel-expenses.php:424
 #: front-end/expenses/brikpanel-expenses.php:447
 #: front-end/google-sheets/views/page.php:332
@@ -761,40 +769,40 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:205
+#: front-end/ad-platforms/views/page.php:224
 msgid "Can’t find your account?"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:210
+#: front-end/ad-platforms/views/page.php:229
 msgid "If your ad account is owned by a Business Manager it may not appear in the list above. Enter its ID manually. You can find it in Meta Ads Manager, shown next to the account name."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:212
+#: front-end/ad-platforms/views/page.php:231
 msgid "Enter your Google Ads customer ID manually if it is not listed above. Digits only, no dashes. You can find it at the top-right of your Google Ads account."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:232
+#: front-end/ad-platforms/views/page.php:251
 msgid "Manager (MCC) account ID (optional)"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:235
+#: front-end/ad-platforms/views/page.php:254
 msgid "Only fill in if you access the chosen account through a Google Ads manager. Digits only, no dashes."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:255
+#: front-end/ad-platforms/views/page.php:274
 #: front-end/google-sheets/class-brikpanel-sheets-settings.php:1668
 msgid "Last successful sync"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:259
+#: front-end/ad-platforms/views/page.php:278
 msgid "ago"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:261
+#: front-end/ad-platforms/views/page.php:280
 msgid "(last attempt failed, check the error log)"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:310
+#: front-end/ad-platforms/views/page.php:329
 #: front-end/google-sheets/views/page.php:333
 #: front-end/google-sheets/views/page.php:432
 #: front-end/google-sheets/views/page.php:501
@@ -803,75 +811,75 @@ msgstr ""
 msgid "Sync now"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:313
+#: front-end/ad-platforms/views/page.php:332
 #: front-end/google-sheets/views/page.php:122
 msgid "Re-authorize"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:316
+#: front-end/ad-platforms/views/page.php:335
 #: front-end/google-sheets/views/page.php:121
 msgid "Disconnect"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:339
+#: front-end/ad-platforms/views/page.php:358
 msgid "Connect Google Ads and Meta Ads so BrikPanel can show real ROAS and Net Profit on the dashboard."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:351
+#: front-end/ad-platforms/views/page.php:370
 msgid "Pulls daily total spend, impressions and clicks from one Google Ads account."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:363
+#: front-end/ad-platforms/views/page.php:382
 msgid "Pulls daily total spend, impressions and clicks from one Meta ad account (Facebook + Instagram)."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:378
+#: front-end/ad-platforms/views/page.php:397
 msgid "Imported spend data"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:380
+#: front-end/ad-platforms/views/page.php:399
 msgid "Everything BrikPanel has pulled so far, broken down by month. This is the raw data behind the dashboard ROAS and Net Profit figures."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:384
+#: front-end/ad-platforms/views/page.php:403
 #: includes/cron/class-brikpanel-cron-page.php:80
 msgid "Refresh"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:395
+#: front-end/ad-platforms/views/page.php:414
 msgid "How it works"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:400
+#: front-end/ad-platforms/views/page.php:419
 msgid "Connect each platform once. Tokens are encrypted on this server and never leave it."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:401
+#: front-end/ad-platforms/views/page.php:420
 msgid "On first connect, the last 3 years of daily spend are loaded in the background (90-day chunks every 30 seconds)."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:402
+#: front-end/ad-platforms/views/page.php:421
 msgid "After that, the last 7 days are refreshed once per day to capture late corrections."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:403
+#: front-end/ad-platforms/views/page.php:422
 msgid "Spend is stored in the ad account currency. The dashboard shows ad-currency totals next to your store revenue so you can compare them directly."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:411
+#: front-end/ad-platforms/views/page.php:430
 #: front-end/google-sheets/class-brikpanel-sheets-settings.php:1666
 msgid "Recent activity"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:413
+#: front-end/ad-platforms/views/page.php:432
 msgid "Last 50 entries from the sync log, errors and routine notes alike. Token values are redacted before storage."
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:420
+#: front-end/ad-platforms/views/page.php:439
 msgid "View log"
 msgstr ""
 
-#: front-end/ad-platforms/views/page.php:423
+#: front-end/ad-platforms/views/page.php:442
 msgid "Clear log"
 msgstr ""
 
@@ -7502,7 +7510,7 @@ msgid "Drag to reorder, toggle visibility, move items between sections, or add c
 msgstr ""
 
 #: front-end/navigation/brikpanel-nav-customizer.php:1596
-#: front-end/order/brikpanel-order-box-placement.php:547
+#: front-end/order/brikpanel-order-box-placement.php:512
 msgid "Reset to defaults"
 msgstr ""
 
@@ -8006,11 +8014,11 @@ msgstr ""
 msgid "Insert placeholder"
 msgstr ""
 
-#: front-end/order/brikpanel-order-box-placement.php:543
+#: front-end/order/brikpanel-order-box-placement.php:508
 msgid "Show in the sidebar"
 msgstr ""
 
-#: front-end/order/brikpanel-order-box-placement.php:544
+#: front-end/order/brikpanel-order-box-placement.php:509
 msgid "Ticked boxes open in the right column instead of the More tab."
 msgstr ""
 

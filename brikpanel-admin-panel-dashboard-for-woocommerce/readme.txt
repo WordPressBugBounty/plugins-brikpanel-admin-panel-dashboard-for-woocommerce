@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.15
+Stable tag: 3.3.16
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -474,6 +474,11 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.16 (2026-09-20) =
+* Fix: **Google Ads no longer says "Connected" when the permission was in fact declined.** Google shows the Ads permission as a checkbox that is not ticked in advance, so the connection could finish with it left off: the card reported success and no spend ever arrived, with nothing on screen to explain why. BrikPanel now checks what Google actually granted and, when the Ads permission is missing, says so and asks you to connect again with it ticked. Meta Ads has had the same check since it was added, and nothing about the Meta connection changes.
+* Tweak: **The Google Ads card now explains Google's permission screen instead of contradicting it.** The card promised "read-only access" while Google asked for "See, edit, create, and delete your Google Ads accounts and data", which looked like BrikPanel asking for far more than it admitted. It was not: the Google Ads API has exactly one permission and no read-only version, so there is nothing narrower to request, and BrikPanel still only reads daily spend, impressions and clicks and never creates, edits or deletes anything in your account. The card says that plainly, and for anyone who wants the permission itself narrowed it names the way to do it: connect with a Google account that has Read-only access to the Ads account.
+* Fix: **Hiding columns in the order list through Screen Options works properly again.** Turning off the "Order" column left the compact list unusable: the arrow that opens the order details sat in a hidden cell, so the panel could not be opened at all, and several columns at once were pinned to the left edge with a white background that cut across the row lines and the hover highlight. The arrow now moves to the Customer column, or the first column still visible; nothing is pinned when there is nothing to pin; the phone layout follows the columns you hide; and the "No items found" row spans the columns actually on screen. Hiding Payment method or Shipping was already safe, and both stay in the order panel as a "via ..." line.
 
 = 3.3.15 (2026-09-19) =
 * Fix: **The changelog on the WordPress.org plugin page is complete again.** The release history had grown longer than WordPress.org accepts, so the page cut it off part way through and the newest entries were the only ones anybody could read in full. The page now carries the most recent releases, and the complete history of every version ships with the plugin in `changelog.txt`.
