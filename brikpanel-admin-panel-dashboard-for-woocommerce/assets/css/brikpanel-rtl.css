@@ -747,19 +747,6 @@ body.rtl .brikpanel-welcome-kbd { margin-left: 0; margin-right: 4px; }
 
 
 /* =============================================================================
-   FILE: front-end/login/brikpanel-login.css
-   ============================================================================= */
-body.rtl.login .wp-pwd input[type="password"],
-body.rtl.login .wp-pwd input[type="text"] {
-    padding-right: 0.75rem;
-    padding-left: 2.75rem;
-}
-body.rtl.login .wp-pwd .button.wp-hide-pw { right: auto; left: 0.5rem; }
-body.rtl.login .forgetmenot input[type="checkbox"] { margin: 0 0 0 0.25rem; }
-body.rtl.login .forgetmenot input[type="checkbox"]:checked::after { left: auto; right: 0.3rem; }
-
-
-/* =============================================================================
    FILE: includes/cron/brikpanel-cron-page.css
    ============================================================================= */
 body.rtl .brikpanel-cron-table thead th { text-align: right; }

@@ -241,8 +241,14 @@ function brikpanel_appearance_get_custom_css() {
  * Build the runtime CSS that applies the chosen font + accent color across
  * BrikPanel surfaces. Returns an empty string when both settings are at
  * their default values, so we don't print a no-op `<style>` tag.
+ *
+ * @param string $context `admin` for wp-admin, `login` for the modern login
+ *                        page. Only the font selector list differs: wp-admin
+ *                        is full of foreign markup that must keep its own
+ *                        font, while the login page is ours end to end.
+ * @return string
  */
-function brikpanel_appearance_build_css() {
+function brikpanel_appearance_build_css( $context = 'admin' ) {
 	$font_key  = brikpanel_appearance_get_font_key();
 	$color     = brikpanel_appearance_get_primary_color();
 	$is_def_f  = ( $font_key === BRIKPANEL_APPEARANCE_DEFAULT_FONT );
@@ -322,11 +328,27 @@ function brikpanel_appearance_build_css() {
 		// overridden). Real BrikPanel wrappers like `.brikpanel-dashboard` and
 		// `.brikpanel-topbar-*` still match and receive the font; only the
 		// body/html sentinels are excluded.
-		$css .= '[class*="brikpanel-"]:not(body):not(html),'
+		//
+		// The login page needs its own selector: it carries no
+		// `brikpanel-`-prefixed wrapper, so the list above reaches only the
+		// footer credit and the toast. This used to be `.bp-login`, a class
+		// that exists nowhere in the plugin or in wp-login.php's markup, so
+		// the chosen font was downloaded on the login screen and then applied
+		// to nothing.
+		$selectors = '[class*="brikpanel-"]:not(body):not(html),'
 			. '[class*="brikpanel-"]:not(body):not(html) *,'
-			. '.brikpanel-pe,.brikpanel-pe *,'
-			. '.bp-login,.bp-login *'
-			. '{font-family:' . $stack . ' !important;}';
+			. '.brikpanel-pe,.brikpanel-pe *';
+
+		if ( 'login' === $context ) {
+			// Dashicons are excluded for the same reason the admin list
+			// excludes body/html: `font-family !important` on every
+			// descendant also overrides the icon font, and WordPress paints
+			// the show-password eye and the checkbox tick with dashicons —
+			// they render as tofu boxes the moment the rule reaches them.
+			$selectors .= ',body.login #login,body.login #login *:not([class*="dashicons"])';
+		}
+
+		$css .= $selectors . '{font-family:' . $stack . ' !important;}';
 	}
 
 	return $css;
@@ -352,7 +374,25 @@ function brikpanel_appearance_print_admin_styles() {
 	echo "<style id=\"brikpanel-appearance-overrides\">{$css}</style>"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — values are sanitized in helpers above.
 }
 add_action( 'admin_head', 'brikpanel_appearance_print_admin_styles', 9999 );
-add_action( 'login_head', 'brikpanel_appearance_print_admin_styles', 9999 );
+
+/**
+ * Print the same runtime CSS on wp-login.php, with the login selector list.
+ *
+ * Gated on the modern login page being active: with it switched off the
+ * stock WordPress login screen is somebody else's design and BrikPanel has
+ * no business restyling it.
+ */
+function brikpanel_appearance_print_login_styles() {
+	if ( get_option( 'brikpanel_modern_login', 'yes' ) !== 'yes' ) {
+		return;
+	}
+	$css = brikpanel_appearance_build_css( 'login' );
+	if ( $css === '' ) {
+		return;
+	}
+	echo "<style id=\"brikpanel-appearance-overrides\">{$css}</style>"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — values are sanitized in helpers above.
+}
+add_action( 'login_head', 'brikpanel_appearance_print_login_styles', 9999 );
 
 /**
  * Enqueue the chosen Google Font (if any). Skipped for the `system` default
@@ -798,10 +838,11 @@ function brikpanel_brand_logo_print_login_styles() {
 		. 'background-position:center !important;'
 		. 'background-size:contain !important;'
 		. 'border-radius:0 !important;'
-		. '}'
-		// Drop the "Welcome back" subtitle so the custom logo carries the
-		// brand identity without a redundant label underneath.
-		. '#login h1::after{display:none !important;}';
+		. '}';
+	// Whether a heading sits under the logo is decided in
+	// Brikpanel_Login::resolve_heading_text() — with the heading left on its
+	// default the logo still carries the brand identity alone, but an admin
+	// who picks the site name or their own wording now gets it.
 	echo '<style id="brikpanel-brand-logo-login">' . $css . '</style>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- URL escaped above.
 }
 add_action( 'login_head', 'brikpanel_brand_logo_print_login_styles', 10000 );

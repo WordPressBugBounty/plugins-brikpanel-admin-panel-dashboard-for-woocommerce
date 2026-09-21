@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0+.
 msgid ""
 msgstr ""
-"Project-Id-Version: BrikPanel: WooCommerce Admin Dashboard Theme 3.3.15\n"
+"Project-Id-Version: BrikPanel: WooCommerce Admin Dashboard Theme 3.3.17\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/brikpanel\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-20T13:54:49+00:00\n"
+"POT-Creation-Date: 2026-09-21T15:37:47+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: brikpanel\n"
@@ -83,22 +83,188 @@ msgstr ""
 
 #: front-end/ad-platforms/brikpanel-ad-platforms.php:261
 #: front-end/google-sheets/brikpanel-google-sheets.php:107
-#: front-end/orders/brikpanel-orders.php:1027
+#: front-end/orders/brikpanel-orders.php:1059
 #: front-end/welcome/brikpanel-welcome.php:199
 msgid "Integrations"
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:59
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:87
 #: includes/brikpanel-store-summary.php:2198
 msgid "ROAS"
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:301
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:92
+msgid "Pull today's spend from your connected ad platforms now, instead of waiting for the daily sync."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:93
+msgid "Update ad spend"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:115
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:116
+msgid "Show ad cost per order"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:159
+msgid "Ad cost per order"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:161
+msgctxt "compact KPI sub-label inside the ROAS card: ad spend divided by order count"
+msgid "Cost / order"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:199
+msgid "How Ad cost per order is calculated"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:200
+msgid "Ad spend for the selected period divided by the orders placed in it."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:201
+msgid "Orders placed by store administrators are not counted."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:203
+msgid "Marketplace orders are not counted, because ad spend drives your own store."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:390
+#: front-end/ad-platforms/class-brikpanel-ads-settings.php:168
+#: front-end/ad-platforms/views/page.php:369
+#: front-end/dashboard/brikpanel-dashboard.php:2000
+#: front-end/expenses/brikpanel-expenses.php:1508
+#: front-end/expenses/brikpanel-expenses.php:1539
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1003
+#: front-end/welcome/brikpanel-welcome.php:213
+#: includes/brikpanel-store-summary.php:1981
+#: includes/brikpanel-store-summary.php:3082
+msgid "Google Ads"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:392
+#: front-end/ad-platforms/class-brikpanel-ads-settings.php:169
+#: front-end/ad-platforms/views/page.php:381
+#: front-end/dashboard/brikpanel-dashboard.php:2001
+#: front-end/expenses/brikpanel-expenses.php:1509
+#: front-end/expenses/brikpanel-expenses.php:1540
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1004
+#: front-end/welcome/brikpanel-welcome.php:214
+#: includes/brikpanel-store-summary.php:1982
+#: includes/brikpanel-store-summary.php:3083
+msgid "Meta Ads"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:416
+msgid "Your session expired. Reload the page and try again."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:423
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:93
+#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:182
+#: front-end/ad-platforms/class-brikpanel-ads-settings.php:206
+#: front-end/brikcontrol/class-brikpanel-brikcontrol.php:634
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4093
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4688
+#: front-end/cart-share/brikpanel-cart-share.php:381
+#: front-end/cart-share/brikpanel-cart-share.php:447
+#: front-end/coupons/brikpanel-coupons.php:450
+#: front-end/coupons/brikpanel-coupons.php:693
+#: front-end/coupons/brikpanel-coupons.php:809
+#: front-end/coupons/brikpanel-coupons.php:841
+#: front-end/coupons/brikpanel-coupons.php:881
+#: front-end/coupons/brikpanel-coupons.php:941
+#: front-end/coupons/brikpanel-coupons.php:995
+#: front-end/coupons/brikpanel-coupons.php:1038
+#: front-end/customer-analytics/brikpanel-customer-analytics.php:118
+#: front-end/customer-analytics/brikpanel-customer-analytics.php:346
+#: front-end/customer-analytics/brikpanel-customer-analytics.php:565
+#: front-end/customer-analytics/brikpanel-customer-analytics.php:731
+#: front-end/expenses/brikpanel-expenses.php:92
+#: front-end/google-sheets/class-brikpanel-sheets-oauth.php:65
+#: front-end/google-sheets/class-brikpanel-sheets-oauth.php:128
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:323
+#: front-end/orders/brikpanel-orders.php:2709
+#: front-end/products/brikpanel-category-enhancements.php:478
+#: front-end/products/brikpanel-product-editor.php:189
+#: front-end/products/brikpanel-product-editor.php:224
+#: front-end/products/brikpanel-product-editor.php:251
+#: front-end/products/brikpanel-product-editor.php:350
+#: front-end/products/brikpanel-product-editor.php:5739
+#: front-end/products/brikpanel-product-editor.php:5755
+#: front-end/products/brikpanel-product-editor.php:5797
+#: front-end/products/brikpanel-product-editor.php:5811
+#: front-end/products/brikpanel-product-editor.php:7057
+#: front-end/products/brikpanel-product-editor.php:7086
+#: front-end/products/brikpanel-product-editor.php:10017
+#: front-end/products/brikpanel-product-editor.php:10081
+#: front-end/products/brikpanel-product-editor.php:10139
+#: front-end/products/brikpanel-product-editor.php:10170
+#: front-end/products/brikpanel-product-editor.php:10230
+#: front-end/products/brikpanel-products-list.php:237
+#: front-end/products/brikpanel-products-list.php:2169
+#: front-end/products/brikpanel-products-list.php:2697
+#: front-end/products/brikpanel-products-list.php:2782
+#: front-end/products/brikpanel-products-list.php:3112
+#: front-end/products/brikpanel-products-list.php:3197
+#: front-end/products/brikpanel-products-list.php:3243
+#: front-end/products/brikpanel-products-list.php:3275
+#: front-end/products/brikpanel-products-list.php:3334
+#: front-end/products/brikpanel-products-list.php:3433
+#: front-end/products/brikpanel-products-list.php:3541
+#: front-end/products/brikpanel-products-list.php:3547
+#: front-end/products/brikpanel-products-list.php:3649
+#: front-end/products/brikpanel-products-list.php:4590
+#: front-end/products/brikpanel-products-list.php:4650
+#: front-end/products/brikpanel-products-list.php:4750
+#: front-end/segments/brikpanel-segments.php:93
+#: front-end/segments/brikpanel-segments.php:1042
+#: front-end/vendors/class-brikpanel-stock-orders.php:110
+#: front-end/vendors/class-brikpanel-vendor-product-editor.php:169
+#: front-end/vendors/class-brikpanel-vendors.php:97
+#: includes/brikpanel-store-summary.php:55
+#: includes/cron/class-brikpanel-cron-page.php:56
+msgid "Permission denied."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:436
+msgid "No ad platform is connected yet. Connect one to pull spend."
+msgstr ""
+
+#. translators: %d: seconds to wait before ad spend can be updated again.
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:447
+#, php-format
+msgid "Ad spend was just updated. Try again in %d second."
+msgid_plural "Ad spend was just updated. Try again in %d seconds."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: ad platform name, for example "Google Ads".
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:546
+#, php-format
+msgid "Ad spend updated, but %s could not be reached."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:557
+msgid "Ad spend updated."
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:898
 msgid "Revenue / Ad spend"
 msgstr ""
 
-#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:302
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:899
 msgid "Ad currency differs from store"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:900
+msgid "Updating…"
+msgstr ""
+
+#: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:901
+msgid "Could not update ad spend. Please try again."
 msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-google-client.php:216
@@ -201,73 +367,6 @@ msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-meta-client.php:435
 msgid "Meta could not find that ad account. Check the ad account ID and try again."
-msgstr ""
-
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:93
-#: front-end/ad-platforms/class-brikpanel-ads-oauth.php:182
-#: front-end/ad-platforms/class-brikpanel-ads-settings.php:206
-#: front-end/brikcontrol/class-brikpanel-brikcontrol.php:634
-#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4093
-#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:4688
-#: front-end/cart-share/brikpanel-cart-share.php:381
-#: front-end/cart-share/brikpanel-cart-share.php:447
-#: front-end/coupons/brikpanel-coupons.php:450
-#: front-end/coupons/brikpanel-coupons.php:693
-#: front-end/coupons/brikpanel-coupons.php:809
-#: front-end/coupons/brikpanel-coupons.php:841
-#: front-end/coupons/brikpanel-coupons.php:881
-#: front-end/coupons/brikpanel-coupons.php:941
-#: front-end/coupons/brikpanel-coupons.php:995
-#: front-end/coupons/brikpanel-coupons.php:1038
-#: front-end/customer-analytics/brikpanel-customer-analytics.php:118
-#: front-end/customer-analytics/brikpanel-customer-analytics.php:346
-#: front-end/customer-analytics/brikpanel-customer-analytics.php:565
-#: front-end/customer-analytics/brikpanel-customer-analytics.php:731
-#: front-end/expenses/brikpanel-expenses.php:92
-#: front-end/google-sheets/class-brikpanel-sheets-oauth.php:65
-#: front-end/google-sheets/class-brikpanel-sheets-oauth.php:128
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:323
-#: front-end/orders/brikpanel-orders.php:2654
-#: front-end/products/brikpanel-category-enhancements.php:478
-#: front-end/products/brikpanel-product-editor.php:189
-#: front-end/products/brikpanel-product-editor.php:224
-#: front-end/products/brikpanel-product-editor.php:251
-#: front-end/products/brikpanel-product-editor.php:350
-#: front-end/products/brikpanel-product-editor.php:5739
-#: front-end/products/brikpanel-product-editor.php:5755
-#: front-end/products/brikpanel-product-editor.php:5797
-#: front-end/products/brikpanel-product-editor.php:5811
-#: front-end/products/brikpanel-product-editor.php:7057
-#: front-end/products/brikpanel-product-editor.php:7086
-#: front-end/products/brikpanel-product-editor.php:10017
-#: front-end/products/brikpanel-product-editor.php:10081
-#: front-end/products/brikpanel-product-editor.php:10139
-#: front-end/products/brikpanel-product-editor.php:10170
-#: front-end/products/brikpanel-product-editor.php:10230
-#: front-end/products/brikpanel-products-list.php:237
-#: front-end/products/brikpanel-products-list.php:2169
-#: front-end/products/brikpanel-products-list.php:2697
-#: front-end/products/brikpanel-products-list.php:2782
-#: front-end/products/brikpanel-products-list.php:3112
-#: front-end/products/brikpanel-products-list.php:3197
-#: front-end/products/brikpanel-products-list.php:3243
-#: front-end/products/brikpanel-products-list.php:3275
-#: front-end/products/brikpanel-products-list.php:3334
-#: front-end/products/brikpanel-products-list.php:3433
-#: front-end/products/brikpanel-products-list.php:3541
-#: front-end/products/brikpanel-products-list.php:3547
-#: front-end/products/brikpanel-products-list.php:3649
-#: front-end/products/brikpanel-products-list.php:4590
-#: front-end/products/brikpanel-products-list.php:4650
-#: front-end/products/brikpanel-products-list.php:4750
-#: front-end/segments/brikpanel-segments.php:93
-#: front-end/segments/brikpanel-segments.php:1042
-#: front-end/vendors/class-brikpanel-stock-orders.php:110
-#: front-end/vendors/class-brikpanel-vendor-product-editor.php:169
-#: front-end/vendors/class-brikpanel-vendors.php:97
-#: includes/brikpanel-store-summary.php:55
-#: includes/cron/class-brikpanel-cron-page.php:56
-msgid "Permission denied."
 msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-oauth.php:98
@@ -473,30 +572,6 @@ msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:167
 msgid "Just now"
-msgstr ""
-
-#: front-end/ad-platforms/class-brikpanel-ads-settings.php:168
-#: front-end/ad-platforms/views/page.php:369
-#: front-end/dashboard/brikpanel-dashboard.php:2000
-#: front-end/expenses/brikpanel-expenses.php:1508
-#: front-end/expenses/brikpanel-expenses.php:1539
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1003
-#: front-end/welcome/brikpanel-welcome.php:213
-#: includes/brikpanel-store-summary.php:1981
-#: includes/brikpanel-store-summary.php:3082
-msgid "Google Ads"
-msgstr ""
-
-#: front-end/ad-platforms/class-brikpanel-ads-settings.php:169
-#: front-end/ad-platforms/views/page.php:381
-#: front-end/dashboard/brikpanel-dashboard.php:2001
-#: front-end/expenses/brikpanel-expenses.php:1509
-#: front-end/expenses/brikpanel-expenses.php:1540
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1004
-#: front-end/welcome/brikpanel-welcome.php:214
-#: includes/brikpanel-store-summary.php:1982
-#: includes/brikpanel-store-summary.php:3083
-msgid "Meta Ads"
 msgstr ""
 
 #: front-end/ad-platforms/class-brikpanel-ads-settings.php:171
@@ -887,80 +962,81 @@ msgstr ""
 msgid "System default"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:422
-#: front-end/appearance/brikpanel-appearance.php:501
+#: front-end/appearance/brikpanel-appearance.php:462
+#: front-end/appearance/brikpanel-appearance.php:541
+#: front-end/login/brikpanel-login.php:520
 #: front-end/navigation/brikpanel-nav-customizer.php:603
 msgid "Appearance"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:425
+#: front-end/appearance/brikpanel-appearance.php:465
 msgid "Customize how the BrikPanel admin interface looks. Changes apply to dashboard, products, orders, coupons, segments, the top bar, sidebar, and the modern login page. The rest of WordPress admin is untouched."
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:428
+#: front-end/appearance/brikpanel-appearance.php:468
 msgid "Interface font"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:431
+#: front-end/appearance/brikpanel-appearance.php:471
 msgid "Pick the typeface used across BrikPanel. \"System default\" stays on your operating system's native font (no external request). Other choices load a single Google Fonts stylesheet with display: swap."
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:437
+#: front-end/appearance/brikpanel-appearance.php:477
 msgid "Accent color"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:440
+#: front-end/appearance/brikpanel-appearance.php:480
 msgid "Primary color used for buttons, focus rings, toggles, and active highlights. The BrikPanel default is a near-black gray (#303030); pick anything you like."
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:446
+#: front-end/appearance/brikpanel-appearance.php:486
 msgid "Sidebar icon style"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:449
+#: front-end/appearance/brikpanel-appearance.php:489
 msgid "Choose how the sidebar menu icons look. \"Solid\" uses the original filled icons (matching Shopify's admin). \"Line\" uses a thinner outline set for a lighter look."
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:452
+#: front-end/appearance/brikpanel-appearance.php:492
 msgid "Solid (filled, original)"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:453
+#: front-end/appearance/brikpanel-appearance.php:493
 msgid "Line (thin outline)"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:458
+#: front-end/appearance/brikpanel-appearance.php:498
 msgid "Custom brand logo"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:461
+#: front-end/appearance/brikpanel-appearance.php:501
 msgid "Replace the BrikPanel mark in the admin top bar and on the modern login page with your own logo. Pick an image from your media library, or paste an external image URL to load it from a CDN. The logo applies as soon as it is set; use Remove to go back to the default BrikPanel icon and your site name. When a URL is set it takes priority over the media library pick. PNG or SVG with a transparent background gives the cleanest result. Recommended size: 256×256 px or wider."
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:464
+#: front-end/appearance/brikpanel-appearance.php:504
 msgid "Custom CSS"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:467
+#: front-end/appearance/brikpanel-appearance.php:507
 msgid "Add your own CSS to fine-tune the BrikPanel interface — change button colors, backgrounds, spacing, and more. Your rules load last, so they override the built-in styles. Tip: prefix your selectors with a BrikPanel class (for example .brikpanel-dashboard, .brikpanel-topbar, .brikpanel-pe) so the changes stay inside BrikPanel and leave the rest of the admin untouched."
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:549
-#: front-end/appearance/brikpanel-appearance.php:677
+#: front-end/appearance/brikpanel-appearance.php:589
+#: front-end/appearance/brikpanel-appearance.php:717
 msgid "No logo selected"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:554
-#: front-end/appearance/brikpanel-appearance.php:676
+#: front-end/appearance/brikpanel-appearance.php:594
+#: front-end/appearance/brikpanel-appearance.php:716
 msgid "Replace logo"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:554
-#: front-end/appearance/brikpanel-appearance.php:675
+#: front-end/appearance/brikpanel-appearance.php:594
+#: front-end/appearance/brikpanel-appearance.php:715
 msgid "Select logo"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:557
+#: front-end/appearance/brikpanel-appearance.php:597
 #: front-end/dashboard/brikpanel-dashboard.php:1007
 #: front-end/expenses/brikpanel-expenses.php:1036
 #: front-end/expenses/brikpanel-expenses.php:1101
@@ -976,15 +1052,15 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:562
+#: front-end/appearance/brikpanel-appearance.php:602
 msgid "Or load from an image URL (CDN)"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:678
+#: front-end/appearance/brikpanel-appearance.php:718
 msgid "Select brand logo"
 msgstr ""
 
-#: front-end/appearance/brikpanel-appearance.php:679
+#: front-end/appearance/brikpanel-appearance.php:719
 msgid "Use this image"
 msgstr ""
 
@@ -2123,7 +2199,7 @@ msgstr ""
 #: front-end/google-sheets/class-brikpanel-sheets-reports-sync.php:299
 #: front-end/google-sheets/views/page.php:52
 #: front-end/navigation/brikpanel-nav-customizer.php:587
-#: front-end/orders/brikpanel-orders.php:951
+#: front-end/orders/brikpanel-orders.php:983
 #: front-end/search/brikpanel-search.php:173
 #: front-end/segments/brikpanel-segments.php:1100
 #: front-end/segments/views/page.php:35
@@ -2152,7 +2228,7 @@ msgstr ""
 #: front-end/google-sheets/views/page.php:53
 #: front-end/navigation/brikpanel-nav-customizer.php:586
 #: front-end/orders/brikpanel-orders.php:425
-#: front-end/orders/brikpanel-orders.php:950
+#: front-end/orders/brikpanel-orders.php:982
 #: front-end/products/brikpanel-product-editor.php:1140
 #: front-end/products/brikpanel-products-list.php:268
 #: front-end/products/brikpanel-products-list.php:278
@@ -2166,7 +2242,7 @@ msgstr ""
 #: front-end/brikpanel-site-submenu.php:32
 #: front-end/navigation/brikpanel-nav-customizer.php:589
 #: front-end/orders/brikpanel-orders.php:650
-#: front-end/orders/brikpanel-orders.php:949
+#: front-end/orders/brikpanel-orders.php:981
 msgid "Analytics"
 msgstr ""
 
@@ -2926,7 +3002,7 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:4217
 #: front-end/dashboard/brikpanel-dashboard.php:4254
 #: front-end/google-sheets/class-brikpanel-sheets-mapping.php:95
-#: front-end/orders/brikpanel-orders.php:2355
+#: front-end/orders/brikpanel-orders.php:2410
 #: front-end/sound/brikpanel-sound.php:148
 #: front-end/vendors/class-brikpanel-stock-orders.php:382
 msgid "Items"
@@ -3393,7 +3469,7 @@ msgstr ""
 #: front-end/coupons/brikpanel-coupons.php:73
 #: front-end/coupons/brikpanel-coupons.php:122
 #: front-end/orders/brikpanel-orders.php:742
-#: front-end/orders/brikpanel-orders.php:952
+#: front-end/orders/brikpanel-orders.php:984
 msgid "Coupons"
 msgstr ""
 
@@ -3583,7 +3659,7 @@ msgid "Edit coupon"
 msgstr ""
 
 #: front-end/coupons/brikpanel-coupons.php:233
-#: front-end/orders/brikpanel-orders.php:946
+#: front-end/orders/brikpanel-orders.php:978
 #: front-end/products/brikpanel-product-editor.php:5941
 msgid "General"
 msgstr ""
@@ -3859,7 +3935,7 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard-topbar.php:855
 #: front-end/expenses/brikpanel-expenses.php:903
 #: front-end/expenses/brikpanel-expenses.php:1170
-#: front-end/orders/brikpanel-orders.php:2661
+#: front-end/orders/brikpanel-orders.php:2716
 #: front-end/products/brikpanel-category-enhancements.php:472
 #: front-end/products/brikpanel-products-list.php:3119
 #: front-end/segments/brikpanel-segments.php:1039
@@ -4333,7 +4409,7 @@ msgstr ""
 
 #: front-end/dashboard/brikpanel-dashboard-topbar.php:424
 #: front-end/dashboard/brikpanel-topbar-items.php:701
-#: front-end/orders/brikpanel-orders.php:854
+#: front-end/orders/brikpanel-orders.php:886
 msgid "Order notifications"
 msgstr ""
 
@@ -4487,7 +4563,7 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:494
 #: front-end/navigation/brikpanel-nav-customizer.php:585
 #: front-end/orders/brikpanel-orders.php:589
-#: front-end/orders/brikpanel-orders.php:948
+#: front-end/orders/brikpanel-orders.php:980
 msgid "Dashboard"
 msgstr ""
 
@@ -7326,15 +7402,15 @@ msgstr ""
 msgid "Tip: export first if you want a quick rollback path."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:128
+#: front-end/login/brikpanel-login.php:135
 msgid "Logging in..."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:129
+#: front-end/login/brikpanel-login.php:136
 msgid "Log In"
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:130
+#: front-end/login/brikpanel-login.php:137
 #: includes/brikpanel-enqueue.php:795
 #: includes/brikpanel-enqueue.php:913
 #: includes/brikpanel-enqueue.php:1158
@@ -7344,42 +7420,84 @@ msgstr ""
 msgid "An error occurred. Please try again."
 msgstr ""
 
+#: front-end/login/brikpanel-login.php:262
+#: front-end/login/brikpanel-login.php:263
+msgid "Reset your password"
+msgstr ""
+
+#: front-end/login/brikpanel-login.php:264
+#: front-end/login/brikpanel-login.php:265
+msgid "Choose a new password"
+msgstr ""
+
+#: front-end/login/brikpanel-login.php:266
+msgid "Create an account"
+msgstr ""
+
+#: front-end/login/brikpanel-login.php:267
+msgid "Check your email"
+msgstr ""
+
+#: front-end/login/brikpanel-login.php:268
+msgid "Confirm your action"
+msgstr ""
+
+#: front-end/login/brikpanel-login.php:269
+msgid "Confirm your email address"
+msgstr ""
+
+#: front-end/login/brikpanel-login.php:292
+#: front-end/orders/brikpanel-orders.php:845
+msgid "Welcome back"
+msgstr ""
+
 #. translators: %s: site name
-#: front-end/login/brikpanel-login.php:173
+#: front-end/login/brikpanel-login.php:306
 #, php-format
 msgid "%s — Powered by WordPress"
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:192
+#: front-end/login/brikpanel-login.php:325
 msgid "Security check failed. Please refresh the page."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:202
+#: front-end/login/brikpanel-login.php:335
 msgid "Please enter both username and password."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:223
+#: front-end/login/brikpanel-login.php:356
 msgid "Unknown username or email address."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:225
+#: front-end/login/brikpanel-login.php:358
 msgid "The password you entered is incorrect."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:227
+#: front-end/login/brikpanel-login.php:360
 msgid "Please enter a username or email address."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:229
+#: front-end/login/brikpanel-login.php:362
 msgid "Please enter your password."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:239
+#: front-end/login/brikpanel-login.php:372
 msgid "Login failed. Please try again."
 msgstr ""
 
-#: front-end/login/brikpanel-login.php:259
+#: front-end/login/brikpanel-login.php:392
 msgid "Login successful! Redirecting..."
+msgstr ""
+
+#: front-end/login/brikpanel-login.php:509
+#: front-end/orders/brikpanel-orders.php:850
+msgid "Login page logo"
+msgstr ""
+
+#. translators: %s: link to the Appearance settings section.
+#: front-end/login/brikpanel-login.php:519
+#, php-format
+msgid "The login page uses your brand logo. Set it under %s."
 msgstr ""
 
 #: front-end/master-switch/brikpanel-master-switch.php:161
@@ -7497,7 +7615,7 @@ msgstr ""
 #: front-end/navigation/brikpanel-nav-customizer.php:606
 #: front-end/navigation/brikpanel-navigation.php:161
 #: front-end/navigation/brikpanel-navigation.php:164
-#: front-end/orders/brikpanel-orders.php:1232
+#: front-end/orders/brikpanel-orders.php:1264
 msgid "More"
 msgstr ""
 
@@ -8443,7 +8561,7 @@ msgid "Shipping"
 msgstr ""
 
 #: front-end/orders/brikpanel-orders-compact.php:350
-#: front-end/orders/brikpanel-orders.php:2376
+#: front-end/orders/brikpanel-orders.php:2431
 #: front-end/products/brikpanel-product-editor.php:1944
 #: includes/brikpanel-enqueue.php:1895
 msgid "None"
@@ -8526,7 +8644,7 @@ msgid "No consent plugin was detected on this site. With this on, tracking stays
 msgstr ""
 
 #: front-end/orders/brikpanel-orders.php:345
-#: front-end/orders/brikpanel-orders.php:947
+#: front-end/orders/brikpanel-orders.php:979
 msgid "Navigation"
 msgstr ""
 
@@ -8974,137 +9092,170 @@ msgstr ""
 msgid "Recommended. Submits the login form to wp-login.php natively while keeping the modern design, so any 2FA, SSO, or custom authentication plugin (Wordfence Login Security, Two Factor, WP 2FA, miniOrange, Solid Security, Duo, Rublon, etc.) works as expected. Disable only if you rely on the AJAX login endpoint and are certain no authentication plugin alters the login flow."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:831
-msgid "Admin notices"
+#: front-end/orders/brikpanel-orders.php:827
+msgid "Login page heading"
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:830
+msgid "The line above the login card. Password reset and registration screens always show their own wording instead, so the heading never contradicts the form underneath it."
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:833
+msgid "Default (\"Welcome back\")"
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:834
+msgid "Site name"
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:835
+msgid "Custom text"
 msgstr ""
 
 #: front-end/orders/brikpanel-orders.php:836
-msgid "Hide third-party admin notices"
+msgctxt "login page heading"
+msgid "Hidden"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:839
-msgid "Suppress admin notices from other plugins and themes. BrikPanel's own notices always remain visible. Turn this off to restore the default WordPress behaviour."
+#: front-end/orders/brikpanel-orders.php:841
+msgid "Custom heading text"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:843
-msgid "Also hide error notices"
-msgstr ""
-
-#: front-end/orders/brikpanel-orders.php:846
-msgid "By default red error notices stay on screen, since they usually mean something is broken. Enable this to tuck them into the notifications bell too. Only applies while \"Hide third-party admin notices\" is on."
-msgstr ""
-
-#: front-end/orders/brikpanel-orders.php:857
-msgid "Real-time alerts when a new paid order arrives while you have the WordPress admin open."
-msgstr ""
-
-#: front-end/orders/brikpanel-orders.php:860
-msgid "Show new order popup"
+#: front-end/orders/brikpanel-orders.php:844
+msgid "Used when the heading above is set to Custom text. Up to 100 characters."
 msgstr ""
 
 #: front-end/orders/brikpanel-orders.php:863
+msgid "Admin notices"
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:868
+msgid "Hide third-party admin notices"
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:871
+msgid "Suppress admin notices from other plugins and themes. BrikPanel's own notices always remain visible. Turn this off to restore the default WordPress behaviour."
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:875
+msgid "Also hide error notices"
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:878
+msgid "By default red error notices stay on screen, since they usually mean something is broken. Enable this to tuck them into the notifications bell too. Only applies while \"Hide third-party admin notices\" is on."
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:889
+msgid "Real-time alerts when a new paid order arrives while you have the WordPress admin open."
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:892
+msgid "Show new order popup"
+msgstr ""
+
+#: front-end/orders/brikpanel-orders.php:895
 msgid "Display a slide-in card in the corner of the admin whenever a new paid order arrives."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:867
+#: front-end/orders/brikpanel-orders.php:899
 msgid "Play notification sound"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:870
+#: front-end/orders/brikpanel-orders.php:902
 msgid "Play a short chime to alert you of new paid orders. Some browsers require an interaction with the page before audio can play automatically."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:874
+#: front-end/orders/brikpanel-orders.php:906
 msgid "Confetti celebration"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:877
+#: front-end/orders/brikpanel-orders.php:909
 msgid "Briefly burst confetti across the screen to celebrate each new order."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:881
+#: front-end/orders/brikpanel-orders.php:913
 msgid "Sound volume"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:884
+#: front-end/orders/brikpanel-orders.php:916
 msgid "Volume of the new-order chime, from 0 (silent) to 100 (loud)."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:894
+#: front-end/orders/brikpanel-orders.php:926
 msgid "Polling interval (seconds)"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:897
+#: front-end/orders/brikpanel-orders.php:929
 msgid "How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:911
-#: front-end/orders/brikpanel-orders.php:956
+#: front-end/orders/brikpanel-orders.php:943
+#: front-end/orders/brikpanel-orders.php:988
 msgid "Developers"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:914
+#: front-end/orders/brikpanel-orders.php:946
 msgid "Build on top of BrikPanel with public hooks and filters. The docs below are generated from the plugin source."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:953
+#: front-end/orders/brikpanel-orders.php:985
 msgid "Login page"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:954
+#: front-end/orders/brikpanel-orders.php:986
 msgid "Notifications"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:955
+#: front-end/orders/brikpanel-orders.php:987
 msgid "Import / Export"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:1019
+#: front-end/orders/brikpanel-orders.php:1051
 msgid "Interface"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:1023
+#: front-end/orders/brikpanel-orders.php:1055
 msgid "Store"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:1031
+#: front-end/orders/brikpanel-orders.php:1063
 msgid "System"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:1186
+#: front-end/orders/brikpanel-orders.php:1218
 msgid "BrikPanel settings sections"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:1195
-#: front-end/orders/brikpanel-orders.php:1198
+#: front-end/orders/brikpanel-orders.php:1227
+#: front-end/orders/brikpanel-orders.php:1230
 msgid "Search settings"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:1201
+#: front-end/orders/brikpanel-orders.php:1233
 msgid "No settings found."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:2270
+#: front-end/orders/brikpanel-orders.php:2325
 msgid "BrikPanel settings saved."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:2354
+#: front-end/orders/brikpanel-orders.php:2409
 msgid "Payment Method"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:2356
+#: front-end/orders/brikpanel-orders.php:2411
 msgid "Tax Total"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:2509
+#: front-end/orders/brikpanel-orders.php:2564
 msgid "All shipping methods"
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:2666
+#: front-end/orders/brikpanel-orders.php:2721
 msgid "Order not found."
 msgstr ""
 
-#: front-end/orders/brikpanel-orders.php:2672
+#: front-end/orders/brikpanel-orders.php:2727
 msgid "Invalid status."
 msgstr ""
 

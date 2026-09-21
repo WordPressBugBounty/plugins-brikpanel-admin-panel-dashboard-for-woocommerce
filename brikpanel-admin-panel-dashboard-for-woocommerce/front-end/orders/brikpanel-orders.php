@@ -824,6 +824,38 @@ function brikpanel_settings_fields() {
             'default' => 'yes',
         ],
         [
+            'name'     => __('Login page heading', 'brikpanel'),
+            'id'       => 'brikpanel_login_heading',
+            'type'     => 'select',
+            'desc'     => __('The line above the login card. Password reset and registration screens always show their own wording instead, so the heading never contradicts the form underneath it.', 'brikpanel'),
+            'desc_tip' => true,
+            'options'  => [
+                'default'   => __('Default ("Welcome back")', 'brikpanel'),
+                'site_name' => __('Site name', 'brikpanel'),
+                'custom'    => __('Custom text', 'brikpanel'),
+                'none'      => _x('Hidden', 'login page heading', 'brikpanel'),
+            ],
+            'default'  => 'default',
+        ],
+        [
+            'name'        => __('Custom heading text', 'brikpanel'),
+            'id'          => 'brikpanel_login_heading_text',
+            'type'        => 'text',
+            'desc'        => __('Used when the heading above is set to Custom text. Up to 100 characters.', 'brikpanel'),
+            'placeholder' => __('Welcome back', 'brikpanel'),
+            'css'         => 'width:340px;',
+            'default'     => '',
+        ],
+        [
+            'name'      => __('Login page logo', 'brikpanel'),
+            // Deliberately not a `brikpanel_` id: this row renders a pointer,
+            // it is not an option, and every `brikpanel_`-prefixed field id in
+            // a settings file has to be a classified export key.
+            'id'        => 'brk_login_logo_hint',
+            'type'      => 'brikpanel_login_logo_hint',
+            'is_option' => false,
+        ],
+        [
             'type' => 'sectionend',
             'id'   => 'brk_login_title',
         ],
@@ -2229,6 +2261,29 @@ add_action( 'admin_head', function () {
         }
         window.addEventListener('hashchange', jumpToHashTarget);
         jumpToHashTarget();
+        }
+    })();
+
+    /* Login page heading: the custom text box only makes sense when the
+       heading mode is "custom". Visibility only — no text is produced here,
+       and if this never runs the row simply stays visible. */
+    (function () {
+        function bindHeadingMode() {
+            var mode = document.getElementById('brikpanel_login_heading');
+            var text = document.getElementById('brikpanel_login_heading_text');
+            if (!mode || !text) { return; }
+            var row = text.closest('tr');
+            if (!row) { return; }
+            function sync() {
+                row.style.display = (mode.value === 'custom') ? '' : 'none';
+            }
+            mode.addEventListener('change', sync);
+            sync();
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindHeadingMode);
+        } else {
+            bindHeadingMode();
         }
     })();
     </script>

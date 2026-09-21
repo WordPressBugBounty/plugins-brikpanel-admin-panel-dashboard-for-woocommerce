@@ -31,6 +31,36 @@
         }, 3500);
     }
 
+    // Inbound control channel for dashboard add-ons (Ad Platforms today).
+    //
+    // This file already BROADCASTS its payload on document as
+    // `brikpanel:dashboardData` (see fetchDashboardData), so these two
+    // listeners are the return leg of a channel that already exists: a module
+    // living in its own inline <script> can ask for a refetch or a toast
+    // without this IIFE exporting anything onto `window`. In wp-admin `window`
+    // is shared with WooCommerce, Gutenberg and every other plugin, so a
+    // global here would be a permanent collision surface and a permanent API
+    // promise for a plugin that ships to wordpress.org.
+    //
+    // Registered at IIFE scope rather than inside DOMContentLoaded so an early
+    // dispatch is never missed, and deliberately fire-and-forget: a module
+    // that loads before this file gets a silent no-op, where a call on an
+    // undefined global would throw and take the rest of its handler with it.
+    //
+    // fetchDashboardData and showToast are function declarations, so both are
+    // hoisted and safe to reference from up here.
+    document.addEventListener('brikpanel:refresh', function () {
+        fetchDashboardData();
+    });
+
+    // detail: { message: <already-translated string>, type: 'success' | 'error' }
+    // The text is translated server-side by whoever dispatches it; this only
+    // places it, exactly like every other caller of showToast.
+    document.addEventListener('brikpanel:toast', function (e) {
+        var d = (e && e.detail) ? e.detail : {};
+        showToast(d.message, d.type);
+    });
+
     // State. The range is seeded from the user's remembered selection (see
     // Brikpanel_Dashboard::get_range_preference) so a refresh, or leaving the
     // dashboard and coming back, resumes the period the user actually picked

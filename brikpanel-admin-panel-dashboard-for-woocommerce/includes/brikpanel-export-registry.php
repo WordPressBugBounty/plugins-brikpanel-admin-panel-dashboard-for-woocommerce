@@ -178,6 +178,9 @@ function brikpanel_export_placeholder_field_ids() {
 		'brikpanel_brikmentor_promo_field',
 		'brikpanel_dev_docs_field',
 		'brikpanel_ea_settings_field',
+		// Renders a sentence pointing at the brand logo picker. No value of
+		// its own, in either direction.
+		'brk_login_logo_hint',
 	];
 }
 
