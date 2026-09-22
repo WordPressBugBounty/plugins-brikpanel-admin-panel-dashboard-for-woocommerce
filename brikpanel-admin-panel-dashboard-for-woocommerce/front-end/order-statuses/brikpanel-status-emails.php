@@ -463,8 +463,7 @@ function brikpanel_status_email_persisted_status( $order_id ) {
 	}
 
 	$status = '';
-	if ( class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' )
-		&& \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled() ) {
+	if ( brikpanel_wc_hpos_enabled() ) {
 		global $wpdb;
 		$table  = $wpdb->prefix . 'wc_orders';
 		$status = $wpdb->get_var( $wpdb->prepare( "SELECT status FROM {$table} WHERE id = %d", $order_id ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery

@@ -18424,16 +18424,16 @@ msgid "Worst day by revenue"
 msgstr "Худший день по выручке"
 
 #: includes/brikpanel-store-summary.php:3433
-msgid "Peak hour (UTC) by revenue"
-msgstr "Пиковый час (UTC) по выручке"
+msgid "Peak hour by revenue"
+msgstr "Пиковый час по выручке"
 
 #: includes/brikpanel-store-summary.php:3435
-msgid "Peak hour (UTC) by order count"
-msgstr "Пиковый час (UTC) по количеству заказов"
+msgid "Peak hour by order count"
+msgstr "Пиковый час по количеству заказов"
 
 #: includes/brikpanel-store-summary.php:3437
-msgid "Quietest hour (UTC) by revenue"
-msgstr "Самый тихий час (UTC) по выручке"
+msgid "Quietest hour by revenue"
+msgstr "Самый тихий час по выручке"
 
 #: includes/brikpanel-store-summary.php:3439
 msgid "Day of week breakdown"
@@ -19640,3 +19640,15 @@ msgstr "Расход / заказ"
 #: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:113
 msgid "Show ad cost per order"
 msgstr "Показать стоимость рекламы на один заказ"
+
+msgid "Date (%s)"
+msgstr "Дата (%s)"
+
+msgid "Registered (%s)"
+msgstr "Зарегистрирован (%s)"
+
+msgid "First order (%s)"
+msgstr "Первый заказ (%s)"
+
+msgid "Last order (%s)"
+msgstr "Последний заказ (%s)"

@@ -1697,7 +1697,7 @@ class Brikpanel_Pro_Search {
 				/* translators: %s: product SKU. */
 				$parts[] = sprintf( __( 'SKU: %s', 'brikpanel' ), $sku );
 			}
-			$gtin = trim( (string) $product->get_global_unique_id() );
+			$gtin = trim( brikpanel_wc_gtin( $product ) );
 			if ( '' !== $gtin ) {
 				/* translators: %s: product GTIN/UPC/EAN/ISBN code. */
 				$parts[] = sprintf( __( 'GTIN: %s', 'brikpanel' ), $gtin );

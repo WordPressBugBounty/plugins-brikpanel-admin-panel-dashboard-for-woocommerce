@@ -1060,7 +1060,7 @@ class Brikpanel_Sheets_Order_Sync {
 		// unmarked order in the sheet is the adoption path's job, and giving
 		// it a map without the synced flag would leave inconsistent state.
 		global $wpdb;
-		$is_hpos = Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+		$is_hpos = brikpanel_wc_hpos_enabled();
 		$table   = $is_hpos ? $wpdb->prefix . 'wc_orders_meta' : $wpdb->postmeta;
 		$id_col  = $is_hpos ? 'order_id' : 'post_id';
 		$ids     = array_map( 'intval', array_keys( $maps ) );
@@ -1560,7 +1560,7 @@ class Brikpanel_Sheets_Order_Sync {
 
 		global $wpdb;
 
-		$hpos   = Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+		$hpos   = brikpanel_wc_hpos_enabled();
 		$table  = $hpos ? $wpdb->prefix . 'wc_orders_meta' : $wpdb->postmeta;
 		$id_col = $hpos ? 'order_id' : 'post_id';
 

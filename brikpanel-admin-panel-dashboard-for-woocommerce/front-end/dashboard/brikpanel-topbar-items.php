@@ -199,8 +199,8 @@ function brikpanel_topbar_item_roles_map() {
 
 /**
  * Whether the current user's role passes a top bar item's audience rule.
- * Administrators (and network admins) always pass, so an owner can never lock
- * themselves out of a control they hid from their own role.
+ * Real administrators (and multisite super admins) always pass, so an owner can
+ * never lock themselves out of a control they hid from their own role.
  *
  * @param string $key
  * @return bool
@@ -219,7 +219,20 @@ function brikpanel_topbar_item_audience_allows( $key ) {
     if ( $audience === 'all' ) {
         return true;
     }
-    if ( current_user_can( 'manage_options' ) || ( is_multisite() && current_user_can( 'manage_network' ) ) ) {
+    // Real administrators (and multisite super admins) always pass, so an owner
+    // can never hide a control from their own account. Deliberately role-based
+    // via brikpanel_user_is_administrator(): stores routinely grant
+    // `manage_options` to the shop_manager role with a role editor, and a bare
+    // capability check let those managers slip straight past every rule here —
+    // the reported bug was an "Admins only" hidden-notices bell that stayed
+    // visible to a store manager. is_super_admin() (inside the helper) is also
+    // stronger than the `manage_network` capability a role editor can hand out.
+    // Same shape as the dashboard widget gate in
+    // front-end/dashboard/brikpanel-dashboard-widget-access.php.
+    $is_admin = function_exists( 'brikpanel_user_is_administrator' )
+        ? brikpanel_user_is_administrator()
+        : ( current_user_can( 'manage_options' ) || ( is_multisite() && current_user_can( 'manage_network' ) ) );
+    if ( $is_admin ) {
         return true;
     }
     if ( $audience === 'admins' ) {
@@ -902,7 +915,7 @@ function brikpanel_render_topbar_items_field( $field ) {
     $custom_url    = trim( (string) get_option( BRIKPANEL_TOPBAR_CUSTOM_URL_OPTION, '' ) );
 
     // Show a real, store-correct orders URL as the link placeholder (HPOS-aware).
-    $orders_url = ( class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' ) && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled() )
+    $orders_url = brikpanel_wc_hpos_enabled()
         ? admin_url( 'admin.php?page=wc-orders' )
         : admin_url( 'edit.php?post_type=shop_order' );
 

@@ -2,13 +2,13 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.17
+ * Version: 3.3.20
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
  * Domain Path: /languages
  * Requires Plugins: woocommerce
- * WC requires at least: 4.0
+ * WC requires at least: 9.2
  * WC tested up to: 9.4
  * Requires PHP: 7.4
  * License: GPL-2.0+
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.17');
+define('BRIKPANEL_VERSION', '3.3.20');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -198,6 +198,89 @@ if (!function_exists('brikpanel_update_option')) {
 // queries, so loading it on a storefront request costs nothing.
 // =============================================================================
 brikpanel_require('includes/brikpanel-export-registry.php');
+
+// =============================================================================
+// WOOCOMMERCE VERSION COMPATIBILITY (must load before any module that calls WC)
+//
+// Wrappers for the WooCommerce APIs that are newer than the WooCommerce a
+// merchant may still be running. A missing method is a PHP Error, not an
+// Exception, so it walks straight through the try/catch blocks the call sites
+// already have and white-screens the page. It sits here, at file scope, for
+// the same reason the two registries above do: it has to exist before the
+// first module is required, because modules call into it while being included
+// and from hooks that fire long before plugins_loaded. It is after the
+// WooCommerce dependency guard, so a WC-less multisite subsite never loads it,
+// and it is pure functions with no hooks and no queries at load time.
+// =============================================================================
+brikpanel_require('includes/brikpanel-wc-compat.php');
+
+/**
+ * Safety net for the WooCommerce compatibility wrappers.
+ *
+ * Same reasoning as the brikpanel_update_option() fallback above, and the same
+ * risk: brikpanel_require() soft-fails on a missing file, and routing fifteen
+ * call sites through one module means a half-finished upload of that one file
+ * would white-screen the product editor, both product lists, the search box,
+ * the coupons screen and the Sheets sync at once. This is the whole point of
+ * the soft-fail design, so the wrappers have to survive their own module going
+ * missing.
+ *
+ * The fallbacks are the plain modern-WooCommerce behaviour, which is what
+ * these call sites did before the module existed. A store on a current
+ * WooCommerce keeps working exactly as it did; a store below the floor is back
+ * to the old breakage, which is no worse than it was and is already announced
+ * by the missing-module notice.
+ */
+if (!function_exists('brikpanel_wc_gtin')) {
+    if (!defined('BRIKPANEL_GTIN_META_KEY')) {
+        define('BRIKPANEL_GTIN_META_KEY', '_global_unique_id');
+    }
+    function brikpanel_wc_supports_gtin() {
+        // wc-floor-ignore: this block IS the compat layer, inlined for the case where its own file is missing.
+        return method_exists('WC_Product', 'get_global_unique_id');
+    }
+    function brikpanel_wc_gtin($product) {
+        if (is_numeric($product)) {
+            return (int) $product > 0 ? (string) get_post_meta((int) $product, BRIKPANEL_GTIN_META_KEY, true) : '';
+        }
+        if (!is_object($product) || !method_exists($product, 'get_global_unique_id')) {
+            return '';
+        }
+        // wc-floor-ignore: guarded on the line above, and this block IS the inlined compat layer.
+        return (string) $product->get_global_unique_id();
+    }
+    function brikpanel_wc_set_gtin($product, $gtin) {
+        if (!is_object($product) || !method_exists($product, 'set_global_unique_id')) {
+            return '';
+        }
+        // wc-floor-ignore: guarded on the line above, and this block IS the inlined compat layer.
+        $product->set_global_unique_id($gtin);
+        // wc-floor-ignore: reads back what the line above just set.
+        return (string) $product->get_global_unique_id('edit');
+    }
+    function brikpanel_wc_coupon_set_status($coupon, $status) {
+        if (is_object($coupon) && method_exists($coupon, 'set_status')) {
+            $coupon->set_status($status);
+            return true;
+        }
+        return false;
+    }
+    function brikpanel_wc_coupon_sync_status($coupon_id, $status) {
+        $coupon_id = (int) $coupon_id;
+        if ($coupon_id <= 0 || '' === $status || get_post_status($coupon_id) === $status) {
+            return false;
+        }
+        wp_update_post(['ID' => $coupon_id, 'post_status' => $status]);
+        return true;
+    }
+    function brikpanel_wc_hpos_enabled() {
+        if (!class_exists('\Automattic\WooCommerce\Utilities\OrderUtil')) {
+            return false;
+        }
+        // wc-floor-ignore: guarded on the line above, and this block IS the inlined compat layer.
+        return \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+    }
+}
 
 // =============================================================================
 // SEO PLUGIN COMPATIBILITY BOOTSTRAP (must run before plugins_loaded listeners)
@@ -1553,6 +1636,7 @@ function brikpanel_maybe_upgrade_db() {
     // marker inside makes running it from both call sites harmless.
     brikpanel_enable_payment_fees_default();
     brikpanel_cartab_dedupe_recovery_credit();
+    brikpanel_timezone_fix_rebuild();
     // Re-assert autoload on the write-once markers. Idempotent, and running it
     // on every version bump means a call site that drifts one back to
     // autoload=off self-corrects on the next release instead of silently
@@ -1602,6 +1686,46 @@ add_action('plugins_loaded', 'brikpanel_cartab_repair_zeroed_rows', 7);
  *
  * Runs once, guarded by brikpanel_cartab_credit_dedupe_done.
  */
+/**
+ * One-shot cleanup for the 3.3.19 timezone correction.
+ *
+ * Two kinds of stored state describe a date and therefore have to be discarded
+ * rather than corrected in place:
+ *
+ *   brikpanel_cohort_retention is keyed on cohort_month, which now means the
+ *   STORE month rather than the UTC one. The recompute upserts, so without a
+ *   truncate the table would hold rows written under both definitions at once
+ *   and the heatmap would silently mix them. The recompute itself is already
+ *   enqueued by brikpanel_maybe_upgrade_db() right after this runs.
+ *
+ *   The dashboard and customer-analytics caches store RENDERED date strings
+ *   under keys that do not include the timezone, so without a version bump a
+ *   merchant would upgrade and still be shown the old, wrong times for hours.
+ *
+ * Nothing here touches a stored instant: every *_gmt column stays UTC. Only
+ * derived, rebuildable state is dropped.
+ */
+function brikpanel_timezone_fix_rebuild() {
+    if (get_option('brikpanel_tz_cohort_rebuild_done') === '1') {
+        return;
+    }
+
+    global $wpdb;
+    $table = $wpdb->prefix . 'brikpanel_cohort_retention';
+    if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) === $table) {
+        $wpdb->query("TRUNCATE TABLE {$table}"); // phpcs:ignore WordPress.DB
+    }
+
+    if (function_exists('brikpanel_bump_data_cache_ver')) {
+        brikpanel_bump_data_cache_ver();
+    }
+    if (class_exists('Brikpanel_Customer_Analytics')) {
+        Brikpanel_Customer_Analytics::bust_cache();
+    }
+
+    update_option('brikpanel_tz_cohort_rebuild_done', '1', false);
+}
+
 function brikpanel_cartab_dedupe_recovery_credit() {
     if (get_option('brikpanel_cartab_credit_dedupe_done') === '1') {
         return;

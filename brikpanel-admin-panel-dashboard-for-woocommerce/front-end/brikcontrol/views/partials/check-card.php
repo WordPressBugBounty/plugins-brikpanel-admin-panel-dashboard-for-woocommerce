@@ -158,7 +158,7 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
                             printf(
                                 /* translators: %s: human-readable date/time of the last correction. */
                                 esc_attr__( 'Corrected %s', 'brikpanel' ),
-                                esc_attr( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $undo_at ) )
+                                esc_attr( wp_date( brikpanel_datetime_format(), $undo_at ) )
                             );
                         ?>"<?php endif; ?>>
                     <span data-bc-undo-label><?php esc_html_e( 'Undo last correction', 'brikpanel' ); ?></span>
@@ -305,7 +305,7 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
                 printf(
                     /* translators: %s: human-readable date/time */
                     esc_html__( 'Scanned %s', 'brikpanel' ),
-                    esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $scanned ) )
+                    esc_html( wp_date( brikpanel_datetime_format(), $scanned ) )
                 );
                 ?>
             </span>

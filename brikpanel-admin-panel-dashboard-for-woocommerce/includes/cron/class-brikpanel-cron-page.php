@@ -302,7 +302,7 @@ class Brikpanel_Cron_Page {
 
 		$items   = [];
 		$known   = Brikpanel_Cron::get_registered_hooks();
-		$dt_fmt  = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+		$dt_fmt  = brikpanel_datetime_format();
 
 		foreach ( (array) $action_ids as $aid ) {
 			$aid = (int) $aid;

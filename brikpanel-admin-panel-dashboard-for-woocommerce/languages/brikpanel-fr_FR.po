@@ -18548,16 +18548,16 @@ msgid "Worst day by revenue"
 msgstr "Pire jour par chiffre d'affaires"
 
 #: includes/brikpanel-store-summary.php:3433
-msgid "Peak hour (UTC) by revenue"
-msgstr "Heure de pointe (UTC) par chiffre d'affaires"
+msgid "Peak hour by revenue"
+msgstr "Heure de pointe par chiffre d'affaires"
 
 #: includes/brikpanel-store-summary.php:3435
-msgid "Peak hour (UTC) by order count"
-msgstr "Heure de pointe (UTC) par nombre de commandes"
+msgid "Peak hour by order count"
+msgstr "Heure de pointe par nombre de commandes"
 
 #: includes/brikpanel-store-summary.php:3437
-msgid "Quietest hour (UTC) by revenue"
-msgstr "Heure la plus calme (UTC) par chiffre d'affaires"
+msgid "Quietest hour by revenue"
+msgstr "Heure la plus calme par chiffre d'affaires"
 
 #: includes/brikpanel-store-summary.php:3439
 msgid "Day of week breakdown"
@@ -19783,3 +19783,15 @@ msgstr "Coût / commande"
 #: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:113
 msgid "Show ad cost per order"
 msgstr "Afficher le coût publicitaire par commande"
+
+msgid "Date (%s)"
+msgstr "Date (%s)"
+
+msgid "Registered (%s)"
+msgstr "Enregistré (%s)"
+
+msgid "First order (%s)"
+msgstr "Première commande (%s)"
+
+msgid "Last order (%s)"
+msgstr "Dernière commande (%s)"

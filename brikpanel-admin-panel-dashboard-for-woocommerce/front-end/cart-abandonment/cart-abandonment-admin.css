@@ -1,13 +1,39 @@
 /**
  * BrikPanel — Abandoned Carts admin list page.
  * Follows the BrikPanel design system (monochrome, white cards on #f1f1f1).
+ *
+ * Full width, like the other BrikPanel data-table screens (Orders, Products,
+ * Coupons, Segments). It used to be a centred 1100px column, which held six
+ * columns comfortably and ran out of room at eight: turning BrikMentor on adds
+ * Phone and Follow-ups, and because every cell except Name is `white-space:
+ * nowrap`, Name is the only column that can absorb the squeeze — customer names
+ * wrapped onto three and four lines. Widening is the whole fix; the caps
+ * further down keep the handful of elements that should NOT grow with it
+ * (summary cards, search box) from stretching across a large monitor.
  */
 
+/* This element IS the .wrap, so only the vertical margins are declared here:
+   the horizontal ones stay WordPress core's `.wrap { margin: 10px 20px 0 2px }`,
+   which gives a symmetric ~20px gutter on both sides and is mirrored by core's
+   own RTL stylesheet for free. Do not reintroduce `margin-inline: auto` — with
+   no max-width it resolves to 0 and puts the table against the viewport edge. */
 .brikpanel-cartab-wrap {
-	max-width: 1100px;
-	margin: 1.25rem auto 2rem;
+	max-width: none;
+	margin-top: 1.25rem;
+	margin-bottom: 2rem;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 	color: #303030;
+}
+
+/* RTL leading gutter. Core's RTL stylesheet flips `.wrap` to
+   `margin: 10px 2px 0 20px` on the assumption that #wpcontent carries a 20px
+   padding on the leading side, but brikpanel-rtl.css deliberately zeroes
+   `#wpcontent { padding-right }` so the sidebar does not sit behind an empty
+   strip. On a centred column that left a large gap either way; full width it
+   would park the cards 2px from the sidebar. Restate the gutter so both
+   directions read the same. */
+body.rtl .brikpanel-cartab-wrap {
+	margin-inline-start: 22px;
 }
 
 /* Header */
@@ -39,6 +65,9 @@
 	margin: 0.25rem 0 0;
 	font-size: 0.8125rem;
 	color: #616161;
+	/* Keep the sentence at a readable measure now that the page is full width;
+	   inert on anything narrower than roughly a 1000px content column. */
+	max-width: 72ch;
 }
 
 .brikpanel-cartab-header-right {
@@ -170,7 +199,19 @@
 	border-left: 3px solid #8a8a8a;
 }
 
-/* Summary cards */
+.brikpanel-cartab-disabled-note p {
+	max-width: 72ch;
+}
+
+/* Summary cards. Deliberately NOT capped: they are cards, and on a full-width
+   page a capped row ends short of the filter bar and the table below it, which
+   reads as an unfinished ragged edge at the very widths the cap was meant to
+   help. Letting them fill the row keeps the page one aligned block — the same
+   call the dashboard KPI row already makes. (If a ceiling is ever wanted, put
+   it on this grid, never on the track: with a definite max track function
+   `auto-fit` computes the repetition count from the MAX, so
+   `minmax(190px, 360px)` would silently drop a 1052px container to two columns
+   and break the laptop layout.) */
 .brikpanel-cartab-summary {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -308,6 +349,12 @@
 	align-items: center;
 	flex: 1 1 15rem;
 	min-width: 11rem;
+	/* Only flex-grow child of the filter row — the selects are capped at 12rem
+	   and the actions cluster is pinned with margin-inline-start: auto — so
+	   without a ceiling every surplus pixel lands here and the box becomes a
+	   1600px search field. The surplus goes into the gap before the pinned
+	   cluster instead. Inert until the row is roughly 1250px wide. */
+	max-width: 26rem;
 }
 
 .brikpanel-cartab-search > svg {
@@ -887,10 +934,105 @@ a.brikpanel-cartab-lock:focus {
 	color: #c62828;
 }
 
-/* Details row */
-.brikpanel-cartab-details-row td {
+/* Row expander — the chevron that replaced the old "Details" button. Kept as
+   narrow as the icon so the table gives the width back to the data columns. */
+.brikpanel-cartab-toggle-th,
+.brikpanel-cartab-toggle-cell {
+	width: 1%;
+	padding-right: 0 !important;
+	white-space: nowrap;
+}
+
+.brikpanel-cartab-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: #8a8a8a;
+	line-height: 0;
+	cursor: pointer;
+	border-radius: 0.375rem;
+	transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.brikpanel-cartab-toggle:hover {
+	color: #303030;
+	background: #f1f1f1;
+}
+
+.brikpanel-cartab-toggle:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 2px #303030;
+}
+
+.brikpanel-cartab-chevron {
+	transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brikpanel-cartab-toggle[aria-expanded="true"] {
+	color: #303030;
+}
+
+.brikpanel-cartab-toggle[aria-expanded="true"] .brikpanel-cartab-chevron {
+	transform: rotate(90deg);
+}
+
+/* Right-to-left: the closed chevron points into the row, so it flips. Open, it
+   points down in both directions, so only the closed state is mirrored. */
+[dir="rtl"] .brikpanel-cartab-chevron {
+	transform: scaleX(-1);
+}
+
+[dir="rtl"] .brikpanel-cartab-toggle[aria-expanded="true"] .brikpanel-cartab-chevron {
+	transform: scaleX(-1) rotate(-90deg);
+}
+
+/* The open row and its details share one block of colour, so they read as a
+   single unit rather than two stacked rows. */
+.brikpanel-cartab-table tbody tr.is-expanded > td {
 	background: #fafafa;
-	padding: 0.75rem 1rem;
+	border-bottom-color: transparent;
+}
+
+/* Details row.
+   Collapsed with grid-template-rows 0fr -> 1fr instead of [hidden], so it can
+   animate. The cell itself carries no padding and no border while closed,
+   which is what lets the row collapse to zero height rather than leaving a
+   one-pixel sliver between rows. */
+.brikpanel-cartab-details-row > td {
+	background: #fafafa;
+	padding: 0 !important;
+	border-bottom: 0;
+}
+
+/* Empty cell under the chevron; it only has to carry the band of colour. */
+.brikpanel-cartab-details-spacer {
+	width: 1%;
+}
+
+.brikpanel-cartab-details-row.is-open > td {
+	border-bottom: 1px solid #f1f1f1;
+}
+
+.brikpanel-cartab-details-collapse {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+	            opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.brikpanel-cartab-details-row.is-open .brikpanel-cartab-details-collapse {
+	grid-template-rows: 1fr;
+	opacity: 1;
+}
+
+.brikpanel-cartab-details-clip {
+	overflow: hidden;
 }
 
 .brikpanel-cartab-details {
@@ -898,6 +1040,14 @@ a.brikpanel-cartab-lock:focus {
 	flex-direction: column;
 	gap: 0.375rem;
 	font-size: 0.8125rem;
+	padding: 0.75rem 1rem 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.brikpanel-cartab-chevron,
+	.brikpanel-cartab-details-collapse {
+		transition: none;
+	}
 }
 
 .brikpanel-cartab-details-item {

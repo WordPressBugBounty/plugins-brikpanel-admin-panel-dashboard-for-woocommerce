@@ -466,7 +466,7 @@ class Brikpanel_Ads_Settings {
 
 		foreach ( $keep as &$e ) {
 			$e['ts_display'] = $e['ts']
-				? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $e['ts'] )
+				? wp_date( brikpanel_datetime_format(), $e['ts'] )
 				: '';
 		}
 		wp_send_json_success( [ 'entries' => $keep ] );

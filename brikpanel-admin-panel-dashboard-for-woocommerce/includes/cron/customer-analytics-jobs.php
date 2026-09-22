@@ -384,7 +384,16 @@ function brikpanel_recompute_cohort_retention_handler() {
 	$counted   = brikpanel_ca_counted_statuses();
 	$status_in = "'" . implode( "','", array_map( 'esc_sql', $counted ) ) . "'";
 	$months_back = 24;
-	$cutoff_date = gmdate( 'Y-m-01', strtotime( "-{$months_back} months" ) );
+	// Month-safe and store-local: gmdate('Y-m-01', strtotime('-24 months')) both
+	// used the UTC month and, run on the 31st, could skip a month outright.
+	$cutoff_date = brikpanel_store_month_start( $months_back );
+
+	// A customer's cohort is the month of their FIRST order as the merchant's
+	// calendar sees it. Resolving it with DATE_FORMAT(*_gmt) bucketed by the UTC
+	// month, so an order placed in the first hours of a month was credited to the
+	// previous cohort on every store east of UTC.
+	$month_hpos   = brikpanel_local_month_case_sql( 'o.date_created_gmt', $months_back );
+	$month_legacy = brikpanel_local_month_case_sql( 'o.post_date_gmt', $months_back );
 
 	$hpos = brikpanel_ca_is_hpos();
 
@@ -401,7 +410,7 @@ function brikpanel_recompute_cohort_retention_handler() {
 					WHEN o.customer_id > 0 THEN CONCAT('u:', o.customer_id)
 					ELSE CONCAT('e:', LOWER(o.billing_email))
 				END AS customer_key,
-				DATE_FORMAT(o.date_created_gmt, '%Y-%m-01') AS order_month
+				{$month_hpos} AS order_month
 			FROM {$wpdb->prefix}wc_orders o
 			WHERE o.type = 'shop_order'
 			  AND o.status IN ({$status_in})
@@ -415,7 +424,7 @@ function brikpanel_recompute_cohort_retention_handler() {
 					WHEN cu_meta.meta_value+0 > 0 THEN CONCAT('u:', cu_meta.meta_value)
 					ELSE CONCAT('e:', LOWER(IFNULL(em_meta.meta_value, '')))
 				END AS customer_key,
-				DATE_FORMAT(o.post_date_gmt, '%Y-%m-01') AS order_month
+				{$month_legacy} AS order_month
 			FROM {$wpdb->posts} o
 			LEFT JOIN {$wpdb->postmeta} cu_meta ON cu_meta.post_id = o.ID AND cu_meta.meta_key = '_customer_user' AND " . brikpanel_sql_first_meta_guard( 'post', 'cu_meta' ) . "
 			LEFT JOIN {$wpdb->postmeta} em_meta ON em_meta.post_id = o.ID AND em_meta.meta_key = '_billing_email' AND " . brikpanel_sql_first_meta_guard( 'post', 'em_meta' ) . "

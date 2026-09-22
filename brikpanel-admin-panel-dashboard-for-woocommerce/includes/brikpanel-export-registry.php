@@ -247,6 +247,7 @@ function brikpanel_export_core_table() {
 		'brikpanel_var_stock_fix2_cursor',
 		'brikpanel_var_stock_fix2_done',
 		'brikpanel_cartab_credit_dedupe_done',
+		'brikpanel_tz_cohort_rebuild_done',
 		'brikpanel_cartab_failed_recovery_repair_done',
 		'brikpanel_cartab_failed_recovery_repair_stats',
 		'brikpanel_cartab_zeroed_repair_done',

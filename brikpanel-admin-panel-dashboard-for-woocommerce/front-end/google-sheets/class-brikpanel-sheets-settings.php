@@ -1449,7 +1449,7 @@ class Brikpanel_Sheets_Settings {
 		}
 
 		foreach ( $keep as &$e ) {
-			$e['ts_display'] = $e['ts'] ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $e['ts'] ) : '';
+			$e['ts_display'] = $e['ts'] ? wp_date( brikpanel_datetime_format(), $e['ts'] ) : '';
 			// Repeats are collapsed into one entry (see the logger); say so, or
 			// a recurring failure reads as a single one-off event.
 			$repeats = (int) ( $e['count'] ?? 1 );

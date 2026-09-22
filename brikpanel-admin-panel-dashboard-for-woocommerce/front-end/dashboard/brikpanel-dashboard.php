@@ -622,7 +622,7 @@ class Brikpanel_Dashboard {
             return $label;
         }
         $ts    = (int) get_option( 'brikpanel_activated_at', 0 );
-        $label = $ts ? date_i18n( get_option( 'date_format' ) ?: 'M j, Y', $ts ) : '';
+        $label = $ts ? wp_date( brikpanel_date_format(), $ts ) : '';
         return $label;
     }
 
@@ -2820,9 +2820,14 @@ class Brikpanel_Dashboard {
             'custom'    => __( 'Custom range', 'brikpanel' ),
         ];
         $label   = $labels[ $range ] ?? $labels['custom'];
-        $fmt     = get_option( 'date_format' ) ?: 'M j, Y';
-        $from    = wp_date( $fmt, strtotime( $start_date . ' 00:00:00' ) );
-        $to      = wp_date( $fmt, strtotime( $end_date . ' 00:00:00' ) );
+        $fmt     = brikpanel_date_format();
+        // $start_date / $end_date are already SITE-LOCAL Y-m-d. strtotime()
+        // reads them as UTC and wp_date() then adds the site offset on top, so
+        // every store west of UTC printed a caption one day behind the window
+        // the query above actually ran. The query is correct; only this label
+        // was double-converting.
+        $from    = brikpanel_local_label_date( $start_date, $fmt );
+        $to      = brikpanel_local_label_date( $end_date, $fmt );
         $days    = max( 1, (int) $days );
 
         if ( $from === $to ) {
@@ -3850,7 +3855,7 @@ class Brikpanel_Dashboard {
                 'status'     => $order->get_status(),
                 'total'      => wc_price( $order->get_total(), [ 'currency' => $order_currency ] ),
                 'total_base' => $total_base,
-                'date'       => wp_date( get_option( 'date_format' ), $order->get_date_created()->getTimestamp() ),
+                'date'       => wp_date( brikpanel_date_format(), $order->get_date_created()->getTimestamp() ),
                 'source'     => $source,
                 'edit_url'   => $order->get_edit_order_url(),
             ];
@@ -4052,7 +4057,7 @@ class Brikpanel_Dashboard {
             [ [ __( 'To', 'brikpanel' ), $B ], $period['to'] ],
             /* translators: %d: number of days. */
             [ [ __( 'Duration', 'brikpanel' ), $B ], sprintf( _n( '%d day', '%d days', $period['days'], 'brikpanel' ), $period['days'] ) ],
-            [ [ __( 'Generated', 'brikpanel' ), $B ], wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ],
+            [ [ __( 'Generated', 'brikpanel' ), $B ], wp_date( brikpanel_datetime_format() ) ],
             [ [ __( 'Currency', 'brikpanel' ), $B ], $cur_lbl ],
             [],
             [ [ __( 'Key Metrics', 'brikpanel' ), $T ] ],
@@ -4260,7 +4265,7 @@ class Brikpanel_Dashboard {
         $date_filter = $start_local . '...' . $end_local;
         $paged       = 1;
         $per_page    = 200;
-        $date_fmt    = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+        $date_fmt    = brikpanel_datetime_format();
 
         do {
             $args = [

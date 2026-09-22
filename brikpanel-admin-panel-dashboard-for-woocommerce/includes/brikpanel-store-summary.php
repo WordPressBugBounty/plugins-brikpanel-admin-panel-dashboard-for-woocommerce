@@ -226,20 +226,77 @@ class Brikpanel_Store_Summary {
 	}
 
 	/**
-	 * GMT date string for "now - $months months, midnight". Used as $start_date_gmt
-	 * for brikpanel_get_total_revenue() etc. Returns null for "all time".
+	 * GMT instant at which the store day $months months back began. Used as
+	 * $start_date_gmt for brikpanel_get_total_revenue() etc. Null for "all time".
+	 *
+	 * This used to truncate to gmdate( 'Y-m-d 00:00:00' ), i.e. UTC midnight, so
+	 * every window started at 03:00 local on a UTC+3 store and at 19:00 the
+	 * previous day on a UTC-5 one.
 	 */
 	private function months_ago_gmt( $months ) {
 		if ( $months === null ) {
 			return null;
 		}
-		$ts = strtotime( '-' . (int) $months . ' months', current_time( 'timestamp', true ) );
-		return gmdate( 'Y-m-d 00:00:00', $ts );
+		return brikpanel_local_day_start_utc( brikpanel_store_date( 'Y-m-d', '-' . (int) $months . ' months' ) );
 	}
 
+	/**
+	 * GMT instant at which the store day $days days back began.
+	 */
 	private function days_ago_gmt( $days ) {
-		$ts = strtotime( '-' . (int) $days . ' days', current_time( 'timestamp', true ) );
-		return gmdate( 'Y-m-d 00:00:00', $ts );
+		return brikpanel_local_day_start_utc( brikpanel_store_date( 'Y-m-d', '-' . (int) $days . ' days' ) );
+	}
+
+	/**
+	 * Fold rows bucketed with brikpanel_month_bucket_sql() into STORE months.
+	 *
+	 * The SQL groups by a UTC bucket because MySQL cannot convert a named
+	 * timezone here: CONVERT_TZ returns NULL wherever mysql.time_zone_* is empty,
+	 * which is most shared hosts, and that blanks a table rather than shifting
+	 * it. So the conversion happens in PHP, on each bucket's own instant, which
+	 * also keeps it right across a daylight-saving change.
+	 *
+	 * Returns the row shape the callers already expect: objects whose $key
+	 * property is a 'Y-m' string and whose listed columns are summed.
+	 *
+	 * @param mixed    $rows     Result set from $wpdb->get_results().
+	 * @param string[] $sum_cols Numeric columns to add up.
+	 * @param string   $key      Bucket column name.
+	 * @return array<int,object>
+	 */
+	private function fold_to_months( $rows, array $sum_cols, $key = 'ym' ) {
+		$out = [];
+
+		foreach ( (array) $rows as $r ) {
+			if ( ! is_object( $r ) || ! isset( $r->$key ) ) {
+				continue;
+			}
+
+			$day = brikpanel_local_day( $r->$key );
+			if ( '' === $day ) {
+				continue;
+			}
+
+			$month = substr( $day, 0, 7 );
+
+			if ( ! isset( $out[ $month ] ) ) {
+				$fresh       = new stdClass();
+				$fresh->$key = $month;
+				foreach ( $sum_cols as $col ) {
+					$fresh->$col = 0;
+				}
+				$out[ $month ] = $fresh;
+			}
+
+			foreach ( $sum_cols as $col ) {
+				$out[ $month ]->$col += isset( $r->$col ) ? (float) $r->$col : 0;
+			}
+		}
+
+		// 'Y-m' sorts chronologically as a string.
+		ksort( $out );
+
+		return array_values( $out );
 	}
 
 	private function today_start_gmt() {
@@ -775,8 +832,9 @@ class Brikpanel_Store_Summary {
 			: sprintf( _n( '%d month', '%d months', $months, 'brikpanel' ), $months );
 
 		return [
-			'first'       => mysql2date( 'Y-m-d', $row->first_dt ),
-			'last'        => mysql2date( 'Y-m-d', $row->last_dt ),
+			// MIN()/MAX() of a *_gmt column, so these are UTC instants.
+			'first'       => brikpanel_local_day( $row->first_dt ),
+			'last'        => brikpanel_local_day( $row->last_dt ),
 			'span_months' => $months,
 			'span_label'  => $span,
 			'customers'   => $customers,
@@ -790,7 +848,13 @@ class Brikpanel_Store_Summary {
 	private function section_sales_periods() {
 		$now_gmt    = $this->now_gmt();
 		$today_gmt  = $this->today_start_gmt();
-		$y_start    = gmdate( 'Y-m-d 00:00:00', strtotime( '-1 day', strtotime( $today_gmt ) ) );
+
+		// $today_gmt is already the UTC instant of local midnight (21:00 the day
+		// before, on a UTC+3 store). Truncating that back to gmdate('Y-m-d 00:00:00')
+		// is what made the Yesterday row a 45-hour window overlapping Today, so the
+		// two rows double-counted every order placed in the small hours.
+		$y_start    = brikpanel_local_day_start_utc( brikpanel_store_date( 'Y-m-d', '-1 day' ) );
+		$d2_start   = brikpanel_local_day_start_utc( brikpanel_store_date( 'Y-m-d', '-2 days' ) );
 
 		// Each entry: label, current-window [start, end], previous-window [start, end].
 		// Previous-window is the equivalent prior period for MoM/YoY delta. Today
@@ -798,7 +862,7 @@ class Brikpanel_Store_Summary {
 		// separate row), so its delta column shows the same yesterday revenue.
 		$periods = [
 			[ __( 'Today', 'brikpanel' ),         $today_gmt,                  $now_gmt,    $y_start,                          $today_gmt ],
-			[ __( 'Yesterday', 'brikpanel' ),     $y_start,                    $today_gmt,  gmdate( 'Y-m-d 00:00:00', strtotime( '-2 days', strtotime( $today_gmt ) ) ), $y_start ],
+			[ __( 'Yesterday', 'brikpanel' ),     $y_start,                    $today_gmt,  $d2_start,                         $y_start ],
 			[ __( 'Last 7 days', 'brikpanel' ),   $this->days_ago_gmt( 7 ),    $now_gmt,    $this->days_ago_gmt( 14 ),         $this->days_ago_gmt( 7 ) ],
 			[ __( 'Last 30 days', 'brikpanel' ),  $this->days_ago_gmt( 30 ),   $now_gmt,    $this->days_ago_gmt( 60 ),         $this->days_ago_gmt( 30 ) ],
 			[ __( 'Last 90 days', 'brikpanel' ),  $this->days_ago_gmt( 90 ),   $now_gmt,    $this->days_ago_gmt( 180 ),        $this->days_ago_gmt( 90 ) ],
@@ -867,8 +931,9 @@ class Brikpanel_Store_Summary {
 	private function section_yearly_sales() {
 		global $wpdb;
 
-		// Single grouped query: last 5 calendar years.
-		$current_year = (int) gmdate( 'Y' );
+		// Single grouped query: last 5 calendar years. The store's year, not the
+		// UTC one: on a UTC+3 store after 21:00 on 31 December those differ.
+		$current_year = (int) brikpanel_store_date( 'Y' );
 		$start_year   = $current_year - 4;
 		$start_dt     = $start_year . '-01-01 00:00:00';
 
@@ -957,7 +1022,7 @@ class Brikpanel_Store_Summary {
 
 		if ( $this->is_hpos() ) {
 			$rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT DATE_FORMAT(date_created_gmt, '%%Y-%%m') AS ym,
+				"SELECT " . brikpanel_month_bucket_sql( 'date_created_gmt' ) . " AS ym,
 				        SUM(total_amount) AS revenue,
 				        COUNT(*) AS orders
 				 FROM {$wpdb->prefix}wc_orders
@@ -969,7 +1034,7 @@ class Brikpanel_Store_Summary {
 			) ); // phpcs:ignore
 		} else {
 			$rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT DATE_FORMAT(p.post_date_gmt, '%%Y-%%m') AS ym,
+				"SELECT " . brikpanel_month_bucket_sql( 'p.post_date_gmt' ) . " AS ym,
 				        SUM(pm.meta_value) AS revenue,
 				        COUNT(p.ID) AS orders
 				 FROM {$wpdb->posts} p
@@ -981,6 +1046,9 @@ class Brikpanel_Store_Summary {
 				$start_dt
 			) ); // phpcs:ignore
 		}
+
+		// The query grouped by UTC buckets; roll them up into the store's months.
+		$rows = $this->fold_to_months( $rows, [ 'revenue', 'orders' ] );
 
 		if ( empty( $rows ) ) {
 			return '';
@@ -1508,13 +1576,16 @@ class Brikpanel_Store_Summary {
 		global $wpdb;
 		$tbl = $wpdb->prefix . 'brikpanel_cohort_retention';
 
-		$rows = $wpdb->get_results(
+		// CURDATE() is the database server's clock, a third one on top of UTC and
+		// store time. The cutoff is computed in PHP instead and bound as a value.
+		$rows = $wpdb->get_results( $wpdb->prepare(
 			"SELECT cohort_month, period_offset, cohort_size, retained_customers, retention_rate
 			 FROM {$tbl}
-			 WHERE cohort_month >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+			 WHERE cohort_month >= %s
 			   AND period_offset <= 6
-			 ORDER BY cohort_month DESC, period_offset ASC"
-		); // phpcs:ignore
+			 ORDER BY cohort_month DESC, period_offset ASC",
+			brikpanel_store_month_start( 12 )
+		) ); // phpcs:ignore
 
 		if ( empty( $rows ) ) {
 			return '';
@@ -1523,7 +1594,10 @@ class Brikpanel_Store_Summary {
 		// Pivot rows into matrix: cohort → [size, m0..m6 retention %]
 		$matrix = [];
 		foreach ( $rows as $r ) {
-			$ck = mysql2date( 'Y-m', $r->cohort_month );
+			// cohort_month is a plain 'Y-m-01' label, not an instant, so it is cut
+			// rather than parsed: running a label through a date function is how
+			// the cohort headings ended up a month early west of UTC.
+			$ck = substr( (string) $r->cohort_month, 0, 7 );
 			if ( ! isset( $matrix[ $ck ] ) ) {
 				$matrix[ $ck ] = [ 'size' => (int) $r->cohort_size, 'm' => array_fill( 0, 7, null ) ];
 			}
@@ -1580,8 +1654,13 @@ class Brikpanel_Store_Summary {
 	}
 
 	private function funnel_window( $label, $days_back ) {
-		$end_date   = gmdate( 'Y-m-d' );
-		$raw_start  = gmdate( 'Y-m-d', strtotime( '-' . (int) $days_back . ' days', current_time( 'timestamp', true ) ) );
+		// Two clocks meet in this function, so both are named. The tracking tables
+		// (brikpanel_visitors and friends) store SITE-LOCAL days; the orders table
+		// stores UTC. Feeding a UTC day to one and a local day to the other put the
+		// numerator and the denominator on different clocks, which made the funnel
+		// RATES wrong, not merely the labels.
+		$end_date   = brikpanel_store_date( 'Y-m-d' );
+		$raw_start  = brikpanel_store_date( 'Y-m-d', '-' . (int) $days_back . ' days' );
 
 		// Clamp to tracking_start_date — without this, "successful orders"
 		// pulls historical WC orders while visitor counts remain zero,
@@ -1597,7 +1676,8 @@ class Brikpanel_Store_Summary {
 		$add_cart  = function_exists( 'brikpanel_get_add_to_cart_count' )   ? (int) brikpanel_get_add_to_cart_count( $start_date, $end_date ) : 0;
 		$checkout  = function_exists( 'brikpanel_get_checkout_count' )      ? (int) brikpanel_get_checkout_count( $start_date, $end_date ) : 0;
 
-		$start_gmt = $start_date . ' 00:00:00';
+		// $start_date is a store day; the orders query needs the UTC instant it began.
+		$start_gmt = brikpanel_local_day_start_utc( $start_date );
 		$end_gmt   = $this->now_gmt();
 		$success   = function_exists( 'brikpanel_get_successful_order_count' ) ? (int) brikpanel_get_successful_order_count( $start_gmt, $end_gmt ) : 0;
 
@@ -1632,7 +1712,9 @@ class Brikpanel_Store_Summary {
 		global $wpdb;
 		$tbl = $wpdb->prefix . 'brikpanel_visitors';
 
-		$start_date = gmdate( 'Y-m-d', strtotime( '-12 months', current_time( 'timestamp', true ) ) );
+		// brikpanel_visitors.date_column is written in SITE-LOCAL time, so the
+		// cutoff has to be a store day too, not a UTC one.
+		$start_date = brikpanel_store_date( 'Y-m-d', '-12 months' );
 		$row = $wpdb->get_row( $wpdb->prepare(
 			"SELECT
 				COALESCE(SUM(mobile_count),0)  AS mobile,
@@ -2925,7 +3007,8 @@ class Brikpanel_Store_Summary {
 
 		$axis = [];
 		for ( $i = 11; $i >= 0; $i-- ) {
-			$key = gmdate( 'Y-m', strtotime( '-' . $i . ' months', current_time( 'timestamp' ) ) );
+			// Month-safe: a plain '-N months' on the 31st lands in the wrong month.
+			$key = brikpanel_store_month_start( $i, 'Y-m' );
 			$axis[ $key ] = [ 'rev' => 0.0, 'ref' => 0.0, 'cogs' => 0.0, 'ads' => 0.0, 'exp' => 0.0 ];
 		}
 
@@ -2938,7 +3021,7 @@ class Brikpanel_Store_Summary {
 		// --- Revenue -------------------------------------------------------
 		if ( $is_hpos ) {
 			$fx  = brikpanel_base_total_sql( true, 'o.id', 'o.total_amount' );
-			$sql = "SELECT DATE_FORMAT(o.date_created_gmt, '%%Y-%%m') AS ym, COALESCE(SUM({$fx['expr']}),0) AS v
+			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.date_created_gmt' ) . " AS ym, COALESCE(SUM({$fx['expr']}),0) AS v
 					FROM {$wpdb->prefix}wc_orders o{$fx['join']}
 					WHERE o.type='shop_order' AND o.status IN ({$kpi_sp})
 					  AND o.date_created_gmt >= %s AND o.date_created_gmt <= %s";
@@ -2948,7 +3031,7 @@ class Brikpanel_Store_Summary {
 			}
 		} else {
 			$fx  = brikpanel_base_total_sql( false, 'o.ID', 'pm.meta_value' );
-			$sql = "SELECT DATE_FORMAT(o.post_date_gmt, '%%Y-%%m') AS ym, COALESCE(SUM({$fx['expr']}),0) AS v
+			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.post_date_gmt' ) . " AS ym, COALESCE(SUM({$fx['expr']}),0) AS v
 					FROM {$wpdb->posts} o
 					LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=o.ID AND pm.meta_key='_order_total' AND " . brikpanel_sql_first_meta_guard( 'post', 'pm' ) . "{$fx['join']}
 					WHERE o.post_type='shop_order' AND o.post_status IN ({$kpi_sp})
@@ -2959,21 +3042,21 @@ class Brikpanel_Store_Summary {
 			}
 		}
 		$args = array_merge( $kpi_statuses, [ $w['start_gmt'], $w['end_gmt'] ], empty( $excl['sql'] ) ? [] : $excl['args'] );
-		foreach ( (array) $wpdb->get_results( $wpdb->prepare( $sql . ' GROUP BY ym', $args ) ) as $r ) { // phpcs:ignore
+		foreach ( $this->fold_to_months( $wpdb->get_results( $wpdb->prepare( $sql . ' GROUP BY ym', $args ) ), [ 'v' ] ) as $r ) { // phpcs:ignore
 			if ( isset( $axis[ $r->ym ] ) ) { $axis[ $r->ym ]['rev'] = (float) $r->v; }
 		}
 
 		// --- Refunds (bucketed by the parent order's month) ------------------
 		$pred = $this->paid_order_predicate( 'o' );
 		if ( $is_hpos ) {
-			$sql = "SELECT DATE_FORMAT(o.date_created_gmt, '%%Y-%%m') AS ym, COALESCE(SUM(ABS(r.total_amount)),0) AS v
+			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.date_created_gmt' ) . " AS ym, COALESCE(SUM(ABS(r.total_amount)),0) AS v
 					FROM {$wpdb->prefix}wc_orders r
 					INNER JOIN {$wpdb->prefix}wc_orders o ON o.id = r.parent_order_id
 					WHERE r.type='shop_order_refund' AND {$pred['where']}
 					  AND {$pred['date_col']} >= %s AND {$pred['date_col']} <= %s
 					GROUP BY ym";
 		} else {
-			$sql = "SELECT DATE_FORMAT(o.post_date_gmt, '%%Y-%%m') AS ym, COALESCE(SUM(CAST(IFNULL(ra.meta_value,'0') AS DECIMAL(20,4))),0) AS v
+			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.post_date_gmt' ) . " AS ym, COALESCE(SUM(CAST(IFNULL(ra.meta_value,'0') AS DECIMAL(20,4))),0) AS v
 					FROM {$wpdb->posts} r
 					INNER JOIN {$wpdb->posts} o ON o.ID = r.post_parent
 					LEFT JOIN {$wpdb->postmeta} ra ON ra.post_id = r.ID AND ra.meta_key='_refund_amount' AND " . brikpanel_sql_first_meta_guard( 'post', 'ra' ) . "
@@ -2982,7 +3065,7 @@ class Brikpanel_Store_Summary {
 					GROUP BY ym";
 		}
 		$args = array_merge( $pred['args'], [ $w['start_gmt'], $w['end_gmt'] ] );
-		foreach ( (array) $wpdb->get_results( $wpdb->prepare( $sql, $args ) ) as $r ) { // phpcs:ignore
+		foreach ( $this->fold_to_months( $wpdb->get_results( $wpdb->prepare( $sql, $args ) ), [ 'v' ] ) as $r ) { // phpcs:ignore
 			if ( isset( $axis[ $r->ym ] ) ) { $axis[ $r->ym ]['ref'] = (float) $r->v; }
 		}
 
@@ -2991,7 +3074,7 @@ class Brikpanel_Store_Summary {
 		if ( null !== $cost ) {
 			$ord = $is_hpos ? "{$wpdb->prefix}wc_orders" : $wpdb->posts;
 			$oid = $is_hpos ? 'o.id' : 'o.ID';
-			$sql = "SELECT DATE_FORMAT({$pred['date_col']}, '%%Y-%%m') AS ym,
+			$sql = "SELECT " . brikpanel_month_bucket_sql( $pred['date_col'] ) . " AS ym,
 						COALESCE(SUM(CAST(qtym.meta_value AS DECIMAL(20,4)) * ({$cost['unit']})),0) AS v
 					FROM {$wpdb->prefix}woocommerce_order_items oi
 					INNER JOIN {$ord} o ON {$oid} = oi.order_id
@@ -3002,7 +3085,7 @@ class Brikpanel_Store_Summary {
 					  AND {$pred['date_col']} >= %s AND {$pred['date_col']} <= %s
 					GROUP BY ym";
 			$args = array_merge( $pred['args'], [ $w['start_gmt'], $w['end_gmt'] ] );
-			foreach ( (array) $wpdb->get_results( $wpdb->prepare( $sql, $args ) ) as $r ) { // phpcs:ignore
+			foreach ( $this->fold_to_months( $wpdb->get_results( $wpdb->prepare( $sql, $args ) ), [ 'v' ] ) as $r ) { // phpcs:ignore
 				if ( isset( $axis[ $r->ym ] ) ) { $axis[ $r->ym ]['cogs'] = (float) $r->v; }
 			}
 		}
@@ -3227,7 +3310,7 @@ class Brikpanel_Store_Summary {
 				        SUM(new_rev) AS new_rev, SUM(ret_rev) AS ret_rev,
 				        SUM(new_orders) AS new_orders, SUM(ret_orders) AS ret_orders
 				 FROM (
-				   SELECT DATE_FORMAT(o.date_created_gmt, '%%Y-%%m') AS ym,
+				   SELECT " . brikpanel_month_bucket_sql( 'o.date_created_gmt' ) . " AS ym,
 				          SUM(CASE WHEN o.date_created_gmt = m.first_order_date THEN o.total_amount ELSE 0 END) AS new_rev,
 				          SUM(CASE WHEN o.date_created_gmt > m.first_order_date THEN o.total_amount ELSE 0 END) AS ret_rev,
 				          SUM(CASE WHEN o.date_created_gmt = m.first_order_date THEN 1 ELSE 0 END) AS new_orders,
@@ -3239,7 +3322,7 @@ class Brikpanel_Store_Summary {
 				     AND o.date_created_gmt >= %s
 				   GROUP BY ym
 				   UNION ALL
-				   SELECT DATE_FORMAT(o.date_created_gmt, '%%Y-%%m') AS ym,
+				   SELECT " . brikpanel_month_bucket_sql( 'o.date_created_gmt' ) . " AS ym,
 				          SUM(CASE WHEN o.date_created_gmt = m.first_order_date THEN o.total_amount ELSE 0 END) AS new_rev,
 				          SUM(CASE WHEN o.date_created_gmt > m.first_order_date THEN o.total_amount ELSE 0 END) AS ret_rev,
 				          SUM(CASE WHEN o.date_created_gmt = m.first_order_date THEN 1 ELSE 0 END) AS new_orders,
@@ -3267,7 +3350,7 @@ class Brikpanel_Store_Summary {
 				        SUM(new_rev) AS new_rev, SUM(ret_rev) AS ret_rev,
 				        SUM(new_orders) AS new_orders, SUM(ret_orders) AS ret_orders
 				 FROM (
-				   SELECT DATE_FORMAT(p.post_date_gmt, '%%Y-%%m') AS ym,
+				   SELECT " . brikpanel_month_bucket_sql( 'p.post_date_gmt' ) . " AS ym,
 				          SUM(CASE WHEN p.post_date_gmt = m.first_order_date THEN CAST(pm_t.meta_value AS DECIMAL(20,4)) ELSE 0 END) AS new_rev,
 				          SUM(CASE WHEN p.post_date_gmt > m.first_order_date THEN CAST(pm_t.meta_value AS DECIMAL(20,4)) ELSE 0 END) AS ret_rev,
 				          SUM(CASE WHEN p.post_date_gmt = m.first_order_date THEN 1 ELSE 0 END) AS new_orders,
@@ -3280,7 +3363,7 @@ class Brikpanel_Store_Summary {
 				     AND p.post_date_gmt >= %s
 				   GROUP BY ym
 				   UNION ALL
-				   SELECT DATE_FORMAT(p.post_date_gmt, '%%Y-%%m') AS ym,
+				   SELECT " . brikpanel_month_bucket_sql( 'p.post_date_gmt' ) . " AS ym,
 				          SUM(CASE WHEN p.post_date_gmt = m.first_order_date THEN CAST(pm_t.meta_value AS DECIMAL(20,4)) ELSE 0 END) AS new_rev,
 				          SUM(CASE WHEN p.post_date_gmt > m.first_order_date THEN CAST(pm_t.meta_value AS DECIMAL(20,4)) ELSE 0 END) AS ret_rev,
 				          SUM(CASE WHEN p.post_date_gmt = m.first_order_date THEN 1 ELSE 0 END) AS new_orders,
@@ -3301,6 +3384,10 @@ class Brikpanel_Store_Summary {
 				$start_dt
 			) ); // phpcs:ignore
 		}
+
+		// Outer GROUP BY collapsed the two UNION legs per bucket; this collapses
+		// the buckets into the store's months.
+		$rows = $this->fold_to_months( $rows, [ 'new_rev', 'ret_rev', 'new_orders', 'ret_orders' ] );
 
 		if ( empty( $rows ) ) {
 			return '';
@@ -3346,45 +3433,61 @@ class Brikpanel_Store_Summary {
 		global $wpdb;
 		$start_dt = $this->months_ago_gmt( 12 );
 
+		// DAYOFWEEK() and HOUR() read the UTC column, so "Monday" meant the UTC
+		// Monday and the peak hour was a London hour. A merchant reads this
+		// section to decide when to run ads or staff support, which makes the
+		// store's own clock the only useful one. The hour labels used to carry a
+		// "(UTC)" caveat; the day-of-week table carried none at all.
+		//
+		// The conversion cannot happen in SQL (CONVERT_TZ returns NULL wherever
+		// mysql.time_zone_* is empty), so one 15-minute-bucket query replaces the
+		// two grouped ones and the buckets are folded here. Quarter-hour
+		// resolution is exact for every real offset, +05:30 and +05:45 included.
+		$bucket = brikpanel_utc_bucket_sql( $this->is_hpos() ? 'date_created_gmt' : 'p.post_date_gmt' );
+
 		if ( $this->is_hpos() ) {
-			$dow_rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT DAYOFWEEK(date_created_gmt) AS dow, COUNT(*) AS orders, COALESCE(SUM(total_amount),0) AS revenue
+			$bucket_rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT {$bucket} AS b, COUNT(*) AS orders, COALESCE(SUM(total_amount),0) AS revenue
 				 FROM {$wpdb->prefix}wc_orders
 				 WHERE type='shop_order' AND status IN (" . brikpanel_paid_statuses_sql() . ")
 				   AND date_created_gmt >= %s
-				 GROUP BY dow",
-				$start_dt
-			) ); // phpcs:ignore
-			$hr_rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT HOUR(date_created_gmt) AS hr, COUNT(*) AS orders, COALESCE(SUM(total_amount),0) AS revenue
-				 FROM {$wpdb->prefix}wc_orders
-				 WHERE type='shop_order' AND status IN (" . brikpanel_paid_statuses_sql() . ")
-				   AND date_created_gmt >= %s
-				 GROUP BY hr",
+				 GROUP BY b",
 				$start_dt
 			) ); // phpcs:ignore
 		} else {
-			$dow_rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT DAYOFWEEK(post_date_gmt) AS dow, COUNT(*) AS orders, COALESCE(SUM(CAST(pm.meta_value AS DECIMAL(20,4))),0) AS revenue
+			$bucket_rows = $wpdb->get_results( $wpdb->prepare(
+				"SELECT {$bucket} AS b, COUNT(*) AS orders, COALESCE(SUM(CAST(pm.meta_value AS DECIMAL(20,4))),0) AS revenue
 				 FROM {$wpdb->posts} p
 				 LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_order_total' AND " . brikpanel_sql_first_meta_guard( 'post', 'pm' ) . "
 				 WHERE p.post_type='shop_order' AND p.post_status IN (" . brikpanel_paid_statuses_sql() . ")
 				   AND p.post_date_gmt >= %s
-				 GROUP BY dow",
-				$start_dt
-			) ); // phpcs:ignore
-			$hr_rows = $wpdb->get_results( $wpdb->prepare(
-				"SELECT HOUR(post_date_gmt) AS hr, COUNT(*) AS orders, COALESCE(SUM(CAST(pm.meta_value AS DECIMAL(20,4))),0) AS revenue
-				 FROM {$wpdb->posts} p
-				 LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_order_total' AND " . brikpanel_sql_first_meta_guard( 'post', 'pm' ) . "
-				 WHERE p.post_type='shop_order' AND p.post_status IN (" . brikpanel_paid_statuses_sql() . ")
-				   AND p.post_date_gmt >= %s
-				 GROUP BY hr",
+				 GROUP BY b",
 				$start_dt
 			) ); // phpcs:ignore
 		}
 
-		if ( empty( $dow_rows ) || empty( $hr_rows ) ) {
+		$local   = wp_timezone();
+		$dow_agg = [];
+		$hr_agg  = [];
+
+		foreach ( (array) $bucket_rows as $r ) {
+			$when = brikpanel_utc_datetime( $r->b );
+			if ( null === $when ) {
+				continue;
+			}
+
+			$when = $when->setTimezone( $local );
+			// MySQL DAYOFWEEK is 1=Sunday; PHP 'w' is 0=Sunday.
+			$dow  = (int) $when->format( 'w' ) + 1;
+			$hour = (int) $when->format( 'G' );
+
+			$dow_agg[ $dow ]['orders']   = ( $dow_agg[ $dow ]['orders'] ?? 0 ) + (int) $r->orders;
+			$dow_agg[ $dow ]['revenue']  = ( $dow_agg[ $dow ]['revenue'] ?? 0.0 ) + (float) $r->revenue;
+			$hr_agg[ $hour ]['orders']   = ( $hr_agg[ $hour ]['orders'] ?? 0 ) + (int) $r->orders;
+			$hr_agg[ $hour ]['revenue']  = ( $hr_agg[ $hour ]['revenue'] ?? 0.0 ) + (float) $r->revenue;
+		}
+
+		if ( empty( $dow_agg ) || empty( $hr_agg ) ) {
 			return '';
 		}
 
@@ -3395,14 +3498,10 @@ class Brikpanel_Store_Summary {
 			7 => __( 'Sat', 'brikpanel' ),
 		];
 
-		$dow_data = [];
-		foreach ( $dow_rows as $r ) {
-			$dow_data[ (int) $r->dow ] = [ 'orders' => (int) $r->orders, 'revenue' => (float) $r->revenue ];
-		}
-		$hr_data = [];
-		foreach ( $hr_rows as $r ) {
-			$hr_data[ (int) $r->hr ] = [ 'orders' => (int) $r->orders, 'revenue' => (float) $r->revenue ];
-		}
+		$dow_data = $dow_agg;
+		$hr_data  = $hr_agg;
+		ksort( $dow_data );
+		ksort( $hr_data );
 
 		// "Best/worst" can rank by revenue OR by orders — these can disagree
 		// (e.g. Saturday has more orders but lower AOV → Mon wins by revenue).
@@ -3430,11 +3529,11 @@ class Brikpanel_Store_Summary {
 		$lines[] = '- **' . __( 'Best day by revenue', 'brikpanel' ) . ':** ' . ( $dow_names[ $best_dow_rev ] ?? '?' ) . ' — ' . $this->money( $dow_data[ $best_dow_rev ]['revenue'] ) . ' (' . number_format_i18n( $dow_data[ $best_dow_rev ]['orders'] ) . ' ' . __( 'orders', 'brikpanel' ) . ')';
 		$lines[] = '- **' . __( 'Best day by order count', 'brikpanel' ) . ':** ' . ( $dow_names[ $best_dow_orders ] ?? '?' ) . ' — ' . number_format_i18n( $dow_data[ $best_dow_orders ]['orders'] ) . ' ' . __( 'orders', 'brikpanel' ) . ' (' . $this->money( $dow_data[ $best_dow_orders ]['revenue'] ) . ')';
 		$lines[] = '- **' . __( 'Worst day by revenue', 'brikpanel' ) . ':** ' . ( $dow_names[ $worst_dow_rev ] ?? '?' ) . ' — ' . $this->money( $dow_data[ $worst_dow_rev ]['revenue'] );
-		$lines[] = '- **' . __( 'Peak hour (UTC) by revenue', 'brikpanel' ) . ':** ' . sprintf( '%02d:00', $best_hr_rev ) . ' — ' . $this->money( $hr_data[ $best_hr_rev ]['revenue'] ) . ' (' . number_format_i18n( $hr_data[ $best_hr_rev ]['orders'] ) . ' ' . __( 'orders', 'brikpanel' ) . ')';
+		$lines[] = '- **' . __( 'Peak hour by revenue', 'brikpanel' ) . ':** ' . sprintf( '%02d:00', $best_hr_rev ) . ' — ' . $this->money( $hr_data[ $best_hr_rev ]['revenue'] ) . ' (' . number_format_i18n( $hr_data[ $best_hr_rev ]['orders'] ) . ' ' . __( 'orders', 'brikpanel' ) . ')';
 		if ( $best_hr_orders !== $best_hr_rev ) {
-			$lines[] = '- **' . __( 'Peak hour (UTC) by order count', 'brikpanel' ) . ':** ' . sprintf( '%02d:00', $best_hr_orders ) . ' — ' . number_format_i18n( $hr_data[ $best_hr_orders ]['orders'] ) . ' ' . __( 'orders', 'brikpanel' );
+			$lines[] = '- **' . __( 'Peak hour by order count', 'brikpanel' ) . ':** ' . sprintf( '%02d:00', $best_hr_orders ) . ' — ' . number_format_i18n( $hr_data[ $best_hr_orders ]['orders'] ) . ' ' . __( 'orders', 'brikpanel' );
 		}
-		$lines[] = '- **' . __( 'Quietest hour (UTC) by revenue', 'brikpanel' ) . ':** ' . sprintf( '%02d:00', $worst_hr_rev ) . ' — ' . $this->money( $hr_data[ $worst_hr_rev ]['revenue'] );
+		$lines[] = '- **' . __( 'Quietest hour by revenue', 'brikpanel' ) . ':** ' . sprintf( '%02d:00', $worst_hr_rev ) . ' — ' . $this->money( $hr_data[ $worst_hr_rev ]['revenue'] );
 		$lines[] = '';
 		$lines[] = '### ' . __( 'Day of week breakdown', 'brikpanel' );
 		$lines[] = '| ' . __( 'Day', 'brikpanel' ) . ' | ' . __( 'Orders', 'brikpanel' ) . ' | ' . __( 'Revenue', 'brikpanel' ) . ' |';
@@ -3543,7 +3642,7 @@ class Brikpanel_Store_Summary {
 				$start_dt
 			) ); // phpcs:ignore
 			$monthly = $wpdb->get_results( $wpdb->prepare(
-				"SELECT DATE_FORMAT(date_created_gmt, '%%Y-%%m') AS ym,
+				"SELECT " . brikpanel_month_bucket_sql( 'date_created_gmt' ) . " AS ym,
 				        COUNT(*) AS cnt, COALESCE(SUM(ABS(total_amount)),0) AS amt
 				 FROM {$wpdb->prefix}wc_orders
 				 WHERE type='shop_order_refund' AND date_created_gmt >= %s
@@ -3569,7 +3668,7 @@ class Brikpanel_Store_Summary {
 				$start_dt
 			) ); // phpcs:ignore
 			$monthly = $wpdb->get_results( $wpdb->prepare(
-				"SELECT DATE_FORMAT(p.post_date_gmt, '%%Y-%%m') AS ym,
+				"SELECT " . brikpanel_month_bucket_sql( 'p.post_date_gmt' ) . " AS ym,
 				        COUNT(*) AS cnt, COALESCE(SUM(ABS(CAST(pm.meta_value AS DECIMAL(20,4)))),0) AS amt
 				 FROM {$wpdb->posts} p
 				 LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id=p.ID AND pm.meta_key='_order_total' AND " . brikpanel_sql_first_meta_guard( 'post', 'pm' ) . "
@@ -3597,6 +3696,9 @@ class Brikpanel_Store_Summary {
 		if ( $cnt === 0 && $total_orders === 0 ) {
 			return '';
 		}
+
+		// UTC buckets from the query above, rolled up into the store's months.
+		$monthly = $this->fold_to_months( $monthly, [ 'cnt', 'amt' ] );
 
 		$lines = [];
 		$lines[] = '## ' . __( 'Refund Metrics (last 12 months)', 'brikpanel' );
@@ -3761,16 +3863,18 @@ class Brikpanel_Store_Summary {
 		// Needs both BrikPanel checkout tracking AND order data; clamp window.
 		$track = $this->tracking_start_date();
 		if ( $track === null ) { return ''; }
-		$end_date = gmdate( 'Y-m-d' );
+		// Store days: the checkout counter reads a SITE-LOCAL column.
+		$end_date = brikpanel_store_date( 'Y-m-d' );
 
 		// Compute against the larger of "last 12 months" and "since tracking start".
-		$ideal_start = gmdate( 'Y-m-d', strtotime( '-12 months', current_time( 'timestamp', true ) ) );
+		$ideal_start = brikpanel_store_date( 'Y-m-d', '-12 months' );
 		$start_date  = $ideal_start > $track ? $ideal_start : $track;
 
 		$checkout = function_exists( 'brikpanel_get_checkout_count' )
 			? (int) brikpanel_get_checkout_count( $start_date, $end_date )
 			: 0;
-		$success  = brikpanel_get_successful_order_count( $start_date . ' 00:00:00', $this->now_gmt() );
+		// Orders are UTC, so the same store day has to be converted before use.
+		$success  = brikpanel_get_successful_order_count( brikpanel_local_day_start_utc( $start_date ), $this->now_gmt() );
 
 		if ( $checkout === 0 ) {
 			return '';
@@ -4174,11 +4278,14 @@ class Brikpanel_Store_Summary {
 		}
 		$arr = $mrr * 12;
 
-		$cancelled_12m = (int) $wpdb->get_var(
+		// NOW() is the database server's clock; post_modified_gmt is UTC. The two
+		// only agree on a server whose session timezone happens to be UTC.
+		$cancelled_12m = (int) $wpdb->get_var( $wpdb->prepare(
 			"SELECT COUNT(*) FROM {$wpdb->posts}
 			 WHERE post_type='shop_subscription' AND post_status='wc-cancelled'
-			   AND post_modified_gmt >= DATE_SUB(NOW(), INTERVAL 12 MONTH)"
-		); // phpcs:ignore
+			   AND post_modified_gmt >= %s",
+			brikpanel_local_day_start_utc( brikpanel_store_date( 'Y-m-d', '-12 months' ) )
+		) ); // phpcs:ignore
 
 		$logo_churn = ( $active_count + $cancelled_12m ) > 0 ? $cancelled_12m / ( $active_count + $cancelled_12m ) : 0;
 

@@ -827,19 +827,10 @@ class Brikpanel_Products_List {
      * @return array{value:string,tooltip:string,multi:bool}
      */
     private static function compute_global_unique_id_display($product) {
-        $value = trim((string) $product->get_global_unique_id());
+        $value = trim(brikpanel_wc_gtin($product));
 
         if ($value === '' && $product->is_type('variable')) {
-            $found = [];
-            foreach ($product->get_children() as $cid) {
-                $v = wc_get_product($cid);
-                if (!$v) continue;
-                $vid = trim((string) $v->get_global_unique_id());
-                if ($vid !== '') {
-                    $found[$vid] = true;
-                }
-            }
-            $found = array_keys($found);
+            $found = self::child_gtins($product->get_children());
 
             if (count($found) === 1) {
                 return ['value' => $found[0], 'tooltip' => '', 'multi' => false];
@@ -859,6 +850,56 @@ class Brikpanel_Products_List {
         }
 
         return ['value' => $value, 'tooltip' => '', 'multi' => false];
+    }
+
+    /**
+     * The distinct, non-empty GTINs stored on a set of variations, in ONE query.
+     *
+     * Reading post meta directly rather than hydrating a WC_Product per child
+     * is both cheaper and more portable: `_global_unique_id` is the same key
+     * WooCommerce keeps the prop in on every version that has the feature, so
+     * this path needs no version check at all. The previous shape cost one
+     * full product load per variation, on every row of the list.
+     *
+     * Values are collected into a keyed set, so a product carrying duplicate
+     * meta rows for the same key collapses to one entry instead of inflating
+     * the "N GTINs" count.
+     *
+     * @param int[] $children Variation IDs.
+     * @return string[] Distinct GTINs, in the order first seen.
+     */
+    private static function child_gtins($children) {
+        global $wpdb;
+
+        $ids = array_filter(array_map('intval', (array) $children));
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $rows = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT meta_value FROM {$wpdb->postmeta}
+                  WHERE meta_key = %s
+                    AND post_id IN ($placeholders)
+                    AND meta_value <> ''
+                  ORDER BY meta_id ASC",
+                ...array_merge([BRIKPANEL_GTIN_META_KEY], $ids)
+            )
+        );
+        // phpcs:enable
+
+        $found = [];
+        foreach ((array) $rows as $row) {
+            $gtin = trim((string) $row);
+            if ($gtin !== '') {
+                $found[$gtin] = true;
+            }
+        }
+
+        return array_keys($found);
     }
 
     /**
@@ -2576,14 +2617,14 @@ class Brikpanel_Products_List {
                     // Publish date + time in the site timezone/format. Merchants who
                     // order category pages by date rely on seeing (and re-dating)
                     // this; column is opt-in via the Columns picker (default off).
-                    'date'           => wp_date(get_option('date_format') . ' ' . get_option('time_format'), get_post_timestamp($post)),
+                    'date'           => wp_date(brikpanel_datetime_format(), get_post_timestamp($post)),
                     // Tooltip for the "Scheduled" status badge — the moment the
                     // product goes live. Empty for non-scheduled products.
                     'scheduled_label' => $post->post_status === 'future'
                         ? sprintf(
                             /* translators: %s: date and time the product publishes */
                             __('Scheduled for %s', 'brikpanel'),
-                            wp_date(get_option('date_format') . ' ' . get_option('time_format'), get_post_timestamp($post))
+                            wp_date(brikpanel_datetime_format(), get_post_timestamp($post))
                         )
                         : '',
                     'image'          => $image_url,
@@ -3083,7 +3124,7 @@ class Brikpanel_Products_List {
                 'tag_ids'         => $tag_ids_qe,
                 'custom_taxonomies' => (object) $custom_taxonomy_ids_qe,
                 'menu_order'      => (int) $product->get_menu_order(),
-                'date'            => wp_date(get_option('date_format') . ' ' . get_option('time_format'), get_post_timestamp($product_id)),
+                'date'            => wp_date(brikpanel_datetime_format(), get_post_timestamp($product_id)),
                 'type'            => $product->get_type(),
                 // Kept in step with the list payload. The client merges this
                 // response into the cached row rather than replacing it, so

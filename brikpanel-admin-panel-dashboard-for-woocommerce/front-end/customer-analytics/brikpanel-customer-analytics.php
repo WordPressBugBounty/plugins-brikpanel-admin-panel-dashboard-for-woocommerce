@@ -128,7 +128,12 @@ class Brikpanel_Customer_Analytics {
 		$tbl = $wpdb->prefix . 'brikpanel_customer_metrics';
 		$row = $wpdb->get_row( "SELECT MAX(computed_at) AS last_computed, COUNT(*) AS total FROM {$tbl}" ); // phpcs:ignore
 		return [
-			'last_computed'  => $row && $row->last_computed ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $row->last_computed ) : '',
+			// computed_at is written by MySQL's CURRENT_TIMESTAMP, so it is on the
+			// database session's clock: neither UTC nor store time. It is moved onto
+			// the UTC basis first, then rendered like any other UTC value. The column
+			// itself is left alone because the stale-row prune compares against that
+			// same clock.
+			'last_computed'  => brikpanel_local_datetime( brikpanel_db_clock_to_utc( $row ? $row->last_computed : '' ) ),
 			'last_computed_iso' => $row && $row->last_computed ? $row->last_computed : '',
 			'total_customers'   => (int) ( $row->total ?? 0 ),
 		];
@@ -240,8 +245,9 @@ class Brikpanel_Customer_Analytics {
 				'aov'                 => (float) $r->aov,
 				'aov_display'         => $this->price( (float) $r->aov ),
 				'recency_days'        => $r->recency_days !== null ? (int) $r->recency_days : null,
-				'first_order'         => $r->first_order_date ? mysql2date( get_option( 'date_format' ), $r->first_order_date ) : '',
-				'last_order'          => $r->last_order_date ? mysql2date( get_option( 'date_format' ), $r->last_order_date ) : '',
+				// MIN()/MAX() of date_created_gmt, written by the analytics cron, so UTC.
+				'first_order'         => brikpanel_local_date( $r->first_order_date ),
+				'last_order'          => brikpanel_local_date( $r->last_order_date ),
 				'edit_url'            => $user_id ? admin_url( 'user-edit.php?user_id=' . $user_id ) : '',
 				'is_guest'            => $user_id === 0,
 			];
@@ -351,7 +357,7 @@ class Brikpanel_Customer_Analytics {
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=UTF-8' );
-		header( 'Content-Disposition: attachment; filename="customer-ltv-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename="customer-ltv-' . brikpanel_store_date( 'Y-m-d' ) . '.csv"' );
 
 		$out = fopen( 'php://output', 'w' );
 		// UTF-8 BOM so Excel renders Turkish characters correctly.
@@ -538,7 +544,7 @@ class Brikpanel_Customer_Analytics {
 				'r_score'             => (int) $r->r_score,
 				'f_score'             => (int) $r->f_score,
 				'm_score'             => (int) $r->m_score,
-				'last_order'          => $r->last_order_date ? mysql2date( get_option( 'date_format' ), $r->last_order_date ) : '',
+				'last_order'          => brikpanel_local_date( $r->last_order_date ),
 				'edit_url'            => $user_id ? admin_url( 'user-edit.php?user_id=' . $user_id ) : '',
 				'is_guest'            => $user_id === 0,
 			];
@@ -582,7 +588,7 @@ class Brikpanel_Customer_Analytics {
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=UTF-8' );
-		header( 'Content-Disposition: attachment; filename="customer-rfm-' . $segment . '-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename="customer-rfm-' . $segment . '-' . brikpanel_store_date( 'Y-m-d' ) . '.csv"' );
 
 		$out = fopen( 'php://output', 'w' );
 		fwrite( $out, "\xEF\xBB\xBF" );
@@ -662,7 +668,7 @@ class Brikpanel_Customer_Analytics {
 		$tbl = $wpdb->prefix . 'brikpanel_cohort_retention';
 
 		$months = isset( $_POST['months'] ) ? max( 3, min( 24, (int) $_POST['months'] ) ) : 12;
-		$cutoff = gmdate( 'Y-m-01', strtotime( "-{$months} months" ) );
+		$cutoff = brikpanel_store_month_start( $months );
 
 		$rows = $wpdb->get_results( $wpdb->prepare(
 			"SELECT cohort_month, period_offset, cohort_size, retained_customers, retention_rate
@@ -680,7 +686,10 @@ class Brikpanel_Customer_Analytics {
 			if ( ! isset( $cohorts[ $key ] ) ) {
 				$cohorts[ $key ] = [
 					'cohort_month'      => $key,
-					'cohort_month_label' => date_i18n( 'M Y', strtotime( $key ) ),
+					// $key is a bare 'Y-m-01' label, never an instant. strtotime() reads
+					// it as UTC midnight and date_i18n() then adds the site offset, which
+					// labelled every cohort with the previous month west of UTC.
+					'cohort_month_label' => brikpanel_local_label_date( $key, 'M Y' ),
 					'cohort_size'       => (int) $r->cohort_size,
 					'cells'             => [],
 				];
@@ -714,7 +723,8 @@ class Brikpanel_Customer_Analytics {
 			'cohorts'        => array_values( $cohorts ),
 			'max_offset'     => $max_offset,
 			'avg_by_offset'  => $avg_by_offset,
-			'last_computed'  => $last_computed ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $last_computed ) : '',
+			// Database-clock value; see compute_metrics_meta() for why.
+			'last_computed'  => brikpanel_local_datetime( brikpanel_db_clock_to_utc( $last_computed ) ),
 			'months_window'  => $months,
 		] );
 	}
@@ -736,7 +746,7 @@ class Brikpanel_Customer_Analytics {
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=UTF-8' );
-		header( 'Content-Disposition: attachment; filename="cohort-retention-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename="cohort-retention-' . brikpanel_store_date( 'Y-m-d' ) . '.csv"' );
 
 		$out = fopen( 'php://output', 'w' );
 		fwrite( $out, "\xEF\xBB\xBF" );

@@ -18430,16 +18430,16 @@ msgid "Worst day by revenue"
 msgstr "Slechtste dag op omzet"
 
 #: includes/brikpanel-store-summary.php:3433
-msgid "Peak hour (UTC) by revenue"
-msgstr "Piekuur (UTC) op omzet"
+msgid "Peak hour by revenue"
+msgstr "Piekuur op omzet"
 
 #: includes/brikpanel-store-summary.php:3435
-msgid "Peak hour (UTC) by order count"
-msgstr "Piekuur (UTC) op aantal bestellingen"
+msgid "Peak hour by order count"
+msgstr "Piekuur op aantal bestellingen"
 
 #: includes/brikpanel-store-summary.php:3437
-msgid "Quietest hour (UTC) by revenue"
-msgstr "Rustigste uur (UTC) op omzet"
+msgid "Quietest hour by revenue"
+msgstr "Rustigste uur op omzet"
 
 #: includes/brikpanel-store-summary.php:3439
 msgid "Day of week breakdown"
@@ -19652,3 +19652,15 @@ msgstr "Kosten / bestelling"
 #: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:113
 msgid "Show ad cost per order"
 msgstr "Advertentiekosten per bestelling tonen"
+
+msgid "Date (%s)"
+msgstr "Datum (%s)"
+
+msgid "Registered (%s)"
+msgstr "Geregistreerd (%s)"
+
+msgid "First order (%s)"
+msgstr "Eerste bestelling (%s)"
+
+msgid "Last order (%s)"
+msgstr "Laatste bestelling (%s)"

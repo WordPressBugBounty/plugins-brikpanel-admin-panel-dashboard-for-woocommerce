@@ -435,7 +435,12 @@
                         var anchor = dom.orderDate && dom.orderDate.value ? new Date(dom.orderDate.value + 'T00:00:00') : new Date();
                         if (!isNaN(anchor.getTime())) {
                             anchor.setDate(anchor.getDate() + parseInt(v.default_lead_time_days, 10));
-                            dom.expDate.value = anchor.toISOString().slice(0, 10);
+                            // The anchor was built from local calendar fields, so read it
+                            // back the same way. toISOString() re-expresses it in UTC and
+                            // pushed the date back a day for every browser east of UTC.
+                            dom.expDate.value = anchor.getFullYear() + '-' +
+                                ('0' + (anchor.getMonth() + 1)).slice(-2) + '-' +
+                                ('0' + anchor.getDate()).slice(-2);
                             applied = true;
                         }
                     }

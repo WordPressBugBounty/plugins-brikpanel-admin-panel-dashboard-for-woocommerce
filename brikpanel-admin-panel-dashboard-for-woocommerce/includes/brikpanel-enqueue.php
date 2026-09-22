@@ -856,7 +856,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                 // an order that went back to pending or on hold does not count.
                 $paid_statuses        = array_merge( wc_get_is_paid_statuses(), [ 'refunded' ] );
                 $summary['paid']      = $date_paid && in_array( $order->get_status(), $paid_statuses, true );
-                $summary['date_paid'] = $date_paid ? $date_paid->date_i18n( get_option( 'date_format' ) ) : '';
+                $summary['date_paid'] = $date_paid ? $date_paid->date_i18n( brikpanel_date_format() ) : '';
                 $summary['payment']   = (string) $order->get_payment_method_title();
                 $summary['customer_name'] = trim( $order->get_formatted_billing_full_name() );
                 if ( '' === $summary['customer_name'] ) {
@@ -886,7 +886,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'order_number'   => $order instanceof WC_Order ? (string) $order->get_order_number() : '',
                 'current_status' => $current_status,
                 'status_label'   => $status_label,
-                'order_date'     => ($order && $order->get_date_created()) ? $order->get_date_created()->date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) : '',
+                'order_date'     => ($order && $order->get_date_created()) ? $order->get_date_created()->date_i18n( brikpanel_datetime_format() ) : '',
                 'statuses'       => $all_statuses,
                 'orders_url'     => $order_screen['legacy'] ? admin_url( 'edit.php?post_type=shop_order' ) : admin_url( 'admin.php?page=wc-orders' ),
                 'is_new'         => (bool) $order_screen['new'],

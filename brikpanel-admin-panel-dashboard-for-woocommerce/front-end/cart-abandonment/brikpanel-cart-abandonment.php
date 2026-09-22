@@ -3613,8 +3613,7 @@ class Brikpanel_Cart_Abandonment {
 
 		$in   = implode( ', ', array_fill( 0, count( $order_ids ), '%d' ) );
 		$out  = [];
-		$hpos = class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' )
-			&& \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+		$hpos = brikpanel_wc_hpos_enabled();
 
 		if ( $hpos ) {
 			$rows = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -3665,8 +3664,7 @@ class Brikpanel_Cart_Abandonment {
 		global $wpdb;
 
 		$placeholders = implode( ', ', array_fill( 0, count( $emails ), '%s' ) );
-		$hpos         = class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' )
-			&& \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+		$hpos         = brikpanel_wc_hpos_enabled();
 
 		if ( $hpos ) {
 			$sql = "SELECT LOWER(billing_email) AS em, MAX(id) AS oid
@@ -4350,6 +4348,10 @@ class Brikpanel_Cart_Abandonment {
 					<table class="brikpanel-cartab-table" id="brikpanel-cartab-table"<?php echo $hide_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built above from esc_attr'd column ids ?>>
 						<thead>
 							<tr id="brikpanel-cartab-thead-row">
+								<?php /* Narrow, label-less column for the per-row expand chevron. Not part
+								         of $column_order, so it is never hidden by the column popover, the
+								         same way the actions column is always present. */ ?>
+								<th class="brikpanel-cartab-toggle-th"><span class="screen-reader-text"><?php esc_html_e( 'Details', 'brikpanel' ); ?></span></th>
 								<?php foreach ( $column_order as $col_id ) : ?>
 									<th class="brikpanel-cartab-col-<?php echo esc_attr( $col_id ); ?>" data-col="<?php echo esc_attr( $col_id ); ?>">
 										<?php echo esc_html( $column_defs[ $col_id ]['label'] ); ?>
@@ -4359,7 +4361,7 @@ class Brikpanel_Cart_Abandonment {
 							</tr>
 						</thead>
 						<tbody id="brikpanel-cartab-tbody">
-							<tr><td colspan="<?php echo esc_attr( count( array_filter( $column_vis ) ) + 1 ); ?>" class="brikpanel-cartab-empty"><?php esc_html_e( 'Loading…', 'brikpanel' ); ?></td></tr>
+							<tr><td colspan="<?php echo esc_attr( count( array_filter( $column_vis ) ) + 2 ); ?>" class="brikpanel-cartab-empty"><?php esc_html_e( 'Loading…', 'brikpanel' ); ?></td></tr>
 						</tbody>
 					</table>
 				</div>
@@ -4457,7 +4459,7 @@ class Brikpanel_Cart_Abandonment {
 
 		$result = self::query_entries( $args );
 
-		$date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+		$date_format = brikpanel_datetime_format();
 
 		// Recovered rows link to a real order, and the number shown has to be the
 		// one the orders list shows, which a sequential-order-number plugin can
@@ -4481,8 +4483,7 @@ class Brikpanel_Cart_Abandonment {
 			$row['order_number'] = '';
 			if ( $row['order_id'] > 0 ) {
 				$row['order_number'] = (string) ( $order_numbers[ (int) $row['order_id'] ] ?? $row['order_id'] );
-				$hpos = class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' )
-					&& \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+				$hpos = brikpanel_wc_hpos_enabled();
 				$row['order_url'] = $hpos
 					? admin_url( 'admin.php?page=wc-orders&action=edit&id=' . $row['order_id'] )
 					: admin_url( 'post.php?post=' . $row['order_id'] . '&action=edit' );

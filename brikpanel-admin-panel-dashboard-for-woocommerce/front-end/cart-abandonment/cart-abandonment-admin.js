@@ -54,9 +54,9 @@
 		return !!(cfg.columnVisible && cfg.columnVisible[colId]);
 	}
 
-	/** Width of a full-row cell: every visible column plus the actions column. */
+	/** Width of a full-row cell: the toggle column, every visible column, and the actions column. */
 	function fullColSpan() {
-		var span = 1;
+		var span = 2;
 		columnOrder().forEach(function (id) {
 			if (isVisible(id)) {
 				span++;
@@ -532,9 +532,31 @@
 	function renderDetailsRow(row) {
 		var tr = document.createElement('tr');
 		tr.className = 'brikpanel-cartab-details-row';
+		tr.id = 'brikpanel-cartab-details-' + row.id;
+		// Closed rows leave the flow entirely. A table with border-collapse
+		// shares each border between the two rows that meet at it, so a row
+		// that is merely zero-height still claims half of its neighbour's
+		// border and every closed row adds half a pixel to the table.
 		tr.hidden = true;
+		// An empty cell under the chevron, so the details start exactly where the
+		// first data column starts whatever width that chevron column ends up
+		// with. A padding guess would drift the moment the icon or the cell
+		// padding changes.
+		var spacerTd = document.createElement('td');
+		spacerTd.className = 'brikpanel-cartab-details-spacer';
+		tr.appendChild(spacerTd);
+
 		var td = document.createElement('td');
-		td.colSpan = fullColSpan();
+		td.colSpan = fullColSpan() - 1;
+
+		// Collapsed with the grid 0fr -> 1fr technique rather than `hidden`, so
+		// the row can animate open. The cell carries no padding or border of its
+		// own; both live on the inner box, which is what lets the row collapse to
+		// zero height instead of leaving a sliver behind.
+		var collapse = document.createElement('div');
+		collapse.className = 'brikpanel-cartab-details-collapse';
+		var clip = document.createElement('div');
+		clip.className = 'brikpanel-cartab-details-clip';
 
 		var box = document.createElement('div');
 		box.className = 'brikpanel-cartab-details';
@@ -583,9 +605,40 @@
 			box.appendChild(orderLink);
 		}
 
-		td.appendChild(box);
+		clip.appendChild(box);
+		collapse.appendChild(clip);
+		td.appendChild(collapse);
 		tr.appendChild(td);
 		return tr;
+	}
+
+	/**
+	 * Open or close one details row.
+	 *
+	 * Showing it has to happen a frame before the class that animates it, or
+	 * the browser has nothing to transition from. Hiding it has to happen a
+	 * beat AFTER the class is removed, or the animation is cut off; the timer
+	 * is used rather than `transitionend` because that event never fires for a
+	 * visitor who has asked for reduced motion.
+	 */
+	function toggleDetails(detailsTr, dataTr, open) {
+		window.clearTimeout(detailsTr.bpCloseTimer);
+		dataTr.classList.toggle('is-expanded', open);
+
+		if (open) {
+			detailsTr.hidden = false;
+			// Commit the collapsed starting state before animating away from it.
+			void detailsTr.offsetHeight;
+			detailsTr.classList.add('is-open');
+			return;
+		}
+
+		detailsTr.classList.remove('is-open');
+		detailsTr.bpCloseTimer = window.setTimeout(function () {
+			if (!detailsTr.classList.contains('is-open')) {
+				detailsTr.hidden = true;
+			}
+		}, 300);
 	}
 
 	function render(items) {
@@ -606,6 +659,28 @@
 		items.forEach(function (row) {
 			var tr = document.createElement('tr');
 
+			// Expand affordance at the start of the row, in place of the old
+			// "Details" button that used to sit in the actions column. The table
+			// is wide enough to scroll sideways on most screens, so a chevron
+			// here costs one narrow column and gives the actions column back.
+			var toggleTd = document.createElement('td');
+			toggleTd.className = 'brikpanel-cartab-toggle-cell';
+
+			var toggleBtn = document.createElement('button');
+			toggleBtn.type = 'button';
+			toggleBtn.className = 'brikpanel-cartab-toggle';
+			toggleBtn.setAttribute('aria-expanded', 'false');
+			toggleBtn.setAttribute('aria-controls', 'brikpanel-cartab-details-' + row.id);
+			// No visible label: the chevron is the control, so the accessible
+			// name and the tooltip come from the localized string.
+			toggleBtn.title = cfg.i18n.details;
+			toggleBtn.setAttribute('aria-label', cfg.i18n.details);
+			toggleBtn.innerHTML = '<svg class="brikpanel-cartab-chevron" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"'
+				+ ' stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+			toggleTd.appendChild(toggleBtn);
+			tr.appendChild(toggleTd);
+
 			// Cells follow the user's column order; hiding is left to CSS so a
 			// toggle never has to rebuild the table.
 			columnOrder().forEach(function (colId) {
@@ -617,17 +692,11 @@
 			var actionsTd = document.createElement('td');
 			actionsTd.className = 'brikpanel-cartab-actions-cell';
 
-			var detailsBtn = document.createElement('button');
-			detailsBtn.type = 'button';
-			detailsBtn.className = 'brikpanel-cartab-row-btn';
-			detailsBtn.textContent = cfg.i18n.details;
-
 			var deleteBtn = document.createElement('button');
 			deleteBtn.type = 'button';
 			deleteBtn.className = 'brikpanel-cartab-row-btn brikpanel-cartab-row-btn-danger';
 			deleteBtn.textContent = cfg.i18n.delete;
 
-			actionsTd.appendChild(detailsBtn);
 			actionsTd.appendChild(deleteBtn);
 			tr.appendChild(actionsTd);
 			tbody.appendChild(tr);
@@ -635,8 +704,10 @@
 			var detailsTr = renderDetailsRow(row);
 			tbody.appendChild(detailsTr);
 
-			detailsBtn.addEventListener('click', function () {
-				detailsTr.hidden = !detailsTr.hidden;
+			toggleBtn.addEventListener('click', function () {
+				var open = !detailsTr.classList.contains('is-open');
+				toggleDetails(detailsTr, tr, open);
+				toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
 			});
 			deleteBtn.addEventListener('click', function () {
 				if (!window.confirm(cfg.i18n.confirm_delete)) {

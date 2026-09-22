@@ -278,11 +278,11 @@ class Brikpanel_Expenses {
 				<div class="brikpanel-ex-filter-row">
 					<div class="brikpanel-ex-field">
 						<label for="brikpanel-ex-from"><?php esc_html_e( 'From', 'brikpanel' ); ?></label>
-						<input type="date" id="brikpanel-ex-from" value="<?php echo esc_attr( gmdate( 'Y-m-01' ) ); ?>" />
+						<input type="date" id="brikpanel-ex-from" value="<?php echo esc_attr( brikpanel_store_date( 'Y-m-01' ) ); ?>" />
 					</div>
 					<div class="brikpanel-ex-field">
 						<label for="brikpanel-ex-to"><?php esc_html_e( 'To', 'brikpanel' ); ?></label>
-						<input type="date" id="brikpanel-ex-to" value="<?php echo esc_attr( gmdate( 'Y-m-t' ) ); ?>" />
+						<input type="date" id="brikpanel-ex-to" value="<?php echo esc_attr( brikpanel_store_date( 'Y-m-t' ) ); ?>" />
 					</div>
 					<div class="brikpanel-ex-field">
 						<label for="brikpanel-ex-cat-filter"><?php esc_html_e( 'Title', 'brikpanel' ); ?></label>
@@ -343,7 +343,11 @@ class Brikpanel_Expenses {
 							<div class="brikpanel-ex-modal-grid">
 								<div class="brikpanel-ex-field">
 									<label for="brikpanel-ex-date"><?php esc_html_e( 'Date', 'brikpanel' ); ?></label>
-									<input type="date" id="brikpanel-ex-date" required value="<?php echo esc_attr( gmdate( 'Y-m-d' ) ); ?>" />
+									<?php /* expense_date is a SITE-LOCAL column (written with current_time() on
+	save), so the pre-filled value has to be the store's day. gmdate() here meant
+	that between local midnight and the UTC offset a new expense was pre-filled
+	with yesterday and filed under the wrong month. */ ?>
+									<input type="date" id="brikpanel-ex-date" required value="<?php echo esc_attr( brikpanel_store_date( 'Y-m-d' ) ); ?>" />
 								</div>
 								<div class="brikpanel-ex-field">
 										<label for="brikpanel-ex-kind"><?php esc_html_e( 'Type', 'brikpanel' ); ?></label>
@@ -1420,7 +1424,7 @@ class Brikpanel_Expenses {
 	/** A stored date in the site's format. Midday avoids a timezone day-shift. */
 	private static function date_text( string $ymd ): string {
 		$ts = strtotime( substr( $ymd, 0, 10 ) . ' 12:00:00' );
-		return $ts ? wp_date( (string) get_option( 'date_format' ), $ts ) : substr( $ymd, 0, 10 );
+		return $ts ? wp_date( brikpanel_date_format(), $ts ) : substr( $ymd, 0, 10 );
 	}
 
 	// =========================================================================

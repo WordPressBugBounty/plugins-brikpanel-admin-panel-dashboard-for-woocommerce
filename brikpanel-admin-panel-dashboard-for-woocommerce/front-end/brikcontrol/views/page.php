@@ -22,7 +22,7 @@ $last_label = $last > 0
     ? sprintf(
         /* translators: %s: human-readable date/time */
         esc_html__( 'Last scan: %s', 'brikpanel' ),
-        esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $last ) )
+        esc_html( wp_date( brikpanel_datetime_format(), $last ) )
     )
     : esc_html__( 'No scan completed yet.', 'brikpanel' );
 

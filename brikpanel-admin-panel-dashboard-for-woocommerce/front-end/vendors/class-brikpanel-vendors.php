@@ -622,7 +622,8 @@ class Brikpanel_Vendors {
 
 		// List with aggregated stats — single query, GROUP BY vendor.
 		// 90d window for spend; lead time averaged across received POs only.
-		$cutoff = gmdate( 'Y-m-d', strtotime( '-90 days' ) );
+		// received_date is a SITE-LOCAL DATE column, so the cutoff is a store day.
+		$cutoff = brikpanel_store_date( 'Y-m-d', '-90 days' );
 
 		$list_sql = "
 			SELECT
@@ -893,7 +894,7 @@ class Brikpanel_Vendors {
 			wp_send_json_error( [ 'message' => __( 'Supplier not found.', 'brikpanel' ) ] );
 		}
 
-		$cutoff_90d = gmdate( 'Y-m-d', strtotime( '-90 days' ) );
+		$cutoff_90d = brikpanel_store_date( 'Y-m-d', '-90 days' );
 
 		// Stats — single aggregated query.
 		$stats_sql = "
@@ -985,7 +986,7 @@ class Brikpanel_Vendors {
 		usort( $products, static function ( $a, $b ) { return strcasecmp( $a['title'], $b['title'] ); } );
 
 		// 12-month spend trend.
-		$start_month = gmdate( 'Y-m-01', strtotime( '-11 months' ) );
+		$start_month = brikpanel_store_month_start( 11 );
 		$rows = $wpdb->get_results( $wpdb->prepare(
 			"SELECT DATE_FORMAT(received_date, '%%Y-%%m') AS month, COALESCE(SUM(total),0) AS spend
 			   FROM {$so_t}
@@ -1002,9 +1003,10 @@ class Brikpanel_Vendors {
 		}
 		$trend = [];
 		for ( $i = 11; $i >= 0; $i-- ) {
-			$ts    = strtotime( "-{$i} months" );
-			$key   = gmdate( 'Y-m', $ts );
-			$label = gmdate( 'M', $ts );
+			// Store months, matched against DATE_FORMAT(received_date) which is also
+			// local. The label goes through wp_date() so the month name translates.
+			$key   = brikpanel_store_month_start( $i, 'Y-m' );
+			$label = brikpanel_local_label_date( $key . '-01', 'M' );
 			$value = isset( $by_month[ $key ] ) ? (float) $by_month[ $key ] : 0.0;
 			$trend[] = [
 				'month'    => $key,

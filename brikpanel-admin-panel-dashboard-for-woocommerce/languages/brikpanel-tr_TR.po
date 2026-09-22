@@ -18313,16 +18313,16 @@ msgid "Worst day by revenue"
 msgstr "Gelire göre en kötü gün"
 
 #: includes/brikpanel-store-summary.php:3433
-msgid "Peak hour (UTC) by revenue"
-msgstr "Gelire göre zirve saat (UTC)"
+msgid "Peak hour by revenue"
+msgstr "Gelire göre zirve saat"
 
 #: includes/brikpanel-store-summary.php:3435
-msgid "Peak hour (UTC) by order count"
-msgstr "Sipariş sayısına göre zirve saat (UTC)"
+msgid "Peak hour by order count"
+msgstr "Sipariş sayısına göre zirve saat"
 
 #: includes/brikpanel-store-summary.php:3437
-msgid "Quietest hour (UTC) by revenue"
-msgstr "Gelire göre en sakin saat (UTC)"
+msgid "Quietest hour by revenue"
+msgstr "Gelire göre en sakin saat"
 
 #: includes/brikpanel-store-summary.php:3439
 msgid "Day of week breakdown"
@@ -19522,3 +19522,15 @@ msgstr "Maliyet / sipariş"
 #: front-end/ad-platforms/class-brikpanel-ads-dashboard.php:113
 msgid "Show ad cost per order"
 msgstr "Sipariş başına reklam maliyetini göster"
+
+msgid "Date (%s)"
+msgstr "Tarih (%s)"
+
+msgid "Registered (%s)"
+msgstr "Kayıtlı (%s)"
+
+msgid "First order (%s)"
+msgstr "İlk sipariş (%s)"
+
+msgid "Last order (%s)"
+msgstr "Son sipariş (%s)"

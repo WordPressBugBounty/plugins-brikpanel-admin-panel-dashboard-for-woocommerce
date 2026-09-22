@@ -163,7 +163,9 @@ class Brikpanel_Ads_Sync {
 		$generation = self::bump_backfill_generation( $platform );
 
 		$end       = self::today();
-		$start     = gmdate( 'Y-m-d', time() - BRIKPANEL_ADS_BACKFILL_DAYS * DAY_IN_SECONDS );
+		// self::today() below is wp_date()-based, so the start has to be a store
+		// day too or the two ends of one range sit on different clocks.
+		$start     = brikpanel_store_date( 'Y-m-d', '-' . (int) BRIKPANEL_ADS_BACKFILL_DAYS . ' days' );
 		$chunks    = self::date_chunks( $start, $end, self::BACKFILL_CHUNK_DAYS );
 		$offset    = 0;
 		$total     = count( $chunks );
@@ -424,7 +426,7 @@ class Brikpanel_Ads_Sync {
 			$account_id = (string) $desc['primary_account'];
 
 			$end   = self::today();
-			$start = gmdate( 'Y-m-d', time() - ( BRIKPANEL_ADS_REFRESH_WINDOW_DAYS - 1 ) * DAY_IN_SECONDS );
+			$start = brikpanel_store_date( 'Y-m-d', '-' . (int) ( BRIKPANEL_ADS_REFRESH_WINDOW_DAYS - 1 ) . ' days' );
 
 			try {
 				$this->pull_window( $platform, $account_id, $start, $end );
@@ -544,7 +546,7 @@ class Brikpanel_Ads_Sync {
 
 		$account_id = (string) $desc['primary_account'];
 		$end   = self::today();
-		$start = gmdate( 'Y-m-d', time() - ( BRIKPANEL_ADS_REFRESH_WINDOW_DAYS - 1 ) * DAY_IN_SECONDS );
+		$start = brikpanel_store_date( 'Y-m-d', '-' . (int) ( BRIKPANEL_ADS_REFRESH_WINDOW_DAYS - 1 ) . ' days' );
 
 		$result = $this->pull_window( $platform, $account_id, $start, $end );
 

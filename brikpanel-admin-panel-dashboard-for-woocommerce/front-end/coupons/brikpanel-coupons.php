@@ -731,7 +731,18 @@ class Brikpanel_Coupons {
         // Expiry date
         $expiry = sanitize_text_field($_POST['expiry_date'] ?? '');
         if ($expiry) {
-            $coupon->set_date_expires(strtotime($expiry . ' 23:59:59'));
+            // "Expires on 19 September" means usable through the end of the 19th
+            // IN THE STORE'S TIMEZONE. strtotime() ran with PHP's default zone,
+            // which WordPress pins to UTC, so the coupon actually survived until
+            // 03:00 on the 20th on a UTC+3 store — and WooCommerce's own coupon
+            // screen, which renders the stored instant in site time, then showed
+            // the 20th. Building the instant in wp_timezone() fixes both.
+            $expiry_day = brikpanel_local_day_object($expiry);
+            if ($expiry_day) {
+                $coupon->set_date_expires($expiry_day->setTime(23, 59, 59)->getTimestamp());
+            } else {
+                $coupon->set_date_expires(null);
+            }
         } else {
             $coupon->set_date_expires(null);
         }
@@ -785,12 +796,22 @@ class Brikpanel_Coupons {
             $coupon->set_limit_usage_to_x_items($limit_items !== '' ? intval($limit_items) : '');
         }
 
-        // Set status - default publish for new coupons
-        if ($coupon_id === 0) {
-            $coupon->set_status('publish');
+        // Set status - default publish for new coupons.
+        // The status is staged before the save and reasserted after it: older
+        // WooCommerce has no WC_Coupon::set_status(), and a brand-new coupon
+        // has no post to update until save() has given it an ID.
+        $is_new = ($coupon_id === 0);
+        if ($is_new) {
+            brikpanel_wc_coupon_set_status($coupon, 'publish');
         }
 
         $coupon->save();
+
+        // Only for a new coupon: reasserting this on an edit would silently
+        // republish a coupon the merchant had drafted or scheduled.
+        if ($is_new) {
+            brikpanel_wc_coupon_sync_status($coupon->get_id(), 'publish');
+        }
 
         wp_send_json_success([
             'message'   => $coupon_id > 0 ? __('Coupon updated!', 'brikpanel') : __('Coupon created!', 'brikpanel'),
@@ -920,9 +941,14 @@ class Brikpanel_Coupons {
         $new_coupon->set_excluded_product_categories($original->get_excluded_product_categories());
         $new_coupon->set_email_restrictions($original->get_email_restrictions());
         $new_coupon->set_limit_usage_to_x_items($original->get_limit_usage_to_x_items());
-        $new_coupon->set_status('draft');
+        brikpanel_wc_coupon_set_status($new_coupon, 'draft');
 
         $new_coupon->save();
+
+        // A duplicate must never go live on its own. On a WooCommerce without
+        // the setter the copy is created as 'publish', so this is the call that
+        // actually makes it a draft there.
+        brikpanel_wc_coupon_sync_status($new_coupon->get_id(), 'draft');
 
         wp_send_json_success([
             'message'   => __('Coupon duplicated!', 'brikpanel'),

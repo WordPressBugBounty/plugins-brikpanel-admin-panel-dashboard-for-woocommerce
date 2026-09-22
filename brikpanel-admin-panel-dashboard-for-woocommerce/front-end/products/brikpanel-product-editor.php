@@ -1156,7 +1156,7 @@ class Brikpanel_Product_Editor {
                         if ($pd) { $pubdate_ts = $pd->getTimestamp(); }
                     }
                     $pubdate_label = $pubdate_ts
-                        ? wp_date(get_option('date_format') . ' ' . get_option('time_format'), $pubdate_ts)
+                        ? wp_date(brikpanel_datetime_format(), $pubdate_ts)
                         : __('Immediately', 'brikpanel');
                     ?>
                     <div class="brikpanel-pe-pubdate-wrap" id="bpe-pubdate-wrap">
@@ -6489,7 +6489,7 @@ class Brikpanel_Product_Editor {
                     // in/out/backorder status instead of a tracked quantity.
                     'manage_stock'   => (bool) $variation->get_manage_stock(),
                     'sku'            => $variation->get_sku() ?? '',
-                    'global_unique_id' => $variation->get_global_unique_id() ?? '',
+                    'global_unique_id' => brikpanel_wc_gtin($variation),
                     'tax_class'      => (string) $variation->get_tax_class('edit'),
                     'shipping_class' => $var_ship_class,
                     'images'         => $var_images,
@@ -6735,7 +6735,7 @@ class Brikpanel_Product_Editor {
             'sale_price'        => $sale_price,
             'stock_quantity'    => $stock_qty,
             'sku'               => $product->get_sku() ?? '',
-            'global_unique_id'  => $product->get_global_unique_id() ?? '',
+            'global_unique_id'  => brikpanel_wc_gtin($product),
             'short_description' => $product->get_short_description() ?? '',
             'description'       => $product->get_description() ?? '',
             'weight'            => $product->get_weight() ?? '',
@@ -7559,8 +7559,8 @@ class Brikpanel_Product_Editor {
         if (array_key_exists('global_unique_id', $_POST)) {
             $gtin = sanitize_text_field(wp_unslash($_POST['global_unique_id']));
             try {
-                $product->set_global_unique_id($gtin);
-            } catch (\Exception $e) {
+                brikpanel_wc_set_gtin($product, $gtin);
+            } catch (\Throwable $e) {
                 // Duplicate/invalid GTIN — save the rest but tell the merchant
                 // why the barcode did not stick (same rationale as SKU above).
                 if ($gtin !== '') {
@@ -9768,8 +9768,8 @@ class Brikpanel_Product_Editor {
             if (array_key_exists('global_unique_id', $var_data)) {
                 $var_gtin = sanitize_text_field($var_data['global_unique_id']);
                 try {
-                    $variation->set_global_unique_id($var_gtin);
-                } catch (\Exception $e) {
+                    brikpanel_wc_set_gtin($variation, $var_gtin);
+                } catch (\Throwable $e) {
                     // Duplicate/invalid variation GTIN — keep the rest, warn why.
                     if ($var_gtin !== '') {
                         $this->save_warnings[] = sprintf(
@@ -10307,19 +10307,20 @@ class Brikpanel_Product_Editor {
 
             // Parent-level value covers simple products and variable products
             // whose GTIN is set on the parent.
-            $value = (string) $product->get_global_unique_id();
+            $value = brikpanel_wc_gtin($product);
 
             if ($value === '' && $product->is_type('variable')) {
                 // GTIN is usually stored per variation. Collect the distinct
                 // non-empty values so the column stays meaningful for
                 // variable products too.
+                // Each child's GTIN is read straight from post meta instead of
+                // hydrating a WC_Product per variation. It is the same key
+                // WooCommerce stores the prop in, so the answer is identical on
+                // every version, and it saves a full product load per variation
+                // on every row of the list.
                 $found = [];
                 foreach ($product->get_children() as $child_id) {
-                    $variation = wc_get_product($child_id);
-                    if (!$variation) {
-                        continue;
-                    }
-                    $vid = trim((string) $variation->get_global_unique_id());
+                    $vid = trim(brikpanel_wc_gtin($child_id));
                     if ($vid !== '') {
                         $found[$vid] = true;
                     }

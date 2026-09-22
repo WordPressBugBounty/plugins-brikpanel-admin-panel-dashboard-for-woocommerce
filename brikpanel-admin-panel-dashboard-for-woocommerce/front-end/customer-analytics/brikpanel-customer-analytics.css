@@ -5,16 +5,37 @@
  *  - Monochrome palette (#303030 primary, #f1f1f1 page bg, #e3e3e3 borders)
  *  - White cards with 0.75rem radius and subtle 0 1px 3px shadow
  *  - System font, 13px labels, 18px h1
- *  - 820px max-width centered (we widen to 1100px here for the table)
+ *  - Full width, like the other BrikPanel data-table screens (Orders, Products,
+ *    Coupons, Segments, Abandoned Carts). The 820px reading column of the
+ *    settings screens never fitted a seven-column customer table; it used to be
+ *    widened to 1100px here, which was still a compromise. The caps further
+ *    down keep the pieces that should not grow with the page — the KPI row, the
+ *    charts, the RFM block, the customer cell — at the size they have today.
  */
 
+/* .bp-ca sits inside a plain .wrap, so the horizontal gutter is WordPress
+   core's `.wrap { margin: 10px 20px 0 2px }` and is mirrored in RTL for free.
+   Only the vertical margin is ours. */
 .bp-ca {
-	max-width: 1100px;
-	margin: 1.25rem auto;
+	max-width: none;
+	margin: 1.25rem 0;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 	color: #303030;
 	line-height: 1.5;
 }
+
+
+/* RTL leading gutter. Core's RTL stylesheet flips `.wrap` to
+   `margin: 10px 2px 0 20px` on the assumption that #wpcontent carries a 20px
+   padding on the leading side, but brikpanel-rtl.css deliberately zeroes
+   `#wpcontent { padding-right }` so the sidebar does not sit behind an empty
+   strip. On a centred column that left a large gap either way; full width it
+   would park the cards 2px from the sidebar. Restate the gutter so both
+   directions read the same. */
+body.rtl.toplevel_page_brikpanel-customer-analytics .wrap {
+	margin-inline-start: 22px;
+}
+
 
 .bp-ca *,
 .bp-ca *::before,
@@ -143,6 +164,10 @@
    STATS GRID (4 KPI cards)
    ============================================================================= */
 
+/* Deliberately NOT capped. A capped KPI row on a full-width page stops short of
+   the cards and tables below it, and that ragged edge reads worse than four
+   airy tiles — same call as the dashboard KPI row and the Abandoned Carts
+   summary. The 900px / 480px rules below still drop the track count. */
 .bp-ca-stats {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
@@ -218,8 +243,17 @@
 	margin: 0;
 	font-size: 0.8125rem;
 	color: #8a8a8a;
+	/* Readable measure on a full-width card. */
+	max-width: 72ch;
 }
 
+/* Fills its card. Capping it instead left half of a full-width card empty,
+   which looked broken; filling it also buys the histogram more visible buckets.
+   The canvases carry height="80" and the charts run with
+   `maintainAspectRatio: false`, so the height comes from this box — these two
+   charts are short and stay short, which is a separate call from page width.
+   Chart.js v4 watches this element with a ResizeObserver, so a width change
+   re-renders on its own: no JS, no re-init, no reload. */
 .bp-ca-chart-wrap {
 	position: relative;
 	width: 100%;
@@ -275,10 +309,14 @@
 	background: #fafafa;
 }
 
+/* A real element inside the cell, so unlike a bare <td> under table-layout:
+   auto this cap actually binds. Same trick the Products list uses on its name
+   column. */
 .bp-ca-customer-cell {
 	display: flex;
 	flex-direction: column;
 	gap: 0.125rem;
+	max-width: 26rem;
 }
 
 .bp-ca-customer-name {
@@ -337,6 +375,10 @@
    RFM TAB
    ============================================================================= */
 
+/* Not capped: the donut column is a fixed 280px and the segment cards take the
+   rest, so the block fills its card and the donut anchors the trailing edge.
+   Capping it parked the whole block on the left of a mostly empty card. The
+   900px rule below still collapses it to one column. */
 .bp-ca-rfm-layout {
 	display: grid;
 	grid-template-columns: 1fr 280px;

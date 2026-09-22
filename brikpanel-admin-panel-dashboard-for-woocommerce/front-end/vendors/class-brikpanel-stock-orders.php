@@ -340,7 +340,7 @@ class Brikpanel_Stock_Orders {
 							</div>
 							<div class="brikpanel-so-field">
 								<label for="brikpanel-so-reference"><?php esc_html_e( 'Reference', 'brikpanel' ); ?></label>
-								<input type="text" id="brikpanel-so-reference" maxlength="40" value="<?php echo esc_attr( $po ? $po->reference : '' ); ?>" placeholder="<?php echo esc_attr( $ref_prefix . '-' . gmdate( 'Y' ) . '-…' ); ?>" />
+								<input type="text" id="brikpanel-so-reference" maxlength="40" value="<?php echo esc_attr( $po ? $po->reference : '' ); ?>" placeholder="<?php echo esc_attr( $ref_prefix . '-' . brikpanel_store_date( 'Y' ) . '-…' ); ?>" />
 							</div>
 							<div class="brikpanel-so-field">
 								<label for="brikpanel-so-order-date"><?php esc_html_e( 'Order date', 'brikpanel' ); ?></label>
@@ -532,7 +532,8 @@ class Brikpanel_Stock_Orders {
 		$rows = $wpdb->get_results( $wpdb->prepare( $list_sql, $list_params ) ); // phpcs:ignore
 
 		// Summary across all (not paginated)
-		$cutoff = gmdate( 'Y-m-d', strtotime( '-90 days' ) );
+		// SITE-LOCAL DATE column.
+		$cutoff = brikpanel_store_date( 'Y-m-d', '-90 days' );
 		$summary = $wpdb->get_row( $wpdb->prepare(
 			"SELECT
 				COALESCE( SUM( CASE WHEN status IN ('ordered','partially_received') THEN 1 ELSE 0 END ), 0 ) AS open_count,
@@ -1137,7 +1138,9 @@ class Brikpanel_Stock_Orders {
 		global $wpdb;
 		$prefix = (string) get_option( 'brikpanel_po_reference_prefix', 'PO' );
 		$prefix = $prefix !== '' ? $prefix : 'PO';
-		$year   = gmdate( 'Y' );
+		// The store's year: on 31 December a UTC year would stamp a new PO with
+		// the previous year for the first hours of the merchant's new year.
+		$year   = brikpanel_store_date( 'Y' );
 		$so_t   = $wpdb->prefix . self::TABLE;
 		// Find the highest sequential number used this year for this prefix.
 		$pattern = $wpdb->esc_like( $prefix . '-' . $year . '-' ) . '%';

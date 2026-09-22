@@ -201,12 +201,25 @@ add_action( 'admin_page_access_denied', 'brikpanel_nav_redirect_synthetic_slug' 
 
 /**
  * Whether the current user counts as an administrator for audience rules.
- * Uses `manage_options`, which also covers multisite super admins.
+ *
+ * Deliberately role-based, NOT capability-based. Stores routinely grant
+ * `manage_options` to the shop_manager role with a role editor, so a bare
+ * capability check let those managers walk straight past every "Admins only"
+ * rule written in this editor. brikpanel_user_is_administrator() tests the real
+ * `administrator` role plus multisite super admins (is_super_admin(), which is
+ * stronger than the `manage_network` capability a role editor can also hand
+ * out). It is the same helper the settings lock and the dashboard widget gate
+ * use, so every BrikPanel audience system now answers "is this an
+ * administrator?" the same way. The function_exists() guard is belt-and-braces:
+ * includes/brikpanel-access-control.php is required at file scope in
+ * brikpanel.php, long before this file loads on `init`.
  *
  * @return bool
  */
 function brikpanel_nav_current_user_is_admin() {
-	return current_user_can( 'manage_options' );
+	return function_exists( 'brikpanel_user_is_administrator' )
+		? brikpanel_user_is_administrator()
+		: current_user_can( 'manage_options' );
 }
 
 /**

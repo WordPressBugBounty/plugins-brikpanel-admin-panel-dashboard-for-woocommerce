@@ -520,6 +520,27 @@ class Brikpanel_Ads_Dashboard {
 			}
 		}
 
+		// One last bump, before the response rather than after it.
+		//
+		// brikpanel_bust_data_caches() coalesces: the FIRST call in a request
+		// bumps the version straight away and every later one is deferred to
+		// `shutdown`. Shutdown runs after this response has already been handed
+		// to the browser, and the browser refetches the instant it reads it. So
+		// on a store with two platforms connected, the second platform's rows
+		// were invalidated by a bump that could land after the refetch had
+		// already read the old version, and on a busy store another request
+		// could re-cache the pre-pull figures under it in between.
+		//
+		// Bumping here closes that window: by the time the browser has the
+		// response, every row this request wrote is already behind a version no
+		// cached payload can be holding. Cheap enough to do unconditionally on
+		// the success paths, one option write, and it makes the deferred bump a
+		// harmless no-op rather than load-bearing.
+		if ( function_exists( 'brikpanel_bump_data_cache_ver' ) ) {
+			remove_action( 'shutdown', 'brikpanel_bump_data_cache_ver', PHP_INT_MAX );
+			brikpanel_bump_data_cache_ver();
+		}
+
 		if ( ! $ok ) {
 			// Surface the upstream sentence verbatim. The Meta client already
 			// maps known Graph codes to merchant-readable text, and a raw Google
