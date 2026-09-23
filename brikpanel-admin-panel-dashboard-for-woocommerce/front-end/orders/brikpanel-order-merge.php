@@ -1107,7 +1107,7 @@ function brikpanel_order_merge_maybe_run() {
 	$target = wc_get_order( $report['target_id'] );
 	$back   = $target instanceof WC_Order
 		? $target->get_edit_order_url()
-		: admin_url( 'admin.php?page=wc-orders' );
+		: brikpanel_wc_orders_list_url();
 
 	wp_safe_redirect( $back );
 	exit;
@@ -1136,7 +1136,7 @@ function brikpanel_order_merge_render_page() {
 		echo '<div class="wrap brikpanel-merge">';
 		echo '<h1 class="bpm-title">' . esc_html__( 'Merge orders', 'brikpanel' ) . '</h1>';
 		echo '<div class="bpm-card bpm-card--error"><p>' . esc_html( $why ) . '</p></div>';
-		echo '<p><a class="bpm-btn bpm-btn--sec" href="' . esc_url( admin_url( 'admin.php?page=wc-orders' ) ) . '">'
+		echo '<p><a class="bpm-btn bpm-btn--sec" href="' . esc_url( brikpanel_wc_orders_list_url() ) . '">'
 			. esc_html__( 'Back to orders', 'brikpanel' ) . '</a></p>';
 		echo '</div>';
 		return;
@@ -1153,7 +1153,7 @@ function brikpanel_order_merge_render_page() {
 		echo '<div class="bpm-card bpm-card--error"><p>'
 			. esc_html__( 'This merge has expired or was already used. Go back to the orders list and select the orders again.', 'brikpanel' )
 			. '</p></div>';
-		echo '<p><a class="bpm-btn bpm-btn--sec" href="' . esc_url( admin_url( 'admin.php?page=wc-orders' ) ) . '">'
+		echo '<p><a class="bpm-btn bpm-btn--sec" href="' . esc_url( brikpanel_wc_orders_list_url() ) . '">'
 			. esc_html__( 'Back to orders', 'brikpanel' ) . '</a></p>';
 		echo '</div>';
 		return;
@@ -1184,7 +1184,7 @@ function brikpanel_order_merge_render_page() {
 				. '</strong>: ' . esc_html( $reason ) . '</li>';
 		}
 		echo '</ul></div>';
-		echo '<p><a class="bpm-btn bpm-btn--sec" href="' . esc_url( admin_url( 'admin.php?page=wc-orders' ) ) . '">'
+		echo '<p><a class="bpm-btn bpm-btn--sec" href="' . esc_url( brikpanel_wc_orders_list_url() ) . '">'
 			. esc_html__( 'Back to orders', 'brikpanel' ) . '</a></p>';
 		echo '</div>';
 		return;
@@ -1281,7 +1281,7 @@ function brikpanel_order_merge_render_page() {
 
 	// --- Actions -----------------------------------------------------------
 	echo '<div class="bpm-actions">';
-	echo '<a class="bpm-btn bpm-btn--sec" href="' . esc_url( admin_url( 'admin.php?page=wc-orders' ) ) . '">'
+	echo '<a class="bpm-btn bpm-btn--sec" href="' . esc_url( brikpanel_wc_orders_list_url() ) . '">'
 		. esc_html__( 'Cancel', 'brikpanel' ) . '</a>';
 	echo '<button type="submit" name="bpm_action" value="merge" class="bpm-btn bpm-btn--pri">'
 		. esc_html(

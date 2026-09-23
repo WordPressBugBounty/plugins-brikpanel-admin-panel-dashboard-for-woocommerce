@@ -3015,7 +3015,10 @@ a.brikpanel-pl-cat-link:focus {
     margin: 0 0 0.625rem;
     line-height: 1.4;
 }
-.brikpanel-pl-text-muted {
+/* Empty-state note inside a panel ("No files added yet.", no variations). Its own
+   class: .brikpanel-pl-text-muted is the table's plain muted dash, and sharing that
+   name turned every empty table cell italic and a pixel smaller than its row. */
+.brikpanel-pl-empty-note {
     font-size: 0.8125rem;
     color: #8a8a8a;
     margin: 0;

@@ -317,11 +317,17 @@ class Brikpanel_Master_Switch {
 		}
 
 		// Static slug -> native screen map. Anything not listed falls back to the
-		// stock dashboard below.
+		// stock dashboard below. WooCommerce's Customers report belongs to its
+		// Analytics app, which a store can switch off (WooCommerce Admin as a
+		// whole, or Analytics alone); then the WordPress customer list is the
+		// closest screen, the same fallback the top bar's bell uses.
+		$customers_screen = ( function_exists( 'brikpanel_wc_analytics_enabled' ) && brikpanel_wc_analytics_enabled() )
+			? 'admin.php?page=wc-admin&path=/customers'
+			: 'users.php?role=customer';
 		$map = array(
 			'brikpanel-products'          => 'edit.php?post_type=product',
 			'brikpanel-coupons'           => 'edit.php?post_type=shop_coupon',
-			'brikpanel-customer-analytics' => 'admin.php?page=wc-admin&path=/customers',
+			'brikpanel-customer-analytics' => $customers_screen,
 		);
 
 		/**

@@ -30,6 +30,14 @@ class Brikpanel_Cart_Share {
     /** Query variable that carries the shared cart payload. */
     const QUERY_VAR = 'bp-cart';
 
+    /**
+     * Capability for the admin builder page and for every link that leads to it
+     * (the "More" sidebar group, the top bar Create menu). One constant, so a
+     * link can never be shown to someone the page itself would turn away with
+     * a 403. Editors used to get exactly that from the sidebar's "More" row.
+     */
+    const CAPABILITY = 'manage_woocommerce';
+
     public function __construct() {
         // Settings tab wiring is registered unconditionally so the on/off toggle
         // is always reachable, even while the feature itself is switched off.
@@ -290,7 +298,7 @@ class Brikpanel_Cart_Share {
             '',
             __( 'Cart share', 'brikpanel' ),
             '',
-            'manage_woocommerce',
+            self::CAPABILITY,
             'brikpanel-cart-share',
             [ $this, 'render_page' ]
         );
@@ -377,7 +385,7 @@ class Brikpanel_Cart_Share {
     public function ajax_search_products() {
         check_ajax_referer( 'brikpanel_cartshare_admin', 'security' );
 
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+        if ( ! current_user_can( self::CAPABILITY ) ) {
             wp_send_json_error( [ 'message' => __( 'Permission denied.', 'brikpanel' ) ] );
         }
 
@@ -443,7 +451,7 @@ class Brikpanel_Cart_Share {
     public function ajax_get_variations() {
         check_ajax_referer( 'brikpanel_cartshare_admin', 'security' );
 
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+        if ( ! current_user_can( self::CAPABILITY ) ) {
             wp_send_json_error( [ 'message' => __( 'Permission denied.', 'brikpanel' ) ] );
         }
 

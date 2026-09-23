@@ -1618,15 +1618,31 @@ function brikpanel_brikmentor_register_menu() {
 
 add_action( 'brikpanel_nav_store_cluster_ready', 'brikpanel_brikmentor_pin_menu' );
 /**
- * Put the sidebar entry after Marketing (before Settings), or after Abandoned
- * Carts on a store without the Marketing item. Two calls on purpose: the
- * second is a no-op when Marketing is missing.
+ * Put the sidebar entry directly above Settings: after the row Settings and
+ * More follow, which is Marketing on a store that has it and otherwise the last
+ * WooCommerce or BrikPanel store row (brikpanel_nav_store_tail_anchor()). With
+ * Marketing present this is the same spot as always; without it (WooCommerce
+ * 4.0, roles that cannot see Marketing) the entry now stays next to Settings
+ * instead of landing above Analytics.
+ *
+ * The old two steps (after Abandoned Carts, then after Marketing when it
+ * exists) remain as the fallback for a copy without the shared helpers.
  *
  * @param array $menu The $menu-shaped array, by reference.
  * @return void
  */
 function brikpanel_brikmentor_pin_menu( &$menu ) {
-    if ( ! function_exists( 'brikpanel_move_item_after' ) || ! is_array( $menu ) ) {
+    if ( ! is_array( $menu ) ) {
+        return;
+    }
+    if ( function_exists( 'brikpanel_nav_store_tail_anchor' ) && function_exists( 'brikpanel_nav_move_after' ) ) {
+        $anchor = brikpanel_nav_store_tail_anchor( $menu );
+        if ( '' !== $anchor ) {
+            $menu = brikpanel_nav_move_after( $menu, BRIKPANEL_BM_PAGE_SLUG, $anchor );
+        }
+        return;
+    }
+    if ( ! function_exists( 'brikpanel_move_item_after' ) ) {
         return;
     }
     $menu = brikpanel_move_item_after( $menu, BRIKPANEL_BM_PAGE_SLUG, 'brikpanel-abandoned-carts' );

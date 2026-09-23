@@ -745,7 +745,7 @@ function brikpanel_nav_customizer_collect_menu_items() {
 	// Customers, everything else lands under "More"). The renderer skips this when
 	// Admin Menu Editor owns the menu or the modern navigation is switched off, so
 	// honour the same conditions here.
-	$relocate = ! ( function_exists( 'is_plugin_active' ) && is_plugin_active( 'admin-menu-editor/menu-editor.php' ) )
+	$relocate = ! ( function_exists( 'brikpanel_nav_ame_active' ) && brikpanel_nav_ame_active() )
 		&& get_option( 'brikpanel_modern_navigation', 'yes' ) !== 'no';
 	if ( $relocate && function_exists( 'brikpanel_nav_relocate_wc_submenus' ) ) {
 		brikpanel_nav_relocate_wc_submenus( $menu_snapshot, $submenu_snapshot );
@@ -807,11 +807,18 @@ function brikpanel_nav_customizer_collect_menu_items() {
 }
 
 /**
- * Apply the same default top-level reorderings the navigation renderer uses,
- * to a copy of $menu. Skips the moves entirely when Admin Menu Editor is
- * active (its custom order takes precedence). Inlined locally rather than
- * relying on `brikpanel_move_item_after()` so the customizer also works when
- * the modern-navigation toggle is off.
+ * Apply the renderer's default top-level order to a copy of $menu. Skips the
+ * moves entirely when Admin Menu Editor is active (its custom order takes
+ * precedence), exactly as the renderer does.
+ *
+ * The order itself comes from brikpanel_nav_apply_store_order(), the same
+ * function the live sidebar calls, loaded on every admin request so this works
+ * while the modern-navigation toggle is off. This used to be a hand-kept copy of
+ * the renderer's moves, and the copy drifted: it never fired the store-cluster
+ * hook, so the editor listed BrikMentor under "Site management" while the sidebar
+ * showed it in the store section, and saving unchanged moved it. Any difference
+ * between the two makes saving an unmodified config silently re-order the
+ * sidebar, because the saved order then diverges from the live default.
  *
  * @param array $menu Reference to the menu array to reorder in place.
  */
@@ -819,71 +826,18 @@ function brikpanel_nav_customizer_apply_default_reorder( &$menu ) {
 	if ( ! is_array( $menu ) ) {
 		return;
 	}
-	if ( function_exists( 'is_plugin_active' ) && is_plugin_active( 'admin-menu-editor/menu-editor.php' ) ) {
+	if ( function_exists( 'brikpanel_nav_ame_active' ) && brikpanel_nav_ame_active() ) {
+		return;
+	}
+	if ( ! function_exists( 'brikpanel_nav_apply_store_order' ) ) {
 		return;
 	}
 
-	$move_after = static function ( array $arr, $item_to_move, $after_item_value ) {
-		$idx_move = null;
-		$idx_after = null;
-		$item_value = null;
-		foreach ( $arr as $i => $row ) {
-			if ( ! isset( $row[2] ) ) {
-				continue;
-			}
-			if ( $row[2] === $item_to_move ) {
-				$idx_move = $i;
-				$item_value = $row;
-			}
-			if ( $row[2] === $after_item_value ) {
-				$idx_after = $i;
-			}
-		}
-		if ( $idx_move === null || $idx_after === null ) {
-			return $arr;
-		}
-		unset( $arr[ $idx_move ] );
-		if ( $idx_move < $idx_after ) {
-			$idx_after--;
-		}
-		if ( $idx_after === count( $arr ) - 1 ) {
-			$arr[] = $item_value;
-		} else {
-			$arr = array_merge(
-				array_slice( $arr, 0, $idx_after + 1 ),
-				[ $item_value ],
-				array_slice( $arr, $idx_after + 1 )
-			);
-		}
-		return array_values( $arr );
-	};
+	brikpanel_nav_apply_store_order( $menu );
 
-	// Mirrors — in the SAME ORDER — every move applied by
-	// brikpanel_get_navigation_items() so the customizer's snapshot reflects what
-	// users actually see in the sidebar. Any move that exists here but not there
-	// (or vice versa) makes saving an unmodified config silently re-order the
-	// sidebar, because the saved order then diverges from the live default.
-	$menu = $move_after( $menu, 'edit.php?post_type=product', 'woocommerce' );
-	$menu = $move_after( $menu, 'woocommerce-more', 'woocommerce-marketing' );
-	$menu = $move_after( $menu, 'admin.php?page=wc-settings', 'woocommerce-marketing' );
-	$menu = $move_after( $menu, 'admin.php?page=wc-settings&tab=checkout', 'edit.php?post_type=product' );
-	$menu = $move_after( $menu, 'wf_woocommerce_packing_list', 'edit.php?post_type=product' );
-	$menu = $move_after( $menu, 'brikpanel-segments', 'edit.php?post_type=product' );
-	$menu = $move_after( $menu, 'brikpanel-customer-analytics', 'brikpanel-segments' );
-	$menu = $move_after( $menu, 'brikpanel-google-sheets', 'brikpanel-customer-analytics' );
-	// Abandoned Carts — mirror of the renderer's two-step pin (after Sheets
-	// when present, else after Customer Analytics).
-	$menu = $move_after( $menu, 'brikpanel-abandoned-carts', 'brikpanel-customer-analytics' );
-	$menu = $move_after( $menu, 'brikpanel-abandoned-carts', 'brikpanel-google-sheets' );
 	// Vendors is pinned AFTER the customizer in the renderer; mirror it last so
 	// the snapshot order matches the rendered sidebar's final position.
-	$menu = $move_after( $menu, 'brikpanel-vendors', 'edit.php?post_type=product' );
-
-	// Push third-party top-levels that leaked above the "Site management"
-	// anchor down into that section — mirrors the same pass the live renderer
-	// runs, so the settings-page snapshot lists them exactly where the sidebar
-	// shows them and saving an unmodified config stays a true no-op.
-	brikpanel_nav_demote_foreign_toplevels( $menu );
+	$menu = brikpanel_nav_move_after( $menu, 'brikpanel-vendors', 'edit.php?post_type=product' );
 }
 
 /**
@@ -1243,8 +1197,9 @@ function brikpanel_nav_customizer_apply( &$menu, &$submenu = null ) {
 			$slug = 'brikpanel_custom__' . $id;
 
 			if ( $section === 'more' ) {
-				// Inject as a synthetic submenu row under "More". Index 4 carries
-				// extra metadata (custom_url/icon/new_tab) the renderer reads.
+				// Inject as a synthetic submenu row under "More". Index 7 carries
+				// extra metadata (url/icon/new_tab) the renderer reads through
+				// brikpanel_nav_customizer_extract_meta(); index 4 holds the classes.
 				$submenu['woocommerce-more'][] = [
 					$label,
 					'read',

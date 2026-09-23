@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.20
+Stable tag: 3.3.22
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -226,12 +226,12 @@ WooCommerce's built-in analytics are slow, refresh hourly, and have no live visi
 
 == WooCommerce HPOS Compatibility & Performance ==
 
-* **Zero impact on storefront speed**: only loads inside wp-admin
+* **Light on your storefront**: admin screens load only inside wp-admin; shoppers only get the scripts of the storefront features you keep on
 * **Hardened performance for low-resource hosting**: heavy queries are batched, cached and run through Action Scheduler so the dashboard, customer analytics and bulk editor stay responsive on shared hosting
 * **HPOS (High-Performance Order Storage)** fully supported with dual code paths
 * WooCommerce 7.x, 8.x, and newer; works alongside Admin Menu Editor, Slider Revolution, Yoast SEO, RankMath, WPML, Polylang
 * Translation-ready (`.pot` file included), with all JavaScript / jQuery strings routed through `wp_localize_script`
-* All AJAX actions verify nonces and `manage_woocommerce` capability; DB writes use prepared statements; visitor IPs stored only as truncated salted SHA-256 hashes; admin activity excluded from analytics; front-end tracking can be disabled entirely from settings
+* DB writes use prepared statements; visitor IPs stored only as truncated salted SHA-256 hashes; admin activity excluded from analytics; front-end tracking can be disabled entirely from settings
 
 == Installation ==
 
@@ -246,7 +246,7 @@ That is it. No license key, no email signup, no external account.
 
 = Is BrikPanel really 100% free? =
 
-Yes. Every feature on this page is in the free version. There is no premium tier, no feature lock, no trial period, no upsell. We built this because we needed it for our own 1000+ WooCommerce stores and decided to release it.
+Yes. Every feature on this page is in the free version. There is no premium tier, no feature lock and no trial period. We also make a separate paid plugin, BrikMentor, and BrikPanel shows a small notice about it, which you can switch off under WooCommerce → Settings → BrikPanel → General. We built this because we needed it for our own 1000+ WooCommerce stores and decided to release it.
 
 = Is BrikPanel a self-hosted WooCommerce analytics solution? =
 
@@ -274,7 +274,7 @@ BrikPanel reads product cost from **WooCommerce's own native Cost of Goods Sold 
 
 = Can I turn off BrikPanel's front-end visitor tracking? =
 
-Yes. If you already run a dedicated analytics tool, disable **Visitor tracking** under **WooCommerce → Settings → BrikPanel → Analytics** and BrikPanel adds zero scripts and zero requests to your storefront. You can also keep tracking on but raise the live-visitor refresh interval to reduce server load, or exclude logged-in customer details from the Live view for a fully anonymous setup. If you only want tracking to wait for cookie consent rather than switching it off, see the next question.
+Yes. If you already run a dedicated analytics tool, disable **Visitor tracking** under **WooCommerce → Settings → BrikPanel → Analytics** and BrikPanel stops adding its tracking script, tracking cookies and tracking requests to your storefront. This switch covers analytics only: the shopper-facing features (checkout email capture, the Share cart button, the variation gallery) have their own switches, listed under "Does BrikPanel slow down my WooCommerce store?". You can also keep tracking on but raise the live-visitor refresh interval to reduce server load, or exclude logged-in customer details from the Live view for a fully anonymous setup. If you only want tracking to wait for cookie consent rather than switching it off, see the next question.
 
 = Does BrikPanel work with a cookie consent banner? (GDPR / consent mode) =
 
@@ -301,7 +301,7 @@ and in your theme's footer, so a click takes effect without a reload:
 
 What visitor tracking stores in the browser, and only after consent when the setting is on: `brikpanel_vid` (a random id, 1 year, so a visit is counted once instead of once per page), `brikpanel_consent` (the value `1`, 30 days, remembering the choice), `brikpanel_add_to_cart_count_cookie` and `brikpanel_checkout_count_cookie` (until midnight, one funnel count per day), and the local storage keys `brikpanel_visitor_viewed_<date>` and `brikpanel_product_viewed_<date>`. All of it is first-party and stays on your own site.
 
-This setting governs analytics. Abandoned-cart email capture is a separate feature with its own switch under **Cart abandonment**, and it stores nothing at all until a customer types their email address themselves; when they do, it reuses the same `brikpanel_vid` id to tie the cart to that address.
+This setting governs analytics. Abandoned-cart email capture is a separate feature with its own switch under **Cart abandonment**. For a guest it saves no cart and sets no cookie until they enter their email address; when they do, it reuses the same `brikpanel_vid` id to tie the cart to that address. A logged-in customer's email is already on their account, so their cart is saved as soon as it has items. The optional signup popup, if you turn it on, only keeps a few small entries in browser storage (that it was closed or used, the coupon it gave, whether the cookie banner was answered), so it does not keep reappearing.
 
 = Does the signup popup appear on top of my cookie banner? =
 
@@ -350,7 +350,16 @@ Yes. **Bulk edit variation prices WooCommerce** is a core BrikPanel feature, and
 
 = Does BrikPanel slow down my WooCommerce store? =
 
-No. BrikPanel only loads inside wp-admin. It has zero impact on your storefront speed, customer experience, page weight, or Core Web Vitals. The frontend never loads any BrikPanel code.
+BrikPanel is built to stay light on your storefront. Everything you use in the admin (dashboard, reports, product list, product and bulk editors) loads only inside wp-admin, so none of it reaches your shoppers. On the storefront, BrikPanel adds only what its shopper-facing features need, and only on the pages that use them:
+
+* **Visitor tracking**: a small script at the end of every page that sends its data in the background once the page is ready. On by default, switch: **Analytics → Visitor tracking**.
+* **Abandoned-cart email capture**: a script on the checkout page only. On by default, switch: **Cart abandonment → Email collection**.
+* **Share cart button**: a script and a small stylesheet on the cart page only. On by default, switch: **Cart share → Storefront share button**.
+* **Variation gallery**: a small script on product pages. On by default, switch: **Products → Multiple images per variation**.
+* **Cart recovery popup**: its scripts and stylesheet on your other pages, only if you turn the popup on. Off by default.
+* **Description image lightbox**: a tiny script and stylesheet, only on products where you set a description image to open in a lightbox.
+
+All switches are under **WooCommerce → Settings → BrikPanel**. Turn them off and BrikPanel adds no scripts, styles or requests to your storefront, apart from the lightbox on products where you used it.
 
 = Is BrikPanel compatible with HPOS (High-Performance Order Storage)? =
 
@@ -447,6 +456,10 @@ By default, nothing. BrikPanel only contacts an external service for features yo
 
 Yes. The dashboard, the bulk editor, the inventory tools, the order management, the coupon manager, the custom login, the conversion tracking, the customer analytics suite, and every other feature listed above will remain free forever. We also sell a separate paid product (BrikMentor) on top of BrikPanel, but it is additive, BrikPanel itself stays 100% free.
 
+= Is it BrikPanel or BrickPanel? =
+
+BrikPanel, written as one word and without a "c". It is pronounced like "brick panel", so it is often searched for as BrickPanel, Brick Panel or Brik Panel. All of these point to this plugin, made by Brksoft.
+
 == Screenshots ==
 
 1. Dashboard
@@ -474,6 +487,15 @@ Yes. The dashboard, the bulk editor, the inventory tools, the order management, 
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.22 (2026-09-23) =
+* Fix: **BrikPanel no longer switches itself off when WooCommerce sits in a differently named folder.** WooCommerce is now recognised by its main file, the way WordPress itself loads it, so stores that keep it in a folder such as `wc-core/` get BrikPanel back. The same assumption also removed WooCommerce's own files from BrikPanel pages on such stores and hid Admin Menu Editor Pro; both are fixed.
+* Fix: **No more links to pages a user is not allowed to open.** Editors, authors and contributors no longer see an empty "More" row that led to a "not allowed" page. The same check now covers the WordPress toolbar, Cmd+K search, the top bar's Create menu, bell and logo, the product list's Import and Export buttons, the settings shortcuts, and users for whom a multisite network has switched BrikPanel off.
+* Fix: **The side menu no longer overlaps on older WooCommerce versions.** On stores whose Orders screen is the classic list (WooCommerce 4.0, and stores without HPOS), Orders and Customers could spill out beside the WooCommerce heading. The bell's links, the "back" links in order merge, the toolbar Analytics shortcut and the redirect after switching a module off were corrected for the same reason.
+* Fix: **The Navigation settings screen shows the menu in the same order as the sidebar.** It listed BrikMentor under "Site management", so saving without a change moved it there. Menus you already saved stay as they are.
+* Fix: **"Email" and "popup" no longer overlap in the Abandoned Carts header.** The row arrow shared a CSS class with the header switch, so its sizing hit the switch's label. Three similar clashes are fixed too: italic empty cells in the products list, the order screen's status menu taking styles from the orders list, and generic class names in styles loaded on every admin page, which could restyle other plugins and put a magnifier on BrikPanel's power switch in the toolbar.
+* Tweak: **Clearer wording.** The "Wait for cookie consent" setting now says it also covers signed-in customers, and the FAQ describes exactly which scripts load on the storefront, when, and where to switch each one off.
+* Developer: **The Abandoned Carts contact cells are filled through a filter.** The phone, WhatsApp and envelope cells now take their content from `brikpanel_cartab_outreach_rows`; BrikPanel itself only draws them. With BrikMentor 1.15.8 or later nothing changes on screen; an older BrikMentor shows a padlock asking to be updated.
 
 = 3.3.20 (2026-09-22) =
 * Fix: **The product editor, both product lists and the search box no longer break a store running an older WooCommerce.** The GTIN / barcode field uses a WooCommerce feature that arrived in WooCommerce 9.2. On anything older the call had nothing to answer it, and the page stopped dead with a critical error instead of simply leaving the field out. That hit the product editor, the WordPress products list, BrikPanel's own products list and any search that matched a product, which between them is most of a working day. The GTIN field now works on older WooCommerce as well, reading and writing the same place WooCommerce itself keeps it, so the barcodes entered there appear by themselves once the store updates WooCommerce, with nothing to move across.
@@ -548,23 +570,3 @@ The full release history of every version is in changelog.txt, included with the
 
 = 3.3.9 (2026-09-16) =
 * New: **A switch to hide every BrikMentor promotion.** WooCommerce → Settings → BrikPanel → General → "Show BrikMentor promotion". Turn it off and the dashboard card, the menu item, the corner button, the launch notice and the padlocked contact buttons on Abandoned Carts all go, and the screen is what it was before. Agencies can pin it for every client store with `define( 'BRIKPANEL_BRIKMENTOR_PROMO', false );` in wp-config.php. The setting travels with Import / Export.
-
-= 3.3.8 (2026-09-16) =
-* New: **BrikMentor in the left menu.** A "BrikMentor · New" item sits under Marketing and opens a short page: your own store's numbers, the offer, the eight ready flows (abandoned cart, win-back, post-purchase, back in stock and more) and what you do not need to set up. It only shows while BrikMentor is not installed, and you can hide it from Settings → Navigation.
-* New: **Dashboard card with your own numbers.** Under the KPI cards, a card shows how much was left in abandoned carts over the last 30 days. It only appears when there are abandoned carts, and the X hides it for 30 days.
-* New: **Customer Analytics card.** Between the title and the tabs, a card shows how many customers are drifting away (At Risk, Can't Lose Them and Hibernating segments). It is hidden when there are none, and shares the 30 day dismiss with the dashboard card.
-* New: **"Recover these carts on autopilot" link** under the abandoned value card on the Abandoned Carts screen.
-* Tweak: **The BrikMentor star in the corner no longer moves.** It still grows slightly on hover.
-* Tweak: **Store Health (BrikControl) starts turned off on new installs.** Stores that already use BrikPanel keep their current setting. Turn it on any time under WooCommerce → Settings → BrikPanel → Store Health.
-* Fix: **New menu items now show up in a customized menu.** If you had customized the menu under Settings → Navigation, a new BrikPanel store screen was added to the end of the closed site management group, where you could not see it. It now lands at the end of the store section.
-* Fix: **A stray "New Porto Builder" form no longer shows at the bottom of BrikPanel screens** when the Porto theme is active.
-* Dev: **New filters `brikpanel_nav_new_item_after`** (place a new menu item after a given store item) **and `brikpanel_nav_item_title`** (change a menu item's title when it is drawn).
-* Tweak: **Tested with WordPress 7.1.**
-
-= 3.3.7 (2026-09-16) =
-* New: **Keep any column in the order row.** With the compact order list, columns from other plugins (such as Profit, Tracking Number or Invoice) and WooCommerce's Actions only showed under the order. Screen Options now has a "Show in the row" group: tick a column and it stays in the row. The choice is saved per user, and nothing changes until you tick one.
-* Fix: **Buttons from other plugins work in the order details panel,** a column hidden in Screen Options no longer shows there, and column names with capital letters are remembered.
-* Fix: **Measurement Price Calculator works in the product editor.** Its options no longer stack, the unit price shows in the price box, and the Pricing Table, Area and Volume settings, calculator settings and variation minimum price, area and volume are no longer lost on save. Yoast WooCommerce SEO no longer moves the calculator card into the SEO box.
-* Fix: **Multi-currency (CURCY) prices on the product page.** The extra currency fields show once, variation and sale prices in the extra currency are saved, and opening a product no longer counts as an unsaved change, which made published products autosave every minute.
-
-Older releases (3.3.6 and earlier) are listed in changelog.txt, included with the plugin.

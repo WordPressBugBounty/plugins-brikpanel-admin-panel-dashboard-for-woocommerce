@@ -2007,7 +2007,7 @@
     function renderQeDownloads() {
         var $list = $('#bpl-qe-downloads-list').empty();
         if (!state.qeDownloads.length) {
-            $list.append('<p class="brikpanel-pl-text-muted">' + escHtml(PL.i18n.no_files || 'No files added yet.') + '</p>');
+            $list.append('<p class="brikpanel-pl-empty-note">' + escHtml(PL.i18n.no_files || 'No files added yet.') + '</p>');
             return;
         }
         state.qeDownloads.forEach(function (d, idx) {
@@ -3122,7 +3122,7 @@
             dataFilter: lenientJsonFilter,
             success: function (res) {
                 if (!res.success || !res.data.variations.length) {
-                    $container.html('<p class="brikpanel-pl-text-muted" style="text-align:center;padding:1rem;">' + escHtml(PL.i18n.no_variations) + '</p>');
+                    $container.html('<p class="brikpanel-pl-empty-note" style="text-align:center;padding:1rem;">' + escHtml(PL.i18n.no_variations) + '</p>');
                     return;
                 }
                 renderDrawerVariations($container, res.data.variations, productId);

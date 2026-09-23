@@ -120,14 +120,18 @@ body.rtl .brikpanel-cartab-wrap {
 	cursor: default;
 }
 
-/* Popup toggle switch */
+/* Popup toggle switch. This class name belongs to the header switch only: the
+   table's row chevron has its own .brikpanel-cartab-expander family. When the
+   chevron reused this name, its 24px box and zero line height landed on this
+   label too and drew "Email" and "popup" on top of each other. The margin is
+   logical so it stays between the switch and the next control in RTL. */
 .brikpanel-cartab-toggle {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
 	cursor: pointer;
 	user-select: none;
-	margin-right: 0.375rem;
+	margin-inline-end: 0.375rem;
 }
 
 .brikpanel-cartab-toggle-label {
@@ -934,37 +938,44 @@ a.brikpanel-cartab-lock:focus {
 	color: #c62828;
 }
 
-/* Row expander — the chevron that replaced the old "Details" button. Kept as
-   narrow as the icon so the table gives the width back to the data columns. */
-.brikpanel-cartab-toggle-th,
-.brikpanel-cartab-toggle-cell {
+/* Row expander: the chevron that replaced the old "Details" button. Kept as
+   narrow as the icon so the table gives the width back to the data columns.
+   It has its own class family on purpose; it once shared .brikpanel-cartab-toggle
+   with the header switch, and one unscoped rule then styled both. Logical sides,
+   so the column mirrors in RTL: the outer padding stays, the inner one goes. */
+.brikpanel-cartab-expander-th,
+.brikpanel-cartab-expander-cell {
 	width: 1%;
-	padding-right: 0 !important;
+	padding-inline-end: 0 !important;
 	white-space: nowrap;
 }
 
-.brikpanel-cartab-toggle {
+/* The end margin is the gap to the first data column, since the cell has no
+   inner padding. */
+.brikpanel-cartab-expander {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	width: 1.5rem;
 	height: 1.5rem;
+	margin-inline-end: 0.375rem;
 	padding: 0;
 	border: 0;
 	background: transparent;
 	color: #8a8a8a;
 	line-height: 0;
 	cursor: pointer;
+	user-select: none;
 	border-radius: 0.375rem;
 	transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.brikpanel-cartab-toggle:hover {
+.brikpanel-cartab-expander:hover {
 	color: #303030;
 	background: #f1f1f1;
 }
 
-.brikpanel-cartab-toggle:focus-visible {
+.brikpanel-cartab-expander:focus-visible {
 	outline: none;
 	box-shadow: 0 0 0 2px #303030;
 }
@@ -973,11 +984,11 @@ a.brikpanel-cartab-lock:focus {
 	transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.brikpanel-cartab-toggle[aria-expanded="true"] {
+.brikpanel-cartab-expander[aria-expanded="true"] {
 	color: #303030;
 }
 
-.brikpanel-cartab-toggle[aria-expanded="true"] .brikpanel-cartab-chevron {
+.brikpanel-cartab-expander[aria-expanded="true"] .brikpanel-cartab-chevron {
 	transform: rotate(90deg);
 }
 
@@ -987,7 +998,7 @@ a.brikpanel-cartab-lock:focus {
 	transform: scaleX(-1);
 }
 
-[dir="rtl"] .brikpanel-cartab-toggle[aria-expanded="true"] .brikpanel-cartab-chevron {
+[dir="rtl"] .brikpanel-cartab-expander[aria-expanded="true"] .brikpanel-cartab-chevron {
 	transform: scaleX(-1) rotate(-90deg);
 }
 
@@ -1099,7 +1110,7 @@ a.brikpanel-cartab-lock:focus {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.5rem;
-	margin-right: 0.375rem;
+	margin-inline-end: 0.375rem;
 }
 
 .brikpanel-cartab-discount-group {

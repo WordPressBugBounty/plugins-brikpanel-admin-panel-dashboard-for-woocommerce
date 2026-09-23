@@ -396,6 +396,162 @@ function brikpanel_wc_hpos_enabled() {
 }
 
 // -----------------------------------------------------------------------------
+// Analytics  (FeaturesUtil 7.x, Admin\Features\Features 5.x, Admin\Loader 4.x)
+// -----------------------------------------------------------------------------
+
+/**
+ * Whether WooCommerce Analytics (the wc-admin reports app) is switched on.
+ *
+ * A link into Analytics is only worth showing when the screen behind it exists,
+ * so every surface that points there asks this one function: the top bar's
+ * "New customers" row and the toolbar's Analytics shortcut.
+ *
+ * The answer has moved between three WooCommerce APIs over the years, and each
+ * is only trusted where it is the real source:
+ *
+ *  1. The `woocommerce_admin_disabled` filter is checked first and on its own.
+ *     Only WooCommerce 11.1+ folds it into the features engine, so on older
+ *     releases FeaturesUtil would answer "enabled" for a store where the whole
+ *     wc-admin app, Customers report included, is switched off.
+ *  2. FeaturesUtil, not the older WC Admin feature-flag shim: WooCommerce 11.1.0
+ *     retired the `analytics` flag on Features::is_enabled(), so every admin
+ *     page load on 11.1+ pushed a deprecation line into the error log (and into
+ *     error_log() outright on ajax/REST requests). FeaturesUtil reads the very
+ *     same option and filter without the notice. The presence check matters:
+ *     feature_is_enabled() answers false for a feature it does not know, which
+ *     would silently hide a working screen (WooCommerce 7.0-7.4 ship the
+ *     features engine without an `analytics` entry).
+ *  3. Admin\Features\Features for the releases before the features engine,
+ *     where the shim is not deprecated either.
+ *  4. Admin\Loader::is_feature_enabled() for WooCommerce 4.x, which has neither
+ *     of the above but does ship the Analytics app. Without this branch the
+ *     answer on a 4.x store was "off" although the reports worked.
+ *
+ * Cached once `init` has run, for the same reason as the HPOS check above:
+ * BrikPanel loads before WooCommerce, and an early "no" must not stick.
+ *
+ * @since 3.3.20
+ * @return bool
+ */
+function brikpanel_wc_analytics_enabled() {
+    static $cached = null;
+
+    if ( null !== $cached ) {
+        return $cached;
+    }
+
+    /**
+     * Filter allowing WooCommerce Admin features to be disabled.
+     *
+     * @param bool $disabled False.
+     */
+    $on = apply_filters( 'woocommerce_admin_disabled', false ) ? false : null;
+
+    if ( null === $on
+        && function_exists( 'wc_get_container' )
+        && class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' )
+        && method_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil', 'get_features' )
+        && method_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil', 'feature_is_enabled' ) ) {
+        try {
+            $features = \Automattic\WooCommerce\Utilities\FeaturesUtil::get_features( true );
+            if ( is_array( $features ) && isset( $features['analytics'] ) ) {
+                $on = (bool) \Automattic\WooCommerce\Utilities\FeaturesUtil::feature_is_enabled( 'analytics' );
+            }
+        } catch ( \Throwable $e ) {
+            $on = null;
+        }
+    }
+
+    if ( null === $on ) {
+        if ( class_exists( '\Automattic\WooCommerce\Admin\Features\Features' )
+            && method_exists( '\Automattic\WooCommerce\Admin\Features\Features', 'is_enabled' ) ) {
+            $on = (bool) \Automattic\WooCommerce\Admin\Features\Features::is_enabled( 'analytics' );
+        } elseif ( class_exists( '\Automattic\WooCommerce\Admin\Loader' )
+            && method_exists( '\Automattic\WooCommerce\Admin\Loader', 'is_feature_enabled' ) ) {
+            $on = (bool) \Automattic\WooCommerce\Admin\Loader::is_feature_enabled( 'analytics' );
+        }
+    }
+
+    $on = (bool) $on;
+
+    if ( did_action( 'init' ) ) {
+        $cached = $on;
+    }
+
+    return $on;
+}
+
+// -----------------------------------------------------------------------------
+// Admin screens that moved  (wc-orders 7.1, Analytics Overview 4.2 / WC Admin 1.2)
+// -----------------------------------------------------------------------------
+
+/**
+ * The orders list, optionally narrowed to one status, on the screen this store
+ * really has.
+ *
+ * `admin.php?page=wc-orders` only exists where orders live in WooCommerce's own
+ * tables (HPOS). Below WooCommerce 7.1 there is no such page and WordPress
+ * answers "Sorry, you are not allowed to access this page". On a newer store
+ * that keeps its orders in posts, WooCommerce redirects the page to edit.php but
+ * passes `status` along unchanged, and the posts list only filters on
+ * `post_status`, so a "Processing orders" link opened every order.
+ *
+ * The HPOS form is exactly the one the top bar always used.
+ *
+ * @since 3.3.22
+ * @param string $status Order status without the `wc-` prefix (e.g. 'processing'), or '' for all.
+ * @return string Absolute admin URL.
+ */
+function brikpanel_wc_orders_list_url( $status = '' ) {
+    $status = sanitize_key( (string) $status );
+    if ( 0 === strpos( $status, 'wc-' ) ) {
+        $status = substr( $status, 3 );
+    }
+
+    if ( brikpanel_wc_hpos_enabled() ) {
+        return admin_url( 'admin.php?page=wc-orders' . ( '' !== $status ? '&status=' . $status : '' ) );
+    }
+
+    return admin_url( 'edit.php?post_type=shop_order' . ( '' !== $status ? '&post_status=wc-' . $status : '' ) );
+}
+
+/**
+ * The report WooCommerce opens from its own Analytics menu.
+ *
+ * WooCommerce Admin 1.2 (bundled from WooCommerce 4.2.0) added the Overview
+ * report and made it the landing page. Before that, WooCommerce 4.0 and 4.1 open
+ * Revenue and have no `/analytics/overview` route at all: their wc-admin app
+ * draws an empty screen for it. Verified against the 4.0.1, 4.1.0, 4.2.0 and
+ * 4.3.0 release packages.
+ *
+ * In wp-admin the menu WooCommerce actually registered decides. The toolbar is
+ * also drawn on the storefront, where no admin menu exists, so the WooCommerce
+ * Admin version decides there (it also covers a standalone WooCommerce Admin
+ * plugin running on an older WooCommerce); Revenue is the safe answer below the
+ * first release checked to have Overview, since every version has it.
+ *
+ * @since 3.3.22
+ * @return string Absolute admin URL.
+ */
+function brikpanel_wc_analytics_landing_url() {
+    $slug = '';
+    if ( function_exists( 'brikpanel_nav_wc_analytics_slug' ) && isset( $GLOBALS['menu'] ) && is_array( $GLOBALS['menu'] ) ) {
+        $slug = brikpanel_nav_wc_analytics_slug( $GLOBALS['menu'] );
+    }
+
+    if ( '' === $slug ) {
+        if ( defined( 'WC_ADMIN_VERSION_NUMBER' ) ) {
+            $old = version_compare( (string) WC_ADMIN_VERSION_NUMBER, '1.2.3', '<' );
+        } else {
+            $old = defined( 'WC_VERSION' ) && version_compare( WC_VERSION, '4.2.0', '<' );
+        }
+        $slug = 'wc-admin&path=' . ( $old ? '/analytics/revenue' : '/analytics/overview' );
+    }
+
+    return admin_url( 'admin.php?page=' . $slug );
+}
+
+// -----------------------------------------------------------------------------
 // Unsupported-version notice
 // -----------------------------------------------------------------------------
 

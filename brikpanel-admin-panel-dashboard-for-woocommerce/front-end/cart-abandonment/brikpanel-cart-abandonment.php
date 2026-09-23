@@ -780,10 +780,9 @@ class Brikpanel_Cart_Abandonment {
 		// Two columns, two different questions - they used to share one answer
 		// and that was the bug.
 		//
-		// Phone / WhatsApp is built here, out of this table's own data, so this
-		// column is BrikPanel's own and is the default on every store. What
-		// BrikMentor gates is the ACTION inside the cell, and a gated action is
-		// still drawable - that is what the padlock is for.
+		// Phone / WhatsApp is drawn wherever BrikMentor is present or promoted,
+		// even when nothing can fill it: an empty cell is still drawable as a
+		// padlock, and that is what the padlock is for.
 		if ( ! self::outreach_column_available() ) {
 			unset( $defs['phone'] );
 		}
@@ -3278,14 +3277,15 @@ class Brikpanel_Cart_Abandonment {
 	}
 
 	// =========================================================================
-	// Outreach columns (BrikMentor only)
+	// Outreach columns (filled by BrikMentor)
 	//
-	// Phone / WhatsApp / reminder count are shown only while BrikMentor is
-	// active. The phone lives in this table and the WhatsApp link is built
-	// here, but the reminder counts belong to BrikMentor, which answers
-	// `brikpanel_cartab_message_stats`. With BrikMentor gone the filter has no
-	// listener, the whole block switches off and the table is exactly what it
-	// was before.
+	// Phone / WhatsApp / the envelope / the reminder count. BrikPanel draws
+	// these cells; BrikMentor fills them - the phone lookup, the WhatsApp draft
+	// and the envelope's link through `brikpanel_cartab_outreach_rows`, the
+	// reminder counts through `brikpanel_cartab_message_stats`. BrikPanel itself
+	// ships no outreach logic: a free plugin may not carry code that only a
+	// payment switches on. With nothing answering, the cells show what the
+	// add-on would add, or - promotion off, no BrikMentor - are not drawn.
 	// =========================================================================
 
 	/** Is the follow-up plugin on this install? Mirrors the promo notice's probe. */
@@ -3314,6 +3314,19 @@ class Brikpanel_Cart_Abandonment {
 	 */
 	public static function mentor_stats_available() {
 		return self::mentor_active() && false !== has_filter( 'brikpanel_cartab_message_stats' );
+	}
+
+	/**
+	 * Can anything fill the Phone / WhatsApp / envelope cells?
+	 *
+	 * The same question mentor_stats_available() asks of the Follow-ups
+	 * counter, for the same reason: a BrikMentor older than the filter is
+	 * installed but cannot answer, and only a listener proves it can.
+	 *
+	 * @return bool
+	 */
+	public static function outreach_provider_available() {
+		return false !== has_filter( 'brikpanel_cartab_outreach_rows' );
 	}
 
 	/**
@@ -3458,6 +3471,25 @@ class Brikpanel_Cart_Abandonment {
 		if ( self::mentor_active() ) {
 			$entitlement = self::mentor_entitlement();
 
+			// BrikMentor is here and has not lapsed, yet nothing can fill the
+			// cells: a release older than brikpanel_cartab_outreach_rows, or one
+			// that stopped before registering anything. The padlock points at
+			// the Plugins screen, where the update - or the reason it stopped -
+			// is shown. Only a BrikMentor that answered the entitlement question
+			// is known to be running, so only that one is asked to update; a
+			// silent one could not update itself from there, and is never
+			// described as lapsed either, because silence is not a lapse.
+			$lapsed = is_array( $entitlement ) && empty( $entitlement['entitled'] );
+			if ( ! $lapsed && ! self::outreach_provider_available() ) {
+				$plugins = is_multisite() ? network_admin_url( 'plugins.php' ) : admin_url( 'plugins.php' );
+
+				return [
+					'url'   => current_user_can( 'update_plugins' ) ? $plugins : '',
+					'text'  => is_array( $entitlement ) ? __( 'Update BrikMentor to use this.', 'brikpanel' ) : '',
+					'pitch' => false,
+				];
+			}
+
 			return [
 				'url'   => is_array( $entitlement ) ? (string) $entitlement['url'] : '',
 				'text'  => is_array( $entitlement ) ? (string) $entitlement['text'] : '',
@@ -3472,222 +3504,6 @@ class Brikpanel_Cart_Abandonment {
 			'text'  => '',
 			'pitch' => function_exists( 'brikpanel_brikmentor_promo_active' ) && brikpanel_brikmentor_promo_active(),
 		];
-	}
-
-	/**
-	 * Resolve, for one page of rows, the two things the WhatsApp link needs:
-	 * a phone number and the country it was written in.
-	 *
-	 * The checkout capture only stores a phone when the shopper typed one
-	 * before leaving, which is the minority of rows. So both are looked up
-	 * here, in one pass, in order of how much the answer can be trusted:
-	 *   0. what checkout itself recorded on the row (phone + phone_country),
-	 *   1. the account's billing fields, for a row belonging to a user,
-	 *   2. the newest past order under the same address, for everyone else.
-	 *
-	 * Source 0 is the only one that is a fact rather than an inference, so a
-	 * row that already carries a country is left alone entirely. Source 2 is
-	 * what makes the column worth having: a repeat customer who abandons as a
-	 * guest still has a phone on file from the order before.
-	 *
-	 * A row that already has a phone still needs the country lookup unless the
-	 * number is written internationally, because a locally-typed number with
-	 * the wrong country code in front of it is a link to a stranger. Both
-	 * lookups are batched, so the page costs the same at 25 rows as at 1.
-	 *
-	 * @param array[] $rows Formatted rows, by reference.
-	 */
-	private static function resolve_contacts( array &$rows ) {
-		$wanted = [];
-		foreach ( $rows as $i => $row ) {
-			$phone = trim( (string) $row['phone'] );
-			// An international number carries its own country; nothing to find.
-			if ( '' !== $phone && ( 0 === strpos( $phone, '+' ) || 0 === strpos( $phone, '00' ) ) ) {
-				continue;
-			}
-			// Checkout already told us both. Guessing over a recorded answer is
-			// exactly how a Turkish number ends up dialled as +1.
-			if ( '' !== $phone && '' !== trim( (string) $row['phone_country'] ) ) {
-				continue;
-			}
-			$wanted[ $i ] = $row;
-		}
-		if ( ! $wanted ) {
-			return;
-		}
-
-		// 1. The account. cache_users() primes the meta cache for the whole
-		//    page in one query, so get_user_meta() below hits memory.
-		$user_ids = array_values( array_unique( array_filter( wp_list_pluck( $wanted, 'user_id' ) ) ) );
-		if ( $user_ids ) {
-			cache_users( $user_ids );
-			foreach ( $wanted as $i => $row ) {
-				$uid = (int) $row['user_id'];
-				if ( ! $uid ) {
-					continue;
-				}
-				$country = (string) get_user_meta( $uid, 'billing_country', true );
-				// Never over-write what checkout actually recorded for this row.
-				if ( '' !== trim( $country ) && '' === trim( (string) $rows[ $i ]['phone_country'] ) ) {
-					$rows[ $i ]['phone_country'] = $country;
-				}
-				if ( '' !== trim( (string) $rows[ $i ]['phone'] ) ) {
-					// Had a phone already; the country was all this row needed.
-					unset( $wanted[ $i ] );
-					continue;
-				}
-				$phone = (string) get_user_meta( $uid, 'billing_phone', true );
-				if ( '' !== trim( $phone ) ) {
-					$rows[ $i ]['phone']        = $phone;
-					$rows[ $i ]['phone_source'] = 'account';
-					unset( $wanted[ $i ] );
-				}
-			}
-		}
-		if ( ! $wanted ) {
-			return;
-		}
-
-		// 2. The newest past order for the address, read as two flat queries -
-		//    ids first, then the billing columns for exactly those ids. Loading
-		//    order objects instead would be one query per row, which is the only
-		//    part of this screen that would otherwise grow with the page size.
-		$emails = array_values( array_unique( array_filter( array_map(
-			static function ( $row ) {
-				return strtolower( trim( (string) $row['email'] ) );
-			},
-			$wanted
-		) ) ) );
-		if ( ! $emails ) {
-			return;
-		}
-
-		$order_ids = self::latest_order_ids_by_email( $emails );
-		if ( ! $order_ids ) {
-			return;
-		}
-
-		$billing = self::billing_by_order_id( array_values( $order_ids ) );
-
-		foreach ( $wanted as $i => $row ) {
-			$key = strtolower( trim( (string) $row['email'] ) );
-			if ( empty( $order_ids[ $key ] ) ) {
-				continue;
-			}
-			$found = $billing[ (int) $order_ids[ $key ] ] ?? null;
-			if ( ! $found ) {
-				continue;
-			}
-
-			if ( '' !== trim( $found['country'] ) && '' === trim( (string) $rows[ $i ]['phone_country'] ) ) {
-				$rows[ $i ]['phone_country'] = $found['country'];
-			}
-			if ( '' !== trim( (string) $rows[ $i ]['phone'] ) ) {
-				continue;
-			}
-			if ( '' !== trim( $found['phone'] ) ) {
-				$rows[ $i ]['phone']        = $found['phone'];
-				$rows[ $i ]['phone_source'] = 'order';
-			}
-		}
-	}
-
-	/**
-	 * Billing phone + country for a set of order ids, in one query.
-	 *
-	 * Reads the storage directly rather than hydrating order objects: this runs
-	 * once per admin page and the alternative costs a query per row. Only two
-	 * scalar columns are wanted, and an order object would be built and thrown
-	 * away to read them.
-	 *
-	 * @param int[] $order_ids
-	 * @return array order id => { phone, country }
-	 */
-	private static function billing_by_order_id( array $order_ids ) {
-		global $wpdb;
-
-		$order_ids = array_values( array_unique( array_filter( array_map( 'intval', $order_ids ) ) ) );
-		if ( ! $order_ids ) {
-			return [];
-		}
-
-		$in   = implode( ', ', array_fill( 0, count( $order_ids ), '%d' ) );
-		$out  = [];
-		$hpos = brikpanel_wc_hpos_enabled();
-
-		if ( $hpos ) {
-			$rows = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-				"SELECT order_id, phone, country
-				   FROM {$wpdb->prefix}wc_order_addresses
-				  WHERE address_type = 'billing' AND order_id IN ({$in})",
-				$order_ids
-			) );
-			foreach ( (array) $rows as $r ) {
-				$out[ (int) $r->order_id ] = [
-					'phone'   => (string) $r->phone,
-					'country' => (string) $r->country,
-				];
-			}
-			return $out;
-		}
-
-		$rows = $wpdb->get_results( $wpdb->prepare( // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-			"SELECT post_id, meta_key, meta_value
-			   FROM {$wpdb->postmeta}
-			  WHERE meta_key IN ( '_billing_phone', '_billing_country' )
-			    AND post_id IN ({$in})",
-			$order_ids
-		) );
-		foreach ( (array) $rows as $r ) {
-			$id = (int) $r->post_id;
-			if ( ! isset( $out[ $id ] ) ) {
-				$out[ $id ] = [ 'phone' => '', 'country' => '' ];
-			}
-			$field                = '_billing_phone' === $r->meta_key ? 'phone' : 'country';
-			$out[ $id ][ $field ] = (string) $r->meta_value;
-		}
-		return $out;
-	}
-
-	/**
-	 * Newest order id per billing email. HPOS and legacy post storage keep
-	 * orders in different places, so this is the dual path.
-	 *
-	 * Ordered by id rather than date: on both storages the id is monotonic per
-	 * order and already the primary key, and the caller only wants "the most
-	 * recent one" to read a phone off.
-	 *
-	 * @param string[] $emails Lowercased addresses.
-	 * @return array email => order id
-	 */
-	private static function latest_order_ids_by_email( array $emails ) {
-		global $wpdb;
-
-		$placeholders = implode( ', ', array_fill( 0, count( $emails ), '%s' ) );
-		$hpos         = brikpanel_wc_hpos_enabled();
-
-		if ( $hpos ) {
-			$sql = "SELECT LOWER(billing_email) AS em, MAX(id) AS oid
-			          FROM {$wpdb->prefix}wc_orders
-			         WHERE type = 'shop_order' AND LOWER(billing_email) IN ({$placeholders})
-			      GROUP BY LOWER(billing_email)";
-		} else {
-			$sql = "SELECT LOWER(pm.meta_value) AS em, MAX(pm.post_id) AS oid
-			          FROM {$wpdb->postmeta} pm
-			    INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-			         WHERE pm.meta_key = '_billing_email'
-			           AND p.post_type = 'shop_order'
-			           AND LOWER(pm.meta_value) IN ({$placeholders})
-			      GROUP BY LOWER(pm.meta_value)";
-		}
-
-		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $emails ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-
-		$out = [];
-		foreach ( (array) $rows as $r ) {
-			$out[ (string) $r->em ] = (int) $r->oid;
-		}
-		return $out;
 	}
 
 	/**
@@ -3716,84 +3532,27 @@ class Brikpanel_Cart_Abandonment {
 	}
 
 	/**
-	 * The draft message the WhatsApp button opens with.
+	 * The WhatsApp draft for one row.
 	 *
-	 * Deliberately a question and not an offer: it is the merchant typing, in
-	 * their own voice, and a discount pasted in by us would undercut whatever
-	 * the follow-up emails are already offering.
+	 * @deprecated 3.3.22 BrikPanel no longer composes the draft; the add-on that
+	 *             fills the outreach cells does, through
+	 *             `brikpanel_cartab_outreach_rows`. Kept so a caller from
+	 *             outside gets an empty draft rather than a fatal error.
 	 *
 	 * @param array $row Formatted row.
-	 * @return string
+	 * @return string Always ''.
 	 */
 	public static function whatsapp_message( array $row ) {
-		$name = trim( (string) $row['first_name'] );
-
-		$values = [
-			'{customer_name}' => $name,
-			'{store_name}'    => get_bloginfo( 'name' ),
-			// One product per line: a semicolon-joined run of four or five items
-			// arrives as an unreadable paragraph on a phone screen.
-			'{items}'         => self::items_summary( (array) ( $row['cart_items'] ?? [] ), "\n" ),
-			// Always a figure, never empty: zero is a real answer here, and a
-			// merchant who writes "Total: {cart_total}" would otherwise be left
-			// with a dangling label rather than a dropped line - the line-drop
-			// below only fires on a placeholder standing entirely alone.
-			'{cart_total}'    => brikpanel_money_text( (float) ( $row['cart_total'] ?? 0 ), [ 'currency' => $row['currency'] ?? '' ] ),
-			'{cart_url}'      => self::cart_page_url(),
-			/**
-			 * Filter the recovery link placed into the WhatsApp draft.
-			 *
-			 * BrikMentor wraps it in its own click tracker, so a shopper tapping
-			 * the link in WhatsApp is recorded the way a shopper clicking an
-			 * email is - the one hard signal this hand-sent channel produces.
-			 * With no listener the link is the plain restore link, as before.
-			 *
-			 * @param string $url     Plain recovery URL ('' when none).
-			 * @param array  $row     Formatted cart row.
-			 * @param string $channel 'whatsapp'.
-			 */
-			'{recovery_url}'  => (string) apply_filters( 'brikpanel_cartab_recovery_url', self::cart_recovery_url( $row ), $row, 'whatsapp' ),
-		];
-
-		$template = self::whatsapp_template();
-
-		// A placeholder given a line of its own — the natural way to write
-		// {items} — would leave a blank line behind when it resolves to
-		// nothing. Drop the whole line instead of substituting emptiness into
-		// it. Only a line that is *nothing but* the placeholder is removed, so a
-		// merchant's own blank lines are left alone.
-		foreach ( $values as $token => $value ) {
-			if ( '' === $value ) {
-				$template = preg_replace( '/^[ \t]*' . preg_quote( $token, '/' ) . '[ \t]*\R?/m', '', $template );
-			}
-		}
-
-		$text = strtr( $template, $values );
-
-		// A greeting written for a name has to survive not having one. Rather
-		// than keep a second copy of every sentence, drop the placeholder and
-		// tidy up after it, so "Hi {customer_name}, this is X" reads as
-		// "Hi, this is X" instead of "Hi , this is X". Only commas are closed
-		// up: French and other locales legitimately put a space before ; : ! ?
-		// and a merchant's own spacing is not ours to rewrite.
-		if ( in_array( '', $values, true ) ) {
-			$text = preg_replace( '/[ \t]+([,،])/u', '$1', $text );
-			$text = preg_replace( '/[ \t]{2,}/', ' ', $text );
-		}
-
-		/**
-		 * Filter the pre-filled WhatsApp draft for an abandoned cart.
-		 *
-		 * @param string $text
-		 * @param array  $row  Formatted cart row.
-		 */
-		return (string) apply_filters( 'brikpanel_cartab_whatsapp_message', trim( $text ), $row );
+		unset( $row );
+		return '';
 	}
 
 	/**
 	 * The message template the draft is built from: whatever the merchant
 	 * wrote, or a translatable default. Kept as a __() string so a store that
 	 * never opens the setting still gets the message in its own language.
+	 * The setting lives on this plugin's screen; the add-on that composes the
+	 * draft (BrikMentor) reads it through here.
 	 *
 	 * @return string
 	 */
@@ -3807,74 +3566,29 @@ class Brikpanel_Cart_Abandonment {
 		return __( 'Hi {customer_name}, this is {store_name}. You left a few items in your cart - can I help you finish the order? {recovery_url}', 'brikpanel' );
 	}
 
-	/** The store's cart page, or '' when WooCommerce cannot resolve one. */
-	private static function cart_page_url() {
-		if ( ! function_exists( 'wc_get_cart_url' ) ) {
-			return '';
-		}
-		return esc_url_raw( (string) wc_get_cart_url() );
-	}
-
 	/**
-	 * A link that puts this exact cart back together for the shopper - the same
-	 * one-click restore the Share cart feature builds, so a customer opening it
-	 * on another phone still lands on a full cart rather than an empty one.
-	 * Falls back to the plain cart page whenever a restore link cannot be made.
+	 * Attach the outreach cells to one page of rows: the phone number, the
+	 * WhatsApp draft and the envelope's link (all filled by the add-on through
+	 * `brikpanel_cartab_outreach_rows`), and how many reminders this cart has had.
 	 *
-	 * @param array $row Formatted cart row.
-	 * @return string
-	 */
-	private static function cart_recovery_url( array $row ) {
-		$items = (array) ( $row['cart_items'] ?? [] );
-
-		if ( $items && class_exists( 'Brikpanel_Cart_Share' ) && Brikpanel_Cart_Share::is_enabled() ) {
-			$share = [];
-			foreach ( $items as $item ) {
-				$product_id = isset( $item['product_id'] ) ? (int) $item['product_id'] : 0;
-				if ( $product_id <= 0 ) {
-					continue;
-				}
-				$share[] = [
-					'product_id' => $product_id,
-					'quantity'   => max( 1, (int) round( (float) ( $item['qty'] ?? 1 ) ) ),
-					// Carried through so a variable product comes back as the
-					// variation they picked, not the first one on the page.
-					'variation_id' => isset( $item['variation_id'] ) ? (int) $item['variation_id'] : 0,
-				];
-			}
-			// The link's own reader stops at 100 items, so there is nothing to
-			// gain by writing more than that into the URL.
-			$share = array_slice( $share, 0, 100 );
-			$link  = $share ? (string) Brikpanel_Cart_Share::build_link( $share ) : '';
-			if ( '' !== $link ) {
-				return esc_url_raw( $link );
-			}
-		}
-
-		return self::cart_page_url();
-	}
-
-	/**
-	 * Attach the BrikMentor-only columns to one page of rows: a usable phone
-	 * number, the WhatsApp draft, and how many reminders this cart has had.
-	 *
-	 * Every user-facing string is composed here rather than in the browser, so
-	 * the plural forms and the date format follow the site's locale instead of
-	 * being glued together from fragments in JS.
+	 * BrikPanel draws; it does not compute. What stays here is presentation: every
+	 * user-facing string is composed here rather than in the browser, so the
+	 * plural forms and the date format follow the site's locale instead of being
+	 * glued together from fragments in JS, and every one of them stays in this
+	 * plugin's own catalogue.
 	 *
 	 * @param array[] $items       Rows, by reference.
 	 * @param string  $date_format Site date+time format.
 	 */
 	private function add_outreach( array &$items, $date_format ) {
 		// Locked store: one marker per row and nothing else. Both expensive
-		// halves are skipped - resolve_contacts() runs a user cache warm plus
+		// halves are skipped - the add-on's lookup runs a user cache warm plus
 		// two batched order queries, and the stats filter runs a queue query -
-		// so a lapsed store costs the screen less than a licensed one, not more.
+		// so a lapsed store costs the screen less than a licensed one, not more,
+		// and not one row is handed to the add-on for a store it does not serve.
 		//
-		// The phone number goes too, even though it is our own column. The
-		// column only exists because BrikMentor is installed, so a lapse puts
-		// the merchant back where an install without BrikMentor already is; and
-		// a real number sitting beside a padlock reads as half-broken rather
+		// The phone number goes too. The column is there for the add-on's cells,
+		// and a real number sitting beside a padlock reads as half-broken rather
 		// than as locked. The CSV/XLSX export still writes the raw Phone column
 		// either way, so no data is actually lost.
 		if ( self::outreach_locked() ) {
@@ -3911,7 +3625,7 @@ class Brikpanel_Cart_Abandonment {
 			return;
 		}
 
-		self::resolve_contacts( $items );
+		$answer = self::outreach_rows( $items );
 
 		/**
 		 * Filter: how many follow-up emails has each cart row had?
@@ -3953,58 +3667,82 @@ class Brikpanel_Cart_Abandonment {
 		$opens = is_array( $opens ) ? $opens : null;
 
 		foreach ( $items as &$row ) {
-			$row['wa_number'] = self::whatsapp_number( $row['phone'], $row['phone_country'] );
-			$row['wa_text']   = '' !== $row['wa_number'] ? self::whatsapp_message( $row ) : '';
+			$cell = null === $answer ? null : ( $answer[ (int) $row['id'] ] ?? [] );
 
-			// Spell out the number the link will actually dial. A phone typed
-			// without a country code has one guessed for it, and this is where
-			// the merchant sees which one - a shopper abroad at a store whose
-			// customers are mostly local is the one case the guess gets wrong,
-			// and it is theirs to catch, not ours to hide. When even the country
-			// was a guess (nothing recorded for this shopper, so the store's own
-			// country stood in), say so outright.
-			if ( '' === $row['wa_number'] ) {
-				$row['wa_title'] = '';
-			} elseif ( '' === trim( (string) $row['phone_country'] ) ) {
-				$row['wa_title'] = sprintf(
-					/* translators: %s: full international phone number the link opens. */
-					__( 'Message on WhatsApp: +%s (country guessed from your store address)', 'brikpanel' ),
-					$row['wa_number']
-				);
+			if ( null === $cell ) {
+				// Nothing can fill the cells: a BrikMentor older than the filter, or
+				// one that stopped before registering it. They lock the way a lapsed
+				// store's do - outreach_lock() gives the padlock its link and wording -
+				// but this is not a lapse, so the Follow-ups cell below stays live.
+				$row['phone']          = '';
+				$row['phone_source']   = '';
+				$row['wa_number']      = '';
+				$row['wa_text']        = '';
+				$row['wa_title']       = '';
+				$row['wa_locked']      = true;
+				$row['wa_opens']       = 0;
+				$row['wa_opens_title'] = '';
+				$row['email_locked']   = true;
 			} else {
-				$row['wa_title'] = sprintf(
-					/* translators: %s: full international phone number the link opens. */
-					__( 'Message on WhatsApp: +%s', 'brikpanel' ),
-					$row['wa_number']
-				);
-			}
+				// A row the provider did not answer for draws as "no phone on file".
+				$row['phone']        = $cell['phone'] ?? '';
+				$row['phone_source'] = $cell['phone_source'] ?? '';
+				if ( isset( $cell['phone_country'] ) ) {
+					$row['phone_country'] = $cell['phone_country'];
+				}
+				$row['wa_number'] = $cell['wa_number'] ?? '';
+				$row['wa_text']   = '' !== $row['wa_number'] ? ( $cell['wa_text'] ?? '' ) : '';
 
-			// How often the draft was opened rides on the button itself.
-			// "Opened", never "sent": the merchant opened WhatsApp with a draft,
-			// and whether it went is theirs to know. Composed here so the
-			// plural and the date follow the site's locale.
-			$row['wa_opens']       = 0;
-			$row['wa_opens_title'] = '';
-			if ( null !== $opens && '' !== $row['wa_number'] ) {
-				$open  = $opens[ (int) $row['id'] ] ?? [];
-				$count = (int) ( $open['opens'] ?? 0 );
-				if ( $count > 0 ) {
-					$row['wa_opens'] = $count;
-					$last            = ! empty( $open['last'] )
-						? wp_date( $date_format, strtotime( $open['last'] . ' +00:00' ) )
-						: '';
-					$row['wa_opens_title'] = '' !== $last
-						? sprintf(
-							/* translators: 1: how many times the WhatsApp draft was opened, 2: date and time of the last time. */
-							_n( 'WhatsApp draft opened %1$s time · last %2$s', 'WhatsApp draft opened %1$s times · last %2$s', $count, 'brikpanel' ),
-							number_format_i18n( $count ),
-							$last
-						)
-						: sprintf(
-							/* translators: %s: how many times the WhatsApp draft was opened. */
-							_n( 'WhatsApp draft opened %s time', 'WhatsApp draft opened %s times', $count, 'brikpanel' ),
-							number_format_i18n( $count )
-						);
+				// Spell out the number the link will actually dial. A phone typed
+				// without a country code has one guessed for it, and this is where
+				// the merchant sees which one - a shopper abroad at a store whose
+				// customers are mostly local is the one case the guess gets wrong,
+				// and it is theirs to catch, not ours to hide. When even the country
+				// was a guess (nothing recorded for this shopper, so the store's own
+				// country stood in), say so outright.
+				if ( '' === $row['wa_number'] ) {
+					$row['wa_title'] = '';
+				} elseif ( '' === trim( (string) $row['phone_country'] ) ) {
+					$row['wa_title'] = sprintf(
+						/* translators: %s: full international phone number the link opens. */
+						__( 'Message on WhatsApp: +%s (country guessed from your store address)', 'brikpanel' ),
+						$row['wa_number']
+					);
+				} else {
+					$row['wa_title'] = sprintf(
+						/* translators: %s: full international phone number the link opens. */
+						__( 'Message on WhatsApp: +%s', 'brikpanel' ),
+						$row['wa_number']
+					);
+				}
+
+				// How often the draft was opened rides on the button itself.
+				// "Opened", never "sent": the merchant opened WhatsApp with a draft,
+				// and whether it went is theirs to know. Composed here so the
+				// plural and the date follow the site's locale.
+				$row['wa_opens']       = 0;
+				$row['wa_opens_title'] = '';
+				if ( null !== $opens && '' !== $row['wa_number'] ) {
+					$open  = $opens[ (int) $row['id'] ] ?? [];
+					$count = (int) ( $open['opens'] ?? 0 );
+					if ( $count > 0 ) {
+						$row['wa_opens'] = $count;
+						$last            = ! empty( $open['last'] )
+							? wp_date( $date_format, strtotime( $open['last'] . ' +00:00' ) )
+							: '';
+						$row['wa_opens_title'] = '' !== $last
+							? sprintf(
+								/* translators: 1: how many times the WhatsApp draft was opened, 2: date and time of the last time. */
+								_n( 'WhatsApp draft opened %1$s time · last %2$s', 'WhatsApp draft opened %1$s times · last %2$s', $count, 'brikpanel' ),
+								number_format_i18n( $count ),
+								$last
+							)
+							: sprintf(
+								/* translators: %s: how many times the WhatsApp draft was opened. */
+								_n( 'WhatsApp draft opened %s time', 'WhatsApp draft opened %s times', $count, 'brikpanel' ),
+								number_format_i18n( $count )
+							);
+					}
 				}
 			}
 
@@ -4056,8 +3794,82 @@ class Brikpanel_Cart_Abandonment {
 				'text'    => $text,
 				'note'    => $note,
 			];
+
+			if ( null !== $cell ) {
+				// The envelope beside the address: the provider hands over the
+				// finished link and the browser only draws it. No link, no envelope.
+				$row['email_href'] = $cell['email_href'] ?? '';
+			}
 		}
 		unset( $row );
+	}
+
+	/**
+	 * Ask the add-on to fill the outreach cells for one page of rows.
+	 *
+	 * Asked with a null sentinel, like the entitlement: null back proves nobody
+	 * answered. The answer is another plugin's payload on its way into our page,
+	 * so it is cleaned on arrival - but only of what could never be right, and
+	 * never reformatted: whatever a real provider sends must reach the screen
+	 * exactly as sent. (A country read off an account or an order is free text,
+	 * so it is passed through as text, not checked against a two-letter shape.)
+	 *
+	 * @param array[] $items Rows on the visible page.
+	 * @return array|null entry_id => cell, or null when nobody answered.
+	 */
+	private static function outreach_rows( array $items ) {
+		/**
+		 * Filter: fill the Phone / WhatsApp / envelope cells for one page of rows.
+		 *
+		 * BrikPanel ships none of this itself. A provider returns, for every row
+		 * it was given, entry_id => {
+		 *     phone:         string  the number to show ('' = none on file),
+		 *     phone_source:  string  'account' | 'order' | '' (where it was found),
+		 *     phone_country: string  the country it was read in, '' if unknown,
+		 *     wa_number:     string  international digits for wa.me ('' = no button),
+		 *     wa_text:       string  the draft the button opens with,
+		 *     email_href:    string  mailto: link for the envelope ('' = none),
+		 * }
+		 * Whether anything listens at all decides the padlock's wording on a store
+		 * whose add-on is present but older than this filter; see outreach_lock().
+		 *
+		 * @since 3.3.22
+		 *
+		 * @param array|null $answer Null.
+		 * @param array[]    $items  Formatted rows on the visible page.
+		 */
+		$raw = apply_filters( 'brikpanel_cartab_outreach_rows', null, $items );
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+
+		$on_page = array_flip( array_map( 'intval', wp_list_pluck( $items, 'id' ) ) );
+		$text    = static function ( $value ) {
+			return is_scalar( $value ) ? (string) $value : '';
+		};
+
+		$out = [];
+		foreach ( $raw as $id => $cell ) {
+			$id = (int) $id;
+			if ( ! isset( $on_page[ $id ] ) || ! is_array( $cell ) ) {
+				continue;
+			}
+			$source = $text( $cell['phone_source'] ?? '' );
+			$href   = $text( $cell['email_href'] ?? '' );
+
+			$out[ $id ] = [
+				'phone'         => $text( $cell['phone'] ?? '' ),
+				'phone_source'  => in_array( $source, [ 'account', 'order' ], true ) ? $source : '',
+				'phone_country' => $text( $cell['phone_country'] ?? '' ),
+				// Digits only: it becomes the path of a wa.me link.
+				'wa_number'     => (string) preg_replace( '/\D+/', '', $text( $cell['wa_number'] ?? '' ) ),
+				'wa_text'       => $text( $cell['wa_text'] ?? '' ),
+				// A mailto: link built the way encodeURIComponent() builds one, and
+				// nothing that could turn into a link of any other kind.
+				'email_href'    => preg_match( "#^mailto:(?:[A-Za-z0-9\\-_.!~*'()@]|%[0-9A-F]{2})+$#D", $href ) ? $href : '',
+			];
+		}
+		return $out;
 	}
 
 	// =========================================================================
@@ -4107,8 +3919,8 @@ class Brikpanel_Cart_Abandonment {
 		// brikpanel_require() and a page must not fatal if that module is missing.
 		$can_open_settings = ! function_exists( 'brikpanel_user_can_open_settings' )
 			|| brikpanel_user_can_open_settings();
-		// Follow-ups rides along with BrikMentor; Phone / WhatsApp is our own
-		// column and is drawn locked when BrikMentor cannot unlock it.
+		// Follow-ups rides along with BrikMentor; Phone / WhatsApp is drawn
+		// locked whenever nothing can fill it.
 		$outreach = self::mentor_active();
 		// Page-level, not per-row: one URL in the config beats the same URL
 		// repeated in twenty-five row payloads.
@@ -4351,7 +4163,7 @@ class Brikpanel_Cart_Abandonment {
 								<?php /* Narrow, label-less column for the per-row expand chevron. Not part
 								         of $column_order, so it is never hidden by the column popover, the
 								         same way the actions column is always present. */ ?>
-								<th class="brikpanel-cartab-toggle-th"><span class="screen-reader-text"><?php esc_html_e( 'Details', 'brikpanel' ); ?></span></th>
+								<th class="brikpanel-cartab-expander-th"><span class="screen-reader-text"><?php esc_html_e( 'Details', 'brikpanel' ); ?></span></th>
 								<?php foreach ( $column_order as $col_id ) : ?>
 									<th class="brikpanel-cartab-col-<?php echo esc_attr( $col_id ); ?>" data-col="<?php echo esc_attr( $col_id ); ?>">
 										<?php echo esc_html( $column_defs[ $col_id ]['label'] ); ?>

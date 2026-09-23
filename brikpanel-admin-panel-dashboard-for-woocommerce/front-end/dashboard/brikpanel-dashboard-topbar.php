@@ -326,8 +326,15 @@ class Brikpanel_Dashboard_Topbar {
 
                     <?php $slot( 'left', 'before', 'brand' ); ?>
 
-                    <?php if ( brikpanel_topbar_item_is_visible( 'brand' ) ) : ?>
-                    <a class="brikpanel-topbar-brand" href="<?php echo esc_url( admin_url( 'admin.php?page=brikpanel-dashboard' ) ); ?>" aria-label="<?php esc_attr_e( 'BrikPanel dashboard', 'brikpanel' ); ?>">
+                    <?php
+                    if ( brikpanel_topbar_item_is_visible( 'brand' ) ) :
+                        // The logo leads to the BrikPanel dashboard, a page registered
+                        // with `manage_woocommerce`. The bar is also drawn for
+                        // `manage_options` holders without it, and for them that link
+                        // answered 403, so they land on the WordPress dashboard.
+                        $brikpanel_brand_to_dashboard = current_user_can( 'manage_woocommerce' );
+                        ?>
+                    <a class="brikpanel-topbar-brand" href="<?php echo esc_url( $brikpanel_brand_to_dashboard ? admin_url( 'admin.php?page=brikpanel-dashboard' ) : admin_url() ); ?>" aria-label="<?php echo esc_attr( $brikpanel_brand_to_dashboard ? __( 'BrikPanel dashboard', 'brikpanel' ) : __( 'Dashboard', 'brikpanel' ) ); ?>">
                         <span class="<?php echo esc_attr( $mark_class ); ?>" aria-hidden="true">
                             <img src="<?php echo esc_url( $icon_url ); ?>" alt="" width="32" height="32">
                         </span>
@@ -341,7 +348,11 @@ class Brikpanel_Dashboard_Topbar {
                     <?php $slot( 'left', 'after', 'brand' ); ?>
                     <?php $slot( 'left', 'before', 'live' ); ?>
 
-                    <?php if ( brikpanel_topbar_item_is_visible( 'live' ) ) : ?>
+                    <?php
+                    // The count arrives through ajax_stats(), which requires
+                    // `manage_woocommerce`. Without it the pill could only ever read 0.
+                    if ( brikpanel_topbar_item_is_visible( 'live' ) && current_user_can( 'manage_woocommerce' ) ) :
+                        ?>
                     <span class="brikpanel-topbar-live-pill is-empty" id="brikpanel-topbar-live" title="<?php esc_attr_e( 'Live visitors right now', 'brikpanel' ); ?>">
                         <span class="brikpanel-topbar-live-dot"></span>
                         <span class="brikpanel-topbar-live-count" id="brikpanel-topbar-live-count">0</span>
@@ -362,7 +373,13 @@ class Brikpanel_Dashboard_Topbar {
                     <?php $slot( 'right', 'before', 'search' ); ?>
 
                     <!-- Search trigger (opens the existing brikpanel-search overlay) -->
-                    <?php if ( brikpanel_topbar_item_is_visible( 'search' ) ) : ?>
+                    <?php
+                    // Only where the palette itself is loaded: same gate as its assets,
+                    // its toolbar trigger and its AJAX. Otherwise the button opened nothing.
+                    if ( brikpanel_topbar_item_is_visible( 'search' )
+                        && class_exists( 'Brikpanel_Pro_Search' )
+                        && Brikpanel_Pro_Search::user_can_search() ) :
+                        ?>
                     <button type="button" class="brikpanel-topbar-search-btn" id="brikpanel-topbar-search" aria-label="<?php esc_attr_e( 'Search orders', 'brikpanel' ); ?>">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <span class="brikpanel-topbar-search-text"><?php esc_html_e( 'Search', 'brikpanel' ); ?></span>
@@ -399,7 +416,7 @@ class Brikpanel_Dashboard_Topbar {
                                 <span><?php esc_html_e( 'New coupon', 'brikpanel' ); ?></span>
                             </a>
                             <?php endif; ?>
-                            <?php if ( brikpanel_topbar_create_item_is_visible( 'cart_link' ) && class_exists( 'Brikpanel_Cart_Share' ) && Brikpanel_Cart_Share::is_enabled() ) : ?>
+                            <?php if ( brikpanel_topbar_create_item_is_visible( 'cart_link' ) ) : ?>
                             <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( admin_url( 'admin.php?page=brikpanel-cart-share' ) ); ?>">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                                 <span><?php esc_html_e( 'Cart share link', 'brikpanel' ); ?></span>
@@ -419,105 +436,93 @@ class Brikpanel_Dashboard_Topbar {
                     <?php $slot( 'right', 'before', 'notifications' ); ?>
 
                     <!-- Notifications -->
-                    <?php if ( brikpanel_topbar_item_is_visible( 'notifications' ) ) : ?>
+                    <?php
+                    // Each row links to a screen with its own capability, and every
+                    // number comes from ajax_stats(), which requires
+                    // `manage_woocommerce`. A row is only drawn when its screen opens
+                    // for this user, and the bell only when its numbers can load and
+                    // at least one row is left. Without this a `manage_options`-only
+                    // role got a bell of 403 links whose counts never arrived.
+                    $brikpanel_order_type     = get_post_type_object( 'shop_order' );
+                    $brikpanel_bell_orders    = $brikpanel_order_type && current_user_can( $brikpanel_order_type->cap->edit_posts );
+                    $brikpanel_bell_oos       = current_user_can( 'edit_products' );
+                    $brikpanel_analytics_on   = function_exists( 'brikpanel_wc_analytics_enabled' ) && brikpanel_wc_analytics_enabled();
+                    $brikpanel_bell_customers = current_user_can( $brikpanel_analytics_on ? 'view_woocommerce_reports' : 'list_users' );
+                    $brikpanel_show_bell      = brikpanel_topbar_item_is_visible( 'notifications' )
+                        && current_user_can( 'manage_woocommerce' )
+                        && ( $brikpanel_bell_orders || $brikpanel_bell_oos || $brikpanel_bell_customers );
+                    ?>
+                    <?php if ( $brikpanel_show_bell ) : ?>
                     <div class="brikpanel-topbar-menu" data-topbar-menu="notifications">
                         <button type="button" class="brikpanel-topbar-icon-btn" data-topbar-toggle="notifications" aria-haspopup="menu" aria-expanded="false" aria-label="<?php esc_attr_e( 'Order notifications', 'brikpanel' ); ?>">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                            <?php
+                            // The badge adds up the three order rows only, so it has
+                            // nothing to say to a user who cannot see them.
+                            if ( $brikpanel_bell_orders ) :
+                                ?>
                             <span class="brikpanel-topbar-badge" id="brikpanel-topbar-notif-badge" hidden>0</span>
+                            <?php endif; ?>
                         </button>
                         <div class="brikpanel-topbar-dropdown brikpanel-topbar-dropdown-wide" role="menu">
                             <div class="brikpanel-topbar-dropdown-header">
                                 <span><?php esc_html_e( 'Needs attention', 'brikpanel' ); ?></span>
                             </div>
-                            <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-orders&status=processing' ) ); ?>">
+                            <?php
+                            if ( $brikpanel_bell_orders ) :
+                                // The orders list this store really has, filtered to the
+                                // counted status: `wc-orders` exists only with HPOS, and
+                                // the posts list reads `post_status`, not `status`.
+                                ?>
+                            <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( brikpanel_wc_orders_list_url( 'processing' ) ); ?>">
                                 <span class="brikpanel-topbar-dropdown-row-label"><?php esc_html_e( 'Processing orders', 'brikpanel' ); ?></span>
                                 <span class="brikpanel-topbar-dropdown-row-count" id="brikpanel-topbar-notif-processing">0</span>
                             </a>
-                            <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-orders&status=pending' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( brikpanel_wc_orders_list_url( 'pending' ) ); ?>">
                                 <span class="brikpanel-topbar-dropdown-row-label"><?php esc_html_e( 'Pending payment', 'brikpanel' ); ?></span>
                                 <span class="brikpanel-topbar-dropdown-row-count" id="brikpanel-topbar-notif-pending">0</span>
                             </a>
-                            <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-orders&status=on-hold' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( brikpanel_wc_orders_list_url( 'on-hold' ) ); ?>">
                                 <span class="brikpanel-topbar-dropdown-row-label"><?php esc_html_e( 'On hold', 'brikpanel' ); ?></span>
                                 <span class="brikpanel-topbar-dropdown-row-count" id="brikpanel-topbar-notif-onhold">0</span>
                             </a>
+                            <?php endif; ?>
                             <?php
-                            // The count only ever measures *published* out-of-stock
-                            // products, so the link must land on exactly that filtered
-                            // view — otherwise the number in the bell and the number of
-                            // rows on the target screen disagree. When the modern
-                            // products list is active we can express both filters in its
-                            // own URL params; otherwise fall back to the native list,
-                            // which understands `stock_status` but has no matching
-                            // "published only" filter beyond `post_status`.
-                            $brikpanel_oos_url = get_option( 'brikpanel_modern_products_list', 'yes' ) === 'yes'
-                                ? admin_url( 'admin.php?page=brikpanel-products&bpl_stock=outofstock&bpl_status=publish' )
-                                : admin_url( 'edit.php?post_type=product&stock_status=outofstock&post_status=publish' );
-                            ?>
+                            if ( $brikpanel_bell_oos ) :
+                                // The count only ever measures *published* out-of-stock
+                                // products, so the link must land on exactly that filtered
+                                // view — otherwise the number in the bell and the number of
+                                // rows on the target screen disagree. When the modern
+                                // products list is active we can express both filters in its
+                                // own URL params; otherwise fall back to the native list,
+                                // which understands `stock_status` but has no matching
+                                // "published only" filter beyond `post_status`.
+                                $brikpanel_oos_url = get_option( 'brikpanel_modern_products_list', 'yes' ) === 'yes'
+                                    ? admin_url( 'admin.php?page=brikpanel-products&bpl_stock=outofstock&bpl_status=publish' )
+                                    : admin_url( 'edit.php?post_type=product&stock_status=outofstock&post_status=publish' );
+                                ?>
                             <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( $brikpanel_oos_url ); ?>">
                                 <span class="brikpanel-topbar-dropdown-row-label"><?php esc_html_e( 'Out of stock', 'brikpanel' ); ?></span>
                                 <span class="brikpanel-topbar-dropdown-row-count" id="brikpanel-topbar-notif-oos">0</span>
                             </a>
+                            <?php endif; ?>
                             <?php
-                            // The count measures first-time buyers today (WooCommerce
-                            // customers, guest checkouts included), so link to the Woo
-                            // Customers report rather than the WordPress Users list. Fall
-                            // back to the Users list only when Analytics is unavailable,
-                            // mirroring the count's own fallback in the AJAX handler.
-                            // Analytics is read through FeaturesUtil, not through the older
-                            // WC Admin feature-flag shim: WooCommerce 11.1.0 retired the
-                            // `analytics` flag on Features::is_enabled(), so every admin
-                            // page load on 11.1+ pushed a deprecation line into the error
-                            // log (and into error_log() outright on ajax/REST requests).
-                            // FeaturesUtil reads the very same option and filter without
-                            // the notice. The old call stays as the fallback for the
-                            // WooCommerce versions that predate the features engine (or
-                            // that ship it without an `analytics` entry, WC 7.0-7.4),
-                            // where the shim is not deprecated either. The presence check
-                            // matters: feature_is_enabled() answers false for a feature it
-                            // does not know, which would silently mislink the row.
-                            $brikpanel_customers_url = admin_url( 'users.php?role=customer' );
-                            $brikpanel_analytics_on  = null;
-
-                            /**
-                             * Filter allowing WooCommerce Admin features to be disabled.
-                             *
-                             * Checked first and on its own: only WooCommerce 11.1+ folds it
-                             * into the features engine, so on older releases FeaturesUtil
-                             * would answer "enabled" for a store where the whole wc-admin
-                             * app, Customers report included, is switched off.
-                             *
-                             * @param bool $disabled False.
-                             */
-                            if ( apply_filters( 'woocommerce_admin_disabled', false ) ) {
-                                $brikpanel_analytics_on = false;
-                            }
-
-                            if ( null === $brikpanel_analytics_on
-                                && function_exists( 'wc_get_container' )
-                                && class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' )
-                                && method_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil', 'feature_is_enabled' ) ) {
-                                try {
-                                    $brikpanel_wc_features = \Automattic\WooCommerce\Utilities\FeaturesUtil::get_features( true );
-                                    if ( is_array( $brikpanel_wc_features ) && isset( $brikpanel_wc_features['analytics'] ) ) {
-                                        $brikpanel_analytics_on = (bool) \Automattic\WooCommerce\Utilities\FeaturesUtil::feature_is_enabled( 'analytics' );
-                                    }
-                                } catch ( \Throwable $e ) {
-                                    $brikpanel_analytics_on = null;
-                                }
-                            }
-                            if ( null === $brikpanel_analytics_on
-                                && class_exists( '\Automattic\WooCommerce\Admin\Features\Features' ) ) {
-                                $brikpanel_analytics_on = (bool) \Automattic\WooCommerce\Admin\Features\Features::is_enabled( 'analytics' );
-                            }
-                            if ( $brikpanel_analytics_on ) {
-                                $brikpanel_customers_url = admin_url( 'admin.php?page=wc-admin&path=/customers' );
-                            }
-                            ?>
+                            if ( $brikpanel_bell_customers ) :
+                                // The count measures first-time buyers today (WooCommerce
+                                // customers, guest checkouts included), so link to the Woo
+                                // Customers report rather than the WordPress Users list, and
+                                // fall back to the Users list only when Analytics is off.
+                                // brikpanel_wc_analytics_enabled() explains how "off" is read
+                                // on each WooCommerce release.
+                                $brikpanel_customers_url = $brikpanel_analytics_on
+                                    ? admin_url( 'admin.php?page=wc-admin&path=/customers' )
+                                    : admin_url( 'users.php?role=customer' );
+                                ?>
                             <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( $brikpanel_customers_url ); ?>">
                                 <span class="brikpanel-topbar-dropdown-row-label"><?php esc_html_e( 'New customers today', 'brikpanel' ); ?></span>
                                 <span class="brikpanel-topbar-dropdown-row-count" id="brikpanel-topbar-notif-customers">0</span>
                             </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <?php endif; ?>

@@ -20,8 +20,10 @@
 	let activeContext = null;
 
 	// ── Build dropdown ──────────────────────────────────────────────────
+	// Not .brikpanel-status-dropdown: that is the single-order header menu, and
+	// this script also runs on that screen.
 	const $dropdown = document.createElement('div');
-	$dropdown.className = 'brikpanel-status-dropdown';
+	$dropdown.className = 'brikpanel-status-inline-dropdown';
 
 	Object.entries(statuses).forEach(([key, label]) => {
 		const slug = key.replace('wc-', '');
@@ -82,7 +84,7 @@
 			toggleDropdown($status);
 			return;
 		}
-		if (!e.target.closest('.brikpanel-status-dropdown')) {
+		if (!e.target.closest('.brikpanel-status-inline-dropdown')) {
 			closeDropdown();
 		}
 	}, true);

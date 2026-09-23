@@ -145,33 +145,77 @@ function brikpanel_isolation_is_foreign_src( $src, $bp_dirname ) {
 
 	// Plugin assets, minus the three trusted origins.
 	if ( false !== strpos( $s, '/wp-content/plugins/' ) ) {
-		// BrikPanel's own assets.
-		if ( '' !== $bp_dirname && false !== strpos( $s, '/wp-content/plugins/' . $bp_dirname . '/' ) ) {
-			return false;
-		}
-		// WooCommerce core platform (never the extension plugins named
-		// `woocommerce-*`, which have no UI on BrikPanel pages).
-		if ( false !== strpos( $s, '/wp-content/plugins/woocommerce/' ) ) {
-			return false;
-		}
-		// BrikMentor, the sibling product. It draws controls on our screens
-		// that need their script behind them - its "Update to X now" notice
-		// button for one, which this sweep left rendered but dead on the
-		// dashboard (measured 2026-09-17: button present, script tag gone).
-		// The directory name comes from its own constant so a renamed folder
-		// still matches; the bare name covers a BrikMentor that is installed
-		// but not yet loaded when this runs.
-		$bm_dirname = defined( 'BRIKMENTOR_PATH' )
-			? strtolower( basename( untrailingslashit( BRIKMENTOR_PATH ) ) )
-			: 'brikmentor';
-		if ( '' !== $bm_dirname && false !== strpos( $s, '/wp-content/plugins/' . $bm_dirname . '/' ) ) {
-			return false;
+		foreach ( brikpanel_isolation_trusted_dirs( $bp_dirname ) as $dir ) {
+			if ( false !== strpos( $s, '/wp-content/plugins/' . $dir . '/' ) ) {
+				return false;
+			}
 		}
 		return true;
 	}
 
 	// Core (wp-includes / wp-admin) and external hosts: keep.
 	return false;
+}
+
+/**
+ * The folder WordPress serves a plugin's files from, lower-cased, or ''.
+ *
+ * Read from the plugin's basename ('folder/main.php'), never from its path on
+ * disk. The basename is what WordPress builds the plugin's URLs from: it maps a
+ * symlink back to the name the site sees, while a path taken from __FILE__ has
+ * already been resolved to the symlink's target. And its folder is whatever
+ * this site called it: WooCommerce sits in `woocommerce/` only when it came
+ * from wp.org.
+ *
+ * @param string $basename Plugin basename, e.g. 'wc-core/woocommerce.php'.
+ * @return string e.g. 'wc-core'; '' for a single-file plugin or no basename.
+ */
+function brikpanel_isolation_plugin_dir( $basename ) {
+	$dir = is_string( $basename ) && '' !== $basename ? dirname( $basename ) : '.';
+	return '.' === $dir ? '' : strtolower( $dir );
+}
+
+/**
+ * The plugin folders whose assets stay on BrikPanel's app pages, lower-cased.
+ *
+ * - BrikPanel itself.
+ * - The WooCommerce core platform, never the extension plugins named
+ *   `woocommerce-*`, which have no UI on BrikPanel pages (the trailing slash
+ *   the caller matches with keeps them out).
+ * - BrikMentor, the sibling product. It draws controls on our screens that
+ *   need their script behind them - its "Update to X now" notice button for
+ *   one, which this sweep left rendered but dead on the dashboard (measured
+ *   2026-09-17: button present, script tag gone).
+ *
+ * Each plugin is trusted under both folder names its files can be addressed by:
+ * - the folder WordPress serves it from, read from its basename constant, so a
+ *   renamed or symlinked install still matches. WooCommerce used to be the
+ *   literal `woocommerce`: with WooCommerce in `wc-core/`, every WooCommerce
+ *   script and style was stripped from BrikPanel's pages;
+ * - the folder it really lives in, read from its path on disk. Code that builds
+ *   a URL from its own real path names that folder even behind a symlink: the
+ *   abilities-api package WooCommerce bundles does exactly that, and so did this
+ *   sweep for BrikPanel and BrikMentor before, so nothing it kept is lost.
+ * The bare names are what a plugin that is not loaded falls back to; its assets
+ * cannot be queued then anyway.
+ *
+ * @param string $bp_dirname BrikPanel's folder, as the sweep passes it.
+ * @return string[]
+ */
+function brikpanel_isolation_trusted_dirs( $bp_dirname ) {
+	$wc_loaded = defined( 'WC_PLUGIN_BASENAME' ) && defined( 'WC_PLUGIN_FILE' );
+	$bm_loaded = defined( 'BRIKMENTOR_BASENAME' ) && defined( 'BRIKMENTOR_PATH' );
+
+	$dirs = array(
+		(string) $bp_dirname,
+		defined( 'BRIKPANEL_PATH' ) ? basename( untrailingslashit( BRIKPANEL_PATH ) ) : '',
+		$wc_loaded ? brikpanel_isolation_plugin_dir( WC_PLUGIN_BASENAME ) : 'woocommerce',
+		$wc_loaded ? basename( dirname( WC_PLUGIN_FILE ) ) : '',
+		$bm_loaded ? brikpanel_isolation_plugin_dir( BRIKMENTOR_BASENAME ) : 'brikmentor',
+		$bm_loaded ? basename( untrailingslashit( BRIKMENTOR_PATH ) ) : '',
+	);
+
+	return array_values( array_unique( array_filter( array_map( 'strtolower', $dirs ), 'strlen' ) ) );
 }
 
 /**
@@ -186,7 +230,12 @@ function brikpanel_isolation_sweep_assets() {
 		return;
 	}
 
-	$bp_dirname = strtolower( basename( untrailingslashit( defined( 'BRIKPANEL_PATH' ) ? BRIKPANEL_PATH : __DIR__ ) ) );
+	// From the basename, like the other trusted folders: BRIKPANEL_PATH is the
+	// symlink target, so a symlinked install named differently from its target
+	// had its own scripts and styles stripped here.
+	$bp_dirname = brikpanel_isolation_plugin_dir(
+		defined( 'BRIKPANEL_BASENAME' ) ? BRIKPANEL_BASENAME : plugin_basename( dirname( __DIR__ ) . '/brikpanel.php' )
+	);
 
 	foreach ( array( wp_scripts(), wp_styles() ) as $assets ) {
 		if ( ! $assets instanceof WP_Dependencies ) {

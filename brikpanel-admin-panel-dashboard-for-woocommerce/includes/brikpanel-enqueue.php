@@ -581,9 +581,14 @@ function brikpanel_enqueue_global_assets() {
     }
 
     // --- Cmd+K search palette ------------------------------------------------
-    // Searches orders, so it keeps the narrower `manage_woocommerce` gate its
-    // own AJAX handler enforces (front-end/search/brikpanel-search.php).
-    if ( ! current_user_can( 'manage_woocommerce' ) ) {
+    // Same gate as its trigger and its AJAX handler: `manage_woocommerce` (it
+    // searches orders), and not for a user a multisite network denied
+    // BrikPanel to, whose palette AJAX is refused anyway. The class file is
+    // always loaded; the fallback only covers a module that failed to load.
+    $brikpanel_can_search = class_exists( 'Brikpanel_Pro_Search' )
+        ? Brikpanel_Pro_Search::user_can_search()
+        : current_user_can( 'manage_woocommerce' );
+    if ( ! $brikpanel_can_search ) {
         return;
     }
 

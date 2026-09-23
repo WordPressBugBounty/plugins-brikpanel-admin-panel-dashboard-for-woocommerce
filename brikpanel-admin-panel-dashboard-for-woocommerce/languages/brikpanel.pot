@@ -8967,7 +8967,7 @@ msgid "Wait for cookie consent"
 msgstr ""
 
 #: front-end/orders/brikpanel-orders.php:694
-msgid "Hold visitor tracking back until the visitor allows analytics: no tracking cookie, no browser storage and no tracking request is created before then. BrikPanel accepts consent from the WordPress Consent API (the \"statistics\" category), from a cookie banner that calls brikpanel_start_tracking(), or from the brikpanel_frontend_tracking_allowed filter. Consent works without a page reload, and when it is withdrawn tracking stops at once and BrikPanel deletes its own tracking cookies and browser storage for that visitor. This covers analytics only: abandoned-cart email capture is a separate feature with its own switch, and it never stores anything until a customer types their email themselves. Leave this off if your store does not need a consent banner: your analytics keep working exactly as before."
+msgid "Hold visitor tracking back until the visitor allows analytics: no tracking cookie, no browser storage and no tracking request is created before then. BrikPanel accepts consent from the WordPress Consent API (the \"statistics\" category), from a cookie banner that calls brikpanel_start_tracking(), or from the brikpanel_frontend_tracking_allowed filter. Consent works without a page reload, and when it is withdrawn tracking stops at once and BrikPanel deletes its own tracking cookies and browser storage for that visitor. This covers analytics only: abandoned-cart email capture is a separate feature with its own switch. It saves no cart for a guest until they enter their email, while a logged-in customer's cart is saved as soon as it has items, using the email on their account. Leave this off if your store does not need a consent banner: your analytics keep working exactly as before."
 msgstr ""
 
 #: front-end/orders/brikpanel-orders.php:699
@@ -16259,4 +16259,8 @@ msgstr ""
 
 #: includes/cron/customer-analytics-jobs.php:531
 msgid "Builds the monthly cohort × period retention matrix."
+msgstr ""
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:3488
+msgid "Update BrikMentor to use this."
 msgstr ""

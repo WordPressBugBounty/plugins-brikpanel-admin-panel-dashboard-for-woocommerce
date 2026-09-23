@@ -277,7 +277,9 @@ function brikpanel_access_role_defaults_off( WP_User $user ) {
 /**
  * The admin-forced ("hard") disable rules only, evaluated for a user.
  *
- * These are the store-owner rules a user can never override for themselves:
+ * These are the rules a user can never override for themselves:
+ *   0. On a multisite network, the Super Admin's role allowlist denies this
+ *      user BrikPanel (brikpanel_user_can_access()).
  *   1. The user's ID is in the explicit "disabled users" list.
  *   2. One of the user's roles is in the "disabled roles" list.
  *   3. "Disable for administrators" is on and the user has the
@@ -292,6 +294,17 @@ function brikpanel_access_role_defaults_off( WP_User $user ) {
 function brikpanel_access_hard_disabled_for_user( WP_User $user ) {
 	$uid   = (int) $user->ID;
 	$roles = array_map( 'strval', (array) $user->roles );
+
+	// 0. Network denial. includes/brikpanel-network-access.php unregisters
+	// every BrikPanel page and refuses every brikpanel_* AJAX call for such a
+	// user, but the sidebar, the top bar and the palette used to render anyway,
+	// full of links into those refused pages. Treating the denial as "BrikPanel
+	// off" hands the user the native admin, the same path the per-user rules
+	// below take. It answers true (allowed) on a single site and whenever the
+	// network does not enforce the allowlist, so it costs nothing there.
+	if ( function_exists( 'brikpanel_user_can_access' ) && ! brikpanel_user_can_access( $uid ) ) {
+		return true;
+	}
 
 	// 1. Explicit per-user list.
 	$disabled_users = array_map( 'absint', (array) get_option( BRIKPANEL_ACCESS_OPT_USERS, [] ) );
@@ -564,8 +577,10 @@ function brikpanel_user_is_backoffice( $user = null ) {
  *
  * Plain shoppers (customer / subscriber, `read` only) never qualify and keep the
  * untouched native admin. This gate grants no access of its own: the sidebar
- * only ever renders the entries WordPress already put in that user's own
- * capability-filtered $menu.
+ * only renders rows this user may open. Those are WordPress's own
+ * capability-filtered $menu plus the rows BrikPanel adds to it afterwards
+ * (the "More" group, the nav customizer's rows), which WordPress never
+ * checked and brikpanel_nav_resolve_submenu_rows() therefore re-checks.
  *
  * @since 3.2.37
  *
@@ -574,8 +589,8 @@ function brikpanel_user_is_backoffice( $user = null ) {
  */
 function brikpanel_user_can_use_interface( $user = null ) {
 	// Per-user memo: this is consulted several times per admin request (the two
-	// footer filters, the admin_head CSS, both menu_order filters and the footer
-	// renderer), and each miss costs a capability walk plus two filter passes.
+	// footer filters, both menu_order filters and the footer renderer), and each
+	// miss costs a capability walk plus two filter passes.
 	static $cache = [];
 
 	if ( null === $user ) {
@@ -791,6 +806,20 @@ function brikpanel_user_can_open_settings( $user = null ) {
 	}
 
 	if ( ! user_can( $user, 'manage_woocommerce' ) ) {
+		return false;
+	}
+
+	// On a multisite network the Super Admin can deny BrikPanel to a role, or
+	// lock its settings for a subsite. includes/brikpanel-network-access.php
+	// already removes the tab and bounces its URL in both cases, so asking here
+	// changes no access. It keeps every shortcut to the tab (the top bar user
+	// menu, the welcome tour, the Abandoned Carts button, the Suppliers menu, the
+	// Plugins screen link) from pointing at a page that only redirects. Both
+	// helpers answer true on a single site.
+	if ( function_exists( 'brikpanel_user_can_access' ) && ! brikpanel_user_can_access( (int) $user->ID ) ) {
+		return false;
+	}
+	if ( function_exists( 'brikpanel_user_can_manage_settings' ) && ! brikpanel_user_can_manage_settings( (int) $user->ID ) ) {
 		return false;
 	}
 

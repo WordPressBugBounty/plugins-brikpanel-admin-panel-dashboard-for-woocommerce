@@ -230,6 +230,13 @@ class Brikpanel_Vendor_Settings {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
+		// The row opens the BrikPanel settings tab, which is locked to
+		// administrators by default (and can be locked by a network). A shop
+		// manager who clicked it was silently bounced to WooCommerce → General,
+		// so the row follows the tab's own gate, as the top bar's settings link does.
+		if ( function_exists( 'brikpanel_user_can_open_settings' ) && ! brikpanel_user_can_open_settings() ) {
+			return;
+		}
 
 		$parent_slug = Brikpanel_Vendors::PAGE_SLUG;
 		$target_url  = admin_url( 'admin.php?page=wc-settings&tab=brikpanel&section=' . self::SECTION_ID );

@@ -470,15 +470,19 @@
 				return td;
 			}
 
+			// The add-on that fills the outreach cells hands over the finished
+			// link (brikpanel_cartab_outreach_rows); this page only draws it.
+			// No link, no envelope.
+			if (!row.email_href) {
+				return td;
+			}
+
 			// Hands the address to whatever mail client the merchant already uses.
 			// No target/rel: the client opens outside the browser and a _blank
 			// would leave an empty tab behind. Nothing is sent from this page.
 			var link = document.createElement('a');
 			link.className = 'brikpanel-cartab-email-link';
-			// Percent-encoded so a stray character in a stored address cannot end
-			// the URL early, but '@' is restored: RFC 6068 wants the separator
-			// literal, and some clients refuse a '%40' address outright.
-			link.href = 'mailto:' + encodeURIComponent(row.email).replace(/%40/g, '@');
+			link.href = row.email_href;
 			link.title = cfg.i18n.email_compose;
 			// An aria-label on a link replaces everything inside it, which is what
 			// we want here: the glyph is aria-hidden and the address is already
@@ -663,12 +667,14 @@
 			// "Details" button that used to sit in the actions column. The table
 			// is wide enough to scroll sideways on most screens, so a chevron
 			// here costs one narrow column and gives the actions column back.
+			// Its own "expander" classes: .brikpanel-cartab-toggle is the header's
+			// Email popup switch, and sharing it restyled that switch.
 			var toggleTd = document.createElement('td');
-			toggleTd.className = 'brikpanel-cartab-toggle-cell';
+			toggleTd.className = 'brikpanel-cartab-expander-cell';
 
 			var toggleBtn = document.createElement('button');
 			toggleBtn.type = 'button';
-			toggleBtn.className = 'brikpanel-cartab-toggle';
+			toggleBtn.className = 'brikpanel-cartab-expander';
 			toggleBtn.setAttribute('aria-expanded', 'false');
 			toggleBtn.setAttribute('aria-controls', 'brikpanel-cartab-details-' + row.id);
 			// No visible label: the chevron is the control, so the accessible

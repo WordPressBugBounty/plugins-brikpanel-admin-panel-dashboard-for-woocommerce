@@ -831,24 +831,92 @@ function brikpanel_topbar_create_hidden_items() {
 }
 
 /**
- * Whether a quick-create entry should render. Unknown keys default to visible.
+ * Whether a quick-create entry can do anything for the current user: the
+ * feature behind it exists and the user may open the screen it links to.
+ *
+ * The owner's hide list decides what the store WANTS in the menu; this decides
+ * what each user CAN use. The top bar is drawn for anyone holding
+ * `manage_woocommerce` OR `manage_options`, so without this a role built with
+ * only one of them was handed entries that answered 403. The capabilities are
+ * the ones the target screens check themselves:
+ *
+ *  - product:   admin.php?page=brikpanel-product-editor, registered with
+ *               `edit_products` (it redirects to the native editor, which needs
+ *               the same, when the modern editor is off).
+ *  - order:     post-new.php?post_type=shop_order needs the order type's
+ *               edit_posts and create_posts. With HPOS, WooCommerce sends it on
+ *               to its own new-order screen, which also wants publish_posts
+ *               (publish_shop_orders) or `manage_woocommerce`.
+ *  - coupon:    admin.php?page=brikpanel-coupons, registered with
+ *               `manage_woocommerce`.
+ *  - cart_link: the Cart share builder, Brikpanel_Cart_Share::CAPABILITY, and
+ *               only while the feature is switched on and its class loaded.
+ *  - post:      post-new.php needs the post type's edit_posts and create_posts.
+ *
+ * Unknown keys stay available, as the entry list promises.
+ *
+ * @param string $key
+ * @return bool
+ */
+function brikpanel_topbar_create_item_available( $key ) {
+    switch ( $key ) {
+        case 'product':
+            return current_user_can( 'edit_products' );
+
+        case 'order':
+            $type = get_post_type_object( 'shop_order' );
+            if ( ! $type || ! current_user_can( $type->cap->edit_posts ) || ! current_user_can( $type->cap->create_posts ) ) {
+                return false;
+            }
+            if ( function_exists( 'brikpanel_wc_hpos_enabled' ) && brikpanel_wc_hpos_enabled() ) {
+                return current_user_can( $type->cap->publish_posts ) || current_user_can( 'manage_woocommerce' );
+            }
+            return true;
+
+        case 'coupon':
+            return current_user_can( 'manage_woocommerce' );
+
+        case 'cart_link':
+            return class_exists( 'Brikpanel_Cart_Share' )
+                && Brikpanel_Cart_Share::is_enabled()
+                && current_user_can( Brikpanel_Cart_Share::CAPABILITY );
+
+        case 'post':
+            $type = get_post_type_object( 'post' );
+            return $type && current_user_can( $type->cap->edit_posts ) && current_user_can( $type->cap->create_posts );
+    }
+
+    return true;
+}
+
+/**
+ * Whether a quick-create entry should render: the owner has not hidden it and
+ * the current user can use it. Unknown keys default to visible.
  *
  * @param string $key
  * @return bool
  */
 function brikpanel_topbar_create_item_is_visible( $key ) {
-    return ! in_array( $key, brikpanel_topbar_create_hidden_items(), true );
+    return ! in_array( $key, brikpanel_topbar_create_hidden_items(), true )
+        && brikpanel_topbar_create_item_available( $key );
 }
 
 /**
  * Whether at least one quick-create entry is still visible. The Create button
- * hides itself when every entry has been turned off, so the bar never shows an
- * empty dropdown.
+ * hides itself when no entry is left, so the bar never shows an empty
+ * dropdown. It asks the same question as every entry does, instead of
+ * counting the owner's hide list: a count knew nothing about capabilities or
+ * about Cart share being switched off, so the button could open onto nothing.
  *
  * @return bool
  */
 function brikpanel_topbar_has_visible_create_items() {
-    return count( brikpanel_topbar_create_hidden_items() ) < count( brikpanel_topbar_create_item_keys() );
+    foreach ( brikpanel_topbar_create_item_keys() as $key ) {
+        if ( brikpanel_topbar_create_item_is_visible( $key ) ) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**

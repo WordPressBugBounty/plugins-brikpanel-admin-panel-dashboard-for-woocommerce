@@ -357,9 +357,10 @@ WooCommerce submenu which we move out of a submenu visually. */
 	font-weight: 400;
 	display: none;
 }
-.visible {
-	display: block;
-}
+/* A submenu opens only through its row's brikpanel-has-open-submenu class. There
+   used to be a bare .visible { display: block } here as well; this file loads on
+   every admin page, so it also forced core's and other plugins' .visible elements
+   to block. */
 .brikpanel-has-open-submenu .brikpanel-submenu {
 	display: block;
 }

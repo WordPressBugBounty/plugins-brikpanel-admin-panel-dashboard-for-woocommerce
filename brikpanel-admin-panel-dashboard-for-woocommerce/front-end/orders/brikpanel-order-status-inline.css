@@ -9,7 +9,10 @@ td.column-order_status .order-status:hover {
 }
 
 /* ── Status Dropdown ──────────────────────────────────────────────── */
-.brikpanel-status-dropdown {
+/* Its own name: this file also loads on the single-order screen, whose header
+   menu is .brikpanel-status-dropdown. While the two shared that name, these
+   unscoped rules styled the header menu too. */
+.brikpanel-status-inline-dropdown {
 	display: none;
 	position: absolute;
 	z-index: 99999;
@@ -23,7 +26,7 @@ td.column-order_status .order-status:hover {
 	overflow-y: auto;
 }
 
-.brikpanel-status-dropdown.open {
+.brikpanel-status-inline-dropdown.open {
 	display: block;
 	animation: brikpanel-sd-in 0.12s ease-out;
 }
