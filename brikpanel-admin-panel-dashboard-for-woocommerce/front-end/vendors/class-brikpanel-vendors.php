@@ -75,13 +75,13 @@ class Brikpanel_Vendors {
 		wp_enqueue_style(
 			'brikpanel-vendors',
 			$base . 'brikpanel-vendors.css',
-			[],
+			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [],
 			file_exists( $path . 'brikpanel-vendors.css' ) ? filemtime( $path . 'brikpanel-vendors.css' ) : BRIKPANEL_VERSION
 		);
 		wp_enqueue_script(
 			'brikpanel-vendors',
 			$base . 'brikpanel-vendors.js',
-			[],
+			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [],
 			file_exists( $path . 'brikpanel-vendors.js' ) ? filemtime( $path . 'brikpanel-vendors.js' ) : BRIKPANEL_VERSION,
 			true
 		);
@@ -140,6 +140,7 @@ class Brikpanel_Vendors {
 					</button>
 				</div>
 			</div>
+			<?php brikpanel_header_end(); ?>
 
 			<!-- Summary bar -->
 			<div class="brikpanel-ven-summary" id="brikpanel-ven-summary">
@@ -178,7 +179,7 @@ class Brikpanel_Vendors {
 			<!-- Table -->
 			<div class="brikpanel-ven-card brikpanel-ven-table-card">
 				<div class="brikpanel-ven-table-wrap">
-					<table class="brikpanel-ven-table" id="brikpanel-ven-table">
+					<table class="brikpanel-ven-table brikpanel-fit-table" id="brikpanel-ven-table">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Supplier', 'brikpanel' ); ?></th>
@@ -302,6 +303,8 @@ class Brikpanel_Vendors {
 				delete:           <?php echo wp_json_encode( __( 'Delete', 'brikpanel' ) ); ?>,
 				ship:             <?php echo wp_json_encode( __( 'Shipping', 'brikpanel' ) ); ?>,
 				default_shipping: <?php echo wp_json_encode( __( 'Default shipping:', 'brikpanel' ) ); ?>,
+				loading:          <?php echo wp_json_encode( __( 'Loading…', 'brikpanel' ) ); ?>,
+				lead_default:     <?php /* translators: shown after the lead time a supplier has by default, e.g. "7d default" */ echo wp_json_encode( _x( 'default', 'supplier default lead time, e.g. 7d default', 'brikpanel' ) ); ?>,
 			}
 		};
 		</script>
@@ -366,6 +369,7 @@ class Brikpanel_Vendors {
 					<button type="button" class="brikpanel-ven-btn brikpanel-ven-btn-secondary" id="brikpanel-ven-detail-edit-btn"><?php esc_html_e( 'Edit supplier', 'brikpanel' ); ?></button>
 				</div>
 			</div>
+			<?php brikpanel_header_end(); ?>
 
 			<!-- Stats grid -->
 			<div class="brikpanel-ven-detail-stats" id="brikpanel-ven-detail-stats">
@@ -433,7 +437,7 @@ class Brikpanel_Vendors {
 					<a class="brikpanel-ven-card__link" href="<?php echo esc_url( $so_url . '&search=' . rawurlencode( $vendor->name ) ); ?>"><?php esc_html_e( 'View all →', 'brikpanel' ); ?></a>
 				</header>
 				<div class="brikpanel-ven-table-wrap">
-					<table class="brikpanel-ven-table" id="brikpanel-ven-detail-pos">
+					<table class="brikpanel-ven-table brikpanel-fit-table" id="brikpanel-ven-detail-pos">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Reference', 'brikpanel' ); ?></th>
@@ -458,7 +462,7 @@ class Brikpanel_Vendors {
 					<p class="brikpanel-ven-card__desc"><?php esc_html_e( 'Products and variations whose supplier is set to this supplier.', 'brikpanel' ); ?></p>
 				</header>
 				<div class="brikpanel-ven-table-wrap">
-					<table class="brikpanel-ven-table" id="brikpanel-ven-detail-products">
+					<table class="brikpanel-ven-table brikpanel-fit-table" id="brikpanel-ven-detail-products">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Product', 'brikpanel' ); ?></th>
@@ -959,9 +963,10 @@ class Brikpanel_Vendors {
 
 			$is_variation = $product->is_type( 'variation' );
 			$parent       = $is_variation ? wc_get_product( $product->get_parent_id() ) : null;
+			// Plain text: stored names and term names can hold "&amp;".
 			$title        = $is_variation
-				? ( ( $parent ? $parent->get_name() : '' ) . ' — ' . wp_strip_all_tags( wc_get_formatted_variation( $product, true ) ) )
-				: $product->get_name();
+				? ( ( $parent ? brikpanel_plain_label( $parent->get_name() ) : '' ) . ' — ' . brikpanel_plain_label( wc_get_formatted_variation( $product, true ) ) )
+				: brikpanel_plain_label( $product->get_name() );
 
 			// Raw meta read (native first, legacy fallback) — unlike
 			// get_cogs_value() it keeps working when the WC COGS feature

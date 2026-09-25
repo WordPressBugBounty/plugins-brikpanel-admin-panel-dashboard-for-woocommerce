@@ -108,6 +108,9 @@ function brikpanel_prime_keys_always() {
 		// are storefront reads.
 		'brikpanel_custom_order_statuses',
 		'brikpanel_live_ping_interval',
+		// Printed into the storefront tracker (whether it remembers the visit's
+		// entry source), so read on every storefront page.
+		'brikpanel_live_traffic_source',
 		// Read by the abandoned-cart sweep, which runs under wp-cron.php and the
 		// Action Scheduler queue runner — neither of them an admin request.
 		'brikpanel_cartab_abandon_minutes',
@@ -214,6 +217,10 @@ function brikpanel_prime_keys_admin() {
 		// same admin-only paths as the shipping-cost gate above.
 		'brikpanel_payment_fees_enabled',
 
+		// Profit: takes tax out of Revenue and Expenses on the dashboard, and
+		// joins the dashboard transient key. Same admin-only paths as above.
+		'brikpanel_profit_exclude_tax',
+
 		// Dashboard widget access + layout.
 		'brikpanel_dashboard_widget_audience',
 		'brikpanel_dashboard_widget_hide_roles',
@@ -266,6 +273,9 @@ function brikpanel_prime_keys_admin() {
 		// Notice suppression, admin_init on every screen.
 		'brikpanel_hide_foreign_notices',
 		'brikpanel_hide_error_notices',
+
+		// WooCommerce ads switch, asked by WooCommerce at init on every screen.
+		'brikpanel_hide_wc_ads',
 
 		// Screen gates evaluated in module constructors / in_admin_header.
 		'brikpanel_modern_dashboard',

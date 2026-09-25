@@ -194,75 +194,123 @@
 	}
 
 	// -----------------------------------------------------------------------
+	// Fit: table or stacked cards
+	// -----------------------------------------------------------------------
+	// Rows turn into stacked cards when the table cannot show every column
+	// inside its card (field test B2: Total vanished at 1280px). Measured
+	// rather than guessed, because the width depends on the language and on
+	// store data such as custom order statuses and payment method titles.
+
+	// The shared helper (front-end/shared/brikpanel-fit-table.js) measures an
+	// invisible copy and watches the width; below 720px it stacks regardless.
+	const TABLE = el('bp-seg-table');
+	const FIT = (TABLE && window.brikpanelFitTable) ? window.brikpanelFitTable(TABLE, { floor: 720 }) : null;
+
+	// After every render: the rows changed, so they are measured again.
+	function fitTable() {
+		if (FIT) FIT.refit();
+	}
+
+	// Every tbody change goes through here so the fit never lags a render.
+	function setBody(html) {
+		el('bp-seg-tbody').innerHTML = html;
+		fitTable();
+	}
+
+	function cellLabel(text) {
+		return ' data-bp-label="' + escape(text) + '"';
+	}
+
+	// Left-to-right data (phone numbers, addresses) keeps its order on a
+	// right-to-left page. Addresses may break after "@" and before a dot, never
+	// inside a word; an unbroken address used to hold its column wide open.
+	function ltrHtml(text) {
+		return '<span dir="ltr">' + escape(text) + '</span>';
+	}
+
+	function emailHtml(email) {
+		return '<span dir="ltr">' + escape(email).replace(/@/g, '@<wbr>').replace(/\./g, '<wbr>.') + '</span>';
+	}
+
+	// -----------------------------------------------------------------------
 	// Table rendering
 	// -----------------------------------------------------------------------
 
 	function renderOrdersTable(data) {
+		const L = {
+			order: I18N.col_order, date: I18N.col_date, status: I18N.col_status, customer: I18N.col_customer,
+			phone: I18N.col_phone, location: I18N.col_location, payment: I18N.col_payment, total: I18N.col_total,
+		};
 		el('bp-seg-thead').innerHTML =
 			'<tr>'
-			+ '<th>' + escape(I18N.col_order || 'Order') + '</th>'
-			+ '<th>' + escape(I18N.col_date || 'Date') + '</th>'
-			+ '<th>' + escape(I18N.col_status || 'Status') + '</th>'
-			+ '<th>' + escape(I18N.col_customer || 'Customer') + '</th>'
-			+ '<th>' + escape(I18N.col_phone || 'Phone') + '</th>'
-			+ '<th>' + escape(I18N.col_location || 'Location') + '</th>'
-			+ '<th>' + escape(I18N.col_payment || 'Payment') + '</th>'
-			+ '<th class="bp-seg-num">' + escape(I18N.col_total || 'Total') + '</th>'
+			+ '<th>' + escape(L.order) + '</th>'
+			+ '<th>' + escape(L.date) + '</th>'
+			+ '<th>' + escape(L.status) + '</th>'
+			+ '<th>' + escape(L.customer) + '</th>'
+			+ '<th>' + escape(L.phone) + '</th>'
+			+ '<th>' + escape(L.location) + '</th>'
+			+ '<th>' + escape(L.payment) + '</th>'
+			+ '<th class="bp-seg-num">' + escape(L.total) + '</th>'
 			+ '</tr>';
 
 		if (!data.items.length) {
-			el('bp-seg-tbody').innerHTML = '<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.no_results || 'No orders match these filters.') + '</td></tr>';
+			setBody('<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.no_results) + '</td></tr>');
 			return;
 		}
 
-		el('bp-seg-tbody').innerHTML = data.items.map(function (o) {
+		setBody(data.items.map(function (o) {
 			const location = [o.city, o.country].filter(Boolean).join(', ');
 			return '<tr>'
-				+ '<td><a class="bp-seg-primary-link" href="' + escape(o.edit_url) + '">#' + escape(o.number || o.id) + '</a></td>'
-				+ '<td>' + escape(o.date) + '</td>'
-				+ '<td><span class="bp-seg-status is-' + escape(o.status) + '">' + escape(o.status_label) + '</span></td>'
-				+ '<td class="bp-seg-customer">' + (o.name ? escape(o.name) : '<span class="bp-seg-subtle">' + escape(I18N.guest || 'Guest') + '</span>') + (o.email ? '<div class="bp-seg-subtle">' + escape(o.email) + '</div>' : '') + '</td>'
-				+ '<td>' + escape(o.phone || '—') + '</td>'
-				+ '<td>' + escape(location || '—') + '</td>'
-				+ '<td>' + escape(o.payment || '—') + '</td>'
-				+ '<td class="bp-seg-num">' + o.total_display + '</td>'
+				+ '<td class="bp-seg-cell-title bp-seg-order-no"><a class="bp-seg-primary-link" href="' + escape(o.edit_url) + '">#' + escape(o.number || o.id) + '</a></td>'
+				+ '<td' + cellLabel(L.date) + '>' + escape(o.date) + '</td>'
+				+ '<td' + cellLabel(L.status) + '><span class="bp-seg-status is-' + escape(o.status) + '">' + escape(o.status_label) + '</span></td>'
+				+ '<td class="bp-seg-customer"' + cellLabel(L.customer) + '>' + (o.name ? escape(o.name) : '<span class="bp-seg-subtle">' + escape(I18N.guest) + '</span>') + (o.email ? '<div class="bp-seg-subtle">' + emailHtml(o.email) + '</div>' : '') + '</td>'
+				+ '<td class="bp-seg-phone"' + cellLabel(L.phone) + '>' + (o.phone ? ltrHtml(o.phone) : '—') + '</td>'
+				+ '<td' + cellLabel(L.location) + '>' + escape(location || '—') + '</td>'
+				+ '<td' + cellLabel(L.payment) + '>' + escape(o.payment || '—') + '</td>'
+				+ '<td class="bp-seg-num bp-seg-cell-headline"' + cellLabel(L.total) + '>' + o.total_display + '</td>'
 				+ '</tr>';
-		}).join('');
+		}).join(''));
 	}
 
 	function renderCustomersTable(data) {
+		const L = {
+			customer: I18N.col_customer, email: I18N.col_email, phone: I18N.col_phone, registered: I18N.col_registered,
+			orders: I18N.col_orders, spent: I18N.col_spent, aov: I18N.col_aov, lastOrder: I18N.col_last_order,
+		};
 		el('bp-seg-thead').innerHTML =
 			'<tr>'
-			+ '<th>' + escape(I18N.col_customer || 'Customer') + '</th>'
-			+ '<th>' + escape(I18N.col_email || 'Email') + '</th>'
-			+ '<th>' + escape(I18N.col_phone || 'Phone') + '</th>'
-			+ '<th>' + escape(I18N.col_registered || 'Registered') + '</th>'
-			+ '<th class="bp-seg-num">' + escape(I18N.col_orders || 'Orders') + '</th>'
-			+ '<th class="bp-seg-num">' + escape(I18N.col_spent || 'Total spent') + '</th>'
-			+ '<th class="bp-seg-num">' + escape(I18N.col_aov || 'AOV') + '</th>'
-			+ '<th>' + escape(I18N.col_last_order || 'Last order') + '</th>'
+			+ '<th>' + escape(L.customer) + '</th>'
+			+ '<th>' + escape(L.email) + '</th>'
+			+ '<th>' + escape(L.phone) + '</th>'
+			+ '<th>' + escape(L.registered) + '</th>'
+			+ '<th class="bp-seg-num">' + escape(L.orders) + '</th>'
+			+ '<th class="bp-seg-num">' + escape(L.spent) + '</th>'
+			+ '<th class="bp-seg-num">' + escape(L.aov) + '</th>'
+			+ '<th>' + escape(L.lastOrder) + '</th>'
 			+ '</tr>';
 
 		if (!data.items.length) {
-			el('bp-seg-tbody').innerHTML = '<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.no_customers || 'No customers match these filters.') + '</td></tr>';
+			setBody('<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.no_customers) + '</td></tr>');
 			return;
 		}
 
-		el('bp-seg-tbody').innerHTML = data.items.map(function (c) {
+		setBody(data.items.map(function (c) {
 			const nameCell = c.edit_url
 				? '<a class="bp-seg-primary-link" href="' + escape(c.edit_url) + '">' + escape(c.name) + '</a>'
-				: escape(c.name) + ' <span class="bp-seg-subtle">(' + escape(I18N.guest || 'Guest') + ')</span>';
+				: escape(c.name) + ' <span class="bp-seg-subtle">(' + escape(I18N.guest) + ')</span>';
 			return '<tr>'
-				+ '<td class="bp-seg-customer">' + nameCell + '</td>'
-				+ '<td class="bp-seg-customer">' + escape(c.email || '—') + '</td>'
-				+ '<td>' + escape(c.phone || '—') + '</td>'
-				+ '<td>' + escape(c.registered || '—') + '</td>'
-				+ '<td class="bp-seg-num">' + escape(c.order_count) + '</td>'
-				+ '<td class="bp-seg-num">' + c.total_spent_display + '</td>'
-				+ '<td class="bp-seg-num">' + c.aov_display + '</td>'
-				+ '<td>' + escape(c.last_order || '—') + '</td>'
+				+ '<td class="bp-seg-customer bp-seg-cell-title">' + nameCell + '</td>'
+				+ '<td class="bp-seg-customer"' + cellLabel(L.email) + '>' + (c.email ? emailHtml(c.email) : '—') + '</td>'
+				+ '<td class="bp-seg-phone"' + cellLabel(L.phone) + '>' + (c.phone ? ltrHtml(c.phone) : '—') + '</td>'
+				+ '<td' + cellLabel(L.registered) + '>' + escape(c.registered || '—') + '</td>'
+				// String(): escape() drops a bare 0, and a customer with no orders showed an empty cell.
+				+ '<td class="bp-seg-num"' + cellLabel(L.orders) + '>' + escape(String(c.order_count || 0)) + '</td>'
+				+ '<td class="bp-seg-num bp-seg-cell-headline"' + cellLabel(L.spent) + '>' + c.total_spent_display + '</td>'
+				+ '<td class="bp-seg-num"' + cellLabel(L.aov) + '>' + c.aov_display + '</td>'
+				+ '<td' + cellLabel(L.lastOrder) + '>' + escape(c.last_order || '—') + '</td>'
 				+ '</tr>';
-		}).join('');
+		}).join(''));
 	}
 
 	function renderPagination(data) {
@@ -364,7 +412,7 @@
 			if (reqId !== state.lastRequestId) return;
 			ROOT.classList.remove('bp-seg-loading');
 			if (!res || !res.success) {
-				el('bp-seg-tbody').innerHTML = '<tr><td class="bp-seg-empty" colspan="9">' + escape(I18N.error || 'Something went wrong.') + '</td></tr>';
+				setBody('<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.error) + '</td></tr>');
 				return;
 			}
 			if (state.tab === 'customers') renderCustomersTable(res.data); else renderOrdersTable(res.data);
@@ -372,7 +420,7 @@
 			renderPagination(res.data);
 		}).catch(function () {
 			ROOT.classList.remove('bp-seg-loading');
-			el('bp-seg-tbody').innerHTML = '<tr><td class="bp-seg-empty" colspan="9">' + escape(I18N.error || 'Something went wrong.') + '</td></tr>';
+			setBody('<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.error) + '</td></tr>');
 		});
 	}
 
@@ -576,5 +624,6 @@
 	ROOT.setAttribute('data-tab', state.tab);
 	renderChips();
 	wire();
+	fitTable();
 	loadFilterOptions().then(runQuery);
 })();

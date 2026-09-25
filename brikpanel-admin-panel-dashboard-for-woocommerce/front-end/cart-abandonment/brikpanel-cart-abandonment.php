@@ -3991,6 +3991,7 @@ class Brikpanel_Cart_Abandonment {
 					<?php endif; ?>
 				</div>
 			</div>
+			<?php brikpanel_header_end(); ?>
 
 			<?php
 			/**

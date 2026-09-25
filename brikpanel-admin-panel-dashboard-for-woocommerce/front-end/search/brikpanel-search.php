@@ -1560,7 +1560,9 @@ class Brikpanel_Pro_Search {
 
 			$product_html = '';
 			if ( isset( $matching_product ) ) {
-				$product_title = esc_html( $matching_product->get_formatted_name() );
+				// get_formatted_name() carries a <span class="description"> for
+				// variations; esc_html() alone would print it as text.
+				$product_title = esc_html( brikpanel_plain_label( $matching_product->get_formatted_name() ) );
 				$product_html  = '<div class="text-sm matching-order-product">' . $product_title . '</div>';
 			}
 
@@ -1734,7 +1736,9 @@ class Brikpanel_Pro_Search {
 				continue;
 			}
 
-			$title = $product->get_formatted_name(); // Includes ID, SKU, and variation attributes.
+			// Includes ID, SKU, and variation attributes; plain text because it is
+			// printed through esc_html() (the variation <span> showed as text).
+			$title = brikpanel_plain_label( $product->get_formatted_name() );
 			$sku   = $product->get_sku();
 
 			$parts = array();

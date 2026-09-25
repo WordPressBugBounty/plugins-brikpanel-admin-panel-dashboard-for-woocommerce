@@ -5,11 +5,15 @@
  * Full width, like the other BrikPanel data-table screens (Orders, Products,
  * Coupons, Segments). It used to be a centred 1100px column, which held six
  * columns comfortably and ran out of room at eight: turning BrikMentor on adds
- * Phone and Follow-ups, and because every cell except Name is `white-space:
- * nowrap`, Name is the only column that can absorb the squeeze — customer names
- * wrapped onto three and four lines. Widening is the whole fix; the caps
- * further down keep the handful of elements that should NOT grow with it
- * (summary cards, search box) from stretching across a large monitor.
+ * Phone and Follow-ups. The caps further down keep the handful of elements
+ * that should NOT grow with it (summary cards, search box) from stretching
+ * across a large monitor.
+ *
+ * Widening was not enough on its own (field test B2): with most cells
+ * `white-space: nowrap` the table still needed more room than a 1440px screen
+ * gives and the Delete column fell off the card edge. Dates and follow-up
+ * notes now wrap, addresses break at "@" and dots, and when the table still
+ * cannot fit, cart-abandonment-admin.js stacks its rows (see "Stacked rows").
  */
 
 /* This element IS the .wrap, so only the vertical margins are declared here:
@@ -567,7 +571,7 @@ body.rtl .brikpanel-cartab-wrap {
 }
 
 .brikpanel-cartab-table th {
-	text-align: left;
+	text-align: start;
 	padding: 0.75rem 1rem;
 	font-size: 0.75rem;
 	font-weight: 600;
@@ -594,6 +598,13 @@ body.rtl .brikpanel-cartab-wrap {
 	   table sizes this column from its content and a flex cell would stop
 	   contributing an intrinsic width. */
 	white-space: nowrap;
+}
+
+/* The breakable head of an address (everything before its last piece), with
+   <wbr> after "@" and before each dot from the JS. The last piece stays in the
+   nowrap cell next to the envelope, so the icon never wraps onto a line alone. */
+.brikpanel-cartab-email-head {
+	white-space: normal;
 }
 
 /* The envelope beside an address. Same box, radius, inline offset, glyph size
@@ -651,7 +662,6 @@ body.rtl .brikpanel-cartab-wrap {
 .brikpanel-cartab-date-cell {
 	color: #616161;
 	font-size: 0.8125rem;
-	white-space: nowrap;
 }
 
 .brikpanel-cartab-total-cell {
@@ -849,11 +859,8 @@ a.brikpanel-cartab-lock:focus {
 	background: #f7f7f7;
 }
 
-/* Follow-up count (BrikMentor only) */
-.brikpanel-cartab-mail-cell {
-	white-space: nowrap;
-}
-
+/* Follow-up count (BrikMentor only). The cell wraps: its "Next: <date>" note
+   held the column open by the full length of a date. */
 .brikpanel-cartab-mail-count {
 	display: block;
 	font-weight: 550;
@@ -910,10 +917,11 @@ a.brikpanel-cartab-lock:focus {
 	color: #5c7a58;
 }
 
-/* Row actions */
+/* Row actions. `end`, not `right`: it mirrors in RTL, where `right` put Delete
+   on the inner edge of the cell. */
 .brikpanel-cartab-actions-cell {
 	white-space: nowrap;
-	text-align: right;
+	text-align: end;
 }
 
 .brikpanel-cartab-row-btn {
@@ -1052,6 +1060,113 @@ a.brikpanel-cartab-lock:focus {
 	gap: 0.375rem;
 	font-size: 0.8125rem;
 	padding: 0.75rem 1rem 0.875rem;
+}
+
+/* Stacked rows.
+   cart-abandonment-admin.js adds .is-stacked when the table cannot show every
+   column inside the card. Each cart becomes a card of label-over-value tiles in
+   the user's column order, the expand chevron in a gutter at the start and
+   Delete on its own line. Only the generic cell rule sets display, so the
+   data-hide-<id> rules (more specific) keep switched-off columns hidden, and it
+   comes after the is-expanded cell rule above so its transparent background
+   wins the tie. Closed details rows keep [hidden]: nothing here sets their
+   display unless they are open. */
+.brikpanel-cartab-table.is-stacked,
+.brikpanel-cartab-table.is-stacked > tbody {
+	display: block;
+}
+
+.brikpanel-cartab-table.is-stacked > thead {
+	display: none;
+}
+
+.brikpanel-cartab-table.is-stacked > tbody > tr:not(.brikpanel-cartab-details-row) {
+	position: relative;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+	gap: 0.625rem 1rem;
+	padding: 0.875rem 1rem;
+	padding-inline-start: 2.75rem;
+}
+
+.brikpanel-cartab-table.is-stacked > tbody > tr.brikpanel-cartab-details-row:not([hidden]) {
+	display: block;
+}
+
+.brikpanel-cartab-table.is-stacked > tbody > tr:not(:first-child) {
+	border-top: 1px solid #f1f1f1;
+}
+
+.brikpanel-cartab-table.is-stacked > tbody > tr.brikpanel-cartab-details-row {
+	border-top: 0;
+	background: #fafafa;
+}
+
+.brikpanel-cartab-table.is-stacked > tbody > tr.is-expanded {
+	background: #fafafa;
+}
+
+.brikpanel-cartab-table.is-stacked > tbody > tr > td {
+	display: block;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	text-align: start;
+	overflow-wrap: anywhere;
+}
+
+.brikpanel-cartab-table.is-stacked td[data-bp-label]::before {
+	content: attr(data-bp-label);
+	display: block;
+	margin-bottom: 0.125rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: #616161;
+}
+
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-expander-cell {
+	position: absolute;
+	inset-inline-start: 0.625rem;
+	inset-block-start: 0.75rem;
+	width: auto;
+}
+
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-details-spacer {
+	display: none;
+}
+
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-details {
+	padding-inline-start: 2.75rem;
+}
+
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-actions-cell {
+	grid-column: 1 / -1;
+}
+
+/* The "Loading" / "No emails" row has no chevron, so no gutter either. */
+.brikpanel-cartab-table.is-stacked > tbody > tr:has(> .brikpanel-cartab-empty) {
+	padding-inline-start: 1rem;
+}
+
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-empty {
+	grid-column: 1 / -1;
+	text-align: center;
+}
+
+/* Delete's text lines up with the tiles above it. */
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-actions-cell .brikpanel-cartab-row-btn {
+	margin-inline-start: -0.5rem;
+}
+
+/* In a narrow tile the WhatsApp mark may drop under the number; the number
+   itself stays on one line. */
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-phone-cell {
+	white-space: normal;
+}
+
+.brikpanel-cartab-table.is-stacked .brikpanel-cartab-phone {
+	white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

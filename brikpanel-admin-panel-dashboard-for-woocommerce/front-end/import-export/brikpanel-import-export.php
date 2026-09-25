@@ -932,9 +932,6 @@ function brikpanel_import_export_render_section() {
 	.brikpanel-iox__drop-title { font-size:.875rem; font-weight:550; color:#303030; }
 	.brikpanel-iox__drop-sub { font-size:.8125rem; color:#8a8a8a; }
 	.brikpanel-iox__drop-file { margin-top:.5rem; font-size:.8125rem; font-weight:550; color:#1a8917; background:#e4f5e1; padding:.25rem .625rem; border-radius:.375rem; border:1px solid #b7e1b0; }
-	/* Hide the WC "Save changes" submit on this section — there is nothing to save in the form-table sense. */
-	body.woocommerce_page_wc-settings .brikpanel-settings-section-body[data-section="import-export"] ~ p.submit,
-	body.woocommerce_page_wc-settings .brikpanel-settings-section-body[data-section="import-export"] + p.submit { display:none; }
 	</style>
 
 	<script>

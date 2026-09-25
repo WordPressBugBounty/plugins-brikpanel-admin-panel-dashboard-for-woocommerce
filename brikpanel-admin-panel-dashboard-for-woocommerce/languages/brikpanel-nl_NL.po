@@ -5516,7 +5516,7 @@ msgid ""
 "platforms (store currency only), payment processing fees charged by the "
 "gateway, supplier and stock costs from received purchase orders, plus "
 "anything logged in the Expenses module. Open the breakdown to see each part."
-msgstr ""
+msgstr "Bedrijfskosten voor de periode: belasting op bestellingen, advertentie-uitgaven van gekoppelde advertentieplatformen (alleen in de winkelvaluta), transactiekosten van de betaalprovider, leveranciers- en voorraadkosten uit ontvangen inkooporders, plus alles wat in de module Uitgaven is vastgelegd. Open de uitsplitsing om elk onderdeel te zien."
 
 #: front-end/dashboard/brikpanel-dashboard.php:825
 #: front-end/dashboard/brikpanel-dashboard.php:826
@@ -11508,7 +11508,7 @@ msgstr ""
 #: front-end/products/brikpanel-product-editor.php:1601
 msgctxt "button that deletes every variation of the product"
 msgid "Clear all"
-msgstr ""
+msgstr "Alles verwijderen"
 
 #: front-end/products/brikpanel-product-editor.php:1625
 msgctxt "short placeholder for the bulk sale price field"
@@ -12331,7 +12331,7 @@ msgstr[1] ""
 
 #: front-end/products/brikpanel-product-editor.php:4164
 msgid "Fields from your other plugins"
-msgstr ""
+msgstr "Velden uit je andere plugins"
 
 #. translators: %d: number of field groups other plugins add to this product
 #: front-end/products/brikpanel-product-editor.php:4167
@@ -19671,3 +19671,415 @@ msgstr "Laatste bestelling (%s)"
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:3488
 msgid "Update BrikMentor to use this."
 msgstr "Werk BrikMentor bij om dit te gebruiken."
+
+#: front-end/products/brikpanel-product-editor.php:1727
+#: includes/brikpanel-enqueue.php:2076
+msgid "Show all details"
+msgstr "Alle details tonen"
+
+#: includes/brikpanel-enqueue.php:2077
+msgid "Hide all details"
+msgstr "Alle details verbergen"
+
+#. translators: %s: an image file size in megabytes, e.g. "2.40"
+#: front-end/brikcontrol/views/partials/check-card.php:292
+#, php-format
+msgid "%s MB"
+msgstr "%s MB"
+
+#. translators: shown after the lead time a supplier has by default, e.g. "7d default"
+#: front-end/vendors/class-brikpanel-vendors.php:307
+msgctxt "supplier default lead time, e.g. 7d default"
+msgid "default"
+msgstr "standaard"
+
+#: front-end/orders/brikpanel-orders.php
+msgid "Hide WooCommerce ads"
+msgstr "WooCommerce-advertenties verbergen"
+
+#: front-end/orders/brikpanel-orders.php
+msgid "Hide the ads WooCommerce.com shows in your admin: promo cards such as the one above the Orders list, the sale badge on the Extensions menu and extension suggestions. Turn this off to show them again."
+msgstr "Verbergt de advertenties die WooCommerce.com in uw beheeromgeving toont: promotiekaarten zoals die boven de lijst Bestellingen, de aanbiedingsbadge in het menu Extensies en suggesties voor extensies. Schakel dit uit om ze weer te tonen."
+
+#: front-end/products/brikpanel-product-editor.php:1537
+#: includes/brikpanel-enqueue.php:2178
+msgid "No video yet"
+msgstr "Nog geen video"
+
+#: front-end/products/brikpanel-product-editor.php:1539
+#: includes/brikpanel-enqueue.php:2180
+msgid "Edit video"
+msgstr "Video bewerken"
+
+#: front-end/products/brikpanel-product-editor.php:1539
+#: includes/brikpanel-enqueue.php:2179
+msgid "Add video"
+msgstr "Video toevoegen"
+
+#: front-end/products/brikpanel-product-editor.php:8468
+msgid "The product was saved, but its video changes could not be stored. Try saving again."
+msgstr "Het product is opgeslagen, maar de videowijzigingen konden niet worden bewaard. Probeer opnieuw op te slaan."
+
+#: front-end/products/video/brikpanel-product-video.php:309
+#: includes/brikpanel-enqueue.php:2153
+msgid "Media library"
+msgstr "Mediabibliotheek"
+
+#: front-end/products/video/brikpanel-product-video.php:313
+#: includes/brikpanel-enqueue.php:2154
+msgid "Video link"
+msgstr "Videolink"
+
+#: front-end/products/video/brikpanel-product-video.php:317
+#: includes/brikpanel-enqueue.php:2164
+msgid "Current video"
+msgstr "Huidige video"
+
+#. translators: 1: video source (YouTube, Vimeo…), 2: the video link or file name
+#: front-end/products/video/brikpanel-product-video.php:322
+#: includes/brikpanel-enqueue.php:2182
+#, php-format
+msgctxt "product video source and link"
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+#: front-end/products/video/brikpanel-product-video.php:861
+msgid "Video changes were not saved because the store's video support changed while you were editing. Reload the page and try again."
+msgstr "De videowijzigingen zijn niet opgeslagen, omdat de video-ondersteuning van de winkel veranderde terwijl u bewerkte. Laad de pagina opnieuw en probeer het nog eens."
+
+#: front-end/products/video/brikpanel-product-video.php:956
+msgid "A video was not saved because its image is no longer part of this product."
+msgstr "Een video is niet opgeslagen, omdat de afbeelding niet meer bij dit product hoort."
+
+#: front-end/products/video/brikpanel-product-video.php:958
+msgid "A video was not saved because you are not allowed to edit that image."
+msgstr "Een video is niet opgeslagen, omdat u die afbeelding niet mag bewerken."
+
+#. translators: %s: theme or plugin name, e.g. WoodMart
+#: front-end/products/video/brikpanel-product-video.php:961
+#, php-format
+msgid "A video was not saved because %s does not play videos on that image."
+msgstr "Een video is niet opgeslagen, omdat %s op die afbeelding geen video's afspeelt."
+
+#: front-end/products/video/brikpanel-product-video.php:963
+msgid "A video was not saved because its YouTube link is not a video link."
+msgstr "Een video is niet opgeslagen, omdat de YouTube-link geen videolink is."
+
+#: front-end/products/video/brikpanel-product-video.php:965
+msgid "A video was not saved because its Vimeo link is not a video link."
+msgstr "Een video is niet opgeslagen, omdat de Vimeo-link geen videolink is."
+
+#: front-end/products/video/brikpanel-product-video.php:967
+msgid "A video was not saved because the chosen file is not a video in a supported format."
+msgstr "Een video is niet opgeslagen, omdat het gekozen bestand geen video in een ondersteund formaat is."
+
+#: front-end/products/video/brikpanel-product-video.php:969
+msgid "A video was not saved because its link does not point to a supported video file."
+msgstr "Een video is niet opgeslagen, omdat de link niet naar een ondersteund videobestand verwijst."
+
+#: front-end/products/video/brikpanel-product-video.php:971
+msgid "The product video was not saved because its size must look like 900x900 (width x height)."
+msgstr "De productvideo is niet opgeslagen, omdat de grootte eruit moet zien als 900x900 (breedte x hoogte)."
+
+#: front-end/products/video/brikpanel-product-video.php:973
+msgid "Video changes were not saved because too many were sent at once. Save again with fewer changes."
+msgstr "De videowijzigingen zijn niet opgeslagen, omdat er te veel tegelijk zijn verzonden. Sla opnieuw op met minder wijzigingen."
+
+#: front-end/products/video/brikpanel-product-video.php:975
+msgid "A video was not saved because its settings were not valid."
+msgstr "Een video is niet opgeslagen, omdat de instellingen ongeldig waren."
+
+#: front-end/products/video/providers/class-brikpanel-video-blocksy.php:46
+msgid "Blocksy"
+msgstr "Blocksy"
+
+#: front-end/products/video/providers/class-brikpanel-video-commercekit.php:37
+msgid "CommerceKit"
+msgstr "CommerceKit"
+
+#: front-end/products/video/providers/class-brikpanel-video-flatsome.php:41
+msgid "Flatsome"
+msgstr "Flatsome"
+
+#: front-end/products/video/providers/class-brikpanel-video-minimog.php:32
+msgid "Minimog"
+msgstr "Minimog"
+
+#: front-end/products/video/providers/class-brikpanel-video-porto.php:45
+msgid "Porto"
+msgstr "Porto"
+
+#: front-end/products/video/providers/class-brikpanel-video-woodmart.php:46
+msgid "WoodMart"
+msgstr "WoodMart"
+
+#: includes/brikpanel-enqueue.php:2145
+msgid "Video for this image"
+msgstr "Video voor deze afbeelding"
+
+#. translators: %s: theme or plugin name, e.g. WoodMart
+#: includes/brikpanel-enqueue.php:2147
+#, php-format
+msgid "Plays in the product gallery. Shown by %s."
+msgstr "Speelt af in de productgalerij. Weergegeven door %s."
+
+#. translators: %s: theme or plugin name, e.g. Flatsome
+#: includes/brikpanel-enqueue.php:2149
+#, php-format
+msgid "Plays on the product page. Shown by %s."
+msgstr "Speelt af op de productpagina. Weergegeven door %s."
+
+#: includes/brikpanel-enqueue.php:2155
+msgid "Link to the video file"
+msgstr "Link naar het videobestand"
+
+#: includes/brikpanel-enqueue.php:2156
+msgid "https://example.com/video.mp4"
+msgstr "https://example.com/video.mp4"
+
+#. translators: %s: list of file types, e.g. "mp4, webm"
+#: includes/brikpanel-enqueue.php:2158
+#, php-format
+msgid "Supported files: %s"
+msgstr "Ondersteunde bestanden: %s"
+
+#: includes/brikpanel-enqueue.php:2159
+msgid "This is not a YouTube video link."
+msgstr "Dit is geen YouTube-videolink."
+
+#: includes/brikpanel-enqueue.php:2160
+msgid "This is not a Vimeo video link, like https://vimeo.com/123456789."
+msgstr "Dit is geen Vimeo-videolink, zoals https://vimeo.com/123456789."
+
+#: includes/brikpanel-enqueue.php:2161
+msgid "This link does not point to a supported video file."
+msgstr "Deze link verwijst niet naar een ondersteund videobestand."
+
+#: includes/brikpanel-enqueue.php:2162
+msgid "Choose a video file in a supported format."
+msgstr "Kies een videobestand in een ondersteund formaat."
+
+#: includes/brikpanel-enqueue.php:2163
+msgid "Enter the size as width x height, for example 900x900."
+msgstr "Voer de grootte in als breedte x hoogte, bijvoorbeeld 900x900."
+
+#: includes/brikpanel-enqueue.php:2165
+msgid "This video was set up outside BrikPanel. It stays as it is unless you choose a new source."
+msgstr "Deze video is buiten BrikPanel ingesteld. Hij blijft zoals hij is, tenzij u een nieuwe bron kiest."
+
+#: includes/brikpanel-enqueue.php:2166
+msgid "Add a video to this image"
+msgstr "Een video aan deze afbeelding toevoegen"
+
+#: includes/brikpanel-enqueue.php:2167
+msgid "Edit the video of this image"
+msgstr "De video van deze afbeelding bewerken"
+
+#: includes/brikpanel-enqueue.php:2168
+msgid "Add a video to this variation image"
+msgstr "Een video aan deze variatieafbeelding toevoegen"
+
+#: includes/brikpanel-enqueue.php:2169
+msgid "Edit the video of this variation image"
+msgstr "De video van deze variatieafbeelding bewerken"
+
+#: includes/brikpanel-enqueue.php:2170
+msgid "The video is saved on the image itself, so it also plays wherever this image is used."
+msgstr "De video wordt bij de afbeelding zelf opgeslagen en speelt dus overal af waar deze afbeelding wordt gebruikt."
+
+#. translators: %s: theme or plugin name, e.g. CommerceKit
+#: includes/brikpanel-enqueue.php:2172
+#, php-format
+msgid "%s plays videos on gallery images only. You can remove this one."
+msgstr "%s speelt alleen video's af op galerijafbeeldingen. U kunt deze verwijderen."
+
+#: includes/brikpanel-enqueue.php:2173
+msgid "On the product page this plays when the variation also has its own gallery."
+msgstr "Op de productpagina speelt deze af wanneer de variatie ook een eigen galerij heeft."
+
+#: includes/brikpanel-enqueue.php:2174
+msgid "You cannot change this video because the image belongs to another user."
+msgstr "U kunt deze video niet wijzigen, omdat de afbeelding van een andere gebruiker is."
+
+#: includes/brikpanel-enqueue.php:2175
+msgid "This image shows a 360° view. Adding a video replaces it on the product page."
+msgstr "Deze afbeelding toont een 360°-weergave. Een video toevoegen vervangt die op de productpagina."
+
+#: includes/brikpanel-enqueue.php:2176
+msgid "Product video set"
+msgstr "Productvideo ingesteld"
+
+#: includes/brikpanel-enqueue.php:2177
+msgid "Product video removed"
+msgstr "Productvideo verwijderd"
+
+#: includes/brikpanel-enqueue.php:2183
+msgid "Play automatically (muted)"
+msgstr "Automatisch afspelen (gedempt)"
+
+#: includes/brikpanel-enqueue.php:2184
+msgctxt "video player style"
+msgid "Player"
+msgstr "Speler"
+
+#: includes/brikpanel-enqueue.php:2185
+msgctxt "video player style"
+msgid "Simple"
+msgstr "Eenvoudig"
+
+#: includes/brikpanel-enqueue.php:2186
+msgctxt "video player style"
+msgid "Standard"
+msgstr "Standaard"
+
+#: includes/brikpanel-enqueue.php:2187
+msgid "Video size"
+msgstr "Videogrootte"
+
+#: includes/brikpanel-enqueue.php:2188
+msgctxt "video size"
+msgid "Fit"
+msgstr "Passend"
+
+#: includes/brikpanel-enqueue.php:2189
+msgctxt "video size"
+msgid "Fill"
+msgstr "Vullen"
+
+#: includes/brikpanel-enqueue.php:2190
+msgid "Show the player instead of the image"
+msgstr "De speler tonen in plaats van de afbeelding"
+
+#: includes/brikpanel-enqueue.php:2191
+msgctxt "video sound"
+msgid "Sound"
+msgstr "Geluid"
+
+#: includes/brikpanel-enqueue.php:2192
+msgctxt "video sound"
+msgid "On"
+msgstr "Aan"
+
+#: includes/brikpanel-enqueue.php:2193
+msgctxt "video sound"
+msgid "Muted"
+msgstr "Gedempt"
+
+#: includes/brikpanel-enqueue.php:2194
+msgid "Hide labels and buttons while the video plays"
+msgstr "Labels en knoppen verbergen tijdens het afspelen"
+
+#: includes/brikpanel-enqueue.php:2195
+msgid "Show the image again when the pointer leaves"
+msgstr "De afbeelding weer tonen als de aanwijzer weggaat"
+
+#: includes/brikpanel-enqueue.php:2196
+msgid "Where to show it"
+msgstr "Waar het wordt getoond"
+
+#: includes/brikpanel-enqueue.php:2197
+msgid "Button (lightbox)"
+msgstr "Knop (lightbox)"
+
+#: includes/brikpanel-enqueue.php:2198
+msgid "Product tab"
+msgstr "Producttabblad"
+
+#: includes/brikpanel-enqueue.php:2199
+msgid "Lightbox size"
+msgstr "Lightboxgrootte"
+
+#: includes/brikpanel-enqueue.php:2200
+msgctxt "product video display"
+msgid "Display"
+msgstr "Weergave"
+
+#: includes/brikpanel-enqueue.php:2201
+msgctxt "product video display"
+msgid "Popup"
+msgstr "Pop-up"
+
+#: includes/brikpanel-enqueue.php:2202
+msgid "Gallery slide"
+msgstr "Galerijdia"
+
+#: includes/brikpanel-enqueue.php:2203
+msgid "Position in the gallery"
+msgstr "Positie in de galerij"
+
+#: includes/brikpanel-enqueue.php:2204
+msgctxt "position in the gallery"
+msgid "Last"
+msgstr "Laatste"
+
+# apattee request (2026-09-25): items sold, live traffic source, tax out of revenue.
+msgid "Items sold"
+msgstr "Verkochte artikelen"
+
+#, php-format
+msgid "Campaign: %s"
+msgstr "Campagne: %s"
+
+msgid "Exclude tax from Revenue and Expenses"
+msgstr "Belasting uitsluiten van omzet en uitgaven"
+
+msgid "Excluding tax"
+msgstr "Exclusief belasting"
+
+#, php-format
+msgid "Landing page: %s"
+msgstr "Landingspagina: %s"
+
+#, php-format
+msgid "Medium: %s"
+msgstr "Medium: %s"
+
+msgid "Net of returns and tax"
+msgstr "Na aftrek van retouren en belasting"
+
+msgid "Off by default: Revenue in the Profit section includes the tax your customers paid, and the same tax is counted in Expenses. Turn this on to show Revenue without tax and leave tax out of Expenses. Net profit stays exactly the same."
+msgstr "Standaard uit: de omzet in de sectie Winst bevat de belasting die uw klanten hebben betaald, en dezelfde belasting telt mee in de uitgaven. Zet dit aan om de omzet zonder belasting te tonen en de belasting buiten de uitgaven te laten. De nettowinst blijft precies hetzelfde."
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is already taken out of Revenue. Open the breakdown to see each part."
+msgstr "Bedrijfskosten voor de periode: advertentie-uitgaven van gekoppelde advertentieplatformen (alleen in de winkelvaluta), transactiekosten van de betaalprovider, leveranciers- en voorraadkosten uit ontvangen inkooporders, plus alles wat in de module Uitgaven is vastgelegd. Belasting staat hier niet bij, omdat die al van de omzet is afgetrokken. Open de uitsplitsing om elk onderdeel te zien."
+
+msgid "Remembers where this visit came from (the referring site and the campaign in the link) so the store owner's Live visitors list can show it."
+msgstr "Onthoudt waar dit bezoek vandaan kwam (de verwijzende site en de campagne in de link), zodat de lijst met live bezoekers van de winkeleigenaar het kan tonen."
+
+#, php-format
+msgid "Search term: %s"
+msgstr "Zoekterm: %s"
+
+msgid "Show where each live visitor came from (for example Organic Search · google.com or Paid · bing.com) under the page they are on. Hover a visitor to see the campaign, search term and landing page from their link. The source is remembered only for the open browser tab and is kept with the rest of the live data for a couple of minutes."
+msgstr "Toon onder de pagina waarop elke live bezoeker zit waar die vandaan kwam (bijvoorbeeld Organisch zoeken · google.com of Betaald · bing.com). Beweeg over een bezoeker om de campagne, zoekterm en landingspagina uit de link te zien. De bron wordt alleen voor het geopende browsertabblad onthouden en een paar minuten bewaard, net als de rest van de livegegevens."
+
+#, php-format
+msgid "Source: %s"
+msgstr "Bron: %s"
+
+msgid "Taken out of Revenue"
+msgstr "Van de omzet afgetrokken"
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the \"Exclude tax from Revenue and Expenses\" setting is on, so it is not in Expenses either."
+msgstr "Het totaal van alle betaalde bestellingen voor de geselecteerde datums (standaard In behandeling en Voltooid), inclusief verzending en zonder belasting. Bestellingen die door winkelbeheerders zijn geplaatst, worden weggelaten zodat uw eigen testbestellingen het niet wijzigen. De belasting is eraf gehaald omdat de instelling \"Belasting uitsluiten van omzet en uitgaven\" aan staat, dus staat die ook niet bij de uitgaven."
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the \"Exclude tax from Revenue and Expenses\" setting is on, so it is not in Expenses either."
+msgstr "Het totaal van alle betaalde bestellingen voor de geselecteerde datums (standaard In behandeling en Voltooid), inclusief verzending, zonder belasting en met aftrek van eventuele klantterugbetalingen in de periode. Bestellingen die door winkelbeheerders zijn geplaatst, worden weggelaten zodat uw eigen testbestellingen het niet wijzigen. De belasting is eraf gehaald omdat de instelling \"Belasting uitsluiten van omzet en uitgaven\" aan staat, dus staat die ook niet bij de uitgaven."
+
+msgid "Traffic source in Live view"
+msgstr "Verkeersbron in de Live-weergave"
+
+msgid "Until the browser tab is closed"
+msgstr "Tot het browsertabblad wordt gesloten"
+
+#, php-format
+msgid "%s item sold"
+msgid_plural "%s items sold"
+msgstr[0] "%s artikel verkocht"
+msgstr[1] "%s artikelen verkocht"
+
+#, php-format
+msgid "%s item"
+msgid_plural "%s items"
+msgstr[0] "%s artikel"
+msgstr[1] "%s artikelen"

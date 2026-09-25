@@ -385,6 +385,20 @@ function brikpanel_brikmentor_current_fab_screen() {
 }
 
 add_action( 'admin_footer', 'brikpanel_brikmentor_render_fab' );
+/**
+ * The corner button, and the pitch panel it shares with the in-page openers.
+ *
+ * The button floats, so the page does not know it is there, and everything a
+ * page would do for an element of its own is done here instead: the button
+ * carries its name as visible text, the page ends with room for it (the last
+ * row can always be scrolled out from under it, and keyboard focus is kept
+ * clear of it), phones do not get it at all, and it sits at the inline end so
+ * a right-to-left admin does not find it on top of the sidebar. It can still
+ * pass over a row while the page scrolls: that was the accepted price of
+ * keeping it in the corner (field test B8).
+ *
+ * @return void
+ */
 function brikpanel_brikmentor_render_fab() {
     if ( ! brikpanel_brikmentor_promo_active() ) {
         return;
@@ -406,7 +420,7 @@ function brikpanel_brikmentor_render_fab() {
     $variants     = isset( $screen['variants'] ) ? $screen['variants'] : array();
     ?>
     <div class="brikpanel-bm-fab-root" id="brikpanel-bm-fab">
-        <div class="brikpanel-bm-panel" data-bm-panel role="dialog" aria-labelledby="brikpanel-bm-panel-title" hidden>
+        <div class="brikpanel-bm-panel" id="brikpanel-bm-panel" data-bm-panel role="dialog" aria-labelledby="brikpanel-bm-panel-title" hidden>
             <button type="button" class="brikpanel-bm-panel__close" data-bm-panel-close aria-label="<?php esc_attr_e( 'Close', 'brikpanel' ); ?>">
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
             </button>
@@ -432,34 +446,70 @@ function brikpanel_brikmentor_render_fab() {
                 </div>
             </div>
         </div>
-        <button type="button" class="brikpanel-bm-fab" data-bm-fab aria-haspopup="dialog" aria-expanded="false" title="BrikMentor">
-            <span class="screen-reader-text"><?php esc_html_e( 'Open the BrikMentor panel', 'brikpanel' ); ?></span>
-            <svg class="brikpanel-bm-fab__star" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2.5l2.95 5.98 6.6.96-4.78 4.66 1.13 6.58L12 17.58l-5.9 3.1 1.13-6.58L2.45 9.44l6.6-.96L12 2.5z" fill="#fff"/></svg>
+        <?php
+        // The word is on the button, not only in a tooltip or a screen-reader
+        // span: a bare star said nothing about what it opens. It is also the
+        // button's accessible name, and it reads the same in every locale.
+        ?>
+        <button type="button" class="brikpanel-bm-fab" data-bm-fab aria-haspopup="dialog" aria-expanded="false" aria-controls="brikpanel-bm-panel" title="<?php esc_attr_e( 'Open the BrikMentor panel', 'brikpanel' ); ?>">
+            <svg class="brikpanel-bm-fab__star" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M12 2.5l2.95 5.98 6.6.96-4.78 4.66 1.13 6.58L12 17.58l-5.9 3.1 1.13-6.58L2.45 9.44l6.6-.96L12 2.5z" fill="#fff"/></svg>
+            <span class="brikpanel-bm-fab__label"><?php esc_html_e( 'BrikMentor', 'brikpanel' ); ?></span>
         </button>
     </div>
     <style>
+        /* One set of numbers for the corner button and for the room the page
+           keeps free under it (see #wpbody-content at the end). */
+        :root {
+            --bp-bm-fab-off: 24px;
+            --bp-bm-fab-h: 40px;
+            --bp-bm-fab-zone: calc(var(--bp-bm-fab-off) + var(--bp-bm-fab-h) + 16px);
+        }
+        /* inset-inline-end, not right: in a right-to-left admin the sidebar is
+           on the right, and a physical `right` parked the button on top of it.
+           The root is as wide as the panel while the panel is open, so the root
+           itself takes no clicks, only the panel and the button do. Otherwise
+           the empty strip beside the button swallowed clicks meant for the page. */
         .brikpanel-bm-fab-root {
-            position: fixed; right: 24px; bottom: 24px; z-index: 9991;
+            position: fixed; inset-inline-end: var(--bp-bm-fab-off); inset-block-end: var(--bp-bm-fab-off); z-index: 9991;
             display: flex; flex-direction: column; align-items: flex-end; gap: 0.75rem;
+            pointer-events: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
+        .brikpanel-bm-fab-root > * { pointer-events: auto; }
         .brikpanel-bm-fab {
-            width: 52px; height: 52px; border-radius: 50%;
-            background: #303030; border: none; cursor: pointer; padding: 0;
-            display: flex; align-items: center; justify-content: center;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            box-sizing: border-box; height: var(--bp-bm-fab-h); margin: 0;
+            padding-block: 0; padding-inline: 0.875rem 1rem;
+            background: #303030; color: #fff; border: none; border-radius: 999px; cursor: pointer;
+            font-family: inherit; font-size: 0.8125rem; font-weight: 550; line-height: 1; white-space: nowrap;
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
             transition: background 0.15s ease, transform 0.15s ease;
         }
-        .brikpanel-bm-fab:hover { background: #1a1a1a; transform: scale(1.05); }
-        .brikpanel-bm-fab:focus { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #303030; }
+        .brikpanel-bm-fab:hover { background: #1a1a1a; color: #fff; }
+        @media (hover: hover) {
+            .brikpanel-bm-fab:hover { transform: translateY(-1px); }
+        }
+        .brikpanel-bm-fab:focus { outline: none; }
+        /* The transparent outline is what forced-colors mode paints. */
+        .brikpanel-bm-fab:focus-visible {
+            outline: 2px solid transparent;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px #303030, 0 4px 14px rgba(0, 0, 0, 0.25);
+        }
         /* A still star. The routine that used to spin it (see
-           brikpanel_brikmentor_print_star_motion()) now belongs to the one-time
-           announcement only: with the dashboard card, the sidebar entry and the
-           in-page links carrying the pitch, this button is a quiet way back to
-           the panel, not the thing that has to catch the eye. */
-        .brikpanel-bm-fab__star { display: block; }
+           brikpanel_brikmentor_print_star_motion()) belongs to the one-time
+           announcement only. */
+        .brikpanel-bm-fab__star { display: block; flex: 0 0 auto; }
+        /* Border-box, so 370px is the whole card (the old 320px content box plus
+           padding and border) and the phone cap leaves an even gap on both
+           sides. It never grows taller than the space between the top bar and
+           the button: on a short screen it scrolls inside instead of pushing
+           its close button under the top bar. */
         .brikpanel-bm-panel {
-            width: 320px; max-width: calc(100vw - 48px);
+            box-sizing: border-box; width: 370px; max-width: calc(100vw - 2 * var(--bp-bm-fab-off));
+            --bp-bm-panel-room: calc(var(--bp-topbar-height, 46px) + 0.75rem + var(--bp-bm-fab-off) + var(--bp-bm-fab-h) + 0.75rem);
+            max-height: calc(100vh - var(--bp-bm-panel-room));
+            max-height: calc(100dvh - var(--bp-bm-panel-room));
+            overflow-y: auto; overscroll-behavior: contain;
             background: #fff; border: 1px solid #e3e3e3; border-radius: 0.75rem;
             box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
             padding: 1.25rem 1.5rem 1.25rem;
@@ -469,7 +519,7 @@ function brikpanel_brikmentor_render_fab() {
         .brikpanel-bm-panel[hidden] { display: none; }
         @keyframes brikpanel-bm-rise { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .brikpanel-bm-panel__close {
-            position: absolute; top: 0.625rem; right: 0.625rem;
+            position: absolute; inset-block-start: 0.625rem; inset-inline-end: 0.625rem;
             width: 26px; height: 26px; border-radius: 0.375rem;
             background: transparent; border: none; color: #8a8a8a; cursor: pointer;
             display: flex; align-items: center; justify-content: center; padding: 0;
@@ -539,8 +589,28 @@ function brikpanel_brikmentor_render_fab() {
         }
         .brikpanel-bm-panel__ghost:hover { background: #f7f7f7; color: #303030; text-decoration: none; }
         .brikpanel-bm-panel__ghost:focus { outline: none; box-shadow: 0 0 0 2px #303030; color: #303030; }
-        @media (max-width: 782px) {
-            .brikpanel-bm-fab-root { right: 16px; bottom: 16px; }
+        /* Phones, upright or sideways: the button is hidden, because a button
+           pinned over a phone-sized page covers a real share of it. The root
+           stays, so the padlocks and the stat-card link still open the panel,
+           16px from the edges. */
+        @media (max-width: 782px), (max-height: 500px) {
+            .brikpanel-bm-fab-root { --bp-bm-fab-off: 16px; }
+            .brikpanel-bm-fab { display: none; }
+            .brikpanel-bm-panel { --bp-bm-panel-room: calc(var(--bp-topbar-height, 46px) + 0.75rem + var(--bp-bm-fab-off)); }
+        }
+        /* Where the button shows, the page ends with room for it: the last row
+           can always be scrolled out from under it, and a control reached with
+           Tab is scrolled clear of it (focus scrolling and scrollIntoView both
+           honour scroll-padding). WordPress keeps 65px there for its footer,
+           which BrikPanel's sidebar stylesheet hides. */
+        @media (min-width: 783px) and (min-height: 501px) {
+            #wpbody-content { padding-bottom: max(65px, var(--bp-bm-fab-zone)); }
+            html, body { scroll-padding-bottom: var(--bp-bm-fab-zone); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .brikpanel-bm-fab { transition: none; }
+            .brikpanel-bm-fab:hover { transform: none; }
+            .brikpanel-bm-panel { animation: none; }
         }
     </style>
     <script>
@@ -588,17 +658,25 @@ function brikpanel_brikmentor_render_fab() {
         // moving focus, it leaves a keyboard user stranded behind it.
         var opener = null;
 
-        function setOpen(open) {
+        // Focus goes back to the opener only when the merchant closed the panel
+        // on purpose (X, Escape, the button again). After a click elsewhere, or
+        // when focus has moved on by itself, it stays where they put it: pulling
+        // it back scrolled the page up to a padlock they had left behind. And
+        // never onto an opener that is not on screen, such as the corner button
+        // while phones hide it.
+        function setOpen(open, restoreFocus) {
             panel.hidden = !open;
             fab.setAttribute('aria-expanded', open ? 'true' : 'false');
             root.classList.toggle('is-open', open);
             if (open) {
                 var close = panel.querySelector('[data-bm-panel-close]');
                 if (close) { close.focus(); }
-            } else if (opener) {
-                opener.focus();
-                opener = null;
+                return;
             }
+            if (restoreFocus !== false && opener && opener.getClientRects().length) {
+                opener.focus();
+            }
+            opener = null;
         }
         fab.addEventListener('click', function () {
             if (panel.hidden) { pitchFor(null); viaFor('fab'); }
@@ -632,7 +710,16 @@ function brikpanel_brikmentor_render_fab() {
             // closing here on mousedown and reopening on the click that follows
             // replays the rise animation for a frame and reads as a flicker.
             if (e.target && e.target.closest && e.target.closest('[data-bm-open]')) { return; }
-            if (!panel.hidden && !root.contains(e.target)) setOpen(false);
+            if (!panel.hidden && !root.contains(e.target)) setOpen(false, false);
+        });
+        // Tabbing out of the panel, Shift+Tab into the page behind it included,
+        // closes it the way a click outside does. Moving to an opener is left to
+        // that opener's own click, for the same flicker reason as above.
+        root.addEventListener('focusout', function (e) {
+            var to = e.relatedTarget;
+            if (panel.hidden || !to || root.contains(to)) { return; }
+            if (to.closest && to.closest('[data-bm-open]')) { return; }
+            setOpen(false, false);
         });
 
         // On Customer Analytics, follow the LTV / RFM / Cohort tabs so the
@@ -1822,6 +1909,7 @@ function brikpanel_brikmentor_render_page() {
             <h1>BrikMentor</h1>
             <p class="brikpanel-bm-page__sub"><?php esc_html_e( 'The AI assistant and email marketing engine for your store data is out now. Automated cart recovery, win-back and segment campaigns, running inside WooCommerce.', 'brikpanel' ); ?></p>
         </div>
+        <?php brikpanel_header_end(); ?>
 
         <div class="brikpanel-bm-page__card brikpanel-bm-page__hero">
             <div class="brikpanel-bm-page__hero-main">

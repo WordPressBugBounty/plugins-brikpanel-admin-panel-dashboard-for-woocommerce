@@ -152,12 +152,16 @@ body.rtl.brikpanel-tax .wrap > .notice .notice-dismiss {
     left: 6px;
 }
 
+/* The text takes the box's green or red. WordPress 7.0 core colours
+   `.notice p` and `div.notice a` directly, so the box colour alone no longer
+   reaches them. */
 body.brikpanel-tax .wrap > #message p,
 body.brikpanel-tax .wrap > .notice-error p,
 body.brikpanel-tax .wrap > .error p,
 body.brikpanel-tax .wrap > .updated p {
     margin: 0;
     padding: 0;
+    color: inherit;
     font-size: .8125rem;
     font-weight: 550;
 }
@@ -167,6 +171,8 @@ body.brikpanel-tax .wrap > #message p + p {
 }
 
 body.brikpanel-tax .wrap > #message a,
+body.brikpanel-tax .wrap > .notice-error a,
+body.brikpanel-tax .wrap > .error a,
 body.brikpanel-tax .wrap > .updated a {
     color: inherit;
 }
@@ -187,6 +193,7 @@ body.brikpanel-tax #ajax-response .notice {
 body.brikpanel-tax #ajax-response .notice > p {
     margin: 0 !important;
     padding: 0 !important;
+    color: inherit;
     font-size: .8125rem;
     font-weight: 550;
 }
@@ -2529,13 +2536,15 @@ body.rtl.brikpanel-tax-panel-open .brikpanel-cat-toast-container {
     transform: translateX(0);
 }
 
-.brikpanel-cat-toast.success {
+/* State classes are is-*: a bare `error` makes WordPress style the toast as an
+   admin notice (div.error padding and margin, no shadow). */
+.brikpanel-cat-toast.is-success {
     border: 1px solid #b7e1b0;
     background: #e4f5e1;
     color: #1a6b15;
 }
 
-.brikpanel-cat-toast.error {
+.brikpanel-cat-toast.is-error {
     border: 1px solid #f1b0b0;
     background: #fce4e4;
     color: #c62828;

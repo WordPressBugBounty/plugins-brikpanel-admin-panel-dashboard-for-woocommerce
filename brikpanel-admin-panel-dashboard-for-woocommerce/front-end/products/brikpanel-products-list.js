@@ -2014,9 +2014,9 @@
             var $row = $('<div class="brikpanel-pl-download-item" data-idx="' + idx + '">');
             $row.append('<svg class="brikpanel-pl-download-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>');
             var $info = $('<div class="brikpanel-pl-download-info">');
-            $info.append('<input type="text" class="brikpanel-pl-download-name" value="' + escHtml(d.name) + '" placeholder="' + escHtml(PL.i18n.file_name || 'File name') + '">');
+            $info.append('<input type="text" class="brikpanel-pl-download-name" value="' + escAttr(d.name) + '" placeholder="' + escHtml(PL.i18n.file_name || 'File name') + '">');
             var $urlRow = $('<div class="brikpanel-pl-download-url-row">');
-            $urlRow.append('<input type="url" class="brikpanel-pl-download-url" value="' + escHtml(d.file) + '" placeholder="https://…" spellcheck="false">');
+            $urlRow.append('<input type="url" class="brikpanel-pl-download-url" value="' + escAttr(d.file) + '" placeholder="https://…" spellcheck="false">');
             $urlRow.append('<button type="button" class="brikpanel-pl-download-browse" title="' + escHtml(PL.i18n.choose_file || 'Choose file') + '">' +
                 '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
                 '</button>');
@@ -2843,7 +2843,8 @@
     function showToast(message, type) {
         type = type || 'success';
         var $container = $('#bpl-toast-container');
-        var $toast = $('<div class="brikpanel-pl-toast ' + type + '">' +
+        // is-*, never a bare `error`: WordPress styles every div.error as an admin notice.
+        var $toast = $('<div class="brikpanel-pl-toast is-' + type + '">' +
             '<span class="brikpanel-pl-toast-text">' + escHtml(message) + '</span>' +
             '<button class="brikpanel-pl-toast-close">&times;</button>' +
             '</div>');

@@ -394,8 +394,10 @@ function brikpanel_profit_cogs_missing_products( $start_gmt, $end_gmt, $limit = 
 	$out = [];
 	foreach ( $rows as $r ) {
 		$pid      = (int) $r->product_id;
-		$title    = trim( (string) ( $r->product_title ?? '' ) );
-		$line_nm  = trim( (string) ( $r->item_name ?? '' ) );
+		// Raw post_title / order item name: plain text for the tooltip and the
+		// store summary ("&amp;" from REST imports, TranslatePress <span>).
+		$title    = brikpanel_plain_label( (string) ( $r->product_title ?? '' ) );
+		$line_nm  = brikpanel_plain_label( (string) ( $r->item_name ?? '' ) );
 		$linked   = ( $pid > 0 && $title !== '' );
 		$display  = $linked ? $title : ( $line_nm !== '' ? $line_nm : __( '(Unknown product)', 'brikpanel' ) );
 		$rev      = (float) $r->missing_revenue;
@@ -902,6 +904,31 @@ function brikpanel_payment_fees_enabled() {
 // reasoning as the shipping-cost toggle above.
 add_action( 'update_option_' . BRIKPANEL_PAYMENT_FEES_OPTION, 'brikpanel_bust_data_caches' );
 add_action( 'add_option_' . BRIKPANEL_PAYMENT_FEES_OPTION, 'brikpanel_bust_data_caches' );
+
+/**
+ * Option name behind brikpanel_profit_tax_excluded().
+ */
+const BRIKPANEL_TAX_EXCLUDED_OPTION = 'brikpanel_profit_exclude_tax';
+
+/**
+ * Whether the dashboard Profit section shows Revenue without tax.
+ *
+ * Off by default: Revenue is what customers paid, tax included, and the same
+ * tax is counted in Expenses. On, both sides drop it: Revenue is shown net of
+ * tax and Expenses no longer carries it, so Net profit is the same figure
+ * either way. Dashboard display only; the snapshot that Google Sheets and
+ * Copy for AI read keeps its own shape (tax in its own column there).
+ *
+ * @return bool
+ */
+function brikpanel_profit_tax_excluded() {
+	return 'yes' === get_option( BRIKPANEL_TAX_EXCLUDED_OPTION, 'no' );
+}
+
+// Flipping it moves Revenue, Expenses and every "% of revenue" on the cached
+// dashboard payload; the transient key carries it as well (_tx).
+add_action( 'update_option_' . BRIKPANEL_TAX_EXCLUDED_OPTION, 'brikpanel_bust_data_caches' );
+add_action( 'add_option_' . BRIKPANEL_TAX_EXCLUDED_OPTION, 'brikpanel_bust_data_caches' );
 
 /**
  * Invalidate the cached dashboard payload when a gateway writes its fee onto an
@@ -1760,7 +1787,8 @@ function brikpanel_per_order_scope_label( $scope ) {
 	}
 	if ( 0 === strpos( (string) $scope, 'shipping_class:' ) ) {
 		$term = get_term( (int) substr( (string) $scope, 15 ), 'product_shipping_class' );
-		return ( $term instanceof WP_Term ) ? $term->name : __( 'Shipping class (removed)', 'brikpanel' );
+		// Plain text: the Expenses list, its CSV and the dialog all write it as text.
+		return ( $term instanceof WP_Term ) ? brikpanel_plain_name( $term->name ) : __( 'Shipping class (removed)', 'brikpanel' );
 	}
 	return __( 'Every order', 'brikpanel' );
 }

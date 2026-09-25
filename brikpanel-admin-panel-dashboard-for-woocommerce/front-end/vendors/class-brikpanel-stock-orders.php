@@ -88,13 +88,13 @@ class Brikpanel_Stock_Orders {
 		wp_enqueue_style(
 			'brikpanel-stock-orders',
 			$base . 'brikpanel-stock-orders.css',
-			[],
+			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [],
 			file_exists( $path . 'brikpanel-stock-orders.css' ) ? filemtime( $path . 'brikpanel-stock-orders.css' ) : BRIKPANEL_VERSION
 		);
 		wp_enqueue_script(
 			'brikpanel-stock-orders',
 			$base . 'brikpanel-stock-orders.js',
-			[],
+			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [],
 			file_exists( $path . 'brikpanel-stock-orders.js' ) ? filemtime( $path . 'brikpanel-stock-orders.js' ) : BRIKPANEL_VERSION,
 			true
 		);
@@ -147,6 +147,7 @@ class Brikpanel_Stock_Orders {
 					<a class="brikpanel-so-btn brikpanel-so-btn-primary" href="<?php echo esc_url( $new_url ); ?>">+ <?php esc_html_e( 'New stock order', 'brikpanel' ); ?></a>
 				</div>
 			</div>
+			<?php brikpanel_header_end(); ?>
 
 			<!-- Summary -->
 			<div class="brikpanel-so-summary" id="brikpanel-so-summary">
@@ -196,7 +197,7 @@ class Brikpanel_Stock_Orders {
 			<!-- Table -->
 			<div class="brikpanel-so-card brikpanel-so-table-card">
 				<div class="brikpanel-so-table-wrap">
-					<table class="brikpanel-so-table" id="brikpanel-so-table">
+					<table class="brikpanel-so-table brikpanel-fit-table" id="brikpanel-so-table">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Reference', 'brikpanel' ); ?></th>
@@ -240,6 +241,7 @@ class Brikpanel_Stock_Orders {
 				cancelled:      <?php echo wp_json_encode( __( 'Cancelled', 'brikpanel' ) ); ?>,
 				open:           <?php echo wp_json_encode( __( 'Open', 'brikpanel' ) ); ?>,
 				delete:         <?php echo wp_json_encode( __( 'Delete', 'brikpanel' ) ); ?>,
+				loading:        <?php echo wp_json_encode( __( 'Loading…', 'brikpanel' ) ); ?>,
 			}
 		};
 		</script>
@@ -317,6 +319,7 @@ class Brikpanel_Stock_Orders {
 					<?php endif; ?>
 				</div>
 			</div>
+			<?php brikpanel_header_end(); ?>
 
 			<form id="brikpanel-so-form" autocomplete="off" data-id="<?php echo esc_attr( (string) ( $po ? $po->id : 0 ) ); ?>" <?php echo $is_locked ? 'data-locked="1"' : ''; ?>>
 				<!-- Header card: vendor, reference, dates -->
@@ -389,7 +392,7 @@ class Brikpanel_Stock_Orders {
 						</div>
 
 						<div class="brikpanel-so-items-wrap">
-							<table class="brikpanel-so-items" id="brikpanel-so-items">
+							<table class="brikpanel-so-items brikpanel-fit-table" id="brikpanel-so-items">
 								<thead>
 									<tr>
 										<th><?php esc_html_e( 'Product', 'brikpanel' ); ?></th>
@@ -428,7 +431,7 @@ class Brikpanel_Stock_Orders {
 			currency:       <?php echo wp_json_encode( $currency ); ?>,
 			back_url:       <?php echo wp_json_encode( esc_url_raw( $back_url ) ); ?>,
 			ref_prefix:     <?php echo wp_json_encode( $ref_prefix ); ?>,
-			items_seed:     <?php echo wp_json_encode( $this->seed_items_for_js( $items ) ); ?>,
+			items_seed:     <?php echo wp_json_encode( $this->seed_items_for_js( $items ), JSON_HEX_TAG | JSON_HEX_AMP ); ?>,
 			po_id:          <?php echo wp_json_encode( $po ? (int) $po->id : 0 ); ?>,
 			preselect_vid:  <?php echo wp_json_encode( (int) ( $is_new ? $preselect_vendor_id : 0 ) ); ?>,
 			locked:         <?php echo wp_json_encode( (bool) $is_locked ); ?>,
@@ -444,6 +447,7 @@ class Brikpanel_Stock_Orders {
 				prefilled:       <?php echo wp_json_encode( __( 'Defaults applied from supplier profile.', 'brikpanel' ) ); ?>,
 				empty_items:     <?php echo wp_json_encode( __( 'No items yet — search above to add a product.', 'brikpanel' ) ); ?>,
 				variation_label: <?php echo wp_json_encode( _x( 'Variation #', 'prefix before a variation id, e.g. "Variation #12"', 'brikpanel' ) ); ?>,
+				sku:             <?php echo wp_json_encode( __( 'SKU', 'brikpanel' ) ); ?>,
 			}
 		};
 		</script>
@@ -457,7 +461,8 @@ class Brikpanel_Stock_Orders {
 				'id'           => (int) $r->id,
 				'product_id'   => (int) $r->product_id,
 				'variation_id' => (int) $r->variation_id,
-				'title'        => $r->title,
+				// Lines saved before names were decoded still hold "&amp;".
+				'title'        => brikpanel_plain_name( $r->title ),
 				'sku'          => $r->sku,
 				'qty_ordered'  => (float) $r->qty_ordered,
 				'qty_received' => (float) $r->qty_received,
@@ -858,7 +863,7 @@ class Brikpanel_Stock_Orders {
 				$results[]    = [
 					'product_id'   => $parent_id,
 					'variation_id' => $product->get_id(),
-					'title'        => ( $parent ? $parent->get_name() : '' ) . ' — ' . wp_strip_all_tags( wc_get_formatted_variation( $product, true ) ),
+					'title'        => ( $parent ? brikpanel_plain_label( $parent->get_name() ) : '' ) . ' — ' . brikpanel_plain_label( wc_get_formatted_variation( $product, true ) ),
 					'sku'          => $product->get_sku(),
 					'cost'         => $this->resolve_existing_cost( $product ),
 				];
@@ -877,7 +882,7 @@ class Brikpanel_Stock_Orders {
 					$results[]    = [
 						'product_id'   => $product->get_id(),
 						'variation_id' => $variation->get_id(),
-						'title'        => $product->get_name() . ' — ' . wp_strip_all_tags( wc_get_formatted_variation( $variation, true ) ),
+						'title'        => brikpanel_plain_label( $product->get_name() ) . ' — ' . brikpanel_plain_label( wc_get_formatted_variation( $variation, true ) ),
 						'sku'          => $variation->get_sku(),
 						'cost'         => $this->resolve_existing_cost( $variation ),
 					];
@@ -891,7 +896,7 @@ class Brikpanel_Stock_Orders {
 				$results[]    = [
 					'product_id'   => $product->get_id(),
 					'variation_id' => 0,
-					'title'        => $product->get_name(),
+					'title'        => brikpanel_plain_label( $product->get_name() ),
 					'sku'          => $product->get_sku(),
 					'cost'         => $this->resolve_existing_cost( $product ),
 				];

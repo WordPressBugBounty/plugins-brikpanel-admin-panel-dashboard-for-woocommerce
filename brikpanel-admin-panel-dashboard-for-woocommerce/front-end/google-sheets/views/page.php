@@ -33,17 +33,25 @@ $order_statuses = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_stat
 					<?php esc_html_e( 'Send your orders, customers, and analytics straight to a Google Sheet.', 'brikpanel' ); ?>
 				</p>
 			</div>
+			<?php
+			// The pill says what the status poll (brikpanel-google-sheets.js)
+			// will say: the connected account's email, else "Connected". The
+			// poll used to swap the email in 30 seconds after load, and on a
+			// phone that squeezed the title beside it to an 82px column
+			// (field test B10). The full text is also the pill's tooltip, since
+			// a long email ends in "…".
+			$bp_gs_pill_text = empty( $conn['connected'] )
+				? __( 'Not connected', 'brikpanel' )
+				: ( '' !== (string) ( $conn['email'] ?? '' ) ? (string) $conn['email'] : __( 'Connected', 'brikpanel' ) );
+			?>
 			<div class="bp-gs-header-right">
-				<span class="bp-gs-pill" id="bp-gs-pill" data-state="<?php echo $conn['connected'] ? 'live' : 'off'; ?>">
+				<span class="bp-gs-pill" id="bp-gs-pill" data-state="<?php echo $conn['connected'] ? 'live' : 'off'; ?>" title="<?php echo esc_attr( $bp_gs_pill_text ); ?>">
 					<span class="bp-gs-pill-dot"></span>
-					<span class="bp-gs-pill-text">
-						<?php echo $conn['connected']
-							? esc_html__( 'Connected', 'brikpanel' )
-							: esc_html__( 'Not connected', 'brikpanel' ); ?>
-					</span>
+					<span class="bp-gs-pill-text"><?php echo esc_html( $bp_gs_pill_text ); ?></span>
 				</span>
 			</div>
 		</div>
+		<?php brikpanel_header_end(); ?>
 
 		<div class="bp-gs-toast" id="bp-gs-toast" hidden></div>
 

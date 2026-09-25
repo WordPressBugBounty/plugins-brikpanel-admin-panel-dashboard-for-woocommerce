@@ -133,6 +133,7 @@ class Brikpanel_Coupons {
                     </button>
                 </div>
             </div>
+            <?php brikpanel_header_end(); ?>
 
             <!-- Filters Bar -->
             <div class="brikpanel-cp-filters">
@@ -1041,7 +1042,7 @@ class Brikpanel_Coupons {
         foreach ($terms as $t) {
             $items[] = [
                 'value' => (int) $t->term_id,
-                'label' => $t->name,
+                'label' => brikpanel_plain_name($t->name),
             ];
         }
 
@@ -1201,7 +1202,8 @@ class Brikpanel_Coupons {
      * name. Keeps the picker readable when display name and login are the same.
      */
     private function format_user_label($display_name, $user_login) {
-        $display_name = trim((string) $display_name);
+        // Display names are stored HTML-encoded; the picker writes text.
+        $display_name = trim(brikpanel_plain_name((string) $display_name));
         $user_login   = trim((string) $user_login);
 
         if ($display_name === '') {
@@ -1304,14 +1306,15 @@ class Brikpanel_Coupons {
             }
             $labels[] = [
                 'value' => (int) $tid,
-                'label' => $term->name,
+                'label' => brikpanel_plain_name($term->name),
             ];
         }
         return $labels;
     }
 
     private function format_product_label($product) {
-        $name = $product->get_name();
+        // Stored names can hold "&amp;" and, for variations, markup.
+        $name = brikpanel_plain_label($product->get_name());
         $sku  = $product->get_sku();
         if ($sku) {
             return $name . ' (' . $sku . ')';

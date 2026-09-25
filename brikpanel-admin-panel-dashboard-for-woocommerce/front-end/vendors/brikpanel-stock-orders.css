@@ -386,8 +386,14 @@
     color: var(--so-text-muted);
     margin-top: 2px;
 }
-.brikpanel-so-num { text-align: right; }
+/* Short values (money, counts, dates) stay on one line; titles wrap at spaces
+   (CLAUDE.md table rule). */
+.brikpanel-so-num { text-align: right; white-space: nowrap; }
 .brikpanel-so-actions-th { width: 60px; text-align: right; }
+
+/* Stacked rows (field test B6; brikpanel-fit-table.css draws the card): the
+   quantity and cost boxes take their tile's width. */
+.brikpanel-so-items.is-stacked td input[type="number"] { width: 100%; }
 
 /* ── Totals ─────────────────────────────────────────────────────────────── */
 .brikpanel-so-totals {
@@ -452,6 +458,10 @@
     gap: 0.25rem;
     justify-content: flex-end;
     width: 100%;
+}
+
+.brikpanel-so-table.is-stacked .brikpanel-so-row-actions {
+    justify-content: flex-start;
 }
 .brikpanel-so-ref-link {
     font-weight: 600;

@@ -2,6 +2,32 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.23 (2026-09-25) =
+* New: **Items sold on the dashboard.** The Orders and Order Rates cards show how many items were sold, each Recent Orders row shows its item count, and the Excel report has an "Items sold" row.
+* New: **Order dates in Recent Orders.** Each order on the dashboard shows its date, and its status in WooCommerce's translated wording.
+* New: **See where each live visitor came from.** Live visitors shows the source under the page, such as "Organic Search · google.com" or "Paid · bing.com". Hover for the campaign, search term and landing page. It respects cookie consent. Setting: Analytics → "Traffic source in Live view".
+* New: **Revenue and Expenses without tax.** Dashboard → "Exclude tax from Revenue and Expenses" shows Revenue without tax in the Profit section and leaves tax out of Expenses. Net profit stays the same. Off by default.
+* New: **Product videos for popular themes.** The product editor saves videos where WoodMart, Blocksy (with Companion Pro), Minimog, Shoptimizer / CommerceKit, Flatsome and Porto read them, and shows videos added from the theme.
+* New: **WooCommerce ads are hidden.** Promo cards (such as the one WooCommerce 11 puts above the Orders list), the "Sale" badge on Extensions and extension suggestions are switched off with WooCommerce's own switches. Setting: General → "Hide WooCommerce ads".
+* Fix: **Saving a product no longer erases Flatsome, Porto or CommerceKit data,** such as custom tabs, labels, layouts, custom CSS and videos.
+* Fix: **Saving before the gallery finished loading no longer removes product images** (a 3.3.22 regression). Changing a variation image or the gallery now warns about unsaved changes.
+* Fix: **Saving with a section closed no longer clears** a variation's sale dates and supplier, or a simple product's weight and dimensions.
+* Fix: **Names with "&" no longer show as "&amp;"** in lists, the product editor, pickers, search, emails, CSV exports and Google Sheets. Sheets writes a variation's option name instead of its slug, and tags like "<5kg" and ">10kg" no longer merge into one.
+* Fix: **Forgotten tabs no longer stay in Live visitors for days.** A page untouched for 30 minutes drops off the Live list and comes back as soon as the visitor is active. Idle tabs stop pinging the server.
+* Fix: **Tapping a status tab on a phone no longer selects every order.** An invisible "Select all" label covered the orders list.
+* Fix: **The customer name stays in the orders list.** When the Customer column is hidden or removed by another plugin, the name shows next to the order number. Long names no longer widen the list on phones.
+* Fix: **The order status badge works with plugins that replace the status column,** such as Flexible Refund. Clicking it opens the status menu, and other plugins' status colours now show.
+* Fix: **Better compatibility.** WP Bulk Delete's menu items can be clicked in the BrikPanel sidebar again, and PeproDev Ultimate Invoice no longer prints `var CURRENT_ORDER_MAIL = [];` in the orders list.
+* Tweak: **Tables fit their cards.** The variation table shows Variation, Price, Sale price, Stock and COGS, and the other fields open under each row's ▾ arrow. Wide tables (Scheduled Tasks, Segments, Abandoned Carts, Expenses and more) turn rows into cards instead of being cut off.
+* Fix: **Header bars keep the title and the Save button in view.** In the product editor, the order page and Google Sheets, extra buttons move into a "..." menu first, then the bar wraps, then labels turn into icons. The schedule date picker no longer closes at once or overflows on phones.
+* Fix: **Notices appear under the page title,** not inside the title row or the product editor's sticky header, and the review box is readable on phones.
+* Fix: **The "Write a review" button is readable on WordPress 7,** which colours links inside notices. Notices in Settings, the category screens and four other screens are fixed for the same reason.
+* Fix: **Other plugins' notices look right on BrikPanel pages.** BrikPanel no longer removes other plugins' stylesheets there, only their scripts, so their dismiss links, bell notices and dashboard widgets keep their styling. WordPress 7 "Dismiss" links no longer spill out of notices.
+* Fix: **The "Save changes" bar no longer covers settings.** It is a solid bar inside the settings column, stays at the bottom of the screen on phones and keeps clear of the side menu in right-to-left languages. Empty Save buttons are gone, and the Orders status bar no longer covers the bulk actions bar.
+* Fix: **No red "0" on the bell when nothing is waiting.** The same bug showed a "1 / 1" pager in Customer Analytics, a stuck "Counting…" box in Google Sheets, "Edit email" in the cart popup and a "Supplier SKU" row with no supplier. Zero counts like "Updates 0" are hidden in the side menu.
+* Fix: **The BrikMentor corner button no longer covers content.** It is now a labelled button, hidden on phones. Pages leave room for it, and the space beside its panel no longer blocks clicks.
+* Security: **Quote marks in variation SKUs, GTINs and names are now escaped in the product editor.**
+
 = 3.3.22 (2026-09-23) =
 * Fix: **BrikPanel no longer switches itself off when WooCommerce sits in a differently named folder.** WooCommerce is now recognised by its main file, the way WordPress itself loads it, so stores that keep it in a folder such as `wc-core/` get BrikPanel back. The same assumption also removed WooCommerce's own files from BrikPanel pages on such stores and hid Admin Menu Editor Pro; both are fixed.
 * Fix: **No more links to pages a user is not allowed to open.** Editors, authors and contributors no longer see an empty "More" row that led to a "not allowed" page. The same check now covers the WordPress toolbar, Cmd+K search, the top bar's Create menu, bell and logo, the product list's Import and Export buttons, the settings shortcuts, and users for whom a multisite network has switched BrikPanel off.

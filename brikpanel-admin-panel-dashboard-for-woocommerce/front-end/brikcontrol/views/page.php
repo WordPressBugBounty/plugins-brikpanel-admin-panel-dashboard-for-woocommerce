@@ -49,6 +49,7 @@ uasort( $ordered, static function ( $a, $b ) use ( $status_weight ) {
             </button>
         </div>
     </div>
+    <?php brikpanel_header_end(); ?>
 
     <div class="brikpanel-bc-summary-card" data-bc-summary>
         <div class="brikpanel-bc-summary-chip brikpanel-bc-chip-critical">

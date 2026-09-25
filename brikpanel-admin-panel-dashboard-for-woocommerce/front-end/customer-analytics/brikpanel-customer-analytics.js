@@ -99,20 +99,55 @@
 		} );
 	}
 
+	// Both customer tables stack into cards when they cannot show every column
+	// in their card (field test B6: on a phone AOV, LTV and Last order scrolled
+	// out of sight). Labels come from the header texts.
+	var topFit = null, rfmFit = null;
+	function fitFor( tableId, current ) {
+		if ( current || ! window.brikpanelFitTable ) { return current; }
+		var table = el( tableId );
+		return table ? window.brikpanelFitTable( table, { labels: 'head', slack: 0 } ) : null;
+	}
+	function setTopBody( html ) {
+		var body = el( 'bp-ca-top-customers-body' );
+		if ( ! body ) { return; }
+		body.innerHTML = html;
+		topFit = fitFor( 'bp-ca-top-customers', topFit );
+		if ( topFit ) { topFit.refit(); }
+	}
+	function setRfmBody( html ) {
+		var body = el( 'bp-ca-rfm-tbody' );
+		if ( ! body ) { return; }
+		body.innerHTML = html;
+		rfmFit = fitFor( 'bp-ca-rfm-table', rfmFit );
+		if ( rfmFit ) { rfmFit.refit(); }
+	}
+
+	// A long e-mail breaks only at its joints (after "@", before a dot), never
+	// mid-word (CLAUDE.md table rule). Callers wrap it, and a phone number, in
+	// an inline <span dir="ltr">: the characters keep their order on an RTL
+	// screen while the line itself still lines up with the name above it.
+	function emailHtml( email ) {
+		email = String( email || '' );
+		var at = email.indexOf( '@' );
+		var dotBreak = function ( part ) { return escapeHtml( part ).split( '.' ).join( '<wbr>.' ); };
+		if ( at < 0 ) { return escapeHtml( email ); }
+		return dotBreak( email.slice( 0, at ) ) + '@<wbr>' + dotBreak( email.slice( at + 1 ) );
+	}
+
 	// =========================================================================
 	// Top customers table
 	// =========================================================================
 
 	function loadTopCustomers() {
-		var body = el( 'bp-ca-top-customers-body' );
-		body.innerHTML = '<tr><td class="bp-ca-empty" colspan="6">' + escapeHtml( i18n.loading || 'Loading…' ) + '</td></tr>';
+		setTopBody( '<tr><td class="bp-ca-empty" colspan="6">' + escapeHtml( i18n.loading || 'Loading…' ) + '</td></tr>' );
 
 		fetchJSON( 'brikpanel_ca_ltv_top_customers', {
 			page: state.topPage,
 			per_page: state.topPerPage
 		} ).then( function ( res ) {
 			if ( ! res || ! res.success ) {
-				body.innerHTML = '<tr><td class="bp-ca-empty" colspan="6">' + escapeHtml( i18n.error || 'Could not load.' ) + '</td></tr>';
+				setTopBody( '<tr><td class="bp-ca-empty" colspan="6">' + escapeHtml( i18n.error || 'Could not load.' ) + '</td></tr>' );
 				return;
 			}
 			var data = res.data;
@@ -122,9 +157,8 @@
 	}
 
 	function renderTopRows( items ) {
-		var body = el( 'bp-ca-top-customers-body' );
 		if ( ! items.length ) {
-			body.innerHTML = '<tr><td class="bp-ca-empty" colspan="6">' + escapeHtml( i18n.empty || 'No customers yet.' ) + '</td></tr>';
+			setTopBody( '<tr><td class="bp-ca-empty" colspan="6">' + escapeHtml( i18n.empty || 'No customers yet.' ) + '</td></tr>' );
 			return;
 		}
 
@@ -134,8 +168,8 @@
 				+ '<div class="bp-ca-customer-name">' + escapeHtml( c.name )
 				+ ( c.is_guest ? '<span class="bp-ca-guest-pill">' + escapeHtml( i18n.guest || 'Guest' ) + '</span>' : '' )
 				+ '</div>'
-				+ '<div class="bp-ca-customer-email">' + escapeHtml( c.email ) + '</div>'
-				+ ( c.phone ? '<div class="bp-ca-customer-phone">' + escapeHtml( c.phone ) + '</div>' : '' )
+				+ '<div class="bp-ca-customer-email"><span dir="ltr">' + emailHtml( c.email ) + '</span></div>'
+				+ ( c.phone ? '<div class="bp-ca-customer-phone"><span dir="ltr">' + escapeHtml( c.phone ) + '</span></div>' : '' )
 				+ '</div>';
 
 			if ( c.edit_url ) {
@@ -154,15 +188,15 @@
 			}
 
 			html += '<tr>'
-				+ '<td>' + customerCell + '</td>'
+				+ '<td class="brikpanel-fit-lead">' + customerCell + '</td>'
 				+ '<td class="num">' + c.order_count + '</td>'
 				+ '<td class="num">' + escapeHtml( c.aov_display ) + '</td>'
-				+ '<td class="num"><strong>' + escapeHtml( c.total_spent_display ) + '</strong></td>'
+				+ '<td class="num brikpanel-fit-headline"><strong>' + escapeHtml( c.total_spent_display ) + '</strong></td>'
 				+ '<td>' + escapeHtml( c.last_order || '—' ) + '</td>'
 				+ '<td class="num">' + escapeHtml( recencyText ) + '</td>'
 				+ '</tr>';
 		} );
-		body.innerHTML = html;
+		setTopBody( html );
 	}
 
 	function renderPagination( data ) {
@@ -371,8 +405,7 @@
 	}
 
 	function loadRfmCustomers() {
-		var body = el( 'bp-ca-rfm-tbody' );
-		body.innerHTML = '<tr><td class="bp-ca-empty" colspan="7">' + escapeHtml( i18n.loading || 'Loading…' ) + '</td></tr>';
+		setRfmBody( '<tr><td class="bp-ca-empty" colspan="7">' + escapeHtml( i18n.loading || 'Loading…' ) + '</td></tr>' );
 
 		fetchJSON( 'brikpanel_ca_rfm_customers', {
 			segment: state.rfmActiveSegment,
@@ -380,7 +413,7 @@
 			per_page: state.rfmPerPage
 		} ).then( function ( res ) {
 			if ( ! res || ! res.success ) {
-				body.innerHTML = '<tr><td class="bp-ca-empty" colspan="7">' + escapeHtml( i18n.error || 'Could not load.' ) + '</td></tr>';
+				setRfmBody( '<tr><td class="bp-ca-empty" colspan="7">' + escapeHtml( i18n.error || 'Could not load.' ) + '</td></tr>' );
 				return;
 			}
 			renderRfmRows( res.data.items || [] );
@@ -389,9 +422,8 @@
 	}
 
 	function renderRfmRows( items ) {
-		var body = el( 'bp-ca-rfm-tbody' );
 		if ( ! items.length ) {
-			body.innerHTML = '<tr><td class="bp-ca-empty" colspan="7">' + escapeHtml( i18n.empty || 'No customers in this segment.' ) + '</td></tr>';
+			setRfmBody( '<tr><td class="bp-ca-empty" colspan="7">' + escapeHtml( i18n.empty || 'No customers in this segment.' ) + '</td></tr>' );
 			return;
 		}
 		var html = '';
@@ -411,8 +443,8 @@
 				+ '<div class="bp-ca-customer-name">' + escapeHtml( c.name )
 				+ ( c.is_guest ? '<span class="bp-ca-guest-pill">' + escapeHtml( i18n.guest || 'Guest' ) + '</span>' : '' )
 				+ '</div>'
-				+ '<div class="bp-ca-customer-email">' + escapeHtml( c.email ) + '</div>'
-				+ ( c.phone ? '<div class="bp-ca-customer-phone">' + escapeHtml( c.phone ) + '</div>' : '' )
+				+ '<div class="bp-ca-customer-email"><span dir="ltr">' + emailHtml( c.email ) + '</span></div>'
+				+ ( c.phone ? '<div class="bp-ca-customer-phone"><span dir="ltr">' + escapeHtml( c.phone ) + '</span></div>' : '' )
 				+ '</div>';
 			if ( c.edit_url ) {
 				customerCell = '<a href="' + escapeHtml( c.edit_url ) + '" style="color: inherit; text-decoration: none;">' + customerCell + '</a>';
@@ -426,16 +458,16 @@
 			}
 
 			html += '<tr>'
-				+ '<td>' + customerCell + '</td>'
+				+ '<td class="brikpanel-fit-lead">' + customerCell + '</td>'
 				+ '<td>' + pills + '</td>'
 				+ '<td class="num">' + c.order_count + '</td>'
 				+ '<td class="num">' + escapeHtml( c.aov_display ) + '</td>'
-				+ '<td class="num"><strong>' + escapeHtml( c.total_spent_display ) + '</strong></td>'
+				+ '<td class="num brikpanel-fit-headline"><strong>' + escapeHtml( c.total_spent_display ) + '</strong></td>'
 				+ '<td>' + escapeHtml( c.last_order || '—' ) + '</td>'
 				+ '<td class="num">' + escapeHtml( recencyText ) + '</td>'
 				+ '</tr>';
 		} );
-		body.innerHTML = html;
+		setRfmBody( html );
 	}
 
 	function renderRfmPagination( data ) {

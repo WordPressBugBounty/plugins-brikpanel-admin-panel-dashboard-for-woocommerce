@@ -522,7 +522,22 @@ select.bp-ads-input {
 	padding: 0.5rem 0.875rem;
 	text-align: left;
 	border-bottom: 1px solid var(--border);
+}
+
+/* Only the figures stay on one line; headers wrap at spaces (CLAUDE.md table
+   rule). A month table that still cannot fit stacks into cards (field test
+   B6, brikpanel-fit-table.js). */
+.bp-ads-table td {
 	white-space: nowrap;
+}
+
+/* Narrower tiles than the default keep two figures per line on a phone. */
+.bp-ads-table.is-stacked {
+	--bp-fit-tile: 7rem;
+}
+
+.bp-ads-table.is-stacked > tbody > tr.bp-ads-table-total {
+	background: #fafafa;
 }
 .bp-ads-table th {
 	background: #fafafa;

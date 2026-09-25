@@ -149,19 +149,32 @@ class Brikpanel_BrikControl {
         $this->enqueue_page_assets();
     }
 
+    /**
+     * Asset version from the file's own change time, so an edited file is never
+     * served stale from a browser cache while the plugin version stays the same.
+     */
+    private static function asset_version( $file ) {
+        // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- falls back to the plugin version.
+        return @filemtime( BRIKPANEL_PATH . 'front-end/brikcontrol/assets/' . $file ) ?: BRIKPANEL_VERSION;
+    }
+
     private function enqueue_page_assets() {
+        // Sample tables stack into cards when they do not fit (field test B6).
+        $fit_style  = function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [];
+        $fit_script = function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [];
+
         wp_enqueue_style(
             self::SCRIPT_HANDLE,
             BRIKPANEL_URL . 'front-end/brikcontrol/assets/brikpanel-brikcontrol.css',
-            [],
-            BRIKPANEL_VERSION
+            $fit_style,
+            self::asset_version( 'brikpanel-brikcontrol.css' )
         );
 
         wp_enqueue_script(
             self::SCRIPT_HANDLE,
             BRIKPANEL_URL . 'front-end/brikcontrol/assets/brikpanel-brikcontrol.js',
-            [],
-            BRIKPANEL_VERSION,
+            $fit_script,
+            self::asset_version( 'brikpanel-brikcontrol.js' ),
             true
         );
 
@@ -215,7 +228,7 @@ class Brikpanel_BrikControl {
             self::TOPBAR_HANDLE,
             BRIKPANEL_URL . 'front-end/brikcontrol/assets/brikpanel-brikcontrol.css',
             [],
-            BRIKPANEL_VERSION
+            self::asset_version( 'brikpanel-brikcontrol.css' )
         );
 
         wp_enqueue_script(

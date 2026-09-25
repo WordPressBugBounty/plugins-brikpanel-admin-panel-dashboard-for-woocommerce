@@ -203,7 +203,9 @@ function brikpanel_status_email_clean_recipients( $value ) {
 function brikpanel_status_email_tokens( $order ) {
 	$items = [];
 	foreach ( $order->get_items() as $item ) {
-		$name = $item->get_name();
+		// Plain text first: a TranslatePress variation name carries a <span>
+		// that esc_html() below would print as text.
+		$name = brikpanel_plain_label( $item->get_name() );
 		$qty  = method_exists( $item, 'get_quantity' ) ? (int) $item->get_quantity() : 1;
 		$items[] = esc_html( $name ) . ' &times; ' . $qty;
 	}

@@ -5542,7 +5542,7 @@ msgid ""
 "platforms (store currency only), payment processing fees charged by the "
 "gateway, supplier and stock costs from received purchase orders, plus "
 "anything logged in the Expenses module. Open the breakdown to see each part."
-msgstr ""
+msgstr "Koszty operacyjne w danym okresie: podatek od zamówień, wydatki na reklamy z połączonych platform reklamowych (tylko w walucie sklepu), opłaty za płatności pobierane przez bramkę, koszty dostawców i zapasów z otrzymanych zamówień zakupu oraz wszystko, co zapisano w module Wydatki. Otwórz zestawienie, aby zobaczyć każdą pozycję."
 
 #: front-end/dashboard/brikpanel-dashboard.php:825
 #: front-end/dashboard/brikpanel-dashboard.php:826
@@ -11536,7 +11536,7 @@ msgstr ""
 #: front-end/products/brikpanel-product-editor.php:1601
 msgctxt "button that deletes every variation of the product"
 msgid "Clear all"
-msgstr ""
+msgstr "Usuń wszystkie"
 
 #: front-end/products/brikpanel-product-editor.php:1625
 msgctxt "short placeholder for the bulk sale price field"
@@ -12360,7 +12360,7 @@ msgstr[2] ""
 
 #: front-end/products/brikpanel-product-editor.php:4164
 msgid "Fields from your other plugins"
-msgstr ""
+msgstr "Pola z Twoich innych wtyczek"
 
 #. translators: %d: number of field groups other plugins add to this product
 #: front-end/products/brikpanel-product-editor.php:4167
@@ -19676,3 +19676,417 @@ msgstr "Ostatnie zamówienie (%s)"
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:3488
 msgid "Update BrikMentor to use this."
 msgstr "Zaktualizuj BrikMentor, aby z tego korzystać."
+
+#: front-end/products/brikpanel-product-editor.php:1727
+#: includes/brikpanel-enqueue.php:2076
+msgid "Show all details"
+msgstr "Pokaż wszystkie szczegóły"
+
+#: includes/brikpanel-enqueue.php:2077
+msgid "Hide all details"
+msgstr "Ukryj wszystkie szczegóły"
+
+#. translators: %s: an image file size in megabytes, e.g. "2.40"
+#: front-end/brikcontrol/views/partials/check-card.php:292
+#, php-format
+msgid "%s MB"
+msgstr "%s MB"
+
+#. translators: shown after the lead time a supplier has by default, e.g. "7d default"
+#: front-end/vendors/class-brikpanel-vendors.php:307
+msgctxt "supplier default lead time, e.g. 7d default"
+msgid "default"
+msgstr "domyślnie"
+
+#: front-end/orders/brikpanel-orders.php
+msgid "Hide WooCommerce ads"
+msgstr "Ukryj reklamy WooCommerce"
+
+#: front-end/orders/brikpanel-orders.php
+msgid "Hide the ads WooCommerce.com shows in your admin: promo cards such as the one above the Orders list, the sale badge on the Extensions menu and extension suggestions. Turn this off to show them again."
+msgstr "Ukrywa reklamy, które WooCommerce.com wyświetla w panelu administracyjnym: karty promocyjne, takie jak ta nad listą Zamówienia, plakietkę wyprzedaży w menu Rozszerzenia oraz sugestie rozszerzeń. Wyłącz to, aby znów je wyświetlać."
+
+#: front-end/products/brikpanel-product-editor.php:1537
+#: includes/brikpanel-enqueue.php:2178
+msgid "No video yet"
+msgstr "Brak wideo"
+
+#: front-end/products/brikpanel-product-editor.php:1539
+#: includes/brikpanel-enqueue.php:2180
+msgid "Edit video"
+msgstr "Edytuj wideo"
+
+#: front-end/products/brikpanel-product-editor.php:1539
+#: includes/brikpanel-enqueue.php:2179
+msgid "Add video"
+msgstr "Dodaj wideo"
+
+#: front-end/products/brikpanel-product-editor.php:8468
+msgid "The product was saved, but its video changes could not be stored. Try saving again."
+msgstr "Produkt został zapisany, ale nie udało się zapisać zmian wideo. Spróbuj zapisać ponownie."
+
+#: front-end/products/video/brikpanel-product-video.php:309
+#: includes/brikpanel-enqueue.php:2153
+msgid "Media library"
+msgstr "Biblioteka mediów"
+
+#: front-end/products/video/brikpanel-product-video.php:313
+#: includes/brikpanel-enqueue.php:2154
+msgid "Video link"
+msgstr "Link do wideo"
+
+#: front-end/products/video/brikpanel-product-video.php:317
+#: includes/brikpanel-enqueue.php:2164
+msgid "Current video"
+msgstr "Bieżące wideo"
+
+#. translators: 1: video source (YouTube, Vimeo…), 2: the video link or file name
+#: front-end/products/video/brikpanel-product-video.php:322
+#: includes/brikpanel-enqueue.php:2182
+#, php-format
+msgctxt "product video source and link"
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+#: front-end/products/video/brikpanel-product-video.php:861
+msgid "Video changes were not saved because the store's video support changed while you were editing. Reload the page and try again."
+msgstr "Zmiany wideo nie zostały zapisane, ponieważ obsługa wideo w sklepie zmieniła się podczas edycji. Odśwież stronę i spróbuj ponownie."
+
+#: front-end/products/video/brikpanel-product-video.php:956
+msgid "A video was not saved because its image is no longer part of this product."
+msgstr "Nie zapisano wideo, ponieważ jego obrazek nie należy już do tego produktu."
+
+#: front-end/products/video/brikpanel-product-video.php:958
+msgid "A video was not saved because you are not allowed to edit that image."
+msgstr "Nie zapisano wideo, ponieważ nie masz uprawnień do edycji tego obrazka."
+
+#. translators: %s: theme or plugin name, e.g. WoodMart
+#: front-end/products/video/brikpanel-product-video.php:961
+#, php-format
+msgid "A video was not saved because %s does not play videos on that image."
+msgstr "Nie zapisano wideo, ponieważ %s nie odtwarza wideo na tym obrazku."
+
+#: front-end/products/video/brikpanel-product-video.php:963
+msgid "A video was not saved because its YouTube link is not a video link."
+msgstr "Nie zapisano wideo, ponieważ jego link YouTube nie prowadzi do wideo."
+
+#: front-end/products/video/brikpanel-product-video.php:965
+msgid "A video was not saved because its Vimeo link is not a video link."
+msgstr "Nie zapisano wideo, ponieważ jego link Vimeo nie prowadzi do wideo."
+
+#: front-end/products/video/brikpanel-product-video.php:967
+msgid "A video was not saved because the chosen file is not a video in a supported format."
+msgstr "Nie zapisano wideo, ponieważ wybrany plik nie jest wideo w obsługiwanym formacie."
+
+#: front-end/products/video/brikpanel-product-video.php:969
+msgid "A video was not saved because its link does not point to a supported video file."
+msgstr "Nie zapisano wideo, ponieważ jego link nie prowadzi do obsługiwanego pliku wideo."
+
+#: front-end/products/video/brikpanel-product-video.php:971
+msgid "The product video was not saved because its size must look like 900x900 (width x height)."
+msgstr "Nie zapisano wideo produktu, ponieważ rozmiar musi mieć postać 900x900 (szerokość x wysokość)."
+
+#: front-end/products/video/brikpanel-product-video.php:973
+msgid "Video changes were not saved because too many were sent at once. Save again with fewer changes."
+msgstr "Nie zapisano zmian wideo, ponieważ wysłano ich zbyt wiele naraz. Zapisz ponownie z mniejszą liczbą zmian."
+
+#: front-end/products/video/brikpanel-product-video.php:975
+msgid "A video was not saved because its settings were not valid."
+msgstr "Nie zapisano wideo, ponieważ jego ustawienia były nieprawidłowe."
+
+#: front-end/products/video/providers/class-brikpanel-video-blocksy.php:46
+msgid "Blocksy"
+msgstr "Blocksy"
+
+#: front-end/products/video/providers/class-brikpanel-video-commercekit.php:37
+msgid "CommerceKit"
+msgstr "CommerceKit"
+
+#: front-end/products/video/providers/class-brikpanel-video-flatsome.php:41
+msgid "Flatsome"
+msgstr "Flatsome"
+
+#: front-end/products/video/providers/class-brikpanel-video-minimog.php:32
+msgid "Minimog"
+msgstr "Minimog"
+
+#: front-end/products/video/providers/class-brikpanel-video-porto.php:45
+msgid "Porto"
+msgstr "Porto"
+
+#: front-end/products/video/providers/class-brikpanel-video-woodmart.php:46
+msgid "WoodMart"
+msgstr "WoodMart"
+
+#: includes/brikpanel-enqueue.php:2145
+msgid "Video for this image"
+msgstr "Wideo dla tego obrazka"
+
+#. translators: %s: theme or plugin name, e.g. WoodMart
+#: includes/brikpanel-enqueue.php:2147
+#, php-format
+msgid "Plays in the product gallery. Shown by %s."
+msgstr "Odtwarzane w galerii produktu. Wyświetla je %s."
+
+#. translators: %s: theme or plugin name, e.g. Flatsome
+#: includes/brikpanel-enqueue.php:2149
+#, php-format
+msgid "Plays on the product page. Shown by %s."
+msgstr "Odtwarzane na stronie produktu. Wyświetla je %s."
+
+#: includes/brikpanel-enqueue.php:2155
+msgid "Link to the video file"
+msgstr "Link do pliku wideo"
+
+#: includes/brikpanel-enqueue.php:2156
+msgid "https://example.com/video.mp4"
+msgstr "https://example.com/video.mp4"
+
+#. translators: %s: list of file types, e.g. "mp4, webm"
+#: includes/brikpanel-enqueue.php:2158
+#, php-format
+msgid "Supported files: %s"
+msgstr "Obsługiwane pliki: %s"
+
+#: includes/brikpanel-enqueue.php:2159
+msgid "This is not a YouTube video link."
+msgstr "To nie jest link do wideo YouTube."
+
+#: includes/brikpanel-enqueue.php:2160
+msgid "This is not a Vimeo video link, like https://vimeo.com/123456789."
+msgstr "To nie jest link do wideo Vimeo, taki jak https://vimeo.com/123456789."
+
+#: includes/brikpanel-enqueue.php:2161
+msgid "This link does not point to a supported video file."
+msgstr "Ten link nie prowadzi do obsługiwanego pliku wideo."
+
+#: includes/brikpanel-enqueue.php:2162
+msgid "Choose a video file in a supported format."
+msgstr "Wybierz plik wideo w obsługiwanym formacie."
+
+#: includes/brikpanel-enqueue.php:2163
+msgid "Enter the size as width x height, for example 900x900."
+msgstr "Podaj rozmiar jako szerokość x wysokość, na przykład 900x900."
+
+#: includes/brikpanel-enqueue.php:2165
+msgid "This video was set up outside BrikPanel. It stays as it is unless you choose a new source."
+msgstr "To wideo zostało ustawione poza BrikPanel. Pozostanie bez zmian, dopóki nie wybierzesz nowego źródła."
+
+#: includes/brikpanel-enqueue.php:2166
+msgid "Add a video to this image"
+msgstr "Dodaj wideo do tego obrazka"
+
+#: includes/brikpanel-enqueue.php:2167
+msgid "Edit the video of this image"
+msgstr "Edytuj wideo tego obrazka"
+
+#: includes/brikpanel-enqueue.php:2168
+msgid "Add a video to this variation image"
+msgstr "Dodaj wideo do obrazka tego wariantu"
+
+#: includes/brikpanel-enqueue.php:2169
+msgid "Edit the video of this variation image"
+msgstr "Edytuj wideo obrazka tego wariantu"
+
+#: includes/brikpanel-enqueue.php:2170
+msgid "The video is saved on the image itself, so it also plays wherever this image is used."
+msgstr "Wideo jest zapisywane w samym obrazku, więc odtwarza się wszędzie, gdzie ten obrazek jest używany."
+
+#. translators: %s: theme or plugin name, e.g. CommerceKit
+#: includes/brikpanel-enqueue.php:2172
+#, php-format
+msgid "%s plays videos on gallery images only. You can remove this one."
+msgstr "%s odtwarza wideo tylko na obrazkach galerii. Możesz usunąć to wideo."
+
+#: includes/brikpanel-enqueue.php:2173
+msgid "On the product page this plays when the variation also has its own gallery."
+msgstr "Na stronie produktu odtwarza się, gdy wariant ma również własną galerię."
+
+#: includes/brikpanel-enqueue.php:2174
+msgid "You cannot change this video because the image belongs to another user."
+msgstr "Nie możesz zmienić tego wideo, ponieważ obrazek należy do innego użytkownika."
+
+#: includes/brikpanel-enqueue.php:2175
+msgid "This image shows a 360° view. Adding a video replaces it on the product page."
+msgstr "Ten obrazek pokazuje widok 360°. Dodanie wideo zastąpi go na stronie produktu."
+
+#: includes/brikpanel-enqueue.php:2176
+msgid "Product video set"
+msgstr "Ustawiono wideo produktu"
+
+#: includes/brikpanel-enqueue.php:2177
+msgid "Product video removed"
+msgstr "Usunięto wideo produktu"
+
+#: includes/brikpanel-enqueue.php:2183
+msgid "Play automatically (muted)"
+msgstr "Odtwarzaj automatycznie (bez dźwięku)"
+
+#: includes/brikpanel-enqueue.php:2184
+msgctxt "video player style"
+msgid "Player"
+msgstr "Odtwarzacz"
+
+#: includes/brikpanel-enqueue.php:2185
+msgctxt "video player style"
+msgid "Simple"
+msgstr "Prosty"
+
+#: includes/brikpanel-enqueue.php:2186
+msgctxt "video player style"
+msgid "Standard"
+msgstr "Standardowy"
+
+#: includes/brikpanel-enqueue.php:2187
+msgid "Video size"
+msgstr "Rozmiar wideo"
+
+#: includes/brikpanel-enqueue.php:2188
+msgctxt "video size"
+msgid "Fit"
+msgstr "Dopasuj"
+
+#: includes/brikpanel-enqueue.php:2189
+msgctxt "video size"
+msgid "Fill"
+msgstr "Wypełnij"
+
+#: includes/brikpanel-enqueue.php:2190
+msgid "Show the player instead of the image"
+msgstr "Pokaż odtwarzacz zamiast obrazka"
+
+#: includes/brikpanel-enqueue.php:2191
+msgctxt "video sound"
+msgid "Sound"
+msgstr "Dźwięk"
+
+#: includes/brikpanel-enqueue.php:2192
+msgctxt "video sound"
+msgid "On"
+msgstr "Włączony"
+
+#: includes/brikpanel-enqueue.php:2193
+msgctxt "video sound"
+msgid "Muted"
+msgstr "Wyciszony"
+
+#: includes/brikpanel-enqueue.php:2194
+msgid "Hide labels and buttons while the video plays"
+msgstr "Ukryj etykiety i przyciski podczas odtwarzania"
+
+#: includes/brikpanel-enqueue.php:2195
+msgid "Show the image again when the pointer leaves"
+msgstr "Pokaż obrazek ponownie, gdy kursor go opuści"
+
+#: includes/brikpanel-enqueue.php:2196
+msgid "Where to show it"
+msgstr "Gdzie pokazać"
+
+#: includes/brikpanel-enqueue.php:2197
+msgid "Button (lightbox)"
+msgstr "Przycisk (lightbox)"
+
+#: includes/brikpanel-enqueue.php:2198
+msgid "Product tab"
+msgstr "Karta produktu"
+
+#: includes/brikpanel-enqueue.php:2199
+msgid "Lightbox size"
+msgstr "Rozmiar lightboxa"
+
+#: includes/brikpanel-enqueue.php:2200
+msgctxt "product video display"
+msgid "Display"
+msgstr "Wyświetlanie"
+
+#: includes/brikpanel-enqueue.php:2201
+msgctxt "product video display"
+msgid "Popup"
+msgstr "Wyskakujące okienko"
+
+#: includes/brikpanel-enqueue.php:2202
+msgid "Gallery slide"
+msgstr "Slajd galerii"
+
+#: includes/brikpanel-enqueue.php:2203
+msgid "Position in the gallery"
+msgstr "Pozycja w galerii"
+
+#: includes/brikpanel-enqueue.php:2204
+msgctxt "position in the gallery"
+msgid "Last"
+msgstr "Ostatnia"
+
+# apattee request (2026-09-25): items sold, live traffic source, tax out of revenue.
+msgid "Items sold"
+msgstr "Sprzedane produkty"
+
+#, php-format
+msgid "Campaign: %s"
+msgstr "Kampania: %s"
+
+msgid "Exclude tax from Revenue and Expenses"
+msgstr "Wyłącz podatek z przychodu i wydatków"
+
+msgid "Excluding tax"
+msgstr "Bez podatku"
+
+#, php-format
+msgid "Landing page: %s"
+msgstr "Strona wejścia: %s"
+
+#, php-format
+msgid "Medium: %s"
+msgstr "Medium: %s"
+
+msgid "Net of returns and tax"
+msgstr "Netto po zwrotach i podatku"
+
+msgid "Off by default: Revenue in the Profit section includes the tax your customers paid, and the same tax is counted in Expenses. Turn this on to show Revenue without tax and leave tax out of Expenses. Net profit stays exactly the same."
+msgstr "Domyślnie wyłączone: przychód w sekcji zysku zawiera podatek zapłacony przez klientów, a ten sam podatek jest liczony w wydatkach. Włącz, aby pokazywać przychód bez podatku i nie wliczać podatku do wydatków. Zysk netto pozostaje dokładnie taki sam."
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is already taken out of Revenue. Open the breakdown to see each part."
+msgstr "Koszty operacyjne w danym okresie: wydatki na reklamy z połączonych platform reklamowych (tylko w walucie sklepu), opłaty za płatności pobierane przez bramkę, koszty dostawców i zapasów z otrzymanych zamówień zakupu oraz wszystko, co zapisano w module Wydatki. Podatku tu nie ma, ponieważ jest już odjęty od przychodu. Otwórz zestawienie, aby zobaczyć każdą pozycję."
+
+msgid "Remembers where this visit came from (the referring site and the campaign in the link) so the store owner's Live visitors list can show it."
+msgstr "Zapamiętuje, skąd przyszła ta wizyta (strona odsyłająca i kampania w linku), aby lista odwiedzających na żywo właściciela sklepu mogła to pokazać."
+
+#, php-format
+msgid "Search term: %s"
+msgstr "Wyszukiwana fraza: %s"
+
+msgid "Show where each live visitor came from (for example Organic Search · google.com or Paid · bing.com) under the page they are on. Hover a visitor to see the campaign, search term and landing page from their link. The source is remembered only for the open browser tab and is kept with the rest of the live data for a couple of minutes."
+msgstr "Pokazuje pod oglądaną stroną, skąd przyszedł każdy odwiedzający na żywo (na przykład Wyniki organiczne · google.com albo Płatne · bing.com). Najedź na odwiedzającego, aby zobaczyć kampanię, wyszukiwaną frazę i stronę wejścia z jego linku. Źródło jest zapamiętywane tylko dla otwartej karty przeglądarki i przechowywane razem z resztą danych na żywo przez kilka minut."
+
+#, php-format
+msgid "Source: %s"
+msgstr "Źródło: %s"
+
+msgid "Taken out of Revenue"
+msgstr "Odjęty od przychodu"
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the \"Exclude tax from Revenue and Expenses\" setting is on, so it is not in Expenses either."
+msgstr "Suma wszystkich opłaconych zamówień dla wybranych dat (domyślnie W realizacji i Zrealizowane), z uwzględnieniem wysyłki i bez podatku. Zamówienia złożone przez administratorów sklepu są pomijane, więc Twoje własne zamówienia testowe ich nie zmieniają. Podatek jest odjęty, ponieważ włączone jest ustawienie \"Wyłącz podatek z przychodu i wydatków\", więc nie ma go też w wydatkach."
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the \"Exclude tax from Revenue and Expenses\" setting is on, so it is not in Expenses either."
+msgstr "Suma wszystkich opłaconych zamówień dla wybranych dat (domyślnie W realizacji i Zrealizowane), z uwzględnieniem wysyłki, bez podatku i z odjętymi refundacjami klientów w danym okresie. Zamówienia złożone przez administratorów sklepu są pomijane, więc Twoje własne zamówienia testowe ich nie zmieniają. Podatek jest odjęty, ponieważ włączone jest ustawienie \"Wyłącz podatek z przychodu i wydatków\", więc nie ma go też w wydatkach."
+
+msgid "Traffic source in Live view"
+msgstr "Źródło ruchu w widoku Na żywo"
+
+msgid "Until the browser tab is closed"
+msgstr "Do zamknięcia karty przeglądarki"
+
+#, php-format
+msgid "%s item sold"
+msgid_plural "%s items sold"
+msgstr[0] "%s sprzedany produkt"
+msgstr[1] "%s sprzedane produkty"
+msgstr[2] "%s sprzedanych produktów"
+
+#, php-format
+msgid "%s item"
+msgid_plural "%s items"
+msgstr[0] "%s produkt"
+msgstr[1] "%s produkty"
+msgstr[2] "%s produktów"

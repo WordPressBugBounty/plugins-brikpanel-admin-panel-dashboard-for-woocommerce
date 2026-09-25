@@ -643,6 +643,13 @@ function brikpanel_settings_fields() {
             'default'  => function_exists('brikpanel_dashboard_profit_field_labels') ? array_keys(brikpanel_dashboard_profit_field_labels()) : [],
         ],
         [
+            'name'    => __('Exclude tax from Revenue and Expenses', 'brikpanel'),
+            'id'      => 'brikpanel_profit_exclude_tax',
+            'type'    => 'checkbox',
+            'desc'    => __('Off by default: Revenue in the Profit section includes the tax your customers paid, and the same tax is counted in Expenses. Turn this on to show Revenue without tax and leave tax out of Expenses. Net profit stays exactly the same.', 'brikpanel'),
+            'default' => 'no',
+        ],
+        [
             'type' => 'sectionend',
             'id'   => 'brk_dashboard_title',
         ],
@@ -732,6 +739,13 @@ function brikpanel_settings_fields() {
             'id'      => 'brikpanel_live_customer_details',
             'type'    => 'checkbox',
             'desc'    => __('When a logged-in customer browses your store, show their name, email and phone in the Live visitors panel. Turn this off to keep live tracking fully anonymous — no personal details are cached at all. Live visitor data is only ever kept in a short-lived cache (a couple of minutes) and is never written to the database permanently.', 'brikpanel'),
+            'default' => 'yes',
+        ],
+        [
+            'name'    => __('Traffic source in Live view', 'brikpanel'),
+            'id'      => 'brikpanel_live_traffic_source',
+            'type'    => 'checkbox',
+            'desc'    => __('Show where each live visitor came from (for example Organic Search · google.com or Paid · bing.com) under the page they are on. Hover a visitor to see the campaign, search term and landing page from their link. The source is remembered only for the open browser tab and is kept with the rest of the live data for a couple of minutes.', 'brikpanel'),
             'default' => 'yes',
         ],
         [
@@ -879,6 +893,13 @@ function brikpanel_settings_fields() {
             'default' => 'no',
         ],
         [
+            'name'    => __('Hide WooCommerce ads', 'brikpanel'),
+            'id'      => 'brikpanel_hide_wc_ads',
+            'type'    => 'checkbox',
+            'desc'    => __('Hide the ads WooCommerce.com shows in your admin: promo cards such as the one above the Orders list, the sale badge on the Extensions menu and extension suggestions. Turn this off to show them again.', 'brikpanel'),
+            'default' => 'yes',
+        ],
+        [
             'type' => 'sectionend',
             'id'   => 'brk_notices_title',
         ],
@@ -997,6 +1018,19 @@ function brikpanel_settings_get_current_section() {
     $section  = isset( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : '';
     $sections = brikpanel_settings_get_sections();
     return isset( $sections[ $section ] ) ? $section : '';
+}
+
+/**
+ * Whether a section has fields the WooCommerce "Save changes" button stores.
+ * Import/Export posts to its own handlers and Developers only shows the hook
+ * docs, so neither gets a Save button: a click there saved nothing yet still
+ * reported "BrikPanel settings saved.".
+ *
+ * @param string $section Section id ('' for General).
+ * @return bool
+ */
+function brikpanel_settings_section_has_save( $section ) {
+    return ! in_array( (string) $section, [ 'import-export', 'developers' ], true );
 }
 
 /**
@@ -1284,6 +1318,13 @@ function brikpanel_settings_render_section_nav( $current_section ) {
 // honour 3rd-party fields injected via the public filter.
 add_action( 'woocommerce_settings_tabs_brikpanel', function () {
     $current = brikpanel_settings_get_current_section();
+
+    // WooCommerce's own switch: its template then skips the button but still
+    // prints <p class="submit"> with the nonce, which the style block hides.
+    if ( ! brikpanel_settings_section_has_save( $current ) ) {
+        $GLOBALS['hide_save_button'] = true;
+    }
+
     echo '<div class="brikpanel-settings-layout">';
     brikpanel_settings_render_section_nav( $current );
     echo '<div class="brikpanel-settings-section-body" data-section="' . esc_attr( $current ) . '">';
@@ -1331,6 +1372,68 @@ add_action( 'woocommerce_settings_tabs_brikpanel', function () {
 
     echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — content was produced by woocommerce_admin_fields, which already escapes.
     echo '</div></div>';
+} );
+
+// Save bar. WooCommerce prints its <p class="submit"> after the whole tab,
+// outside the card column, so the bar used to be lined up with fixed offsets
+// over a see-through fade: the card row under it stayed half readable, on a
+// short section it floated far below the only card and in RTL it sat on the
+// sidebar (field test B7). Right after the form closes, before WooCommerce's
+// settings.js runs its ready handlers, move it to the end of the card column.
+// The button and the nonce move with it, so WooCommerce's `.submit :input` and
+// `.woocommerce-save-button` handlers still find them. Where the layout stacks
+// (880px and below, as in the style block) it goes back to WooCommerce's own
+// place at the end of the form: the long section menu comes first there, and
+// the bar must stay at the bottom of the screen from the top of the page
+// (owner's decision, 2026-09-25). Sticky can only lift the bar off the bottom
+// of the box it sits in, so that gap is what "stuck" means.
+add_action( 'woocommerce_after_settings_brikpanel', function () {
+    ?>
+    <script>
+    (function () {
+        var form = document.getElementById('mainform'), col, bar, i, stacked;
+        if (!form) { return; }
+        col = form.querySelector('.brikpanel-settings-section-body');
+        for (i = form.children.length - 1; i >= 0; i--) {
+            if (form.children[i].matches('p.submit')) { bar = form.children[i]; break; }
+        }
+        if (!col || !bar || !bar.querySelector('button, input[type="submit"]')) { return; }
+        bar.classList.add('bp-savebar');
+        stacked = window.matchMedia('(max-width: 880px)');
+        function place() {
+            var home = stacked.matches ? form : col;
+            if (bar.parentNode !== home) { home.appendChild(bar); }
+        }
+        function sync() {
+            var box = bar.parentNode, cs = window.getComputedStyle(box);
+            var end = box.getBoundingClientRect().bottom - (parseFloat(cs.paddingBottom) || 0) - (parseFloat(cs.borderBottomWidth) || 0);
+            bar.classList.toggle('bp-savebar--stuck', end - bar.getBoundingClientRect().bottom > 1);
+        }
+        place();
+        function init() {
+            sync();
+            document.addEventListener('scroll', sync, { capture: true, passive: true });
+            window.addEventListener('resize', sync);
+            window.addEventListener('load', sync);
+            if (stacked.addEventListener) {
+                stacked.addEventListener('change', function () { place(); sync(); });
+            }
+            if (window.ResizeObserver) {
+                new ResizeObserver(sync).observe(document.getElementById('wpbody-content') || col);
+            }
+            /* Transitions only after the first state is painted: no fade on load. */
+            window.requestAnimationFrame(function () {
+                window.requestAnimationFrame(function () { bar.classList.add('bp-savebar--anim'); });
+            });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
+    <?php
 } );
 
 // Update tab settings — only the current section's fields are persisted, so
@@ -1541,6 +1644,8 @@ add_action( 'admin_head', function () {
         flex-direction: column;
         gap: 1px;
     }
+    /* The flex display above beats the browser's own [hidden] rule. */
+    #mainform .bp-nav-results[hidden] { display: none; }
     #mainform .bp-nav-results li { margin: 0; padding: 0; }
     #mainform .bp-nav-result {
         display: block;
@@ -2007,20 +2112,81 @@ add_action( 'admin_head', function () {
     }
 
     /* ------------------------------------------------------------------
-     * Save button
+     * Save bar
      * ------------------------------------------------------------------ */
-    /* Sticky save bar, aligned under the card column (sidebar 232px + 28px
-       gap = 260px offset). The gradient covers content scrolling underneath
-       while fading into the page background at the top. The left offset is
-       reset on narrow screens where the layout stacks. */
-    #wpbody-content .wrap form#mainform p.submit {
+    /* WooCommerce's own <p class="submit">. The script printed after the form
+       (.bp-savebar) moves it to the end of the card column on wide screens and
+       leaves it at the end of the form where the layout stacks, so there it
+       stays at the bottom of the screen from the top of the page. At rest it
+       is a plain row under the last card, painted in the page grey so it is
+       never see-through even without the script. While settings scroll
+       beneath it (.bp-savebar--stuck) it is a white card lifted off the page.
+       The old bar was a fade with no background of its own: the card row
+       under it stayed half readable (field test B7). */
+    /* At the end of the form: lined up with the card column (sidebar 232px +
+       gap 28px), logical so RTL lines up too. Sections with nothing to save
+       print it without a button, and it is not shown there. */
+    #wpbody-content .wrap form#mainform > p.submit {
         position: sticky;
-        bottom: 0;
+        bottom: 12px;
         z-index: 60;
-        margin: .75rem 0 0 260px !important;
-        padding: .8rem 0 .9rem !important;
+        display: <?php echo brikpanel_settings_section_has_save( brikpanel_settings_get_current_section() ) ? 'flex' : 'none'; ?>;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .5rem;
+        box-sizing: border-box;
         max-width: 760px;
-        background: linear-gradient(to top, #f1f1f1 70%, rgba(241,241,241,0));
+        margin: .75rem 0 0 !important;
+        margin-inline-start: 260px !important;
+        padding: .75rem 1.5rem !important;
+        background: #f0f0f1;
+        border: 1px solid transparent;
+        border-radius: .75rem;
+    }
+    /* Moved to the end of the card column. `max-width: none` beats the
+       column's 720px rule for stray paragraphs. */
+    #wpbody-content .wrap form#mainform .brikpanel-settings-section-body > p.submit.bp-savebar {
+        position: sticky;
+        bottom: 12px;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .5rem;
+        box-sizing: border-box;
+        max-width: none;
+        margin: 0 !important;
+        padding: .75rem 1.5rem !important;
+        background: #f0f0f1;
+        border: 1px solid transparent;
+        border-radius: .75rem;
+    }
+    /* Either place. Two classes, so it outranks the column rule above. */
+    #wpbody-content .wrap form#mainform p.submit.bp-savebar.bp-savebar--stuck {
+        background: #ffffff;
+        border-color: #e3e3e3;
+        box-shadow: 0 8px 24px -6px rgba(26,26,26,.18), 0 1px 3px rgba(0,0,0,.08);
+    }
+    /* Animate only back to rest. Turning into the card is instant, so no
+       frame ever shows the settings through it. */
+    #wpbody-content .wrap form#mainform p.submit.bp-savebar.bp-savebar--anim:not(.bp-savebar--stuck) {
+        transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        #wpbody-content .wrap form#mainform p.submit.bp-savebar.bp-savebar--anim:not(.bp-savebar--stuck) {
+            transition: none;
+        }
+    }
+    /* A row left without a button (another plugin's section can switch the
+       button off the same way) is not shown either. */
+    #wpbody-content .wrap form#mainform > p.submit:not(:has(button, input[type="submit"])) {
+        display: none;
+    }
+    /* Keyboard focus and in-page jumps stop above the bar, not under it
+       (WCAG 2.4.11). Both boxes: <body> is the scroller on phones. */
+    html,
+    body {
+        scroll-padding-bottom: 5.5rem;
     }
     #wpbody-content .wrap form#mainform p.submit .button-primary,
     #wpbody-content .wrap form#mainform p.submit button.is-primary,
@@ -2075,12 +2241,18 @@ add_action( 'admin_head', function () {
 
     /* ------------------------------------------------------------------
      * Branded save toast
+     * Keyed on its own class: the topbar bell also stamps .brikpanel-notice
+     * on other plugins' notices it collects. The <p> gets its own colour
+     * because WordPress 7.0 colours `.notice p` directly (#1e1e1e).
      * ------------------------------------------------------------------ */
-    .brikpanel-notice.notice-success {
-        border-left-color: #1a8917 !important;
+    .brikpanel-settings-saved-notice.notice-success {
+        border-inline-start-color: #1a8917 !important;
         background: #e4f5e1;
         color: #1a6b15;
         border-radius: .5rem;
+    }
+    .brikpanel-settings-saved-notice.notice-success p {
+        color: #1a6b15;
     }
 
     /* ------------------------------------------------------------------
@@ -2088,7 +2260,8 @@ add_action( 'admin_head', function () {
      * ------------------------------------------------------------------ */
     @media (max-width: 880px) {
         /* Stack the two-column layout: nav becomes wrapped pill rows above
-           the cards, and the save bar drops its desktop left offset. */
+           the cards, and a save bar left outside the card column drops its
+           desktop offset. */
         #mainform .brikpanel-settings-layout {
             flex-direction: column;
             /* Stretch (not the desktop flex-start) so each stacked child fills
@@ -2113,8 +2286,8 @@ add_action( 'admin_head', function () {
             gap: 4px;
         }
         #mainform .bp-nav-search { max-width: 480px; }
-        #wpbody-content .wrap form#mainform p.submit {
-            margin-left: 0 !important;
+        #wpbody-content .wrap form#mainform > p.submit {
+            margin-inline-start: 0 !important;
         }
         .bp-settings-card__header {
             padding: .9rem 1.1rem .65rem;
@@ -2321,7 +2494,7 @@ add_action('admin_notices', function () {
     if (!get_transient($key)) return;
     delete_transient($key);
 
-    echo '<div class="notice notice-success brikpanel-notice is-dismissible"><p>'
+    echo '<div class="notice notice-success brikpanel-notice brikpanel-settings-saved-notice is-dismissible"><p>'
         . esc_html__('BrikPanel settings saved.', 'brikpanel')
         . '</p></div>';
 });
@@ -2335,9 +2508,14 @@ $is_hpos = get_option('woocommerce_custom_orders_table_enabled') === 'yes';
 if ($is_hpos) {
     add_filter('manage_woocommerce_page_wc-orders_columns', 'brikpanel_set_order_columns', 20);
     add_action('manage_woocommerce_page_wc-orders_custom_column', 'brikpanel_fill_order_column', 20, 2);
+    // Which column shows the status (see brikpanel_orders_status_column_key()).
+    add_filter('manage_woocommerce_page_wc-orders_columns', 'brikpanel_orders_note_status_heading', 1);
+    add_filter('manage_woocommerce_page_wc-orders_columns', 'brikpanel_orders_note_status_column', PHP_INT_MAX);
 } else {
     add_filter('manage_edit-shop_order_columns', 'brikpanel_set_order_columns', 20);
     add_action('manage_shop_order_posts_custom_column', 'brikpanel_fill_order_column_legacy', 20, 2);
+    add_filter('manage_edit-shop_order_columns', 'brikpanel_orders_note_status_heading', 1);
+    add_filter('manage_edit-shop_order_columns', 'brikpanel_orders_note_status_column', PHP_INT_MAX);
 }
 
 /**
@@ -2405,6 +2583,132 @@ function brikpanel_orders_print_order_numbers() {
 }
 add_action('admin_footer', 'brikpanel_orders_print_order_numbers', 5);
 
+/**
+ * Key of the orders-list column that shows the order status.
+ *
+ * WooCommerce names it order_status and almost every store keeps it. A few
+ * plugins swap it for a column of their own that prints the same status pill:
+ * Flexible Refund puts fr_order_status, under WooCommerce's "Status" heading, in
+ * its place. The status menu, the compact row and its phone card have to follow
+ * the pill wherever it went, so they ask here instead of assuming the name.
+ *
+ * Looked for in this order: WooCommerce's key; the column carrying WooCommerce's
+ * own heading for it (a plugin replacing the column copies that heading, in the
+ * site's language); a key ending in order_status. Other status columns, such as
+ * a refund request or a shipment, have a heading and key of their own, so they
+ * are never taken for it.
+ *
+ * @param array $columns Column key => heading, as the list table builds them.
+ * @return string The column key, or '' when the list has no status column.
+ */
+function brikpanel_orders_status_column_key($columns) {
+    if (!is_array($columns) || !$columns) {
+        return '';
+    }
+    $key = '';
+    if (isset($columns['order_status'])) {
+        $key = 'order_status';
+    } else {
+        $heading = (string) brikpanel_orders_status_column_memo('heading');
+        if ('' !== $heading) {
+            foreach ($columns as $column => $label) {
+                if ('cb' !== $column && is_string($label) && brikpanel_orders_plain_heading($label) === $heading) {
+                    $key = (string) $column;
+                    break;
+                }
+            }
+        }
+        if ('' === $key) {
+            foreach (array_keys($columns) as $column) {
+                if (preg_match('/(^|_)order_status$/', (string) $column)) {
+                    $key = (string) $column;
+                    break;
+                }
+            }
+        }
+    }
+    /**
+     * Filters which orders-list column BrikPanel treats as the order status.
+     *
+     * @param string $key     Column key found, '' when there is none.
+     * @param array  $columns Column key => heading.
+     */
+    $key = apply_filters('brikpanel_orders_status_column', $key, $columns);
+    return (is_string($key) && '' !== $key && isset($columns[$key])) ? $key : '';
+}
+
+/**
+ * A column heading as plain text, so two headings can be compared.
+ *
+ * @param string $label Heading, may hold markup or entities.
+ * @return string
+ */
+function brikpanel_orders_plain_heading($label) {
+    return trim(html_entity_decode(wp_strip_all_tags((string) $label), ENT_QUOTES, 'UTF-8'));
+}
+
+/**
+ * What this request learned about the status column: WooCommerce's heading for
+ * it ('heading') and the key the finished list uses ('key', null until the list
+ * has been built, '' when it has no status column).
+ *
+ * @param string $field 'heading' or 'key'.
+ * @param mixed  $value Value to store; leave out to read.
+ * @return mixed
+ */
+function brikpanel_orders_status_column_memo($field, $value = null) {
+    static $memo = array('heading' => '', 'key' => null);
+    if (null !== $value) {
+        $memo[$field] = $value;
+    }
+    return $memo[$field] ?? null;
+}
+
+/**
+ * Note WooCommerce's heading for the status column before other plugins change
+ * the list. WordPress adds the list table's own columns at priority 0, so at 1
+ * the list is still WooCommerce's.
+ *
+ * @param array $columns Column key => heading.
+ * @return array Unchanged.
+ */
+function brikpanel_orders_note_status_heading($columns) {
+    if (is_array($columns) && isset($columns['order_status']) && is_string($columns['order_status'])) {
+        brikpanel_orders_status_column_memo('heading', brikpanel_orders_plain_heading($columns['order_status']));
+    }
+    return $columns;
+}
+
+/**
+ * Note which column shows the status once every plugin has changed the list.
+ *
+ * @param array $columns Column key => heading.
+ * @return array Unchanged.
+ */
+function brikpanel_orders_note_status_column($columns) {
+    brikpanel_orders_status_column_memo('key', brikpanel_orders_status_column_key($columns));
+    return $columns;
+}
+
+/**
+ * Tell the status script which column holds the status when a plugin renamed
+ * it; the compact row reads the same value. Printed before the script, because
+ * the script marks that column as soon as it runs. Nothing is printed on the
+ * usual list, whose status column is WooCommerce's order_status.
+ */
+function brikpanel_orders_print_status_column() {
+    $key = brikpanel_orders_status_column_memo('key');
+    if (!is_string($key) || '' === $key || 'order_status' === $key || !wp_script_is('brikpanel_order_status_inline', 'enqueued')) {
+        return;
+    }
+    wp_add_inline_script(
+        'brikpanel_order_status_inline',
+        'window.brikpanelStatusInline && (window.brikpanelStatusInline.column = ' . wp_json_encode($key) . ');',
+        'before'
+    );
+}
+add_action('admin_footer', 'brikpanel_orders_print_status_column', 5);
+
 function brikpanel_set_order_columns($columns) {
     $columns['payment_method'] = __('Payment Method', 'brikpanel');
     $columns['order_items']    = __('Items', 'brikpanel');
@@ -2433,7 +2737,8 @@ function brikpanel_fill_order_column_content($column, $order) {
 
         case 'order_items':
             foreach ($order->get_items() as $item) {
-                echo esc_html($item->get_name() ?? '') . ' x ' . esc_html($item->get_quantity()) . '<br>';
+                // Plain text first: a TranslatePress variation name carries a <span>.
+                echo esc_html(brikpanel_plain_label($item->get_name() ?? '')) . ' x ' . esc_html($item->get_quantity()) . '<br>';
             }
             break;
 
@@ -2520,12 +2825,25 @@ function brikpanel_get_order_ids_by_shipping_method($name) {
         return $memo[$name];
     }
 
+    // The dropdown submits decoded text ("Pickup & Delivery"), but a shipping
+    // line keeps the title WooCommerce stored: method titles pass through
+    // wp_kses_post(), so a bare "&" is saved as "&amp;". Match the submitted
+    // name, its kses form, and every stored spelling that decodes to it.
+    $candidates = array($name, wp_kses_normalize_entities($name));
+    foreach (brikpanel_get_shipping_method_names() as $stored) {
+        if (wc_clean(brikpanel_plain_name($stored)) === $name) {
+            $candidates[] = $stored;
+        }
+    }
+    $candidates   = array_values(array_unique($candidates));
+    $placeholders = implode(',', array_fill(0, count($candidates), '%s'));
+
     global $wpdb;
     $ids = $wpdb->get_col($wpdb->prepare(
         "SELECT DISTINCT order_id
          FROM {$wpdb->prefix}woocommerce_order_items
-         WHERE order_item_type = 'shipping' AND order_item_name = %s",
-        $name
+         WHERE order_item_type = 'shipping' AND order_item_name IN ($placeholders)", // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- one %s per candidate
+        $candidates
     ));
     $memo[$name] = array_map('absint', (array) $ids);
     return $memo[$name];
@@ -2553,7 +2871,16 @@ function brikpanel_get_selected_shipping_method() {
  * @param string $selected Currently selected method name.
  */
 function brikpanel_render_shipping_method_filter_select($selected) {
-    $names = brikpanel_get_shipping_method_names();
+    // One entry per decoded name: the stored list can hold the same method
+    // as "A &amp; B" and "A & B", which would show as two identical options.
+    $names = array();
+    foreach (brikpanel_get_shipping_method_names() as $stored) {
+        $plain = brikpanel_plain_name($stored);
+        if ($plain !== '') {
+            $names[$plain] = true;
+        }
+    }
+    $names = array_map('strval', array_keys($names));
 
     // Nothing to choose between with fewer than two methods.
     if (count($names) < 2) {
@@ -2566,7 +2893,8 @@ function brikpanel_render_shipping_method_filter_select($selected) {
         printf(
             '<option value="%1$s"%2$s>%3$s</option>',
             esc_attr($name),
-            selected($selected, $name, false),
+            // The request value went through wc_clean(), compare like with like.
+            selected($selected, wc_clean($name), false),
             esc_html($name)
         );
     }
@@ -2717,21 +3045,23 @@ add_action('wp_ajax_brikpanel_change_order_status', function () {
     }
 
     $order = wc_get_order($order_id);
-    if (!$order) {
+    // A refund is a WC_Abstract_Order too, but has no update_status().
+    if (!($order instanceof WC_Order)) {
         wp_send_json_error(['message' => __('Order not found.', 'brikpanel')]);
     }
 
-    $valid_statuses = array_keys(wc_get_order_statuses());
+    // Labels are read before the change: a status change can send the customer
+    // an e-mail, and WooCommerce switches to the site language to write it, so
+    // afterwards the label could come back in that language, not the user's.
+    $statuses       = wc_get_order_statuses();
     $new_status_key = (strpos($new_status, 'wc-') === 0) ? $new_status : 'wc-' . $new_status;
-    if (!in_array($new_status_key, $valid_statuses)) {
+    if (!isset($statuses[$new_status_key])) {
         wp_send_json_error(['message' => __('Invalid status.', 'brikpanel')]);
     }
+    $label = $statuses[$new_status_key];
 
-    $slug = str_replace('wc-', '', $new_status_key);
+    $slug = substr($new_status_key, 3);
     $order->update_status($slug);
-
-    $statuses = wc_get_order_statuses();
-    $label    = $statuses[$new_status_key] ?? $slug;
 
     wp_send_json_success([
         'status' => $slug,

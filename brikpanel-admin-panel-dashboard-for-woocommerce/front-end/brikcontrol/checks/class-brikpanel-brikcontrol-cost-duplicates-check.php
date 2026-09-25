@@ -373,7 +373,7 @@ class Brikpanel_BrikControl_Cost_Duplicates_Check extends Brikpanel_BrikControl_
         if ( is_string( $title ) && '' !== trim( $title ) ) {
             // get_the_title() is texturized (a variation's dash arrives as
             // &#8211;); the card escapes on output, so hand it plain text.
-            return html_entity_decode( wp_strip_all_tags( $title ), ENT_QUOTES, get_bloginfo( 'charset' ) );
+            return brikpanel_plain_label( $title );
         }
 
         return $this->safe_sprintf(

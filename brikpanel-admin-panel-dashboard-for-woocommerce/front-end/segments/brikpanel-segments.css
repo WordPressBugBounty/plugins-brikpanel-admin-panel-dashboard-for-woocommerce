@@ -495,7 +495,7 @@
 }
 
 .bp-seg-table thead th {
-	text-align: left;
+	text-align: start;
 	padding: 0.625rem 1rem;
 	font-size: 0.75rem;
 	font-weight: 600;
@@ -505,18 +505,21 @@
 	white-space: nowrap;
 }
 
+/* Cells wrap at their spaces (dates, names, locations, payment titles). They
+   used to be nowrap across the board, which gave the table a minimum width
+   wider than the card, so Total fell off the right edge (field test B2).
+   Addresses break only at "@" and dots through <wbr> from the JS. */
 .bp-seg-table tbody td {
 	padding: 0.75rem 1rem;
 	border-bottom: 1px solid #f3f3f3;
 	color: var(--bp-seg-text);
 	vertical-align: middle;
-	white-space: nowrap;
 }
 
-/* Allow only the customer name/email cell to wrap so long emails don't blow up the row width. */
-.bp-seg-table tbody td.bp-seg-customer {
-	white-space: normal;
-	max-width: 220px;
+/* Short values that must stay on one line. */
+.bp-seg-table td.bp-seg-order-no,
+.bp-seg-table td.bp-seg-phone {
+	white-space: nowrap;
 }
 
 .bp-seg-table tbody tr:last-child td { border-bottom: none; }
@@ -525,7 +528,7 @@
 
 .bp-seg-table td.bp-seg-num,
 .bp-seg-table th.bp-seg-num {
-	text-align: right;
+	text-align: end;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
@@ -551,6 +554,72 @@
 .bp-seg-subtle {
 	color: var(--bp-seg-text-muted);
 	font-size: 0.75rem;
+}
+
+/* ===== Stacked rows =====
+   brikpanel-segments.js adds .is-stacked when the table cannot show every
+   column inside the card. Each row becomes a card: the order number or the
+   customer on top, then label-over-value tiles, the amount first. Only the
+   generic cell rule sets display, and it comes after the row hover rule above
+   so its transparent background wins the tie. */
+.bp-seg-table.is-stacked,
+.bp-seg-table.is-stacked > tbody {
+	display: block;
+}
+
+.bp-seg-table.is-stacked > thead {
+	display: none;
+}
+
+.bp-seg-table.is-stacked > tbody > tr {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+	gap: 0.625rem 1rem;
+	padding: 0.875rem 1rem;
+}
+
+.bp-seg-table.is-stacked > tbody > tr + tr {
+	border-top: 1px solid #f3f3f3;
+}
+
+.bp-seg-table.is-stacked > tbody > tr > td {
+	display: block;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	text-align: start;
+	overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+	.bp-seg-table.is-stacked > tbody > tr:hover {
+		background: var(--bp-seg-row-hover);
+	}
+}
+
+.bp-seg-table.is-stacked td[data-bp-label]::before {
+	content: attr(data-bp-label);
+	display: block;
+	margin-bottom: 0.125rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--bp-seg-text-secondary);
+}
+
+.bp-seg-table.is-stacked .bp-seg-cell-title {
+	grid-column: 1 / -1;
+	order: -2;
+}
+
+.bp-seg-table.is-stacked .bp-seg-cell-headline {
+	order: -1;
+	font-weight: 600;
+}
+
+.bp-seg-table.is-stacked .bp-seg-empty {
+	grid-column: 1 / -1;
+	text-align: center;
 }
 
 /* ===== Status pill ===== */
@@ -625,16 +694,6 @@
 	.bp-seg-grid { grid-template-columns: 1fr; }
 	.bp-seg-header-right { width: 100%; justify-content: flex-end; }
 
-	/* Tighten table cell padding on phones so more columns fit before the user must scroll. */
-	.bp-seg-table thead th { padding: 0.5rem 0.625rem; }
-	.bp-seg-table tbody td { padding: 0.625rem 0.625rem; }
-	.bp-seg-table tbody td.bp-seg-customer { max-width: 160px; }
-
-	/* Visual affordance that the table scrolls horizontally. */
-	.bp-seg-table-wrap {
-		-webkit-overflow-scrolling: touch;
-		scrollbar-width: thin;
-	}
-	.bp-seg-table-wrap::-webkit-scrollbar { height: 6px; }
-	.bp-seg-table-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+	/* The results table needs no phone rules here: on a card this narrow
+	   brikpanel-segments.js always stacks its rows (see "Stacked rows"). */
 }

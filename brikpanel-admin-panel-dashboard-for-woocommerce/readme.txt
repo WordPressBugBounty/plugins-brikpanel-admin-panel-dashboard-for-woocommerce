@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.22
+Stable tag: 3.3.23
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -248,6 +248,10 @@ That is it. No license key, no email signup, no external account.
 
 Yes. Every feature on this page is in the free version. There is no premium tier, no feature lock and no trial period. We also make a separate paid plugin, BrikMentor, and BrikPanel shows a small notice about it, which you can switch off under WooCommerce → Settings → BrikPanel → General. We built this because we needed it for our own 1000+ WooCommerce stores and decided to release it.
 
+= Does BrikPanel hide WooCommerce's own ads? =
+
+Yes, by default. WooCommerce.com places ads in your admin, like the promo card above the Orders list, the sale badge on the Extensions menu and extension suggestions. BrikPanel turns them off with WooCommerce's own switches. To show them again, untick "Hide WooCommerce ads" under WooCommerce → Settings → BrikPanel → General.
+
 = Is BrikPanel a self-hosted WooCommerce analytics solution? =
 
 Yes. BrikPanel gives you a complete WooCommerce analytics suite that runs entirely on your own server with no external dependencies. Sales analytics, product reports, conversion tracking, customer LTV, RFM segmentation, cohort retention and customer data are all included, nothing is sent to any third-party SaaS.
@@ -379,7 +383,7 @@ Press `Ctrl + K` (or `Cmd + K` on Mac) anywhere inside wp-admin. The BrikPanel q
 
 = Can I see who is on my WooCommerce store right now? =
 
-Yes. BrikPanel includes a **woocommerce live visitors** widget on the dashboard that updates every 30 seconds. You can see what page each visitor is on, whether they have items in the cart, and whether they are an existing customer. This is real **woocommerce real time visitors** tracking, not estimates.
+Yes. BrikPanel includes a **woocommerce live visitors** widget on the dashboard that updates every 30 seconds. You can see what page each visitor is on, whether they have items in the cart, and whether they are an existing customer. This is real **woocommerce real time visitors** tracking, not estimates. A page nobody has touched for 30 minutes drops off the list, so a tab left open on a desk is not counted as someone on your store, and it comes back as soon as the visitor scrolls, clicks, taps or types.
 
 = Does BrikPanel track WooCommerce conversion rate and conversion funnel? =
 
@@ -488,6 +492,32 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.23 (2026-09-25) =
+* New: **Items sold on the dashboard.** The Orders and Order Rates cards show how many items were sold, each Recent Orders row shows its item count, and the Excel report has an "Items sold" row.
+* New: **Order dates in Recent Orders.** Each order on the dashboard shows its date, and its status in WooCommerce's translated wording.
+* New: **See where each live visitor came from.** Live visitors shows the source under the page, such as "Organic Search · google.com" or "Paid · bing.com". Hover for the campaign, search term and landing page. It respects cookie consent. Setting: Analytics → "Traffic source in Live view".
+* New: **Revenue and Expenses without tax.** Dashboard → "Exclude tax from Revenue and Expenses" shows Revenue without tax in the Profit section and leaves tax out of Expenses. Net profit stays the same. Off by default.
+* New: **Product videos for popular themes.** The product editor saves videos where WoodMart, Blocksy (with Companion Pro), Minimog, Shoptimizer / CommerceKit, Flatsome and Porto read them, and shows videos added from the theme.
+* New: **WooCommerce ads are hidden.** Promo cards (such as the one WooCommerce 11 puts above the Orders list), the "Sale" badge on Extensions and extension suggestions are switched off with WooCommerce's own switches. Setting: General → "Hide WooCommerce ads".
+* Fix: **Saving a product no longer erases Flatsome, Porto or CommerceKit data,** such as custom tabs, labels, layouts, custom CSS and videos.
+* Fix: **Saving before the gallery finished loading no longer removes product images** (a 3.3.22 regression). Changing a variation image or the gallery now warns about unsaved changes.
+* Fix: **Saving with a section closed no longer clears** a variation's sale dates and supplier, or a simple product's weight and dimensions.
+* Fix: **Names with "&" no longer show as "&amp;"** in lists, the product editor, pickers, search, emails, CSV exports and Google Sheets. Sheets writes a variation's option name instead of its slug, and tags like "<5kg" and ">10kg" no longer merge into one.
+* Fix: **Forgotten tabs no longer stay in Live visitors for days.** A page untouched for 30 minutes drops off the Live list and comes back as soon as the visitor is active. Idle tabs stop pinging the server.
+* Fix: **Tapping a status tab on a phone no longer selects every order.** An invisible "Select all" label covered the orders list.
+* Fix: **The customer name stays in the orders list.** When the Customer column is hidden or removed by another plugin, the name shows next to the order number. Long names no longer widen the list on phones.
+* Fix: **The order status badge works with plugins that replace the status column,** such as Flexible Refund. Clicking it opens the status menu, and other plugins' status colours now show.
+* Fix: **Better compatibility.** WP Bulk Delete's menu items can be clicked in the BrikPanel sidebar again, and PeproDev Ultimate Invoice no longer prints `var CURRENT_ORDER_MAIL = [];` in the orders list.
+* Tweak: **Tables fit their cards.** The variation table shows Variation, Price, Sale price, Stock and COGS, and the other fields open under each row's ▾ arrow. Wide tables (Scheduled Tasks, Segments, Abandoned Carts, Expenses and more) turn rows into cards instead of being cut off.
+* Fix: **Header bars keep the title and the Save button in view.** In the product editor, the order page and Google Sheets, extra buttons move into a "..." menu first, then the bar wraps, then labels turn into icons. The schedule date picker no longer closes at once or overflows on phones.
+* Fix: **Notices appear under the page title,** not inside the title row or the product editor's sticky header, and the review box is readable on phones.
+* Fix: **The "Write a review" button is readable on WordPress 7,** which colours links inside notices. Notices in Settings, the category screens and four other screens are fixed for the same reason.
+* Fix: **Other plugins' notices look right on BrikPanel pages.** BrikPanel no longer removes other plugins' stylesheets there, only their scripts, so their dismiss links, bell notices and dashboard widgets keep their styling. WordPress 7 "Dismiss" links no longer spill out of notices.
+* Fix: **The "Save changes" bar no longer covers settings.** It is a solid bar inside the settings column, stays at the bottom of the screen on phones and keeps clear of the side menu in right-to-left languages. Empty Save buttons are gone, and the Orders status bar no longer covers the bulk actions bar.
+* Fix: **No red "0" on the bell when nothing is waiting.** The same bug showed a "1 / 1" pager in Customer Analytics, a stuck "Counting…" box in Google Sheets, "Edit email" in the cart popup and a "Supplier SKU" row with no supplier. Zero counts like "Updates 0" are hidden in the side menu.
+* Fix: **The BrikMentor corner button no longer covers content.** It is now a labelled button, hidden on phones. Pages leave room for it, and the space beside its panel no longer blocks clicks.
+* Security: **Quote marks in variation SKUs, GTINs and names are now escaped in the product editor.**
+
 = 3.3.22 (2026-09-23) =
 * Fix: **BrikPanel no longer switches itself off when WooCommerce sits in a differently named folder.** WooCommerce is now recognised by its main file, the way WordPress itself loads it, so stores that keep it in a folder such as `wc-core/` get BrikPanel back. The same assumption also removed WooCommerce's own files from BrikPanel pages on such stores and hid Admin Menu Editor Pro; both are fixed.
 * Fix: **No more links to pages a user is not allowed to open.** Editors, authors and contributors no longer see an empty "More" row that led to a "not allowed" page. The same check now covers the WordPress toolbar, Cmd+K search, the top bar's Create menu, bell and logo, the product list's Import and Export buttons, the settings shortcuts, and users for whom a multisite network has switched BrikPanel off.
@@ -552,21 +582,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **Orders renumbered by a sequential order number plugin now show that number everywhere, not just in the orders list.** Opening an order showed WooCommerce's internal ID in the header instead of the number the list had just shown. The dashboard's recent orders, the Segments table, the recovered-order link on Abandoned Carts and the status-change bar on the orders list had the same problem.
 * Fix: **Cmd/Ctrl + K finds an order by phone number however it was typed.** A number kept as "+44 7911 123456" was not found by typing "07911 123456", or the other way round. Spaces, dashes, brackets and a leading 0 or 00 no longer matter, and the last digits of a number are enough to find it. Names now match inside a word and across spellings, so "yilmaz" finds "Yılmaz", and an exact name comes before a partial one. Trashed and draft orders no longer take up result slots, an order that matches twice is listed once, the closest match is first again, and a search beginning with "-" no longer fails. On a store with 700,000 orders a search by customer name went from 761 ms to 1 ms.
 * Dev: **New filters `brikpanel_search_terms`** (add your own spellings of what was typed) **and `brikpanel_search_order_ids`** (add or drop the orders the palette found), and **`window.brikpanel_popup_consent_answered()`**, which tells the signup popup that a banner not speaking the WordPress Consent API has been answered. All three are documented on the Developer page.
-
-= 3.3.12 (2026-09-17) =
-* Fix: **The order total is back in front of the columns other plugins add.** With the compact order list, a column you keep in the row through Screen Options ("Show in the row"), such as a profit or tracking number column, was placed ahead of Total, so the amount ended up at the far right of the row. Total now sits right after Shipping, where WooCommerce has always put it, and those columns follow it. Nothing changes for stores that keep no extra column in the row.
-* New: **One button cleans bot traffic out of your figures, with undo.** The Store Health check "Bot Traffic" replaces "Add-to-Cart History" and now covers everything a scripted crawl can inflate: daily visitors, product views, page views, traffic sources, device counts, store and per-product add-to-carts, checkout visits, and the abandoned-cart entries the "Abandoned Cart Entries" check rates as certainly scripted. One click lowers each flagged day to the highest figure it could honestly have had and deletes the scripted entries. Everything it changes is kept in a restore point that never expires on its own, so "Undo last correction" puts it all back whenever you want. A restore point left by the old check is replayed by the same undo.
-* Tweak: **Store Health (BrikControl) is on by default again.** New installs start with it enabled, the same as stores that installed BrikPanel earlier. Turn it off under WooCommerce → Settings → BrikPanel → Store Health if you do not want it.
-* Tweak: **The red "critical store health issue" banner on the dashboard is gone.** Store Health findings now show only on the topbar shield and the Store Health page.
-* Fix: **Visitor, product-view and Live figures are no longer inflated by scripted browsers.** The "one visitor, once a day" rule lived only in the browser's own storage, so a crawler that runs the page but starts every visit with a blank profile was counted as a new visitor on every page it opened, and every one of its pings became a new entry in the Live view; one store with under a hundred real visitors a day showed eleven thousand and forty people live at once. The rule is now also kept on the server, the same way the add-to-cart and checkout counters have been since 3.3.1: a browser with no memory of the store gets one visitor count and one product-view count per day and at most one Live entry at a time. Returning browsers and signed-in customers are unaffected, and browsers that declare themselves automated are not counted at all. Figures already recorded are left as they are.
-
-= 3.3.11 (2026-09-17) =
-* Fix: **Attributes page on phones no longer overlaps the column names and their values on right-to-left languages** (Persian, Arabic, Hebrew). The same applied to the expand arrow in the tag and category tables.
-
-= 3.3.10 (2026-09-17) =
-* Fix: **Other plugins' product fields now work in the automatic mode of "Additional product data".** When that card was switched on with "Show these fields" on a store with no SEO card and no hand-picked box, the scripts of the plugins behind those fields were never loaded, so their controls did nothing. Measurement Price Calculator showed every calculator section at once instead of only the selected one; it now behaves like the native WooCommerce screen, including the per-unit price label ("$ / sq cm") on right-to-left stores.
-* Fix: **The "Ship to" box in the order list no longer repeats the customer's name.** Some shipping plugins (for example AgenWebsite Shipping) add the phone number to the name line of the address, such as "Jane Doe (Phone: +62...)". The expanded order panel did not recognise that as the name line and printed it again inside the address. It now shows the name once, then the phone, then the address.
-* Fix: **Three PHP 8.4 deprecation notices removed** (Store Health and Google Sheets order sync used an older way of writing an optional parameter).
-
-= 3.3.9 (2026-09-16) =
-* New: **A switch to hide every BrikMentor promotion.** WooCommerce → Settings → BrikPanel → General → "Show BrikMentor promotion". Turn it off and the dashboard card, the menu item, the corner button, the launch notice and the padlocked contact buttons on Abandoned Carts all go, and the screen is what it was before. Agencies can pin it for every client store with `define( 'BRIKPANEL_BRIKMENTOR_PROMO', false );` in wp-config.php. The setting travels with Import / Export.

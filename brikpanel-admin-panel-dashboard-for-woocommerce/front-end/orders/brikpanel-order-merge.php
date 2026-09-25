@@ -1135,6 +1135,7 @@ function brikpanel_order_merge_render_page() {
 
 		echo '<div class="wrap brikpanel-merge">';
 		echo '<h1 class="bpm-title">' . esc_html__( 'Merge orders', 'brikpanel' ) . '</h1>';
+		brikpanel_header_end();
 		echo '<div class="bpm-card bpm-card--error"><p>' . esc_html( $why ) . '</p></div>';
 		echo '<p><a class="bpm-btn bpm-btn--sec" href="' . esc_url( brikpanel_wc_orders_list_url() ) . '">'
 			. esc_html__( 'Back to orders', 'brikpanel' ) . '</a></p>';
@@ -1150,6 +1151,7 @@ function brikpanel_order_merge_render_page() {
 
 	if ( count( $ids ) < 2 ) {
 		echo '<h1 class="bpm-title">' . esc_html__( 'Merge orders', 'brikpanel' ) . '</h1>';
+		brikpanel_header_end();
 		echo '<div class="bpm-card bpm-card--error"><p>'
 			. esc_html__( 'This merge has expired or was already used. Go back to the orders list and select the orders again.', 'brikpanel' )
 			. '</p></div>';
@@ -1171,6 +1173,7 @@ function brikpanel_order_merge_render_page() {
 
 	echo '<h1 class="bpm-title">' . esc_html__( 'Merge orders', 'brikpanel' ) . '</h1>';
 	echo '<p class="bpm-lede">' . esc_html__( 'Products from the other orders move onto the main order. The others are cancelled with a note pointing here, and nothing is deleted.', 'brikpanel' ) . '</p>';
+	brikpanel_header_end();
 
 	if ( $report['fatal'] ) {
 		echo '<div class="bpm-card bpm-card--error"><h2>' . esc_html__( 'These orders cannot be merged', 'brikpanel' ) . '</h2><ul>';

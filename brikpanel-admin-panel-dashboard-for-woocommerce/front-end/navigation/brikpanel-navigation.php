@@ -375,6 +375,40 @@ function brikpanel_nav_resolve_submenu_rows( $rows ) {
 }
 
 /**
+ * A menu title as it may be printed inside a sidebar row's link.
+ *
+ * WordPress prints menu titles as raw HTML, and some plugins put list or link
+ * markup in them. WP Bulk Delete and the other Xylus Themes plugins register
+ * their last row as `<li class="current" style="...">Upgrade to Pro</li>`.
+ * Inside our `li > div > a` row, a browser closes the row at that `<li>`,
+ * rebuilds the link after it and leaves a stray copy of the link directly under
+ * the submenu list. The copy's full-row click layer (a::after in
+ * brikpanel-navigation.css) is laid against the parent row, so it covered every
+ * row of the plugin, and a mouse click there reached no link at all (wp.org
+ * support, 2026-09-25). WordPress's own menu gets the same stray markup but has
+ * no such layer, which is why the native sidebar still worked.
+ *
+ * `li` and `a` tags are dropped and what they wrap is kept: they are the tags
+ * that take a row apart (`<li>` closes it, a nested `<a>` splits its link). The
+ * row keeps its plain label, without the list item's own background. What is
+ * left is balanced, so a stray closing tag (`</div>`, `</ul>`, `</p>`) cannot
+ * end our row early and an unclosed one is closed inside the link. Count
+ * bubbles and badge spans pass unchanged.
+ *
+ * @param string $title Raw title from $menu or $submenu.
+ * @return string
+ */
+function brikpanel_nav_inline_title( $title ) {
+	$title = (string) $title;
+	if ( false === strpos( $title, '<' ) ) {
+		return $title;
+	}
+	$clean = preg_replace( '#</?(?:li|a)(?:\s(?:[^>"\']++|"[^"]*"|\'[^\']*\')*)?/?>#i', '', $title );
+	// A regex failure returns null: keep the label rather than print nothing.
+	return force_balance_tags( null === $clean ? $title : $clean );
+}
+
+/**
  * Function to render custom menu structure in admin panel.
  */
 function brikpanel_render_navigation() {
@@ -853,7 +887,7 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 			}
 		}
 
-		$title = wptexturize( $item[0] ?? '' );
+		$title = wptexturize( brikpanel_nav_inline_title( $item[0] ?? '' ) );
 
 		/**
 		 * Filter a top-level item's sidebar label. Companion surfaces add a
@@ -1363,7 +1397,7 @@ if (!empty($sub_item[4])) {
 					$sub_file = substr( $sub_file, 0, $pos );
 				}
 
-				$title = wptexturize( $sub_item[0] ?? '' );
+				$title = wptexturize( brikpanel_nav_inline_title( $sub_item[0] ?? '' ) );
 
 				// WooCommerce alt menülerine özel ikonlar.
 				$woocommerce_submenu_has_custom_icon = array(

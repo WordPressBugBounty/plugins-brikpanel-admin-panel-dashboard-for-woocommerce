@@ -259,7 +259,7 @@
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	color: var(--cron-text-secondary);
-	text-align: left;
+	text-align: start;
 	white-space: nowrap;
 }
 
@@ -310,15 +310,94 @@
 	font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* Args preview, one line under the hook slug. It used to be its own column: a
+   280px nowrap box that could not shrink and, with the slug, pushed the row
+   buttons off the card (field test B2). Clamped rather than nowrap, so it only
+   takes the width the job column has; the full value is in its title. */
 .brikpanel-cron-args {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 1;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+	margin-top: 2px;
 	font-family: ui-monospace, "SF Mono", Menlo, monospace;
 	font-size: 0.75rem;
 	color: var(--cron-text-secondary);
-	max-width: 280px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	display: inline-block;
+}
+
+/* A reload after a row action keeps the rows, dimmed, until the new list lands. */
+.brikpanel-cron-table.is-loading > tbody {
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+/* ── Stacked rows ───────────────────────────────────────────────────────────
+   brikpanel-cron-page.js adds .is-stacked when the table cannot show every
+   column inside the card. Each row becomes a card: the job on top, then small
+   label-over-value tiles, then the buttons, which may wrap and are never cut.
+   Only the generic cell rule sets display, and it comes after the row hover
+   rule above so its transparent background wins the tie. */
+.brikpanel-cron-table.is-stacked,
+.brikpanel-cron-table.is-stacked > tbody {
+	display: block;
+}
+
+.brikpanel-cron-table.is-stacked > thead {
+	display: none;
+}
+
+.brikpanel-cron-table.is-stacked > tbody > tr {
+	display: grid;
+	/* auto-fit: the two tiles share the row instead of leaving empty tracks. */
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+	gap: 0.75rem 1rem;
+	padding: 1rem 1.25rem;
+}
+
+.brikpanel-cron-table.is-stacked > tbody > tr + tr {
+	border-top: 1px solid var(--cron-border);
+}
+
+.brikpanel-cron-table.is-stacked > tbody > tr > td {
+	display: block;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+	.brikpanel-cron-table.is-stacked > tbody > tr:hover {
+		background: #fafafa;
+	}
+}
+
+.brikpanel-cron-table.is-stacked td[data-bp-label]::before {
+	content: attr(data-bp-label);
+	display: block;
+	margin-bottom: 0.25rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--cron-text-secondary);
+}
+
+.brikpanel-cron-table.is-stacked .brikpanel-cron-col-job,
+.brikpanel-cron-table.is-stacked .brikpanel-cron-col-actions,
+.brikpanel-cron-table.is-stacked .brikpanel-cron-empty {
+	grid-column: 1 / -1;
+}
+
+.brikpanel-cron-table.is-stacked .brikpanel-cron-row-actions {
+	justify-content: flex-start;
+	flex-wrap: wrap;
+}
+
+.brikpanel-cron-table.is-stacked .brikpanel-cron-args {
+	-webkit-line-clamp: 2;
 }
 
 /* ── Status badges ──────────────────────────────────────────────────────── */
@@ -367,13 +446,11 @@
 	color: var(--cron-text-secondary);
 }
 
-/* ── Recurring marker ───────────────────────────────────────────────────── */
-.brikpanel-cron-recurring-yes {
-	color: var(--cron-text);
-	font-weight: 550;
-}
-
-.brikpanel-cron-recurring-no {
+/* ── Recurring note (under the scheduled date) ──────────────────────────── */
+.brikpanel-cron-recurring {
+	display: block;
+	margin-top: 2px;
+	font-size: 0.75rem;
 	color: var(--cron-text-muted);
 }
 

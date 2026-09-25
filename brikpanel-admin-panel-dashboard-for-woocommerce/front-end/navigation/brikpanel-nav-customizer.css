@@ -720,12 +720,13 @@
 	color: var(--text-secondary);
 }
 
-/* The base .brikpanel-navc-field rule sets display:flex, which outranks the
-   browser's [hidden] { display:none }. Restore hiding for the dialog fields and
-   the custom-SVG block that JS toggles via the hidden attribute. */
-.brikpanel-navc-field[hidden],
-.brikpanel-navc-svg-field[hidden] {
-	display: none !important;
+/* `hidden` must hide in the whole customizer. Any `display` a class sets (the
+   dialog fields are flex, the buttons inline-flex) outranks the browser's own
+   [hidden] { display:none }: the "Use original" button showed in the Add and
+   Edit custom link dialogs, where it does nothing. The dialog sits inside
+   .brikpanel-nav-customizer. */
+.brikpanel-nav-customizer [hidden]:not([hidden="until-found"]) {
+	display: none;
 }
 
 /* Custom SVG icon field */

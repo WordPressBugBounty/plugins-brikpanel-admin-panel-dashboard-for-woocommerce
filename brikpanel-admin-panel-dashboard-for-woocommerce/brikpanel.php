@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.22
+ * Version: 3.3.23
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.22');
+define('BRIKPANEL_VERSION', '3.3.23');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -555,7 +555,7 @@ function brikpanel_init_admin() {
     brikpanel_require('front-end/import-export/brikpanel-import-export.php');
     brikpanel_require('front-end/products/brikpanel-section-order.php');
     brikpanel_require('front-end/products/brikpanel-qe-order.php');
-    brikpanel_require('front-end/products/brikpanel-blocksy-video.php');
+    brikpanel_require('front-end/products/video/brikpanel-product-video.php');
     brikpanel_require('front-end/products/brikpanel-product-editor.php');
     brikpanel_require('front-end/products/brikpanel-products-list.php');
     brikpanel_require('front-end/products/brikpanel-product-code.php');
@@ -807,6 +807,51 @@ function brikpanel_suppress_foreign_notices() {
 }
 add_action('admin_init', 'brikpanel_suppress_foreign_notices');
 
+// =============================================================================
+// HIDE WOOCOMMERCE ADS (opt-out via settings)
+// =============================================================================
+/**
+ * Hide the ads WooCommerce.com pushes into wp-admin, using WooCommerce's own
+ * switches. Controlled by the `brikpanel_hide_wc_ads` option, defaulting to
+ * enabled.
+ *
+ * - Promotions: the promo cards (above the Orders list since WooCommerce 11.0,
+ *   plus Home, Marketing, Coupons and the Extensions page), the "Sale" badge
+ *   on the Extensions menu, and the twice-daily woocommerce.com fetch that
+ *   feeds them.
+ * - Suggestions: the "get this extension" boxes (the product data "Get more
+ *   options" tab, the empty Orders list, the Marketing and Coupons
+ *   recommendations, WooPayments offers).
+ *
+ * Registered at file scope rather than in an admin module: WooCommerce asks
+ * during init and inside WP-Cron, where the admin modules are not loaded. The
+ * option is only read when WooCommerce asks, and a "hide" that came from
+ * another plugin is never undone.
+ *
+ * @return bool
+ */
+function brikpanel_hide_wc_ads_enabled() {
+    return get_option('brikpanel_hide_wc_ads', 'yes') === 'yes';
+}
+
+/**
+ * @param bool $suppress Whether promotions are already suppressed.
+ * @return bool
+ */
+function brikpanel_suppress_wc_promotions($suppress) {
+    return $suppress || brikpanel_hide_wc_ads_enabled();
+}
+add_filter('woocommerce_marketplace_suppress_promotions', 'brikpanel_suppress_wc_promotions');
+
+/**
+ * @param bool $allow Whether suggestions are still allowed.
+ * @return bool
+ */
+function brikpanel_allow_wc_suggestions($allow) {
+    return $allow && !brikpanel_hide_wc_ads_enabled();
+}
+add_filter('woocommerce_allow_marketplace_suggestions', 'brikpanel_allow_wc_suggestions');
+
 /**
  * Render the small "hidden notices" reveal toggle plus the suppressed
  * third-party notice markup tucked inside it.
@@ -888,6 +933,33 @@ function brikpanel_render_hidden_notices_box($notices_html, $count) {
     echo '<summary title="' . $title . '">' . $bell . '<span>' . esc_html($label) . '</span>' . $chevron . '</summary>';
     echo '<div class="brikpanel-fn-list">' . $notices_html . '</div>';
     echo '</details>';
+}
+
+/**
+ * Mark where a BrikPanel screen's header ends, so admin notices land under it.
+ *
+ * When an admin page is ready, WordPress core (wp-admin/js/common.js) moves every
+ * notice that is not `.inline` (`div.notice`, `div.updated`, `div.error`) to right
+ * after `.wp-header-end`. A page without that marker gets them right after its
+ * first `.wrap h1`, which on BrikPanel's screens sits inside the header row: the
+ * review request split the title row of Products, Coupons and Segments and shrank
+ * to a 109px text column on phones, and a red error squeezed into the product
+ * editor's sticky title bar (field test B5).
+ *
+ * Call it right after the screen's header block closes (title, count, subtitle and
+ * header buttons), outside any row that lays its children side by side. Once per
+ * page: with two markers jQuery clones every notice, so each one shows twice. The
+ * `hidden` attribute keeps the rule out of the layout even where no BrikPanel
+ * stylesheet loads (core gives `.wp-header-end` only visibility and a margin). The
+ * gap under the notices is set in brikpanel-navigation.css.
+ *
+ * A header built by JS must place its marker synchronously or in a plain
+ * DOMContentLoaded listener: common.js moves the notices in a jQuery ready
+ * callback, which jQuery 3 runs after both. tools/header-end-audit.php checks that
+ * every page title is followed by a marker.
+ */
+function brikpanel_header_end() {
+    echo '<hr class="wp-header-end brikpanel-header-end" hidden>';
 }
 
 // =============================================================================
@@ -1018,8 +1090,9 @@ brikpanel_require('includes/brikpanel-enqueue.php');
 
 // =============================================================================
 // FOREIGN ASSET ISOLATION
-// Keep other plugins' (and the theme's) render-blocking payloads off BrikPanel's
-// own full-screen app pages, where they serve no purpose and only slow the page.
+// Keep other plugins' (and the theme's) scripts off BrikPanel's own full-screen
+// app pages, where they serve no purpose and only slow the page. Their
+// stylesheets stay: their notices and icons still show on those pages.
 // =============================================================================
 brikpanel_require('includes/brikpanel-asset-isolation.php');
 

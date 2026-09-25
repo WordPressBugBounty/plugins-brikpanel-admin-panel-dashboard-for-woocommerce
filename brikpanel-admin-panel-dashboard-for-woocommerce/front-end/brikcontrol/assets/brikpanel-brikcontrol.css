@@ -36,12 +36,27 @@
     box-sizing: border-box;
 }
 
+/* The title keeps a real column: when the scan button (its "queued" label is
+   long in Turkish and Russian) does not fit beside it, the button moves under
+   the title instead of squeezing it (field test B10). */
 .brikpanel-bc-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.5rem 1rem;
     margin-bottom: 1rem;
+}
+
+.brikpanel-bc-header-left {
+    flex: 1 1 16rem;
+    min-width: 0;
+}
+
+.brikpanel-bc-header-right {
+    flex: 0 0 auto;
+    max-width: 100%;
+    margin-inline-start: auto;
 }
 
 .brikpanel-bc-title {
@@ -482,6 +497,27 @@
 .brikpanel-bc-table-link {
     font-size: 0.75rem;
     color: #616161 !important;
+}
+
+/* The box scrolls only as a last resort: a table that does not fit turns
+   its rows into cards (brikpanel-fit-table.js, field test B6). */
+.brikpanel-bc-table-wrap {
+    overflow-x: auto;
+}
+
+.brikpanel-bc-largest-table .brikpanel-bc-nowrap {
+    white-space: nowrap;
+}
+
+/* Stacked rows keep the table's own 0.5rem inset so the text lines up
+   with the table mode and a link's focus ring stays inside the box. */
+.brikpanel-bc-details .brikpanel-bc-largest-table.is-stacked {
+    --bp-fit-tile: 7rem;
+}
+
+.brikpanel-bc-details .brikpanel-bc-largest-table.is-stacked > tbody > tr:not([hidden]) {
+    gap: 0.5rem 1rem;
+    padding: 0.625rem 0.5rem;
 }
 
 /* Card footer */

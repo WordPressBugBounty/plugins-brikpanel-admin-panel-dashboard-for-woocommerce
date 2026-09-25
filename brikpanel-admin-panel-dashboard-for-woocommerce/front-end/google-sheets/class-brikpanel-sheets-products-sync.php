@@ -1540,7 +1540,9 @@ class Brikpanel_Sheets_Products_Sync {
 			case 'parent_id':     return (int) $product->get_parent_id();
 			case 'type':          return (string) $product->get_type();
 			case 'sku':           return (string) $product->get_sku();
-			case 'name':          return (string) $product->get_name();
+			// Plain text: stored names can hold "&amp;" (REST imports) and a
+			// variation title the TranslatePress "<span> - </span>" separator.
+			case 'name':          return brikpanel_plain_label( (string) $product->get_name() );
 			case 'variation_attributes':
 				if ( $product->is_type( 'variation' ) ) {
 					$attrs = [];
@@ -1551,7 +1553,13 @@ class Brikpanel_Sheets_Products_Sync {
 						if ( $label === '' || $label === $raw_name ) {
 							$label = brikpanel_title_case( $raw_name );
 						}
-						$attrs[] = $label . ': ' . (string) $v;
+						// The stored value of a global attribute is the term
+						// slug ("black-white"); show the term name instead.
+						$value = (string) $product->get_attribute( $raw_name );
+						if ( $value === '' ) {
+							$value = (string) $v;
+						}
+						$attrs[] = brikpanel_plain_name( $label ) . ': ' . brikpanel_plain_name( $value );
 					}
 					return implode( '; ', $attrs );
 				}

@@ -1290,19 +1290,21 @@
     transform: translateX(0);
 }
 
-.brikpanel-pl-toast.success {
+/* State classes are is-*: a bare `error` makes WordPress style the toast as an
+   admin notice (div.error padding and margin, no shadow). */
+.brikpanel-pl-toast.is-success {
     background: #e4f5e1;
     color: #1a6b15;
     border: 1px solid #b7e1b0;
 }
 
-.brikpanel-pl-toast.error {
+.brikpanel-pl-toast.is-error {
     background: #fce4e4;
     color: #c62828;
     border: 1px solid #f1b0b0;
 }
 
-.brikpanel-pl-toast.info {
+.brikpanel-pl-toast.is-info {
     background: #e8f0fe;
     color: #1a56db;
     border: 1px solid #bdd3f7;

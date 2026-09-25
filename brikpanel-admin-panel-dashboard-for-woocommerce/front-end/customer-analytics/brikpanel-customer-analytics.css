@@ -24,6 +24,19 @@
 	line-height: 1.5;
 }
 
+/* `hidden` must hide on this page. The browser applies [hidden] through its
+   own stylesheet, and any `display` a class sets beats that: the pagers are
+   flex, so "Previous 1 / 1 Next" stayed under every customer table of 25 rows
+   or fewer, and switching to a one-page RFM segment kept the previous
+   segment's "1 / 3". The exclude modal is printed after .bp-ca closes, so it
+   is listed on its own. Not !important: WordPress moves other plugins' notices
+   under the page title, into .bp-ca, and some reveal their parts with an
+   inline style. */
+.bp-ca [hidden]:not([hidden="until-found"]),
+.bp-ca-modal-overlay [hidden]:not([hidden="until-found"]) {
+	display: none;
+}
+
 
 /* RTL leading gutter. Core's RTL stylesheet flips `.wrap` to
    `margin: 10px 2px 0 20px` on the assumption that #wpcontent carries a 20px
@@ -299,6 +312,27 @@ body.rtl.toplevel_page_brikpanel-customer-analytics .wrap {
 .bp-ca-table tbody td.num {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* Stacked rows (field test B6; brikpanel-fit-table.css draws the card):
+   narrower tiles keep two per line on a phone, and the customer block may
+   use the card's width. */
+.bp-ca-table.is-stacked {
+	--bp-fit-tile: 7rem;
+}
+
+.bp-ca-table.is-stacked .bp-ca-customer-cell {
+	max-width: none;
+}
+
+/* A stacked row is one card: the hover lights the card, not each tile. */
+.bp-ca-table.is-stacked > tbody > tr:hover {
+	background: #fafafa;
+}
+
+.bp-ca-table.is-stacked > tbody > tr:hover > td {
+	background: transparent;
 }
 
 .bp-ca-table tbody tr:last-child td {

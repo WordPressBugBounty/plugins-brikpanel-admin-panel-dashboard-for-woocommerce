@@ -733,7 +733,7 @@ class Brikpanel_Store_Summary {
 		$bounds = $this->all_time_bounds();
 
 		$lines = [];
-		$lines[] = '# ' . sprintf( __( 'Store Summary — %s', 'brikpanel' ), $site_name );
+		$lines[] = '# ' . sprintf( __( 'Store Summary — %s', 'brikpanel' ), brikpanel_plain_name( $site_name ) );
 		$lines[] = '';
 		$lines[] = '> ' . sprintf( __( 'Generated %s by BrikPanel %s.', 'brikpanel' ), $generated, BRIKPANEL_VERSION );
 		$lines[] = '';

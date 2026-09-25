@@ -471,7 +471,7 @@
 		].join('');
 
 		var totalRow = '<tr class="bp-ads-table-total">'
-			+ '<td>' + escapeHtml(i18n.total_row || '') + '</td>'
+			+ '<td class="brikpanel-fit-lead">' + escapeHtml(i18n.total_row || '') + '</td>'
 			+ '<td class="num">' + escapeHtml(fmtMoney(s.spend, cur)) + '</td>'
 			+ '<td class="num">' + escapeHtml(fmtNum(s.impressions)) + '</td>'
 			+ '<td class="num">' + escapeHtml(fmtNum(s.clicks)) + '</td>'
@@ -483,8 +483,8 @@
 			var md = derive(m.spend, m.impressions, m.clicks);
 			var rc = m.currency || cur;
 			return '<tr>'
-				+ '<td>' + escapeHtml(fmtMonth(m.month)) + '</td>'
-				+ '<td class="num">' + escapeHtml(fmtMoney(m.spend, rc)) + '</td>'
+				+ '<td class="brikpanel-fit-lead">' + escapeHtml(fmtMonth(m.month)) + '</td>'
+				+ '<td class="num brikpanel-fit-headline">' + escapeHtml(fmtMoney(m.spend, rc)) + '</td>'
 				+ '<td class="num">' + escapeHtml(fmtNum(m.impressions)) + '</td>'
 				+ '<td class="num">' + escapeHtml(fmtNum(m.clicks)) + '</td>'
 				+ '<td class="num">' + escapeHtml(fmtPct(md.ctr)) + '</td>'
@@ -498,7 +498,7 @@
 			+   '<span class="bp-ads-insight-meta">' + meta + '</span>'
 			+ '</div>'
 			+ '<div class="bp-ads-kpi-strip">' + kpis + '</div>'
-			+ '<div class="bp-ads-table-wrap"><table class="bp-ads-table">'
+			+ '<div class="bp-ads-table-wrap"><table class="bp-ads-table brikpanel-fit-table">'
 			+   '<thead><tr>'
 			+     '<th>' + escapeHtml(i18n.col_month || '') + '</th>'
 			+     '<th class="num">' + escapeHtml(i18n.col_spend || '') + '</th>'
@@ -531,6 +531,15 @@
 				} else {
 					$body.innerHTML = sections.join('');
 					$card.hidden = false;
+					// Stacked into cards when a month table cannot show every
+					// column (field test B6: on a phone CTR and CPC scrolled
+					// out of sight). Measured once the card is visible.
+					if (window.brikpanelFitTable) {
+						Array.prototype.forEach.call($body.querySelectorAll('.bp-ads-table-wrap'), function (wrap) {
+							var fit = window.brikpanelFitTable(wrap, { labels: 'head', slack: 0 });
+							if (fit) { fit.refit(); }
+						});
+					}
 				}
 				if ($btn) { busy($btn, false); }
 			})

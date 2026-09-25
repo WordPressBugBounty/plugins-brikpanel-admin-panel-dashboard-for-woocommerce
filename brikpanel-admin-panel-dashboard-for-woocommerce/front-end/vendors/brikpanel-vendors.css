@@ -256,7 +256,10 @@
 }
 .brikpanel-ven-table tbody tr:last-child td { border-bottom: 0; }
 .brikpanel-ven-table tbody tr:hover { background: #fafafa; }
-.brikpanel-ven-num { text-align: right; }
+/* Short values (money, days, counts) stay on one line; names, contacts and
+   notes wrap at spaces (CLAUDE.md table rule). */
+.brikpanel-ven-num { text-align: right; white-space: nowrap; }
+.brikpanel-ven-nowrap { white-space: nowrap; }
 .brikpanel-ven-actions-th { width: 90px; text-align: right; }
 .brikpanel-ven-empty {
     text-align: center;
@@ -290,6 +293,12 @@
     gap: 0.25rem;
     justify-content: flex-end;
     width: 100%;
+}
+
+/* Stacked rows (field test B6; brikpanel-fit-table.css draws the card): the
+   row buttons start at the left of their tile. */
+.brikpanel-ven-table.is-stacked .brikpanel-ven-row-actions {
+    justify-content: flex-start;
 }
 
 /* ── Pagination ─────────────────────────────────────────────────────────── */

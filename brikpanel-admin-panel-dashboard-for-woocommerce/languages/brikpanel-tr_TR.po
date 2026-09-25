@@ -5481,7 +5481,7 @@ msgid ""
 "platforms (store currency only), payment processing fees charged by the "
 "gateway, supplier and stock costs from received purchase orders, plus "
 "anything logged in the Expenses module. Open the breakdown to see each part."
-msgstr ""
+msgstr "Dönemin işletme giderleri: sipariş vergisi, bağlı reklam platformlarından gelen reklam harcaması (yalnızca mağaza para biriminde), ödeme altyapısının kestiği işlem ücretleri, teslim alınan satın alma siparişlerinden gelen tedarikçi ve stok maliyetleri ile Giderler modülüne girilen her şey. Her kalemi görmek için dökümü açın."
 
 #: front-end/dashboard/brikpanel-dashboard.php:825
 #: front-end/dashboard/brikpanel-dashboard.php:826
@@ -11429,7 +11429,7 @@ msgstr ""
 #: front-end/products/brikpanel-product-editor.php:1601
 msgctxt "button that deletes every variation of the product"
 msgid "Clear all"
-msgstr ""
+msgstr "Tümünü sil"
 
 #: front-end/products/brikpanel-product-editor.php:1625
 msgctxt "short placeholder for the bulk sale price field"
@@ -12247,7 +12247,7 @@ msgstr[1] ""
 
 #: front-end/products/brikpanel-product-editor.php:4164
 msgid "Fields from your other plugins"
-msgstr ""
+msgstr "Diğer eklentilerinizden gelen alanlar"
 
 #. translators: %d: number of field groups other plugins add to this product
 #: front-end/products/brikpanel-product-editor.php:4167
@@ -19540,3 +19540,415 @@ msgstr "Son sipariş (%s)"
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:3488
 msgid "Update BrikMentor to use this."
 msgstr "Bunu kullanmak için BrikMentor'ü güncelleyin."
+
+#: front-end/products/brikpanel-product-editor.php:1727
+#: includes/brikpanel-enqueue.php:2076
+msgid "Show all details"
+msgstr "Tüm ayrıntıları göster"
+
+#: includes/brikpanel-enqueue.php:2077
+msgid "Hide all details"
+msgstr "Tüm ayrıntıları gizle"
+
+#. translators: %s: an image file size in megabytes, e.g. "2.40"
+#: front-end/brikcontrol/views/partials/check-card.php:292
+#, php-format
+msgid "%s MB"
+msgstr "%s MB"
+
+#. translators: shown after the lead time a supplier has by default, e.g. "7d default"
+#: front-end/vendors/class-brikpanel-vendors.php:307
+msgctxt "supplier default lead time, e.g. 7d default"
+msgid "default"
+msgstr "varsayılan"
+
+#: front-end/orders/brikpanel-orders.php
+msgid "Hide WooCommerce ads"
+msgstr "WooCommerce reklamlarını gizle"
+
+#: front-end/orders/brikpanel-orders.php
+msgid "Hide the ads WooCommerce.com shows in your admin: promo cards such as the one above the Orders list, the sale badge on the Extensions menu and extension suggestions. Turn this off to show them again."
+msgstr "WooCommerce.com'un yönetim panelinizde gösterdiği reklamları gizler: Siparişler listesinin üstündeki gibi reklam kartları, Genişleme paketleri menüsündeki indirim rozeti ve eklenti önerileri. Yeniden göstermek için bunu kapatın."
+
+#: front-end/products/brikpanel-product-editor.php:1537
+#: includes/brikpanel-enqueue.php:2178
+msgid "No video yet"
+msgstr "Henüz video yok"
+
+#: front-end/products/brikpanel-product-editor.php:1539
+#: includes/brikpanel-enqueue.php:2180
+msgid "Edit video"
+msgstr "Videoyu düzenle"
+
+#: front-end/products/brikpanel-product-editor.php:1539
+#: includes/brikpanel-enqueue.php:2179
+msgid "Add video"
+msgstr "Video ekle"
+
+#: front-end/products/brikpanel-product-editor.php:8468
+msgid "The product was saved, but its video changes could not be stored. Try saving again."
+msgstr "Ürün kaydedildi, ancak video değişiklikleri saklanamadı. Tekrar kaydetmeyi deneyin."
+
+#: front-end/products/video/brikpanel-product-video.php:309
+#: includes/brikpanel-enqueue.php:2153
+msgid "Media library"
+msgstr "Ortam kütüphanesi"
+
+#: front-end/products/video/brikpanel-product-video.php:313
+#: includes/brikpanel-enqueue.php:2154
+msgid "Video link"
+msgstr "Video bağlantısı"
+
+#: front-end/products/video/brikpanel-product-video.php:317
+#: includes/brikpanel-enqueue.php:2164
+msgid "Current video"
+msgstr "Mevcut video"
+
+#. translators: 1: video source (YouTube, Vimeo…), 2: the video link or file name
+#: front-end/products/video/brikpanel-product-video.php:322
+#: includes/brikpanel-enqueue.php:2182
+#, php-format
+msgctxt "product video source and link"
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+#: front-end/products/video/brikpanel-product-video.php:861
+msgid "Video changes were not saved because the store's video support changed while you were editing. Reload the page and try again."
+msgstr "Siz düzenlerken mağazanın video desteği değiştiği için video değişiklikleri kaydedilmedi. Sayfayı yenileyip tekrar deneyin."
+
+#: front-end/products/video/brikpanel-product-video.php:956
+msgid "A video was not saved because its image is no longer part of this product."
+msgstr "Görseli artık bu ürüne ait olmadığı için bir video kaydedilmedi."
+
+#: front-end/products/video/brikpanel-product-video.php:958
+msgid "A video was not saved because you are not allowed to edit that image."
+msgstr "O görseli düzenleme izniniz olmadığı için bir video kaydedilmedi."
+
+#. translators: %s: theme or plugin name, e.g. WoodMart
+#: front-end/products/video/brikpanel-product-video.php:961
+#, php-format
+msgid "A video was not saved because %s does not play videos on that image."
+msgstr "%s o görselde video oynatmadığı için bir video kaydedilmedi."
+
+#: front-end/products/video/brikpanel-product-video.php:963
+msgid "A video was not saved because its YouTube link is not a video link."
+msgstr "YouTube bağlantısı bir video bağlantısı olmadığı için bir video kaydedilmedi."
+
+#: front-end/products/video/brikpanel-product-video.php:965
+msgid "A video was not saved because its Vimeo link is not a video link."
+msgstr "Vimeo bağlantısı bir video bağlantısı olmadığı için bir video kaydedilmedi."
+
+#: front-end/products/video/brikpanel-product-video.php:967
+msgid "A video was not saved because the chosen file is not a video in a supported format."
+msgstr "Seçilen dosya desteklenen biçimde bir video olmadığı için bir video kaydedilmedi."
+
+#: front-end/products/video/brikpanel-product-video.php:969
+msgid "A video was not saved because its link does not point to a supported video file."
+msgstr "Bağlantısı desteklenen bir video dosyasını göstermediği için bir video kaydedilmedi."
+
+#: front-end/products/video/brikpanel-product-video.php:971
+msgid "The product video was not saved because its size must look like 900x900 (width x height)."
+msgstr "Ürün videosu kaydedilmedi çünkü boyutu 900x900 (genişlik x yükseklik) biçiminde olmalı."
+
+#: front-end/products/video/brikpanel-product-video.php:973
+msgid "Video changes were not saved because too many were sent at once. Save again with fewer changes."
+msgstr "Aynı anda çok fazla değişiklik gönderildiği için video değişiklikleri kaydedilmedi. Daha az değişiklikle tekrar kaydedin."
+
+#: front-end/products/video/brikpanel-product-video.php:975
+msgid "A video was not saved because its settings were not valid."
+msgstr "Ayarları geçerli olmadığı için bir video kaydedilmedi."
+
+#: front-end/products/video/providers/class-brikpanel-video-blocksy.php:46
+msgid "Blocksy"
+msgstr "Blocksy"
+
+#: front-end/products/video/providers/class-brikpanel-video-commercekit.php:37
+msgid "CommerceKit"
+msgstr "CommerceKit"
+
+#: front-end/products/video/providers/class-brikpanel-video-flatsome.php:41
+msgid "Flatsome"
+msgstr "Flatsome"
+
+#: front-end/products/video/providers/class-brikpanel-video-minimog.php:32
+msgid "Minimog"
+msgstr "Minimog"
+
+#: front-end/products/video/providers/class-brikpanel-video-porto.php:45
+msgid "Porto"
+msgstr "Porto"
+
+#: front-end/products/video/providers/class-brikpanel-video-woodmart.php:46
+msgid "WoodMart"
+msgstr "WoodMart"
+
+#: includes/brikpanel-enqueue.php:2145
+msgid "Video for this image"
+msgstr "Bu görselin videosu"
+
+#. translators: %s: theme or plugin name, e.g. WoodMart
+#: includes/brikpanel-enqueue.php:2147
+#, php-format
+msgid "Plays in the product gallery. Shown by %s."
+msgstr "Ürün galerisinde oynar. %s tarafından gösterilir."
+
+#. translators: %s: theme or plugin name, e.g. Flatsome
+#: includes/brikpanel-enqueue.php:2149
+#, php-format
+msgid "Plays on the product page. Shown by %s."
+msgstr "Ürün sayfasında oynar. %s tarafından gösterilir."
+
+#: includes/brikpanel-enqueue.php:2155
+msgid "Link to the video file"
+msgstr "Video dosyasının bağlantısı"
+
+#: includes/brikpanel-enqueue.php:2156
+msgid "https://example.com/video.mp4"
+msgstr "https://example.com/video.mp4"
+
+#. translators: %s: list of file types, e.g. "mp4, webm"
+#: includes/brikpanel-enqueue.php:2158
+#, php-format
+msgid "Supported files: %s"
+msgstr "Desteklenen dosyalar: %s"
+
+#: includes/brikpanel-enqueue.php:2159
+msgid "This is not a YouTube video link."
+msgstr "Bu bir YouTube video bağlantısı değil."
+
+#: includes/brikpanel-enqueue.php:2160
+msgid "This is not a Vimeo video link, like https://vimeo.com/123456789."
+msgstr "Bu, https://vimeo.com/123456789 gibi bir Vimeo video bağlantısı değil."
+
+#: includes/brikpanel-enqueue.php:2161
+msgid "This link does not point to a supported video file."
+msgstr "Bu bağlantı desteklenen bir video dosyasını göstermiyor."
+
+#: includes/brikpanel-enqueue.php:2162
+msgid "Choose a video file in a supported format."
+msgstr "Desteklenen biçimde bir video dosyası seçin."
+
+#: includes/brikpanel-enqueue.php:2163
+msgid "Enter the size as width x height, for example 900x900."
+msgstr "Boyutu genişlik x yükseklik olarak girin, örneğin 900x900."
+
+#: includes/brikpanel-enqueue.php:2165
+msgid "This video was set up outside BrikPanel. It stays as it is unless you choose a new source."
+msgstr "Bu video BrikPanel dışında ayarlanmış. Yeni bir kaynak seçmediğiniz sürece olduğu gibi kalır."
+
+#: includes/brikpanel-enqueue.php:2166
+msgid "Add a video to this image"
+msgstr "Bu görsele video ekle"
+
+#: includes/brikpanel-enqueue.php:2167
+msgid "Edit the video of this image"
+msgstr "Bu görselin videosunu düzenle"
+
+#: includes/brikpanel-enqueue.php:2168
+msgid "Add a video to this variation image"
+msgstr "Bu varyasyon görseline video ekle"
+
+#: includes/brikpanel-enqueue.php:2169
+msgid "Edit the video of this variation image"
+msgstr "Bu varyasyon görselinin videosunu düzenle"
+
+#: includes/brikpanel-enqueue.php:2170
+msgid "The video is saved on the image itself, so it also plays wherever this image is used."
+msgstr "Video görselin kendisine kaydedilir, bu yüzden bu görselin kullanıldığı her yerde oynar."
+
+#. translators: %s: theme or plugin name, e.g. CommerceKit
+#: includes/brikpanel-enqueue.php:2172
+#, php-format
+msgid "%s plays videos on gallery images only. You can remove this one."
+msgstr "%s yalnızca galeri görsellerinde video oynatır. Bu videoyu kaldırabilirsiniz."
+
+#: includes/brikpanel-enqueue.php:2173
+msgid "On the product page this plays when the variation also has its own gallery."
+msgstr "Ürün sayfasında bu video, varyasyonun kendi galerisi de varsa oynar."
+
+#: includes/brikpanel-enqueue.php:2174
+msgid "You cannot change this video because the image belongs to another user."
+msgstr "Görsel başka bir kullanıcıya ait olduğu için bu videoyu değiştiremezsiniz."
+
+#: includes/brikpanel-enqueue.php:2175
+msgid "This image shows a 360° view. Adding a video replaces it on the product page."
+msgstr "Bu görsel 360° görünüm gösteriyor. Video eklemek ürün sayfasında onun yerini alır."
+
+#: includes/brikpanel-enqueue.php:2176
+msgid "Product video set"
+msgstr "Ürün videosu ayarlandı"
+
+#: includes/brikpanel-enqueue.php:2177
+msgid "Product video removed"
+msgstr "Ürün videosu kaldırıldı"
+
+#: includes/brikpanel-enqueue.php:2183
+msgid "Play automatically (muted)"
+msgstr "Otomatik oynat (sessiz)"
+
+#: includes/brikpanel-enqueue.php:2184
+msgctxt "video player style"
+msgid "Player"
+msgstr "Oynatıcı"
+
+#: includes/brikpanel-enqueue.php:2185
+msgctxt "video player style"
+msgid "Simple"
+msgstr "Sade"
+
+#: includes/brikpanel-enqueue.php:2186
+msgctxt "video player style"
+msgid "Standard"
+msgstr "Standart"
+
+#: includes/brikpanel-enqueue.php:2187
+msgid "Video size"
+msgstr "Video boyutu"
+
+#: includes/brikpanel-enqueue.php:2188
+msgctxt "video size"
+msgid "Fit"
+msgstr "Sığdır"
+
+#: includes/brikpanel-enqueue.php:2189
+msgctxt "video size"
+msgid "Fill"
+msgstr "Doldur"
+
+#: includes/brikpanel-enqueue.php:2190
+msgid "Show the player instead of the image"
+msgstr "Görsel yerine oynatıcıyı göster"
+
+#: includes/brikpanel-enqueue.php:2191
+msgctxt "video sound"
+msgid "Sound"
+msgstr "Ses"
+
+#: includes/brikpanel-enqueue.php:2192
+msgctxt "video sound"
+msgid "On"
+msgstr "Açık"
+
+#: includes/brikpanel-enqueue.php:2193
+msgctxt "video sound"
+msgid "Muted"
+msgstr "Sessiz"
+
+#: includes/brikpanel-enqueue.php:2194
+msgid "Hide labels and buttons while the video plays"
+msgstr "Video oynarken etiketleri ve düğmeleri gizle"
+
+#: includes/brikpanel-enqueue.php:2195
+msgid "Show the image again when the pointer leaves"
+msgstr "İmleç ayrılınca görseli yeniden göster"
+
+#: includes/brikpanel-enqueue.php:2196
+msgid "Where to show it"
+msgstr "Nerede gösterilsin"
+
+#: includes/brikpanel-enqueue.php:2197
+msgid "Button (lightbox)"
+msgstr "Düğme (açılır pencere)"
+
+#: includes/brikpanel-enqueue.php:2198
+msgid "Product tab"
+msgstr "Ürün sekmesi"
+
+#: includes/brikpanel-enqueue.php:2199
+msgid "Lightbox size"
+msgstr "Açılır pencere boyutu"
+
+#: includes/brikpanel-enqueue.php:2200
+msgctxt "product video display"
+msgid "Display"
+msgstr "Gösterim"
+
+#: includes/brikpanel-enqueue.php:2201
+msgctxt "product video display"
+msgid "Popup"
+msgstr "Açılır pencere"
+
+#: includes/brikpanel-enqueue.php:2202
+msgid "Gallery slide"
+msgstr "Galeri slaytı"
+
+#: includes/brikpanel-enqueue.php:2203
+msgid "Position in the gallery"
+msgstr "Galerideki sırası"
+
+#: includes/brikpanel-enqueue.php:2204
+msgctxt "position in the gallery"
+msgid "Last"
+msgstr "Son"
+
+# apattee request (2026-09-25): items sold, live traffic source, tax out of revenue.
+msgid "Items sold"
+msgstr "Satılan ürün"
+
+#, php-format
+msgid "Campaign: %s"
+msgstr "Kampanya: %s"
+
+msgid "Exclude tax from Revenue and Expenses"
+msgstr "Vergiyi Gelir ve Giderlerden çıkar"
+
+msgid "Excluding tax"
+msgstr "Vergi hariç"
+
+#, php-format
+msgid "Landing page: %s"
+msgstr "Giriş sayfası: %s"
+
+#, php-format
+msgid "Medium: %s"
+msgstr "Araç: %s"
+
+msgid "Net of returns and tax"
+msgstr "İadelerden ve vergiden arındırılmış"
+
+msgid "Off by default: Revenue in the Profit section includes the tax your customers paid, and the same tax is counted in Expenses. Turn this on to show Revenue without tax and leave tax out of Expenses. Net profit stays exactly the same."
+msgstr "Varsayılan olarak kapalı: Kâr bölümündeki Gelir, müşterilerinizin ödediği vergiyi içerir ve aynı vergi Giderler'de de sayılır. Açarsanız Gelir vergisiz gösterilir ve vergi Giderler'e dahil edilmez. Net kâr aynı kalır."
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is already taken out of Revenue. Open the breakdown to see each part."
+msgstr "Dönemin işletme giderleri: bağlı reklam platformlarından gelen reklam harcaması (yalnızca mağaza para biriminde), ödeme altyapısının kestiği işlem ücretleri, teslim alınan satın alma siparişlerinden gelen tedarikçi ve stok maliyetleri ile Giderler modülüne girilen her şey. Vergi burada yok, çünkü zaten Gelir'den çıkarıldı. Her kalemi görmek için dökümü açın."
+
+msgid "Remembers where this visit came from (the referring site and the campaign in the link) so the store owner's Live visitors list can show it."
+msgstr "Bu ziyaretin nereden geldiğini (yönlendiren site ve bağlantıdaki kampanya) hatırlar; böylece mağaza sahibinin Canlı Ziyaretçiler listesinde gösterilebilir."
+
+#, php-format
+msgid "Search term: %s"
+msgstr "Arama kelimesi: %s"
+
+msgid "Show where each live visitor came from (for example Organic Search · google.com or Paid · bing.com) under the page they are on. Hover a visitor to see the campaign, search term and landing page from their link. The source is remembered only for the open browser tab and is kept with the rest of the live data for a couple of minutes."
+msgstr "Her canlı ziyaretçinin nereden geldiğini (örneğin Organik Arama · google.com ya da Ücretli · bing.com) baktığı sayfanın altında gösterir. Bağlantısındaki kampanyayı, arama kelimesini ve giriş sayfasını görmek için ziyaretçinin üzerine gelin. Kaynak yalnızca açık tarayıcı sekmesi için hatırlanır ve diğer canlı verilerle birlikte birkaç dakika tutulur."
+
+#, php-format
+msgid "Source: %s"
+msgstr "Kaynak: %s"
+
+msgid "Taken out of Revenue"
+msgstr "Gelirden düşüldü"
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the \"Exclude tax from Revenue and Expenses\" setting is on, so it is not in Expenses either."
+msgstr "Seçili tarihler için tüm ödenmiş siparişlerin toplamı (varsayılan olarak İşleniyor ve Tamamlandı), kargo dahil ve vergi çıkarılmış olarak. Mağaza yöneticileri tarafından verilen siparişler dışarıda bırakılır, böylece kendi test siparişleriniz bunu değiştirmez. \"Vergiyi Gelir ve Giderlerden çıkar\" ayarı açık olduğu için vergi çıkarılır; bu yüzden Giderler'de de yer almaz."
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the \"Exclude tax from Revenue and Expenses\" setting is on, so it is not in Expenses either."
+msgstr "Seçili tarihler için tüm ödenmiş siparişlerin toplamı (varsayılan olarak İşleniyor ve Tamamlandı), kargo dahil, vergi çıkarılmış ve dönemdeki müşteri geri ödemeleri düşülmüş olarak. Mağaza yöneticileri tarafından verilen siparişler dışarıda bırakılır, böylece kendi test siparişleriniz bunu değiştirmez. \"Vergiyi Gelir ve Giderlerden çıkar\" ayarı açık olduğu için vergi çıkarılır; bu yüzden Giderler'de de yer almaz."
+
+msgid "Traffic source in Live view"
+msgstr "Canlı görünümde trafik kaynağı"
+
+msgid "Until the browser tab is closed"
+msgstr "Tarayıcı sekmesi kapanana kadar"
+
+#, php-format
+msgid "%s item sold"
+msgid_plural "%s items sold"
+msgstr[0] "%s ürün satıldı"
+msgstr[1] "%s ürün satıldı"
+
+#, php-format
+msgid "%s item"
+msgid_plural "%s items"
+msgstr[0] "%s ürün"
+msgstr[1] "%s ürün"

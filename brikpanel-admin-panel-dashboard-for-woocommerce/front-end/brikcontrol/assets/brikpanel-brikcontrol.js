@@ -11,6 +11,15 @@
 (function () {
     'use strict';
 
+    // Sample tables in the check cards: rows turn into cards when a table
+    // does not fit (field test B6). The rows come from the server, so one
+    // refit each is enough; a closed <details> is measured once it opens.
+    if (window.brikpanelFitTable) {
+        Array.prototype.forEach.call(document.querySelectorAll('.brikpanel-bc-table-wrap > .brikpanel-fit-table'), function (table) {
+            window.brikpanelFitTable(table, { labels: 'head', slack: 0 }).refit();
+        });
+    }
+
     var cfg = window.brikpanelBrikControl;
     if (!cfg || !cfg.ajax_url) {
         return;

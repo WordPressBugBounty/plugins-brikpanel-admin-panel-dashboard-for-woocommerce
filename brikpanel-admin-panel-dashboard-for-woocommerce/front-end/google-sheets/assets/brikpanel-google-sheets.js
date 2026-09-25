@@ -730,6 +730,8 @@
 					setTimeout(function () { window.location.reload(); }, 500);
 				}
 			}
+			// A long email ends in "…" in the pill; the tooltip keeps it whole.
+			if (pillText) { pill.setAttribute('title', pillText.textContent); }
 			var expiresEl = document.getElementById('bp-gs-expires');
 			if (expiresEl && s.expires_in > 0) {
 				var mins = Math.max(0, Math.ceil(s.expires_in / 60));

@@ -326,3 +326,87 @@ if ( ! function_exists( 'brikpanel_title_case' ) ) {
 			: ucwords( $text );
 	}
 }
+
+/*
+ * NAMES AS PLAIN TEXT.
+ *
+ * WordPress stores many names HTML-encoded: product titles saved through the
+ * WooCommerce REST API or by a user without `unfiltered_html` keep `&` as
+ * `&amp;`, term names, display names and gateway titles are always stored
+ * encoded, get_the_title() adds `&#8211;`/`&#8217;`, and order item names can
+ * carry markup (TranslatePress wraps the variation separator in a <span>).
+ * Core screens print them with esc_html(), which does not double-encode, so
+ * they look right there. JSON for our screens, CSV files and Sheets cells need
+ * the plain text, or "One &amp; One" reaches the merchant (wp.org report).
+ * Every JS consumer escapes on insert, so the decoded text stays inert.
+ */
+
+if ( ! function_exists( 'brikpanel_plain_name' ) ) {
+	/**
+	 * Decode a stored name (product title, term name, display name) to plain text.
+	 *
+	 * @param string $text Name as stored.
+	 * @return string
+	 */
+	function brikpanel_plain_name( $text ) {
+		$text = (string) $text;
+		if ( false === strpos( $text, '&' ) ) {
+			return $text;
+		}
+
+		return html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'brikpanel_plain_label' ) ) {
+	/**
+	 * Plain text for a name that may also carry markup (order item names,
+	 * variation titles, get_the_title(), get_formatted_name()).
+	 *
+	 * Tags go before the entities are decoded, otherwise a title that reads
+	 * "Size &lt;5cm" would decode to "<5cm" and the strip would eat it. A lone
+	 * "<" typed into a title ("I <3 NY") is kept, and each tag boundary becomes
+	 * a space so "Tee (SKU)<span>Color: Red</span>" does not glue two words.
+	 *
+	 * @param string $html Name as stored or rendered.
+	 * @return string
+	 */
+	function brikpanel_plain_label( $html ) {
+		$text = (string) $html;
+		if ( false === strpbrk( $text, '&<' ) ) {
+			return trim( $text );
+		}
+
+		if ( false !== strpos( $text, '<' ) ) {
+			$text = wp_pre_kses_less_than( $text );
+			$text = wp_strip_all_tags( str_replace( '<', ' <', $text ) );
+			$text = preg_replace( '/[ \t\r\n]{2,}/', ' ', $text );
+		}
+
+		return trim( html_entity_decode( (string) $text, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
+	}
+}
+
+if ( ! function_exists( 'brikpanel_term_ref' ) ) {
+	/**
+	 * A term name the browser will send back to be matched against the stored
+	 * term (product editor attribute values and tags), or a CSV term cell.
+	 *
+	 * Only `&` and quotes are decoded. `<` and `>` stay encoded because the save
+	 * path runs sanitize_text_field(), which would strip "<XL>" from a value the
+	 * merchant never touched, and WooCommerce's CSV importer reads ">" as a
+	 * category hierarchy. Rarer entities (`&eacute;`) are left alone so the
+	 * lookup by name still finds the same term.
+	 *
+	 * @param string $name Term name as stored.
+	 * @return string
+	 */
+	function brikpanel_term_ref( $name ) {
+		$name = (string) $name;
+		if ( false === strpos( $name, '&' ) ) {
+			return $name;
+		}
+
+		return str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), wp_specialchars_decode( $name, ENT_QUOTES ) );
+	}
+}

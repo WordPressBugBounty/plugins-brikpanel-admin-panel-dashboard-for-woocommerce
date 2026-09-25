@@ -1498,3 +1498,19 @@
 		transition: opacity 0.25s ease;
 	}
 }
+
+/* ==========================================================================
+ * `hidden` must hide inside the popup, whatever the theme says.
+ * ========================================================================== */
+
+/* The browser applies [hidden] through its own stylesheet, and any `display`
+ * a stylesheet sets beats it. Themes give every button one (WoodMart
+ * inline-flex, Hello Elementor inline-block), so the "Wrong address? Edit it"
+ * link stayed on screen above its own open edit form. !important and the extra
+ * :not() weight keep this above every rule in this file (they are all
+ * `.brikpanel-cartab-popup-overlay .x { … !important }`) and above theme rules.
+ * It is last in the file so a later rule of the same weight cannot undo it.
+ * `until-found` is left to the browser, which reveals it on find-in-page. */
+.brikpanel-cartab-popup-overlay [hidden]:not([hidden="until-found"]) {
+	display: none !important;
+}

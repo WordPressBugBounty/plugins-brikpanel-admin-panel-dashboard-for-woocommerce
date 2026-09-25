@@ -29,6 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</button>
 			</div>
 		</div>
+		<?php brikpanel_header_end(); ?>
 
 		<div class="bp-seg-tabs" role="tablist">
 			<button type="button" class="bp-seg-tab is-active" data-tab="orders" role="tab" aria-selected="true">
@@ -184,7 +185,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<table class="bp-seg-table" id="bp-seg-table">
 					<thead id="bp-seg-thead"></thead>
 					<tbody id="bp-seg-tbody">
-						<tr><td class="bp-seg-empty" colspan="9"><?php esc_html_e( 'Loading…', 'brikpanel' ); ?></td></tr>
+						<tr><td class="bp-seg-empty" colspan="8"><?php esc_html_e( 'Loading…', 'brikpanel' ); ?></td></tr>
 					</tbody>
 				</table>
 			</div>

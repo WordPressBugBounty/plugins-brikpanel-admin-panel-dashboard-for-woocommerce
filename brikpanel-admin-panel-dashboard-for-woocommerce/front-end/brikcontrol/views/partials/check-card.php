@@ -238,7 +238,8 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
         ?>
         <details class="brikpanel-bc-details">
             <summary><?php echo esc_html( $sample_title ); ?></summary>
-            <table class="brikpanel-bc-largest-table">
+            <div class="brikpanel-bc-table-wrap">
+            <table class="brikpanel-bc-largest-table brikpanel-fit-table">
                 <?php if ( ! empty( $sample_cols ) ) : ?>
                     <thead>
                         <tr>
@@ -258,13 +259,15 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
         </details>
     <?php endif; ?>
 
     <?php if ( ! empty( $largest ) ) : ?>
         <details class="brikpanel-bc-details">
             <summary><?php esc_html_e( 'Largest images (top 10)', 'brikpanel' ); ?></summary>
-            <table class="brikpanel-bc-largest-table">
+            <div class="brikpanel-bc-table-wrap">
+            <table class="brikpanel-bc-largest-table brikpanel-fit-table">
                 <thead>
                     <tr>
                         <th><?php esc_html_e( 'Image', 'brikpanel' ); ?></th>
@@ -276,7 +279,7 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
                 <tbody>
                     <?php foreach ( $largest as $entry ) : ?>
                         <tr>
-                            <td>
+                            <td class="brikpanel-fit-lead">
                                 <a href="<?php echo esc_url( $entry['edit_url'] ?? '#' ); ?>">
                                     <?php
                                     $product_title = get_the_title( (int) ( $entry['post_id'] ?? 0 ) );
@@ -284,7 +287,10 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
                                     ?>
                                 </a>
                             </td>
-                            <td><?php echo esc_html( number_format_i18n( $entry['size_mb'] ?? 0, 2 ) ); ?> MB</td>
+                            <td class="brikpanel-bc-nowrap"><?php
+                                /* translators: %s: an image file size in megabytes, e.g. "2.40" */
+                                echo esc_html( sprintf( __( '%s MB', 'brikpanel' ), number_format_i18n( $entry['size_mb'] ?? 0, 2 ) ) );
+                            ?></td>
                             <td><?php echo esc_html( $entry['mime'] ?? '' ); ?></td>
                             <td>
                                 <a class="brikpanel-bc-table-link" href="<?php echo esc_url( $entry['media_url'] ?? '#' ); ?>">
@@ -295,6 +301,7 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
         </details>
     <?php endif; ?>
 

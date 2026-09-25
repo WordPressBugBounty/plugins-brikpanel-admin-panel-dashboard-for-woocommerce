@@ -20,16 +20,31 @@
 	line-height: 1.5;
 }
 
+/* `hidden` must hide on this page. The browser applies [hidden] through its
+   own stylesheet, and any `display` a class sets beats that: the orders scope
+   hint is flex, so when its count request failed it stayed on screen as a
+   bordered box stuck on "Counting…". Not !important: WordPress moves other
+   plugins' notices under the page title, into .bp-gs, and some reveal their
+   parts with an inline style. */
+.bp-gs [hidden]:not([hidden="until-found"]) {
+	display: none;
+}
+
 /* ----- HEADER ----- */
+/* The title keeps a real column: when the status pill (the connected account's
+   email) does not fit beside it, the pill moves under it instead of squeezing
+   the title to one word per line (field test B10). */
 .bp-gs-header {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-start;
 	justify-content: space-between;
 	margin: 0 0 1rem;
-	gap: 1rem;
+	gap: 0.5rem 1rem;
 }
 
-.bp-gs-header-left { flex: 1 1 auto; min-width: 0; }
+.bp-gs-header-left { flex: 1 1 16rem; min-width: 0; }
+.bp-gs-header-right { min-width: 0; max-width: 100%; }
 .bp-gs-header-left h1 {
 	margin: 0 0 0.25rem;
 	font-size: 1.125rem;
@@ -54,12 +69,21 @@
 	font-weight: 550;
 	color: #303030;
 	box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+	max-width: 100%;
+	box-sizing: border-box;
+}
+.bp-gs-pill-text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .bp-gs-pill[data-state="live"]    .bp-gs-pill-dot { background: #1a8917; }
 .bp-gs-pill[data-state="off"]     .bp-gs-pill-dot { background: #8a8a8a; }
 .bp-gs-pill[data-state="error"]   .bp-gs-pill-dot { background: #d72c0d; }
 .bp-gs-pill[data-state="refresh"] .bp-gs-pill-dot { background: #d2c11d; animation: bp-gs-pulse 1.2s ease-in-out infinite; }
 .bp-gs-pill-dot {
+	flex-shrink: 0;
 	width: 8px;
 	height: 8px;
 	border-radius: 999px;

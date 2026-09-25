@@ -65,11 +65,73 @@
 		return span;
 	}
 
-	/** A <td> already tagged with the class its column's hide rule targets. */
+	/**
+	 * Header text per column id, copied from the translated <th data-col>
+	 * cells. Keyed by id, not position: a reorder moves the header cells.
+	 */
+	var columnLabels = null;
+
+	function columnLabel(colId) {
+		if (!columnLabels) {
+			columnLabels = {};
+			var ths = document.querySelectorAll('#brikpanel-cartab-thead-row th[data-col]');
+			Array.prototype.forEach.call(ths, function (th) {
+				columnLabels[th.getAttribute('data-col')] = th.textContent.replace(/\s+/g, ' ').trim();
+			});
+		}
+		return columnLabels[colId] || '';
+	}
+
+	/**
+	 * A <td> already tagged with the class its column's hide rule targets, and
+	 * with the label a stacked row shows above its value (see fitTable()).
+	 */
 	function colCell(colId, extraClass) {
 		var td = document.createElement('td');
 		td.className = 'brikpanel-cartab-col-' + colId + (extraClass ? ' ' + extraClass : '');
+		var label = columnLabel(colId);
+		if (label) {
+			td.setAttribute('data-bp-label', label);
+		}
 		return td;
+	}
+
+	/**
+	 * Writes an address that may break after "@" and before a dot, never inside
+	 * a word; unbroken, a long address held its column wide open. The breakable
+	 * part sits in its own white-space: normal span, while the last piece stays
+	 * in the nowrap cell with the envelope, so the icon never ends up alone on
+	 * a line. A character loop, not a lookbehind regex (older Safari).
+	 */
+	function appendAddress(el, address) {
+		var pieces = [];
+		var current = '';
+		for (var i = 0; i < address.length; i++) {
+			var ch = address.charAt(i);
+			if (ch === '.' && current) {
+				pieces.push(current);
+				current = '';
+			}
+			current += ch;
+			if (ch === '@') {
+				pieces.push(current);
+				current = '';
+			}
+		}
+		if (current) {
+			pieces.push(current);
+		}
+		var last = pieces.pop() || '';
+		if (pieces.length) {
+			var head = document.createElement('span');
+			head.className = 'brikpanel-cartab-email-head';
+			pieces.forEach(function (piece) {
+				head.appendChild(document.createTextNode(piece));
+				head.appendChild(document.createElement('wbr'));
+			});
+			el.appendChild(head);
+		}
+		el.appendChild(document.createTextNode(last));
 	}
 
 	function post(action, data) {
@@ -322,6 +384,8 @@
 
 		var number = document.createElement('span');
 		number.className = 'brikpanel-cartab-phone';
+		// Left-to-right data: keeps "+90 532..." in order on a right-to-left page.
+		number.setAttribute('dir', 'ltr');
 		number.textContent = row.phone;
 		if (row.phone_source === 'account') {
 			number.title = cfg.i18n.phone_account;
@@ -452,7 +516,9 @@
 
 			var text = document.createElement('span');
 			text.className = 'brikpanel-cartab-email-text';
-			text.textContent = row.email;
+			// Left-to-right data, kept in order on a right-to-left page.
+			text.setAttribute('dir', 'ltr');
+			appendAddress(text, row.email);
 			td.appendChild(text);
 
 			// Promotion off and nothing to unlock it: no envelope at all, the
@@ -657,6 +723,7 @@
 			td.textContent = cfg.i18n.empty;
 			tr.appendChild(td);
 			tbody.appendChild(tr);
+			fitTable();
 			return;
 		}
 
@@ -665,8 +732,8 @@
 
 			// Expand affordance at the start of the row, in place of the old
 			// "Details" button that used to sit in the actions column. The table
-			// is wide enough to scroll sideways on most screens, so a chevron
-			// here costs one narrow column and gives the actions column back.
+			// carries many columns, so a chevron here costs one narrow column and
+			// gives the actions column back.
 			// Its own "expander" classes: .brikpanel-cartab-toggle is the header's
 			// Email popup switch, and sharing it restyled that switch.
 			var toggleTd = document.createElement('td');
@@ -730,6 +797,8 @@
 				});
 			});
 		});
+
+		fitTable();
 	}
 
 	function load() {
@@ -806,6 +875,28 @@
 	var theadRow    = $('brikpanel-cartab-thead-row');
 	var colsSaveTimer = null;
 	var dragItem = null;
+
+	// =====================================================================
+	// Fit: table or stacked cards
+	// =====================================================================
+	// Rows turn into stacked cards when the table cannot show every column
+	// inside its card (field test B2: Delete was cut off on tablets, and with
+	// BrikMentor's two columns even on a 1440px screen). Measured rather than
+	// guessed: the width depends on the language, the data and how many of
+	// the columns the user switched on. render() calls fitTable() last.
+	// The shared helper (front-end/shared/brikpanel-fit-table.js) measures an
+	// invisible copy, which keeps the data-hide-<id> attributes, so switched-off
+	// columns are not counted. Below 720px it stacks regardless.
+
+	var fit = (table && window.brikpanelFitTable) ? window.brikpanelFitTable(table, { floor: 720 }) : null;
+
+	// After every render (and column switch): the rows changed, so they are
+	// measured again.
+	function fitTable() {
+		if (fit) {
+			fit.refit();
+		}
+	}
 
 	/** Column ids in the order the popover currently shows them. */
 	function popoverOrder() {
@@ -1074,5 +1165,7 @@
 		});
 	});
 
+	// The server-rendered header can already be too wide while "Loading" shows.
+	fitTable();
 	load();
 })();

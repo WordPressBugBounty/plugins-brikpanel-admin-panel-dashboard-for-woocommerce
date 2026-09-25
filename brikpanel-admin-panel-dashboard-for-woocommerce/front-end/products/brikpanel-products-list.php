@@ -1549,6 +1549,7 @@ class Brikpanel_Products_List {
                     </a>
                 </div>
             </div>
+            <?php brikpanel_header_end(); ?>
 
             <!-- Filters Bar -->
             <div class="brikpanel-pl-filters">
@@ -2073,11 +2074,11 @@ class Brikpanel_Products_List {
                             <span id="bpl-progress-stats-text">0 / 0</span>
                             <span id="bpl-progress-percent">0%</span>
                         </div>
-                        <p class="bpl-progress-errors" id="bpl-progress-errors" hidden></p>
+                        <p class="bpl-progress-errors" id="bpl-progress-errors"></p>
                     </div>
                     <div class="bpl-progress-footer">
                         <button type="button" class="brikpanel-pl-btn secondary" id="bpl-progress-cancel"><?php esc_html_e('Cancel', 'brikpanel'); ?></button>
-                        <button type="button" class="brikpanel-pl-btn primary" id="bpl-progress-done" hidden><?php esc_html_e('Done', 'brikpanel'); ?></button>
+                        <button type="button" class="brikpanel-pl-btn primary" id="bpl-progress-done"><?php esc_html_e('Done', 'brikpanel'); ?></button>
                     </div>
                 </div>
             </div>
@@ -2578,7 +2579,7 @@ class Brikpanel_Products_List {
                     }
                 }
                 $author_id   = (int) $post->post_author;
-                $author_name = $author_id ? get_the_author_meta('display_name', $author_id) : '';
+                $author_name = $author_id ? brikpanel_plain_name(get_the_author_meta('display_name', $author_id)) : '';
 
                 // Robust sale-price display. WooCommerce's get_price_html() can be
                 // overridden by 3rd-party `woocommerce_get_price_html` filters that
@@ -2601,7 +2602,8 @@ class Brikpanel_Products_List {
 
                 $products[] = [
                     'id'             => $post->ID,
-                    'name'           => $product->get_name() ?? '',
+                    // Stored names can hold "&amp;" (REST imports); the JS escapes on insert.
+                    'name'           => brikpanel_plain_name($product->get_name() ?? ''),
                     'sku'            => $product->get_sku() ?? '',
                     // Resolved in compute_cost_payloads() so the SKUs come out
                     // of the query it already runs over this product's children.
@@ -2840,11 +2842,20 @@ class Brikpanel_Products_List {
             wp_send_json_error(['message' => __('Product not found.', 'brikpanel')]);
         }
 
-        // Update fields that were sent
-        if (isset($_POST['name'])) {
-            $name = sanitize_text_field($_POST['name']);
-            if ($name) {
-                $product->set_name($name);
+        // Update fields that were sent. The drawer always posts the name, filled
+        // with the decoded text of the stored one ("&amp;" shows as "&"), so an
+        // untouched name is left exactly as stored: writing the decoded text
+        // back would let sanitize_text_field() strip a "<XL>" or collapse
+        // spacing the merchant never touched.
+        if (isset($_POST['name']) && is_scalar($_POST['name'])) {
+            $posted  = (string) wp_unslash($_POST['name']);
+            $current = (string) $product->get_name();
+            if ($posted !== $current && $posted !== brikpanel_plain_name($current)) {
+                // Still slashed on purpose: wp_insert_post() unslashes the title.
+                $name = sanitize_text_field($_POST['name']);
+                if ($name) {
+                    $product->set_name($name);
+                }
             }
         }
 
@@ -3115,7 +3126,7 @@ class Brikpanel_Products_List {
             'message' => __('Product updated!', 'brikpanel'),
             'product' => [
                 'id'              => $product_id,
-                'name'            => $product->get_name() ?? '',
+                'name'            => brikpanel_plain_name($product->get_name() ?? ''),
                 'sku'             => $product->get_sku() ?? '',
                 'regular_price'   => $product->get_regular_price(),
                 'sale_price'      => $product->get_sale_price(),
@@ -3766,7 +3777,9 @@ class Brikpanel_Products_List {
                 foreach ($cat_ids as $cid) {
                     $term = get_term($cid, 'product_cat');
                     if ($term && !is_wp_error($term)) {
-                        $cats[] = $term->name;
+                        // "&amp;" becomes "&", but ">" stays encoded: the
+                        // WooCommerce importer reads it as a category level.
+                        $cats[] = brikpanel_term_ref($term->name);
                     }
                 }
 
@@ -3776,7 +3789,7 @@ class Brikpanel_Products_List {
                 foreach ($tag_ids as $tid) {
                     $term = get_term($tid, 'product_tag');
                     if ($term && !is_wp_error($term)) {
-                        $tags[] = $term->name;
+                        $tags[] = brikpanel_term_ref($term->name);
                     }
                 }
 
@@ -3802,7 +3815,7 @@ class Brikpanel_Products_List {
                     $product->get_id(),
                     $type,
                     $product->get_sku(),
-                    $product->get_name(),
+                    brikpanel_plain_name($product->get_name()),
                     $product->get_status() === 'publish' ? 1 : 0,
                     $product->get_short_description(),
                     $product->get_description(),
@@ -4541,7 +4554,7 @@ class Brikpanel_Products_List {
             $result['ids'][]     = $term_id;
             $result['created'][] = [
                 'id'   => $term_id,
-                'name' => ($term && !is_wp_error($term)) ? $term->name : $name,
+                'name' => brikpanel_plain_name(($term && !is_wp_error($term)) ? $term->name : $name),
             ];
         }
 

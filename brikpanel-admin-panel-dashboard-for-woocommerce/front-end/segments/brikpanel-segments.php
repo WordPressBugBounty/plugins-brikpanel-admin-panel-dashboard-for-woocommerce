@@ -128,7 +128,8 @@ class Brikpanel_Segments {
 			foreach ( $wc_countries->get_countries() as $code => $name ) {
 				$countries[] = [
 					'value' => $code,
-					'label' => $name,
+					// WooCommerce's list holds entities ("Cura&ccedil;ao").
+					'label' => brikpanel_plain_name( $name ),
 				];
 			}
 		}
@@ -143,7 +144,7 @@ class Brikpanel_Segments {
 			foreach ( $terms as $term ) {
 				$categories[] = [
 					'value' => (int) $term->term_id,
-					'label' => $term->name,
+					'label' => brikpanel_plain_name( $term->name ),
 				];
 			}
 		}
@@ -200,7 +201,7 @@ class Brikpanel_Segments {
 			}
 			$products[] = [
 				'value' => (int) $pid,
-				'label' => $product->get_name() . ' (#' . $pid . ')',
+				'label' => brikpanel_plain_label( $product->get_name() ) . ' (#' . $pid . ')',
 			];
 		}
 
@@ -726,7 +727,7 @@ class Brikpanel_Segments {
 				'phone'         => (string) $r->billing_phone,
 				'country'       => (string) $r->billing_country,
 				'city'          => (string) $r->billing_city,
-				'payment'       => (string) ( $r->payment_method_title ?: $r->payment_method ),
+				'payment'       => brikpanel_plain_label( (string) ( $r->payment_method_title ?: $r->payment_method ) ),
 				'edit_url'      => admin_url( $hpos ? 'admin.php?page=wc-orders&action=edit&id=' . (int) $r->order_id : 'post.php?post=' . (int) $r->order_id . '&action=edit' ),
 			];
 		}
@@ -999,7 +1000,7 @@ class Brikpanel_Segments {
 			$user_id = (int) $r->user_id;
 			$name = trim( trim( (string) $r->billing_first_name . ' ' . (string) $r->billing_last_name ) );
 			if ( $name === '' ) {
-				$name = (string) $r->display_name;
+				$name = brikpanel_plain_name( (string) $r->display_name );
 			}
 			if ( $name === '' ) {
 				$name = (string) ( $r->registered_email ?: $r->email );

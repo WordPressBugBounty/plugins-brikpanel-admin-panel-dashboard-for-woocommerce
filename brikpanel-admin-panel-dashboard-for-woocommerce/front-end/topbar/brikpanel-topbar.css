@@ -141,6 +141,19 @@ body.brikpanel-has-topbar.woocommerce-embed-page .woocommerce-layout {
     color: var(--bp-topbar-text);
 }
 
+/* `hidden` must hide inside the bar. The browser applies [hidden] through its
+   own stylesheet, and any `display` a stylesheet sets beats that: the count
+   bubble is inline-flex, so `badge.hidden = true` left a red "0" on the bell
+   of every store with no orders waiting, and a count that dropped to zero kept
+   its old number. The id keeps this above every class rule in the bar, so it
+   covers both bubbles and anything added later. Not !important: controls other
+   plugins add through `brikpanel_topbar_items` may reveal an element with an
+   inline style (jQuery .show()), and that has to keep working. `until-found`
+   is left to the browser, which reveals it on find-in-page. */
+#brikpanel-topbar [hidden]:not([hidden="until-found"]) {
+    display: none;
+}
+
 .brikpanel-topbar-inner {
     display: flex;
     align-items: center;
@@ -667,11 +680,18 @@ body.brikpanel-has-topbar.woocommerce-embed-page .woocommerce-layout {
    every BrikPanel declutter rule already excludes via `:not(.brikpanel-notice)`
    — so the panel notices stay visible on custom screens without an !important
    tug-of-war. The `#brikpanel-topbar` prefix is belt-and-suspenders against any
-   future global rule. */
+   future global rule.
+
+   `position: relative` makes each card the box its own absolutely positioned
+   parts sit in. WordPress only positions `.is-dismissible` notices; in any other
+   notice a plugin's absolute "Dismiss" link climbed to the dropdown (itself
+   positioned) and landed on the panel's top corner, over the header, cut at the
+   window edge, and stayed there while the list scrolled (field test B9). */
 #brikpanel-topbar .brikpanel-fn-panel-list > .notice,
 #brikpanel-topbar .brikpanel-fn-panel-list > .updated,
 #brikpanel-topbar .brikpanel-fn-panel-list > .error,
 #brikpanel-topbar .brikpanel-fn-panel-list > .update-nag {
+    position: relative;
     display: block !important;
     height: auto !important;
     margin: 0 !important;

@@ -244,6 +244,9 @@ class Brikpanel_Dashboard_Topbar {
             'nonce'           => wp_create_nonce( self::NONCE_ACTION ),
             'cache_nonce'     => class_exists( 'Brikpanel_Cache_Clear' ) ? wp_create_nonce( Brikpanel_Cache_Clear::NONCE_ACTION ) : '',
             'cache_action'    => class_exists( 'Brikpanel_Cache_Clear' ) ? Brikpanel_Cache_Clear::AJAX_ACTION : '',
+            // "Hide third-party admin notices" (on by default). Off, the bell's
+            // sweep leaves foreign notices on the page, as the setting promises.
+            'hide_foreign'    => get_option( 'brikpanel_hide_foreign_notices', 'yes' ) === 'yes',
             // When on, red error notices are collected into the bell too instead
             // of staying on screen (off by default).
             'hide_errors'     => get_option( 'brikpanel_hide_error_notices', 'no' ) === 'yes',
@@ -821,20 +824,9 @@ class Brikpanel_Dashboard_Topbar {
 
         $counts = $this->get_notification_counts();
 
-        // Live visitors (shared transient with the dashboard live panel).
-        $live = 0;
-        $visitors_data = get_transient( 'brikpanel_live_visitors' );
-        if ( is_array( $visitors_data ) ) {
-            if ( ! defined( 'BRIKPANEL_VISITOR_TIMEOUT' ) ) {
-                define( 'BRIKPANEL_VISITOR_TIMEOUT', 75 );
-            }
-            $cutoff = time() - BRIKPANEL_VISITOR_TIMEOUT;
-            foreach ( $visitors_data as $v ) {
-                if ( isset( $v['last_active'] ) && $v['last_active'] >= $cutoff ) {
-                    $live++;
-                }
-            }
-        }
+        // Live visitors: the same rule as the dashboard's Live card (ping
+        // timeout and idle limit), from back-end/live/brikpanel-live.php.
+        $live = function_exists( 'brikpanel_live_active_visitors' ) ? count( brikpanel_live_active_visitors() ) : 0;
 
         wp_send_json_success( [
             'live'          => $live,

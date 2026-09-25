@@ -4,13 +4,12 @@
  *
  * BrikPanel's own full-screen app pages (Dashboard, Segments, Customer
  * Analytics, Abandoned Carts, Expenses, BrikControl, Ad Platforms, Coupons,
- * Suppliers, …) are self-contained: they render entirely from BrikPanel's own
- * markup, styles and scripts. Third-party plugins have no UI to render there.
+ * Suppliers, …) are built from BrikPanel's own markup, styles and scripts.
  *
  * Yet WordPress fires `admin_enqueue_scripts` on *every* admin screen, and many
  * plugins enqueue their whole payload unconditionally. AI Engine, for example,
  * registers its ~1.5 MB React bundle (index.js + vendor.js) in the document
- * `<head>` with neither `defer` nor `async` on every admin page — so on a
+ * `<head>` with neither `defer` nor `async` on every admin page, so on a
  * BrikPanel app page the browser must download and execute those files, which
  * do nothing there, before it can paint the page. On a slow connection the
  * dashboard stays blank for seconds. That is the "you can't work through your
@@ -18,12 +17,35 @@
  * AI Engine.
  *
  * This layer removes that dead weight: on BrikPanel's own app pages it dequeues
- * scripts/styles served from other plugins and from the active theme. It is
- * deliberately conservative:
+ * the scripts served from other plugins and from the active theme.
+ *
+ * Stylesheets are left alone. Other plugins still draw on these pages through
+ * the hooks WordPress runs on every admin screen: their admin notices (on the
+ * page, or collected into the top bar's bell), their sidebar menu icons, the
+ * WordPress dashboard widgets the dashboard can embed, and markup printed in the
+ * footer. The sweep runs before any of that is printed, so it cannot know which
+ * stylesheet will be needed, and markup without its stylesheet falls back to
+ * WordPress's bare defaults. Field test B9: CURCY's notice kept its markup but
+ * lost `villatheme-support.min.css`, so its "Dismiss" link took WordPress's
+ * absolutely positioned 24px dismiss box, left the notice for the page's top
+ * corner, sat on the dashboard's date buttons and was cut to "Dism" at the
+ * window edge. The Porto theme's hidden "New Porto Builder" form (printed by the
+ * porto-functionality plugin, hidden by the theme's Magnific Popup stylesheet)
+ * had shown at the foot of the page the same way. A stylesheet runs no code and
+ * never held the page back the way that script bundle did: keeping them costs
+ * about 100 KB compressed on a heavy store (15 files, measured 2026-09-25),
+ * cached after the first visit, and every other admin screen loads them anyway.
+ *
+ * Known limit: a foreign notice whose button needs its plugin's script still
+ * finds that script missing here. `brikpanel_isolation_keep_handle` keeps one
+ * handle (BrikMentor's update notice uses it), and BrikMentor's whole folder is
+ * trusted, see brikpanel_isolation_trusted_dirs().
+ *
+ * It is deliberately conservative:
  *
  *   - Only local `wp-content/plugins/*` (except BrikPanel, the WooCommerce
  *     core platform and BrikMentor, the sibling product whose controls do
- *     appear on these screens) and `wp-content/themes/*` assets are
+ *     appear on these screens) and `wp-content/themes/*` scripts are
  *     candidates. WordPress
  *     core (`wp-includes` / `wp-admin`, e.g. jQuery and wp-components) and any
  *     externally hosted asset (e.g. the Google API the Sheets page loads from
@@ -31,8 +53,8 @@
  *   - It only *dequeues*; it never *deregisters*. So if a kept BrikPanel asset
  *     genuinely lists a foreign handle as a dependency, WordPress' own
  *     dependency resolution re-adds it and nothing breaks.
- *   - Pages that intentionally embed third-party UI — the product editor (SEO
- *     metaboxes, product-data panels) and the products list (plugin columns) —
+ *   - Pages that intentionally embed third-party UI, the product editor (SEO
+ *     metaboxes, product-data panels) and the products list (plugin columns),
  *     are excluded entirely.
  *
  * Everything is filterable so site owners and integrators can opt a page or a
@@ -76,9 +98,9 @@ function brikpanel_isolation_active() {
 
 	/**
 	 * BrikPanel pages that intentionally host third-party UI and therefore must
-	 * keep foreign assets. The product editor surfaces SEO metaboxes and
-	 * product-data panels from other plugins; the products list renders their
-	 * custom columns.
+	 * keep foreign scripts (stylesheets are kept on every page). The product
+	 * editor surfaces SEO metaboxes and product-data panels from other plugins;
+	 * the products list renders their custom columns.
 	 *
 	 * @param string[] $pages Excluded page slugs.
 	 */
@@ -219,14 +241,23 @@ function brikpanel_isolation_trusted_dirs( $bp_dirname ) {
 }
 
 /**
- * Dequeue foreign plugin/theme scripts and styles on BrikPanel's own app pages.
+ * Dequeue foreign plugin/theme scripts on BrikPanel's own app pages.
  *
  * Runs at PHP_INT_MAX so every plugin has already enqueued. Dequeue-only: the
  * dependency graph is left intact, and anything a kept asset truly needs is
  * re-added by WordPress at output time.
+ *
+ * Stylesheets are not swept: the notices, sidebar icons, dashboard widgets and
+ * footer markup other plugins still print on these pages need them (field test
+ * B9, see the file header).
  */
 function brikpanel_isolation_sweep_assets() {
 	if ( ! brikpanel_isolation_active() ) {
+		return;
+	}
+
+	$scripts = wp_scripts();
+	if ( ! $scripts instanceof WP_Scripts ) {
 		return;
 	}
 
@@ -237,68 +268,35 @@ function brikpanel_isolation_sweep_assets() {
 		defined( 'BRIKPANEL_BASENAME' ) ? BRIKPANEL_BASENAME : plugin_basename( dirname( __DIR__ ) . '/brikpanel.php' )
 	);
 
-	foreach ( array( wp_scripts(), wp_styles() ) as $assets ) {
-		if ( ! $assets instanceof WP_Dependencies ) {
+	// Snapshot: dequeue mutates $scripts->queue while we iterate.
+	$queue = (array) $scripts->queue;
+	foreach ( $queue as $handle ) {
+		$dep = isset( $scripts->registered[ $handle ] ) ? $scripts->registered[ $handle ] : null;
+		if ( ! $dep ) {
 			continue;
 		}
-		$is_scripts = ( $assets instanceof WP_Scripts );
-
-		// Snapshot: dequeue mutates $assets->queue while we iterate.
-		$queue = (array) $assets->queue;
-		foreach ( $queue as $handle ) {
-			$dep = isset( $assets->registered[ $handle ] ) ? $assets->registered[ $handle ] : null;
-			if ( ! $dep ) {
-				continue;
-			}
-			$src = isset( $dep->src ) ? (string) $dep->src : '';
-			if ( '' === $src ) {
-				// Inline-only / core alias handle (e.g. 'jquery'): leave alone.
-				continue;
-			}
-			if ( ! brikpanel_isolation_is_foreign_src( $src, $bp_dirname ) ) {
-				continue;
-			}
-
-			/**
-			 * Force-keep a specific handle that would otherwise be stripped.
-			 *
-			 * @param bool   $keep   Whether to keep the asset. Default false.
-			 * @param string $handle Asset handle.
-			 * @param string $src    Asset src.
-			 * @param bool   $is_js  True for scripts, false for styles.
-			 */
-			if ( apply_filters( 'brikpanel_isolation_keep_handle', false, $handle, $src, $is_scripts ) ) {
-				continue;
-			}
-
-			if ( $is_scripts ) {
-				wp_dequeue_script( $handle );
-			} else {
-				wp_dequeue_style( $handle );
-			}
+		$src = isset( $dep->src ) ? (string) $dep->src : '';
+		if ( '' === $src ) {
+			// Inline-only / core alias handle (e.g. 'jquery'): leave alone.
+			continue;
 		}
+		if ( ! brikpanel_isolation_is_foreign_src( $src, $bp_dirname ) ) {
+			continue;
+		}
+
+		/**
+		 * Force-keep a specific handle that would otherwise be stripped.
+		 *
+		 * @param bool   $keep   Whether to keep the asset. Default false.
+		 * @param string $handle Asset handle.
+		 * @param string $src    Asset src.
+		 * @param bool   $is_js  Always true: only scripts are swept (field test B9).
+		 */
+		if ( apply_filters( 'brikpanel_isolation_keep_handle', false, $handle, $src, true ) ) {
+			continue;
+		}
+
+		wp_dequeue_script( $handle );
 	}
 }
 add_action( 'admin_enqueue_scripts', 'brikpanel_isolation_sweep_assets', PHP_INT_MAX );
-
-/**
- * Keep the theme's hidden-until-opened markup hidden.
- *
- * Some themes print modal forms into every admin page and rely on a
- * stylesheet to hide them until a button opens them. Porto, for example,
- * prints its "New Porto Builder" form (`#porto-builders-input`) on every
- * screen and hides it with Magnific Popup's `.mfp-hide`. That stylesheet is a
- * theme asset, so on BrikPanel's own pages the sweep above removes it and the
- * raw form shows at the foot of the page. Magnific's rule is exactly
- * `.mfp-hide { display: none !important; }`; restating it here costs nothing
- * on themes that never use it and needs no per-theme list.
- *
- * @return void
- */
-add_action( 'admin_head', 'brikpanel_isolation_hidden_markup_css' );
-function brikpanel_isolation_hidden_markup_css() {
-	if ( ! brikpanel_isolation_active() ) {
-		return;
-	}
-	echo '<style id="brikpanel-isolation-hidden-markup">.mfp-hide{display:none!important}</style>' . "\n";
-}

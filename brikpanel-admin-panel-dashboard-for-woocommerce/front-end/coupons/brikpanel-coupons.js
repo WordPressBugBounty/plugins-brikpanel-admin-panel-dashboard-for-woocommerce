@@ -1273,7 +1273,8 @@
     function showToast(message, type) {
         type = type || 'success';
         var $container = $('#bpc-toast-container');
-        var $toast = $('<div class="brikpanel-cp-toast ' + type + '">' +
+        // is-*, never a bare `error`: WordPress styles every div.error as an admin notice.
+        var $toast = $('<div class="brikpanel-cp-toast is-' + type + '">' +
             '<span class="brikpanel-cp-toast-text">' + escHtml(message) + '</span>' +
             '<button class="brikpanel-cp-toast-close">&times;</button>' +
             '</div>');

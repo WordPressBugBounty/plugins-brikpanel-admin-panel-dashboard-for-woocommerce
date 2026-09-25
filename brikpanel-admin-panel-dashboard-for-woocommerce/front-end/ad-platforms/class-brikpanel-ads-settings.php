@@ -122,17 +122,21 @@ class Brikpanel_Ads_Settings {
 			&& $hook !== 'toplevel_page_' . self::PAGE_SLUG ) {
 			return;
 		}
+		// filemtime versions: with the plain plugin version an edited file
+		// kept being served from the browser cache between releases.
+		$ads_dir = BRIKPANEL_PATH . 'front-end/ad-platforms/assets/';
+		$fit_dep = function_exists( 'brikpanel_fit_table_dep' );
 		wp_enqueue_style(
 			'brikpanel-ads',
 			BRIKPANEL_ADS_URL . 'assets/brikpanel-ad-platforms.css',
-			[],
-			BRIKPANEL_VERSION
+			$fit_dep ? brikpanel_fit_table_dep( 'style' ) : [],
+			@filemtime( $ads_dir . 'brikpanel-ad-platforms.css' ) ?: BRIKPANEL_VERSION // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- falls back to the plugin version.
 		);
 		wp_enqueue_script(
 			'brikpanel-ads',
 			BRIKPANEL_ADS_URL . 'assets/brikpanel-ad-platforms.js',
-			[],
-			BRIKPANEL_VERSION,
+			$fit_dep ? brikpanel_fit_table_dep() : [],
+			@filemtime( $ads_dir . 'brikpanel-ad-platforms.js' ) ?: BRIKPANEL_VERSION, // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- falls back to the plugin version.
 			true
 		);
 		wp_localize_script(

@@ -424,7 +424,7 @@ class Brikpanel_Sheets_Reports_Sync {
 			$product = $pid ? wc_get_product( $pid ) : null;
 			$rows[] = [
 				$pid,
-				$product ? wp_strip_all_tags( $product->get_name() ) : '',
+				$product ? brikpanel_plain_label( $product->get_name() ) : '',
 				$product ? (string) $product->get_sku() : '',
 				(float) $r->units,
 				round( (float) $r->revenue, 4 ),

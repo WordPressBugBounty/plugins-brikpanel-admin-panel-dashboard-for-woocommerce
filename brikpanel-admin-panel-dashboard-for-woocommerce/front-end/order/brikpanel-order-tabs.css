@@ -1688,14 +1688,14 @@
 		padding-right: 10px !important;
 	}
 
+	/* Tighter gaps only. What gives way is a header level decided from the
+	   bar's real width (brikpanel-order.css, "Header levels"); a
+	   `flex-shrink:1 !important` on the left side here used to let the order
+	   number shrink before anything else. */
 	.brikpanel-order-header__left,
 	.brikpanel-order-header__right {
 		gap: 6px !important;
 		min-width: 0;
-	}
-
-	.brikpanel-order-header__left {
-		flex-shrink: 1 !important;
 	}
 
 	.brikpanel-order-header__status-badge {

@@ -344,6 +344,11 @@
             updateDelta('delta-visitors', d.deltas.visitors);
             updateDelta('delta-conversion', d.deltas.conversion);
 
+            // Units sold in the same paid orders: beside the Orders change
+            // and at the head of the Order Rates card.
+            setItemsSold('card-items-sold', d.items_sold_label);
+            setItemsSold('rates-items-sold', d.items_sold_label);
+
             // Profit (Revenue − Cost of goods − Expenses)
             renderProfit(d.profit);
 
@@ -405,6 +410,23 @@
     function updateCard(id, value) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = value;
+    }
+
+    // "5,361 items sold" comes ready from the server (plural form and number
+    // format). Nothing sold, or a payload cached before the key existed,
+    // hides the line instead of printing a blank or "undefined".
+    function setItemsSold(id, label) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var text = typeof label === 'string' ? label : '';
+        // Inside <bdi> the phrase keeps its own reading order on a
+        // right-to-left screen ("10 items sold", not "items sold 10"), while
+        // the box and the dot before it stay on the page's side.
+        var phrase = document.createElement('bdi');
+        phrase.textContent = text;
+        el.textContent = '';
+        el.appendChild(phrase);
+        el.hidden = text === '';
     }
 
     function updateDelta(id, value) {
@@ -484,9 +506,18 @@
             // Total Sales KPI, so label it accordingly instead of claiming they
             // match. The breakdown below spells out gross minus returns.
             var netted = p.returns_on && Number(p.returns_raw) > 0;
-            revDelta.textContent = netted
-                ? (i18n.profit_revenue_net_note || 'Net of returns')
-                : (i18n.profit_revenue_note || 'Same as Total Sales');
+            // The "Exclude tax from Revenue and Expenses" setting takes the tax
+            // off this figure too, so it no longer matches Total Sales either.
+            var noTax = !!p.tax_excluded && Number(p.tax_raw) > 0;
+            if (netted && noTax) {
+                revDelta.textContent = i18n.profit_revenue_net_tax_note || 'Net of returns and tax';
+            } else if (noTax) {
+                revDelta.textContent = i18n.profit_revenue_tax_note || 'Excluding tax';
+            } else {
+                revDelta.textContent = netted
+                    ? (i18n.profit_revenue_net_note || 'Net of returns')
+                    : (i18n.profit_revenue_note || 'Same as Total Sales');
+            }
             revDelta.className = 'brikpanel-dash-card-delta brikpanel-dash-card-delta-static';
         }
         renderRevenueBreakdown(p);
@@ -1555,6 +1586,25 @@
     // TABLES
     // =========================================================================
 
+    // Tables turn into stacked cards when they cannot show every column in
+    // their box (field test B6: on a phone the right-hand totals scrolled out
+    // of sight). Each box is watched once; its table is re-rendered in place,
+    // so the shared helper looks it up again on every measurement.
+    // floor: stack below this room even when the table would squeeze in
+    // (see renderRecentOrders).
+    function refitDashTable(wrap, floor) {
+        if (!wrap || !window.brikpanelFitTable) return;
+        var table = wrap.querySelector('table.brikpanel-dash-table');
+        if (table) table.classList.add('brikpanel-fit-table');
+        var fit = window.brikpanelFitTable(wrap, { labels: 'head', slack: 0, floor: floor || 0 });
+        if (fit) fit.refit();
+    }
+
+    // A long SKU may break after a hyphen, never mid-word.
+    function skuHtml(sku) {
+        return escapeHtml(sku).replace(/-/g, '-<wbr>');
+    }
+
     function renderTopProducts(products) {
         var wrap = document.getElementById('top-products-table');
         if (!wrap) return;
@@ -1576,13 +1626,14 @@
                 : '';
             html += '<tr' + rowAttr + '>' +
                 '<td class="rank">' + (i + 1) + '</td>' +
-                '<td>' + escapeHtml(p.name) + '</td>' +
-                '<td>' + formatNumber(p.qty) + '</td>' +
+                '<td class="brikpanel-fit-lead">' + escapeHtml(p.name) + '</td>' +
+                '<td class="brikpanel-fit-headline">' + formatNumber(p.qty) + '</td>' +
                 '</tr>';
         });
 
         html += '</tbody></table>';
         wrap.innerHTML = html;
+        refitDashTable(wrap);
     }
 
     function initRowLinks() {
@@ -1620,6 +1671,14 @@
         });
     }
 
+    // WooCommerce's name for an order status (i18n.status_labels, keyed like
+    // $order->get_status()), or '' when it has none.
+    function statusLabelFor(slug) {
+        var labels = i18n.status_labels;
+        if (!labels || typeof labels !== 'object' || !Object.prototype.hasOwnProperty.call(labels, slug)) return '';
+        return typeof labels[slug] === 'string' ? labels[slug] : '';
+    }
+
     function renderRecentOrders(orders) {
         var wrap = document.getElementById('recent-orders-table');
         if (!wrap) return;
@@ -1647,17 +1706,29 @@
                 ? ' class="brikpanel-dash-row-link" data-href="' + escapeAttr(o.edit_url) + '" tabindex="0" role="link"'
                 : '';
 
+            // WooCommerce's own name for the status, in the admin's language;
+            // a status it does not list keeps its short name.
+            var statusLabel = statusLabelFor(o.status);
+            var dateHtml = o.date ? '<span class="brikpanel-dash-order-date">' + escapeHtml(o.date) + '</span>' : '';
+            // Units on the order, under its total: the row already has two
+            // lines (number + date), so this adds no height.
+            // <bdi>: "3 items" keeps its order on a right-to-left screen.
+            var itemsHtml = o.items_label ? '<span class="brikpanel-dash-order-items"><bdi>' + escapeHtml(o.items_label) + '</bdi></span>' : '';
+
             html += '<tr' + rowAttr + '>' +
-                '<td>#' + escapeHtml(String(o.number || o.id)) + '</td>' +
+                '<td class="brikpanel-fit-lead">#' + escapeHtml(String(o.number || o.id)) + dateHtml + '</td>' +
                 '<td>' + escapeHtml(o.customer) + '</td>' +
                 '<td>' + sourceHtml + '</td>' +
-                '<td><span class="brikpanel-dash-status ' + escapeHtml(o.status) + '">' + escapeHtml(o.status) + '</span></td>' +
-                '<td>' + o.total + (o.total_base ? '<div class="brikpanel-dash-total-base">≈ ' + o.total_base + '</div>' : '') + '</td>' +
+                '<td><span class="brikpanel-dash-status ' + escapeHtml(o.status) + (statusLabel ? '' : ' brikpanel-dash-status--slug') + '">' + escapeHtml(statusLabel || o.status) + '</span></td>' +
+                '<td class="brikpanel-fit-headline">' + o.total + (o.total_base ? '<div class="brikpanel-dash-total-base">≈ ' + o.total_base + '</div>' : '') + itemsHtml + '</td>' +
                 '</tr>';
         });
 
         html += '</tbody></table>';
         wrap.innerHTML = html;
+        // Five columns squeezed under 340px only fit by breaking the date over
+        // three lines (short status names, as in Arabic); cards read better.
+        refitDashTable(wrap, 340);
     }
 
     function renderMostViewed(pages) {
@@ -1688,6 +1759,7 @@
 
         html += '</tbody></table>';
         wrap.innerHTML = html;
+        refitDashTable(wrap);
     }
 
     function renderMostCart(products) {
@@ -1718,6 +1790,7 @@
 
         html += '</tbody></table>';
         wrap.innerHTML = html;
+        refitDashTable(wrap);
     }
 
     function renderDevices(data) {
@@ -1950,14 +2023,15 @@
                 ? '<a href="' + escapeAttr(p.edit_url) + '" style="color:#303030;text-decoration:none;font-weight:500;">' + escapeHtml(p.name) + '</a>'
                 : escapeHtml(p.name);
             html += '<tr>' +
-                '<td>' + nameCell + '</td>' +
-                '<td class="brikpanel-dash-muted">' + (p.sku ? escapeHtml(p.sku) : '&mdash;') + '</td>' +
+                '<td class="brikpanel-fit-lead">' + nameCell + '</td>' +
+                '<td class="brikpanel-dash-muted">' + (p.sku ? skuHtml(p.sku) : '&mdash;') + '</td>' +
                 '<td><span class="brikpanel-dash-badge-warning">' + p.stock + '</span></td>' +
                 '</tr>';
         });
 
         html += '</tbody></table>';
         wrap.innerHTML = html;
+        refitDashTable(wrap);
     }
 
     function renderLtvPanel(data) {
@@ -2592,6 +2666,7 @@
 
         html += '</tbody></table>';
         wrap.innerHTML = html;
+        refitDashTable(wrap);
     }
 
     // =========================================================================
@@ -2711,6 +2786,18 @@
             var displayName = v.customer_name ? escapeHtml(v.customer_name) : (v.ip_address || '');
             var ipLabel = v.ip_address ? '<span class="brikpanel-dash-live-ip">' + escapeHtml(v.ip_address) + '</span>' : '';
 
+            // Where the visitor came from ("Traffic source in Live view"): the
+            // channel as a small pill with the source after it. The campaign
+            // details from their link go into the hover card below.
+            var src = (v.source && typeof v.source === 'object' && v.source.channel) ? v.source : null;
+            var srcChannel = src ? sourceChannelLabel(src.channel) : '';
+            var srcHtml = src
+                ? '<span class="brikpanel-dash-live-src">' +
+                    '<span class="brikpanel-dash-live-src-ch">' + escapeHtml(srcChannel) + '</span>' +
+                    (src.name ? '<span class="brikpanel-dash-live-src-name">' + escapeHtml(src.name) + '</span>' : '') +
+                  '</span>'
+                : '';
+
             // Tooltip data for hover
             var tooltipParts = [];
             var deviceLabel = liveDeviceLabel(v.device);
@@ -2718,6 +2805,13 @@
             if (v.customer_email) tooltipParts.push(v.customer_email);
             if (v.customer_phone) tooltipParts.push(v.customer_phone);
             if (v.page_url) tooltipParts.push(v.page_url);
+            if (src) {
+                tooltipParts.push(liveSourceLine(i18n.live_src_source, srcChannel + (src.name ? ' · ' + src.name : '')));
+                if (src.medium) tooltipParts.push(liveSourceLine(i18n.live_src_medium, src.medium));
+                if (src.campaign) tooltipParts.push(liveSourceLine(i18n.live_src_campaign, src.campaign));
+                if (src.term) tooltipParts.push(liveSourceLine(i18n.live_src_term, src.term));
+                if (src.landing) tooltipParts.push(liveSourceLine(i18n.live_src_landing, src.landing));
+            }
             var tooltipData = tooltipParts.length > 0 ? ' data-bp-tooltip="' + escapeAttr(tooltipParts.join('\n')) + '"' : '';
 
             html += '<div class="brikpanel-dash-live-item"' + tooltipData + '>' +
@@ -2726,6 +2820,7 @@
                     '<span class="brikpanel-dash-live-name">' + displayName + '</span>' +
                     (v.customer_name ? ipLabel : '') +
                     '<span class="brikpanel-dash-live-page" title="' + escapeAttr(v.page_url) + '">' + escapeHtml(pagePath) + '</span>' +
+                    srcHtml +
                 '</div>' +
                 '<span class="brikpanel-dash-live-badge ' + badgeClass + '">' + badgeText + '</span>' +
                 '</div>';
@@ -2740,6 +2835,18 @@
         });
     }
 
+    // One hover-card line for a live visitor's source ("Campaign: %s"). The
+    // template is translated server-side; without it the bare value still
+    // reads fine, so no English is baked in here.
+    // A function replacement, because the value comes from a link: a string
+    // one would treat "$&" or "$1" inside a campaign name as patterns.
+    function liveSourceLine(tpl, value) {
+        var text = String(value);
+        return (typeof tpl === 'string' && tpl.indexOf('%s') !== -1)
+            ? tpl.replace('%s', function () { return text; })
+            : text;
+    }
+
     function showTooltip(e) {
         hideTooltip();
         var text = e.currentTarget.getAttribute('data-bp-tooltip');
@@ -2752,6 +2859,10 @@
         var lines = text.split('\n');
         lines.forEach(function (line) {
             var p = document.createElement('div');
+            // Each line takes the direction of its own text, so on a
+            // right-to-left screen "Landing page: /" or an email address is
+            // not reordered around its punctuation.
+            p.dir = 'auto';
             p.textContent = line;
             tip.appendChild(p);
         });
@@ -2880,6 +2991,7 @@
                 });
                 ch += '</tbody></table>';
                 catEl.innerHTML = ch;
+                refitDashTable(catEl);
             }
         }
 
@@ -2908,6 +3020,7 @@
                 });
                 ph += '</tbody></table>';
                 prEl.innerHTML = ph;
+                refitDashTable(prEl);
             }
         }
     }

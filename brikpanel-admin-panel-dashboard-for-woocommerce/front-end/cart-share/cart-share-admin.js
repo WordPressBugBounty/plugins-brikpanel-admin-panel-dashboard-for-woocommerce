@@ -52,7 +52,8 @@
             return;
         }
         var el = document.createElement( 'div' );
-        el.className = 'brikpanel-cs-toast ' + ( type === 'error' ? 'error' : 'success' );
+        // is-*, never a bare `error`: WordPress styles every div.error as an admin notice.
+        el.className = 'brikpanel-cs-toast ' + ( type === 'error' ? 'is-error' : 'is-success' );
         el.textContent = message;
         container.appendChild( el );
         requestAnimationFrame( function () {

@@ -840,7 +840,7 @@ class Brikpanel_BrikControl_Bot_Traffic_Check extends Brikpanel_BrikControl_Chec
         $id    = (int) $id;
         $title = get_the_title( $id );
         if ( is_string( $title ) && '' !== trim( $title ) ) {
-            return html_entity_decode( wp_strip_all_tags( $title ), ENT_QUOTES, get_bloginfo( 'charset' ) );
+            return brikpanel_plain_label( $title );
         }
         if ( 'page' === $source ) {
             $term = get_term( $id );

@@ -480,12 +480,17 @@
     width: 72px;
 }
 
+/* The flex row lives inside the cell: display:flex on the <td> itself stopped
+   it acting as a table cell (field test B6). */
 .brikpanel-ex-actions-cell {
+    padding-right: 0.75rem;
+}
+
+.brikpanel-ex-row-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 0.25rem;
-    padding-right: 0.75rem;
 }
 
 .brikpanel-ex-date-cell {
@@ -495,12 +500,38 @@
 }
 
 .brikpanel-ex-desc-cell {
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     color: var(--ex-text-secondary);
     font-size: 0.8125rem;
+}
+
+/* The cap sits on an element inside the cell: on a bare <td> max-width is
+   ignored by the table layout, so a long description used to stretch its
+   column and push Amount, Edit and Delete out of the card (field test B6).
+   Two lines, then an ellipsis; the full text is in the title tooltip. */
+.brikpanel-ex-desc-text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    min-width: 10rem;
+    max-width: 22rem;
+    overflow-wrap: break-word;
+}
+
+/* Stacked rows (brikpanel-fit-table.css draws the card): the actions start at
+   the left of their tile and the description may use the card's width. */
+.brikpanel-ex-table.is-stacked .brikpanel-ex-actions-cell {
+    padding: 0;
+}
+
+.brikpanel-ex-table.is-stacked .brikpanel-ex-row-actions {
+    justify-content: flex-start;
+}
+
+.brikpanel-ex-table.is-stacked .brikpanel-ex-desc-text {
+    min-width: 0;
+    max-width: none;
+    -webkit-line-clamp: 4;
 }
 
 /* ── Badges ──────────────────────────────────────────────────────────────────── */
@@ -789,10 +820,5 @@ body.brikpanel-ex-modal-open {
 
     .brikpanel-ex-header {
         flex-direction: column;
-    }
-
-    .brikpanel-ex-table thead th:nth-child(3),
-    .brikpanel-ex-table tbody td:nth-child(3) {
-        display: none;
     }
 }

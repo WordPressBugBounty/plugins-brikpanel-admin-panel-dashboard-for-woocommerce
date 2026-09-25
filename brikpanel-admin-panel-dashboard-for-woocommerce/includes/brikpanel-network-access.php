@@ -338,6 +338,7 @@ function brikpanel_network_access_render_page() {
     ?>
     <div class="wrap brikpanel-net-access-wrap">
         <h1><?php esc_html_e( 'BrikPanel Access Rules', 'brikpanel' ); ?></h1>
+        <?php brikpanel_header_end(); ?>
 
         <?php if ( $updated ) : ?>
             <div class="notice notice-success brikpanel-notice is-dismissible">

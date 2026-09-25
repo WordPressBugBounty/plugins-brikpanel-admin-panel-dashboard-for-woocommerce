@@ -359,6 +359,7 @@ $render_platform_card = function ( $platform, $title, $tagline, $desc, $last_syn
 				</p>
 			</div>
 		</div>
+		<?php brikpanel_header_end(); ?>
 
 		<div class="bp-ads-toast" id="bp-ads-toast" hidden></div>
 

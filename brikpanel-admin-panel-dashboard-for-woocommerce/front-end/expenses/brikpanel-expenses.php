@@ -235,6 +235,7 @@ class Brikpanel_Expenses {
 					</button>
 				</div>
 			</div>
+			<?php brikpanel_header_end(); ?>
 
 			<!-- Payment fees: real gateway processing costs, read straight off the
 			     orders. Lives here rather than in WooCommerce settings because it
@@ -307,7 +308,7 @@ class Brikpanel_Expenses {
 			<!-- Table -->
 			<div class="brikpanel-ex-card brikpanel-ex-table-card">
 				<div class="brikpanel-ex-table-wrap">
-					<table class="brikpanel-ex-table" id="brikpanel-ex-table">
+					<table class="brikpanel-ex-table brikpanel-fit-table" id="brikpanel-ex-table">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Date', 'brikpanel' ); ?></th>

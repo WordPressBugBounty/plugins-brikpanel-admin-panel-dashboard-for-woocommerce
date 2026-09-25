@@ -42,6 +42,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</button>
 			</div>
 		</div>
+		<?php brikpanel_header_end(); ?>
 
 		<?php
 		/**
@@ -115,7 +116,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<p class="bp-ca-card-sub"><?php esc_html_e( 'Sorted by lifetime spend, descending. Click a row to open the customer profile.', 'brikpanel' ); ?></p>
 				</div>
 				<div class="bp-ca-table-wrap">
-					<table class="bp-ca-table" id="bp-ca-top-customers">
+					<table class="bp-ca-table brikpanel-fit-table" id="bp-ca-top-customers">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Customer', 'brikpanel' ); ?></th>
@@ -173,7 +174,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</button>
 				</div>
 				<div class="bp-ca-table-wrap">
-					<table class="bp-ca-table" id="bp-ca-rfm-table">
+					<table class="bp-ca-table brikpanel-fit-table" id="bp-ca-rfm-table">
 						<thead>
 							<tr>
 								<th><?php esc_html_e( 'Customer', 'brikpanel' ); ?></th>

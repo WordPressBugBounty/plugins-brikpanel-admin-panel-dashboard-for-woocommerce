@@ -228,7 +228,7 @@ class Brikpanel_Customer_Analytics {
 			$user_id = (int) $r->user_id;
 			$name    = trim( trim( (string) $r->billing_first_name . ' ' . (string) $r->billing_last_name ) );
 			if ( $name === '' ) {
-				$name = (string) $r->display_name;
+				$name = brikpanel_plain_name( (string) $r->display_name );
 			}
 			if ( $name === '' ) {
 				$name = (string) $r->customer_email;
@@ -399,7 +399,7 @@ class Brikpanel_Customer_Analytics {
 			foreach ( $rows as $r ) {
 				$name = trim( trim( (string) $r->bf . ' ' . (string) $r->bl ) );
 				if ( $name === '' ) {
-					$name = (string) $r->display_name;
+					$name = brikpanel_plain_name( (string) $r->display_name );
 				}
 				fputcsv( $out, brikpanel_csv_safe_row( [
 					(int) $r->user_id,
@@ -525,7 +525,7 @@ class Brikpanel_Customer_Analytics {
 			$user_id = (int) $r->user_id;
 			$name    = trim( trim( (string) $r->billing_first_name . ' ' . (string) $r->billing_last_name ) );
 			if ( $name === '' ) {
-				$name = (string) $r->display_name;
+				$name = brikpanel_plain_name( (string) $r->display_name );
 			}
 			if ( $name === '' ) {
 				$name = (string) $r->customer_email;
@@ -633,7 +633,7 @@ class Brikpanel_Customer_Analytics {
 			foreach ( $rows as $r ) {
 				$name = trim( trim( (string) $r->bf . ' ' . (string) $r->bl ) );
 				if ( $name === '' ) {
-					$name = (string) $r->display_name;
+					$name = brikpanel_plain_name( (string) $r->display_name );
 				}
 				$seg_label = isset( $labels[ $r->rfm_segment ] ) ? $labels[ $r->rfm_segment ]['label'] : $r->rfm_segment;
 				fputcsv( $out, brikpanel_csv_safe_row( [
@@ -824,7 +824,7 @@ class Brikpanel_Customer_Analytics {
 			}, (array) $u->roles );
 			$out[] = [
 				'id'    => $id,
-				'name'  => $u->display_name ?: $u->user_login,
+				'name'  => $u->display_name ? brikpanel_plain_name( $u->display_name ) : $u->user_login,
 				'email' => $u->user_email,
 				'roles' => implode( ', ', array_filter( $role_names ) ),
 			];

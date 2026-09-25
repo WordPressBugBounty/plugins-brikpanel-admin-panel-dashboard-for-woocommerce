@@ -413,6 +413,9 @@ function brikpanelTableScroll() {
 	$tableContainer.append(document.querySelector('.wp-list-table'));
 }
 
+// header-end-ok: WooCommerce prints `hr.wp-header-end` after the orders list title
+// (ListTable.php, legacy edit.php). This only wraps the title and its buttons in a
+// row and leaves that hr where it is, so notices still land under the row.
 function brikpanelPageHeader() {
 	const $heading = document.querySelector('.wp-heading-inline');
 	if (!$heading) return;
@@ -1102,6 +1105,11 @@ function brikpanelOrderNumberNamePreview() {
 
 		const $preview = $cell.querySelector('.order-preview');
 		if ($preview) $row.append($preview);
+
+		// Compact mode's copy of the buyer name, shown only while the Customer
+		// column is off, reads on the number's line instead of below it.
+		const $buyer = $cell.querySelector(':scope > .bp-order-buyer');
+		if ($buyer) $row.append($buyer);
 	});
 }
 
@@ -1145,8 +1153,11 @@ function brikpanelCompactRows() {
 	/* The short row shows only these columns. Every other column (WooCommerce's
 	   Origin and Actions, other plugins' columns) keeps rendering, so Screen
 	   Options and those plugins keep working, but its content moves into the
-	   panel and appears when the order is opened. */
-	const ROW_COLUMNS = new Set(['cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_customer', 'order_date', 'order_status', 'payment_method', 'brikpanel_shipping_method', 'order_total']);
+	   panel and appears when the order is opened. The status column is
+	   WooCommerce's order_status unless a plugin swapped it for its own
+	   (brikpanel-orders.php names it; mirrors brikpanel_orders_compact_base_row_columns()). */
+	const statusColumn = window.brikpanelStatusInline?.column || 'order_status';
+	const ROW_COLUMNS = new Set(['cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_customer', 'order_date', statusColumn, 'payment_method', 'brikpanel_shipping_method', 'order_total']);
 	// Columns whose content never moves to the panel.
 	const DROPPED_COLUMNS = new Set();
 	// Columns the user keeps in the row ("Show in the row" in Screen Options).
@@ -1720,6 +1731,10 @@ function brikpanelIconActionColumns() {
 	const $table = document.querySelector('.wp-list-table');
 	if (!$table) return;
 
+	// A plugin's replacement for WooCommerce's status column is still the status.
+	const statusColumn = window.brikpanelStatusInline?.column;
+	if (statusColumn) BP_ICONBAR_KNOWN_COLUMNS.add(String(statusColumn));
+
 	const plans = [];
 
 	// Which columns are not ours? Read once from the header row. On a store with
@@ -1783,15 +1798,19 @@ function brikpanelIconActionColumns() {
 }
 
 /**
- * Makes adjustments to the order status table cell
+ * Status pills stay WooCommerce's <mark>. Other plugins colour and decorate
+ * their statuses through that tag (mark.status-x, mark.order-status.status-x:
+ * Bright Plugins, Booster, Tyche) and bind to it, and BrikPanel's own pill rules
+ * only need the class. Rebuilding them as <div> used to wipe those colours.
+ *
+ * Only WooCommerce's hover description goes, as before: it opens under the
+ * pill, over the status menu. This runs on DOMContentLoaded, ahead of
+ * WooCommerce's jQuery-ready tooltip setup, so the tip is never bound.
  */
 function brikpanelOrderStatus() {
-	// Change order status mark
-	document.querySelectorAll('mark.order-status').forEach($mark => {
-		const $new = makeElement('div', { class: $mark.className }, { innerHTML: $mark.innerHTML });
-		$mark.innerHTML = '';
-		$mark.insertAdjacentElement('afterend', $new);
-		$mark.remove();
+	document.querySelectorAll('.wp-list-table mark.order-status.tips').forEach($mark => {
+		$mark.classList.remove('tips');
+		$mark.removeAttribute('data-tip');
 	});
 }
 

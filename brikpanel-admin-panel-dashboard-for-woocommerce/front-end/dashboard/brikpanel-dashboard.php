@@ -581,6 +581,7 @@ class Brikpanel_Dashboard {
                 <span class="brikpanel-dash-period-text"><?php esc_html_e( 'Loading…', 'brikpanel' ); ?></span>
                 <?php $this->render_scope_hint(); ?>
             </div>
+            <?php brikpanel_header_end(); ?>
 
             <?php
             foreach ( $order as $section_key ) {
@@ -727,7 +728,11 @@ class Brikpanel_Dashboard {
                 <div class="brikpanel-dash-card" data-metric="orders">
                     <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Orders', 'brikpanel' ); ?></span>
                     <span class="brikpanel-dash-card-value" id="card-orders">--</span>
-                    <span class="brikpanel-dash-card-delta" id="delta-orders"></span>
+                    <?php // Units sold share the change line, so the card keeps the height of its neighbours. ?>
+                    <span class="brikpanel-dash-card-foot">
+                        <span class="brikpanel-dash-card-delta" id="delta-orders"></span>
+                        <span class="brikpanel-dash-card-items" id="card-items-sold" hidden></span>
+                    </span>
                 </div>
                 <div class="brikpanel-dash-card" data-metric="aov">
                     <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Avg. Order Value', 'brikpanel' ); ?></span>
@@ -771,12 +776,23 @@ class Brikpanel_Dashboard {
         $show_cogs     = ! $has_pref || brikpanel_dashboard_profit_field_enabled( 'cogs' );
         $show_expenses = ! $has_pref || brikpanel_dashboard_profit_field_enabled( 'expenses' );
         $returns_on    = ! $has_pref || brikpanel_dashboard_profit_field_enabled( 'returns' );
+        $tax_excluded  = function_exists( 'brikpanel_profit_tax_excluded' ) && brikpanel_profit_tax_excluded();
 
         // Revenue is paid orders for the period, optionally net of refunds, with
-        // tax and shipping included and admin orders excluded.
-        $rev_body = $returns_on
-            ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' )
-            : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' );
+        // tax and shipping included and admin orders excluded. The setting that
+        // takes tax out of Revenue and Expenses gets its own wording, so the
+        // explanation never describes a figure the card is not showing.
+        if ( $tax_excluded ) {
+            $rev_body = $returns_on
+                ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the "Exclude tax from Revenue and Expenses" setting is on, so it is not in Expenses either.', 'brikpanel' )
+                : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the "Exclude tax from Revenue and Expenses" setting is on, so it is not in Expenses either.', 'brikpanel' );
+            $exp_body = __( 'Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is already taken out of Revenue. Open the breakdown to see each part.', 'brikpanel' );
+        } else {
+            $rev_body = $returns_on
+                ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' )
+                : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' );
+            $exp_body = __( 'Operating costs for the period: order tax, ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Open the breakdown to see each part.', 'brikpanel' );
+        }
         ?>
             <!-- Profit -->
             <?php $profit_cols = 2 + ( $show_cogs ? 1 : 0 ) + ( $show_expenses ? 1 : 0 ); ?>
@@ -815,10 +831,7 @@ class Brikpanel_Dashboard {
                     <?php if ( $show_expenses ) : ?>
                     <div class="brikpanel-dash-card" data-metric="profit_expenses" id="profit-expenses-card">
                         <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Expenses', 'brikpanel' ); ?><?php
-                            $this->render_hint(
-                                __( 'What Expenses includes', 'brikpanel' ),
-                                __( 'Operating costs for the period: order tax, ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Open the breakdown to see each part.', 'brikpanel' )
-                            ); ?></span>
+                            $this->render_hint( __( 'What Expenses includes', 'brikpanel' ), $exp_body ); ?></span>
                         <span class="brikpanel-dash-card-value" id="card-profit-expenses">--</span>
                         <span class="brikpanel-dash-card-delta brikpanel-dash-card-delta-static" id="delta-profit-expenses"></span>
                         <button type="button" class="brikpanel-dash-bd-add" id="profit-exp-add"
@@ -1111,7 +1124,10 @@ class Brikpanel_Dashboard {
                     </div>
                 </div>
                 <div class="brikpanel-dash-panel">
-                    <h2><?php esc_html_e( 'Order Rates', 'brikpanel' ); ?></h2>
+                    <div class="brikpanel-dash-panel-head">
+                        <h2><?php esc_html_e( 'Order Rates', 'brikpanel' ); ?></h2>
+                        <span class="brikpanel-dash-rates-items" id="rates-items-sold" hidden></span>
+                    </div>
                     <div class="brikpanel-dash-chart-wrap brikpanel-dash-chart-short">
                         <canvas id="brikpanel-rates-chart"></canvas>
                     </div>
@@ -1568,8 +1584,9 @@ class Brikpanel_Dashboard {
 
             // get_formatted_name() returns HTML for variations (e.g. trailing
             // <span class="description"></span>) — we render as plain text in
-            // the dashboard table, so strip tags and decode entities.
-            $name = html_entity_decode( wp_strip_all_tags( $name ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+            // the dashboard table, so strip tags and decode entities (keeping a
+            // literal "<" such as "I <3 NY", which a bare strip would cut off).
+            $name = brikpanel_plain_label( $name );
 
             // For variations the link should point at the parent product
             // editor (variations don't have their own edit screen).
@@ -1990,6 +2007,12 @@ class Brikpanel_Dashboard {
     private function build_profit_block( $revenue, $start_gmt, $end_gmt, $start_local, $end_local, $exclude_marketplace = false ) {
         $s = brikpanel_profit_snapshot( $revenue, $start_gmt, $end_gmt, $start_local, $end_local, $exclude_marketplace );
 
+        // "Exclude tax from Revenue and Expenses" (Settings, Dashboard). Off:
+        // Revenue is what customers paid, tax included, and the tax is one of
+        // the Expenses lines. On: Revenue is shown without the tax and Expenses
+        // no longer carries it, so Net profit comes out the same either way.
+        $tax_excluded = function_exists( 'brikpanel_profit_tax_excluded' ) && brikpanel_profit_tax_excluded();
+
         // Expenses breakdown. External costs (ad spend, tax) keep their fixed
         // translated labels; manual expenses are listed by their OWN category
         // (Salaries, Rent, Shipping carriers, …) instead of a single "Other"
@@ -1999,8 +2022,10 @@ class Brikpanel_Dashboard {
         $fixed_labels = [
             'google_ads' => __( 'Google Ads', 'brikpanel' ),
             'meta_ads'   => __( 'Meta Ads', 'brikpanel' ),
-            'tax'        => __( 'Tax', 'brikpanel' ),
         ];
+        if ( ! $tax_excluded ) {
+            $fixed_labels['tax'] = __( 'Tax', 'brikpanel' );
+        }
         // Shipping is opt-in and gated on the setting HERE as well as in
         // brikpanel_profit_shipping_cost(). Not redundant: this whole payload is
         // served from a transient, so an amount computed while the feature was
@@ -2205,8 +2230,15 @@ class Brikpanel_Dashboard {
         $coupons  = (float) $s['coupons_raw'];
         $cogs     = (float) $s['cogs_raw'];
         $expenses = (float) $s['expenses_total_raw'];
+        $tax      = (float) ( $s['tax_raw'] ?? 0 );
 
         $rev_raw = $returns_on ? ( $gross - $returns ) : $gross; // figure shown on the Revenue card
+        if ( $tax_excluded ) {
+            // Moved, not dropped: the same amount leaves both sides, so
+            // Revenue − Cost of goods − Expenses lands on the same Net profit.
+            $rev_raw  -= $tax;
+            $expenses -= $tax;
+        }
         $net_raw = $rev_raw - $cogs - $expenses;
 
         $pctf       = function ( $part ) use ( $rev_raw ) {
@@ -2222,7 +2254,7 @@ class Brikpanel_Dashboard {
         // something to show, so a clean store keeps the card minimal. `type`
         // drives how the JS renders the sign: base / deduct / info.
         $rev_breakdown = [];
-        if ( ( $returns_on && $returns > 0 ) || ( $coupons_on && $coupons > 0 ) ) {
+        if ( ( $returns_on && $returns > 0 ) || ( $coupons_on && $coupons > 0 ) || ( $tax_excluded && $tax > 0 ) ) {
             $rev_breakdown[] = [
                 'key'    => 'gross',
                 'label'  => __( 'Gross sales', 'brikpanel' ),
@@ -2236,6 +2268,17 @@ class Brikpanel_Dashboard {
                     'label'  => __( 'Returns', 'brikpanel' ),
                     'amount' => wc_price( $returns ),
                     'raw'    => $returns,
+                    'type'   => 'deduct',
+                ];
+            }
+            // Taken out of Revenue by the setting: the one place the tax still
+            // shows, so the smaller Revenue figure explains itself.
+            if ( $tax_excluded && $tax > 0 ) {
+                $rev_breakdown[] = [
+                    'key'    => 'tax',
+                    'label'  => __( 'Tax', 'brikpanel' ),
+                    'amount' => wc_price( $tax ),
+                    'raw'    => $tax,
                     'type'   => 'deduct',
                 ];
             }
@@ -2260,6 +2303,9 @@ class Brikpanel_Dashboard {
             'returns_on'    => $returns_on,
             'coupons'       => wc_price( $coupons ),
             'coupons_raw'   => $coupons,
+            // Whether the setting took tax out of Revenue and Expenses above.
+            'tax_excluded'  => $tax_excluded,
+            'tax_raw'       => $tax,
             'revenue_breakdown' => $rev_breakdown,
             'cogs'          => wc_price( $cogs ),
             'cogs_raw'      => $cogs,
@@ -2369,7 +2415,14 @@ class Brikpanel_Dashboard {
         // The payment-fees toggle moves the same three figures, so it earns a
         // segment of its own for exactly the reason spelled out above.
         $fees_for_key = ( function_exists( 'brikpanel_payment_fees_enabled' ) && brikpanel_payment_fees_enabled() ) ? 1 : 0;
-        $cache_key = 'bp_dash_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key;
+        // Taking tax out of Revenue and Expenses moves both figures and every
+        // share of revenue, so it is part of the identity for the same reason.
+        $tax_for_key = ( function_exists( 'brikpanel_profit_tax_excluded' ) && brikpanel_profit_tax_excluded() ) ? 1 : 0;
+        // The payload carries text in the requesting admin's language (month
+        // names in the Recent Orders dates and chart labels, "Guest"), so
+        // admins who use different languages must not share one copy.
+        $locale_for_key = sanitize_key( function_exists( 'determine_locale' ) ? determine_locale() : get_locale() );
+        $cache_key = 'bp_dash_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_' . $locale_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $cached );
@@ -2435,6 +2488,8 @@ class Brikpanel_Dashboard {
         // changes for single-channel stores.
         $total_sales   = brikpanel_get_total_revenue( $start_gmt, $end_gmt, false );
         $order_count   = brikpanel_get_order_count( $start_gmt, $end_gmt, $exclude_mp );
+        // Same orders as $order_count, so it reads as part of the Orders card.
+        $items_sold    = $this->get_items_sold( $start_gmt, $end_gmt, $exclude_mp );
         $aov           = brikpanel_get_average_order_value( $start_gmt, $end_gmt, $exclude_mp );
         $visitor_count = brikpanel_get_visitor_count( $start_local, $end_local );
         // Cap at 100% — visitor tracking is JS-pixel-based and may miss historical
@@ -2590,6 +2645,10 @@ class Brikpanel_Dashboard {
             // so number_format_i18n() alone would still mismatch. Raw values
             // are kept untouched for charts/add-ons.
             'order_count_display'     => brikpanel_dash_format_count( $order_count ),
+            // Units in those paid orders. The label is shown as it comes
+            // (Orders card, Order Rates head); '' when nothing was sold.
+            'items_sold'       => $items_sold,
+            'items_sold_label' => $this->items_sold_label( $items_sold ),
             'aov'              => wc_price( $aov ),
             'aov_raw'          => $aov,
             'visitor_count'    => $visitor_count,
@@ -2665,25 +2724,10 @@ class Brikpanel_Dashboard {
             wp_send_json_error( 'Unauthorized' );
         }
 
-        $visitors = get_transient( 'brikpanel_live_visitors' );
-        if ( ! is_array( $visitors ) ) {
-            $visitors = [];
-        }
-
-        if ( ! defined( 'BRIKPANEL_VISITOR_TIMEOUT' ) ) {
-            define( 'BRIKPANEL_VISITOR_TIMEOUT', 75 );
-        }
-
-        $limit_time      = time() - BRIKPANEL_VISITOR_TIMEOUT;
-        $active_visitors = [];
-
-        foreach ( $visitors as $data ) {
-            if ( isset( $data['last_active'] ) && $data['last_active'] >= $limit_time ) {
-                $active_visitors[] = $data;
-            }
-        }
-
-        wp_send_json_success( $active_visitors );
+        // One rule for every reader of the Live list (ping timeout, idle limit,
+        // traffic source setting): back-end/live/brikpanel-live.php. Without
+        // that module nothing writes the list, so there is nobody to show.
+        wp_send_json_success( function_exists( 'brikpanel_live_active_visitors' ) ? brikpanel_live_active_visitors() : [] );
     }
 
     // =========================================================================
@@ -2905,6 +2949,93 @@ class Brikpanel_Dashboard {
     }
 
     // =========================================================================
+    // ITEMS SOLD (Orders card, Order Rates head)
+    // =========================================================================
+
+    /**
+     * Units sold in paid orders inside [$start_gmt, $end_gmt].
+     *
+     * Counted on the same orders as the Orders card (brikpanel_get_order_count):
+     * paid statuses, store administrators' own orders left out and, on a
+     * BrikMarket store, marketplace-imported orders too, so the two figures sit
+     * side by side without disagreeing. Quantities are read from the order's
+     * own line items, which WooCommerce writes together with the order under
+     * both storage modes. Its analytics lookup table is filled later by a
+     * background job, so a brand-new order would bust the dashboard cache and
+     * be cached without its items. Simple products and variations count alike:
+     * each line item carries its own quantity.
+     *
+     * @param string $start_gmt           Y-m-d H:i:s (UTC)
+     * @param string $end_gmt             Y-m-d H:i:s (UTC)
+     * @param bool   $exclude_marketplace Match the Orders card's site-only basis.
+     * @return int
+     */
+    private function get_items_sold( $start_gmt, $end_gmt, $exclude_marketplace = false ) {
+        global $wpdb;
+
+        $statuses = brikpanel_paid_order_statuses();
+        $sp       = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
+        $is_hpos  = $this->is_hpos();
+        $order_id = $is_hpos ? 'o.id' : 'p.ID';
+
+        $items = "INNER JOIN {$wpdb->prefix}woocommerce_order_items oi
+                ON oi.order_id = {$order_id} AND oi.order_item_type = 'line_item'
+            INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta qty
+                ON qty.order_item_id = oi.order_item_id AND qty.meta_key = '_qty'";
+
+        if ( $is_hpos ) {
+            $sql  = "SELECT COALESCE(SUM(CAST(qty.meta_value AS DECIMAL(20,4))), 0)
+                FROM {$wpdb->prefix}wc_orders o
+                {$items}
+                WHERE o.type = 'shop_order' AND o.status IN ($sp)
+                  AND o.date_created_gmt >= %s AND o.date_created_gmt <= %s";
+            $excl = brikpanel_admin_order_exclusion_sql( true );
+            // The HPOS fragment names a bare customer_id; pin it to the orders
+            // table as get_top_products() does.
+            $excl['sql'] = str_replace( 'customer_id', 'o.customer_id', (string) $excl['sql'] );
+        } else {
+            $sql  = "SELECT COALESCE(SUM(CAST(qty.meta_value AS DECIMAL(20,4))), 0)
+                FROM {$wpdb->posts} p
+                {$items}
+                WHERE p.post_type = 'shop_order' AND p.post_status IN ($sp)
+                  AND p.post_date_gmt >= %s AND p.post_date_gmt <= %s";
+            $excl = brikpanel_admin_order_exclusion_sql( false, 'p.ID' );
+        }
+        $args = array_merge( $statuses, [ $start_gmt, $end_gmt ] );
+
+        if ( ! empty( $excl['sql'] ) ) {
+            $sql .= $excl['sql'];
+            $args = array_merge( $args, $excl['args'] );
+        }
+        if ( $exclude_marketplace ) {
+            $mp = brikpanel_marketplace_order_exclusion_sql( $is_hpos, $order_id );
+            if ( ! empty( $mp['sql'] ) ) {
+                $sql .= $mp['sql'];
+                $args = array_merge( $args, $mp['args'] );
+            }
+        }
+
+        return (int) round( (float) $wpdb->get_var( $wpdb->prepare( $sql, $args ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders only, table names from $wpdb.
+    }
+
+    /**
+     * "5,361 items sold": the count in WooCommerce's own separators (like the
+     * Orders figure beside it) inside the plural form the admin's language
+     * needs, which only the server can pick. '' when nothing was sold.
+     *
+     * @param int $items Units sold.
+     * @return string
+     */
+    private function items_sold_label( $items ) {
+        $items = (int) $items;
+        if ( $items <= 0 ) {
+            return '';
+        }
+        /* translators: %s: number of items sold in the selected period, already formatted (e.g. 5,361). */
+        return sprintf( _n( '%s item sold', '%s items sold', $items, 'brikpanel' ), brikpanel_dash_format_count( $items ) );
+    }
+
+    // =========================================================================
     // TOP PRODUCTS (by quantity sold)
     // =========================================================================
 
@@ -2977,7 +3108,7 @@ class Brikpanel_Dashboard {
             if ( $product ) {
                 $permalink = $product->get_permalink();
                 $data[] = [
-                    'name' => $product->get_name(),
+                    'name' => brikpanel_plain_name( $product->get_name() ),
                     'qty'  => (int) $row->total_sold,
                     'id'   => (int) $row->product_id,
                     'url'  => $permalink ? $permalink : '',
@@ -3049,11 +3180,13 @@ class Brikpanel_Dashboard {
                 if ( ! $term || is_wp_error( $term ) ) {
                     continue;
                 }
-                $title = $term->name;
+                $title = brikpanel_plain_name( $term->name );
                 $link  = get_term_link( $term );
                 $url   = is_wp_error( $link ) ? '' : $link;
             } else {
-                $title = get_the_title( $id );
+                // get_the_title() is display HTML: "&" comes back as "&#038;",
+                // " - " as "&#8211;". The card writes the title as text.
+                $title = brikpanel_plain_label( get_the_title( $id ) );
                 if ( ! $title ) {
                     continue;
                 }
@@ -3113,7 +3246,7 @@ class Brikpanel_Dashboard {
             if ( $product ) {
                 $permalink = $product->get_permalink();
                 $data[] = [
-                    'name'  => $product->get_name(),
+                    'name'  => brikpanel_plain_name( $product->get_name() ),
                     'count' => (int) $row->total_count,
                     'id'    => (int) $row->product_id,
                     'url'   => $permalink ? $permalink : '',
@@ -3372,7 +3505,8 @@ class Brikpanel_Dashboard {
         foreach ( $country_results as $row ) {
             $countries[] = [
                 'code'      => $row->code,
-                'name'      => isset( $wc_countries[ $row->code ] ) ? $wc_countries[ $row->code ] : $row->code,
+                // WooCommerce's list holds entities ("Cura&ccedil;ao").
+                'name'      => isset( $wc_countries[ $row->code ] ) ? brikpanel_plain_name( $wc_countries[ $row->code ] ) : $row->code,
                 'count'     => (int) $row->order_count,
                 'customers' => (int) ( $row->customer_count ?? 0 ),
                 'total'     => html_entity_decode( wp_strip_all_tags( wc_price( (float) ( $row->total_sales ?? 0 ) ) ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
@@ -3442,7 +3576,7 @@ class Brikpanel_Dashboard {
         foreach ( $cat_rows as $row ) {
             $mp_id   = (string) $row->marketplace_id;
             $cat_id  = (int) $row->term_id;
-            $cat_nm  = (string) $row->term_name;
+            $cat_nm  = brikpanel_plain_name( (string) $row->term_name );
             $orders  = (int) $row->orders;
             $rev     = (float) $row->revenue;
 
@@ -3784,7 +3918,8 @@ class Brikpanel_Dashboard {
             $mp_meta = brikpanel_marketplace_meta( $mp_id );
             $out[]   = [
                 'id'                 => (int) $row->product_id,
-                'name'               => (string) $row->name,
+                // Order item name: may carry "&amp;" and TranslatePress markup.
+                'name'               => brikpanel_plain_label( (string) $row->name ),
                 'qty'                => (int) $row->qty,
                 'revenue'            => (float) $row->revenue,
                 'revenue_html'       => wc_price( (float) $row->revenue ),
@@ -3846,16 +3981,29 @@ class Brikpanel_Dashboard {
                 }
             }
 
+            $created = $order->get_date_created();
+
+            // Units on the order (sum of line item quantities). Shown small
+            // under the total, so the row keeps its two-line height.
+            $item_count = (int) $order->get_item_count();
+
             $data[] = [
                 'id'         => $order->get_id(),
                 // Display only. A sequential-order-number plugin can make this
                 // differ from the ID; the row's link still uses the ID.
                 'number'     => (string) $order->get_order_number(),
                 'customer'   => $customer,
+                // The script shows WooCommerce's own name for it
+                // (brikpanelDashboard.i18n.status_labels).
                 'status'     => $order->get_status(),
                 'total'      => wc_price( $order->get_total(), [ 'currency' => $order_currency ] ),
                 'total_base' => $total_base,
-                'date'       => wp_date( brikpanel_date_format(), $order->get_date_created()->getTimestamp() ),
+                // Shown under the order number: the store's date format with
+                // a short month name, so it keeps to one line in the card.
+                'date'       => $created ? wp_date( brikpanel_short_date_format(), $created->getTimestamp() ) : '',
+                'items'      => $item_count,
+                /* translators: %s: number of items on one order, already formatted. */
+                'items_label' => $item_count > 0 ? sprintf( _n( '%s item', '%s items', $item_count, 'brikpanel' ), brikpanel_dash_format_count( $item_count ) ) : '',
                 'source'     => $source,
                 'edit_url'   => $order->get_edit_order_url(),
             ];
@@ -4039,6 +4187,18 @@ class Brikpanel_Dashboard {
         $cur_lbl    = sprintf( '%s (%s)', $currency, $cur_symbol );
 
         $profit  = $d['profit'];
+        // The Revenue row says what the card says under its figure.
+        $rev_netted  = ! empty( $profit['returns_on'] ) && (float) ( $profit['returns_raw'] ?? 0 ) > 0;
+        $rev_no_tax  = ! empty( $profit['tax_excluded'] ) && (float) ( $profit['tax_raw'] ?? 0 ) > 0;
+        if ( $rev_netted && $rev_no_tax ) {
+            $rev_context = __( 'Net of returns and tax', 'brikpanel' );
+        } elseif ( $rev_no_tax ) {
+            $rev_context = __( 'Excluding tax', 'brikpanel' );
+        } elseif ( $rev_netted ) {
+            $rev_context = __( 'Net of returns', 'brikpanel' );
+        } else {
+            $rev_context = __( 'Same as Total Sales', 'brikpanel' );
+        }
         $funnel  = $d['funnel'];
         $rates   = $d['order_rates'];
         $returns = $d['returns'];
@@ -4068,13 +4228,20 @@ class Brikpanel_Dashboard {
             ],
             [ __( 'Total Sales', 'brikpanel' ), $money( $d['total_sales_raw'] ), $delta( $d['deltas']['sales'] ) ],
             [ __( 'Orders', 'brikpanel' ), (int) $d['order_count'], $delta( $d['deltas']['orders'] ) ],
+            // Same paid orders as the row above; the dashboard shows no change for it.
+            [ __( 'Items sold', 'brikpanel' ), (int) ( $d['items_sold'] ?? 0 ), '' ],
             [ __( 'Avg. Order Value', 'brikpanel' ), $money( $d['aov_raw'] ), $delta( $d['deltas']['aov'] ) ],
             [ __( 'Visitors', 'brikpanel' ), (int) $d['visitor_count'], $delta( $d['deltas']['visitors'] ) ],
             [ __( 'Conversion Rate (%)', 'brikpanel' ), (float) $d['conversion_rate'], $delta( $d['deltas']['conversion'] ) ],
             [],
             [ [ __( 'Profit', 'brikpanel' ), $T ] ],
             [ [ __( 'Metric', 'brikpanel' ), $H ], [ sprintf( __( 'Amount (%s)', 'brikpanel' ), $currency ), $H ], [ __( 'Context', 'brikpanel' ), $H ] ],
-            [ __( 'Revenue', 'brikpanel' ), $money( $profit['revenue_raw'] ), __( 'Same as Total Sales', 'brikpanel' ) ],
+            [ __( 'Revenue', 'brikpanel' ), $money( $profit['revenue_raw'] ), $rev_context ],
+            // Taken out of Revenue (and Expenses) by the setting: listed so the
+            // lower Revenue figure explains itself, as it does on the card.
+            ...( ( ! empty( $profit['tax_excluded'] ) && (float) ( $profit['tax_raw'] ?? 0 ) > 0 )
+                ? [ [ __( 'Tax', 'brikpanel' ), $money( $profit['tax_raw'] ), __( 'Taken out of Revenue', 'brikpanel' ) ] ]
+                : [] ),
             /* translators: %s: percentage of revenue. */
             [ __( 'Cost of Goods', 'brikpanel' ), $money( $profit['cogs_raw'] ), sprintf( __( '%s%% of revenue', 'brikpanel' ), $profit['cogs_pct'] ) ],
             /* translators: %s: percentage of revenue. */

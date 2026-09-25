@@ -322,6 +322,7 @@ class Brikpanel_Cart_Share {
                     <p class="brikpanel-cs-subtitle"><?php esc_html_e( 'Pick the products a customer asked for, then send them one link that fills their cart.', 'brikpanel' ); ?></p>
                 </div>
             </div>
+            <?php brikpanel_header_end(); ?>
 
             <div class="brikpanel-cs-grid">
 
@@ -477,7 +478,7 @@ class Brikpanel_Cart_Share {
                 }
                 $taxonomy = str_replace( 'attribute_', '', $key );
                 $term     = get_term_by( 'slug', $value, $taxonomy );
-                $attrs[]  = $term && ! is_wp_error( $term ) ? $term->name : $value;
+                $attrs[]  = $term && ! is_wp_error( $term ) ? brikpanel_plain_name( $term->name ) : $value;
             }
 
             $variations[] = [
@@ -565,7 +566,8 @@ class Brikpanel_Cart_Share {
     // =========================================================================
 
     private function format_product_label( $product ) {
-        $name = $product->get_name();
+        // Plain text for the builder (textContent); stored names can hold "&amp;".
+        $name = brikpanel_plain_label( $product->get_name() );
         $sku  = $product->get_sku();
         if ( $sku ) {
             return $name . ' (' . $sku . ')';

@@ -22,6 +22,13 @@ body.rtl .brikpanel-cron-page {
     direction: rtl;
 }
 
+/* Stacked table rows (front-end/shared/brikpanel-fit-table.css): every tile
+   reads from the start edge. The figure alignments further down (numbers to
+   the left) belong to the table layout only; a message row stays centred. */
+body.rtl .brikpanel-fit-table.is-stacked > tbody > tr > td:not([colspan]) {
+    text-align: start;
+}
+
 
 /* =============================================================================
    FILE: front-end/products/brikpanel-products-list.css
@@ -216,7 +223,9 @@ body.rtl .brk-item-downloads__file::before { left: auto; right: 0.25rem; }
    FILE: front-end/products/brikpanel-product-editor.css
    ============================================================================= */
 body.rtl .brikpanel-pe-back svg { transform: scaleX(-1); }
-body.rtl .brikpanel-pe-header-right { justify-content: flex-start; }
+/* No justify-content override for .brikpanel-pe-header-right: its flex-end
+   already means the left in RTL, the mirror of LTR. A flex-start here put the
+   action row under the title on the same side (field test B10 check). */
 
 body.rtl .brikpanel-pe-input-prefix,
 body.rtl .brikpanel-pe-input-suffix { border-right: none; }
@@ -285,7 +294,15 @@ body.rtl .brikpanel-pe-wc-fields-content .select2-container--default .select2-se
 }
 
 body.rtl .brikpanel-pe-var-table th { text-align: right; }
-body.rtl .brikpanel-pe-var-table .var-stock-status { background-position: left 0.5rem center; }
+body.rtl .brikpanel-pe-var-table .var-stock-status,
+body.rtl .brikpanel-pe-var-details select { background-position: left 0.5rem center; padding-right: 0.5rem; padding-left: 1.5rem; }
+/* Variation image: the stacked-card edges fan out to the left, so the room
+   the image keeps beside the Active switch moves to the left too. */
+body.rtl .brikpanel-pe-var-table .var-image-wrap { margin-right: 0; margin-left: 10px; }
+body.rtl .brikpanel-pe-no-var-gallery .brikpanel-pe-var-table .var-image-wrap { margin-left: 0; }
+body.rtl .brikpanel-pe-var-table .var-image-btn::before { transform: translate(-5px, 2px); }
+body.rtl .brikpanel-pe-var-table .var-image-btn::after { transform: translate(-10px, 4px); }
+body.rtl .brikpanel-pe-var-table .var-image-remove { left: auto; right: -7px; }
 
 body.rtl .var-image-count { right: auto; left: -6px; }
 
@@ -319,7 +336,6 @@ body.rtl .brikpanel-pe-metaboxes-wrap .tagsdiv ul.tagchecklist li {
 }
 
 @media screen and (max-width: 480px) {
-    body.rtl .brikpanel-pe-header-right { justify-content: flex-start; }
     body.rtl .brikpanel-pe-status-trigger { padding: 0.4375rem 0.625rem 0.4375rem 0.5rem; }
     body.rtl .brikpanel-pe-status-menu { right: 0; left: auto; }
 }
@@ -615,9 +631,9 @@ body.rtl .bp-seg-prefix {
 
 body.rtl .bp-seg-selected-chip { padding: 0.25rem 0.625rem 0.25rem 0.5rem; }
 
-body.rtl .bp-seg-table thead th { text-align: right; }
-body.rtl .bp-seg-table td.bp-seg-num,
-body.rtl .bp-seg-table th.bp-seg-num { text-align: left; }
+/* Results table: header and number cells use logical alignment (start / end)
+   in brikpanel-segments.css, so they mirror here without an override. The old
+   `left` rule also beat the stacked cards, where numbers read from the start. */
 
 @media (max-width: 720px) {
     body.rtl .bp-seg-quick-search { justify-content: flex-end; }
@@ -642,10 +658,11 @@ body.rtl .brikpanel-ex-table th.brikpanel-ex-actions-th,
 body.rtl .brikpanel-ex-actions-cell { text-align: left; }
 
 body.rtl .brikpanel-ex-actions-cell {
-    justify-content: flex-start;
     padding-right: 0;
     padding-left: 0.75rem;
 }
+
+body.rtl .brikpanel-ex-row-actions { justify-content: flex-start; }
 
 body.rtl .brikpanel-ex-modal-footer { justify-content: flex-start; }
 
@@ -749,9 +766,10 @@ body.rtl .brikpanel-welcome-kbd { margin-left: 0; margin-right: 4px; }
 /* =============================================================================
    FILE: includes/cron/brikpanel-cron-page.css
    ============================================================================= */
-body.rtl .brikpanel-cron-table thead th { text-align: right; }
+/* Header cells and row buttons use logical alignment (start / flex-end) in the
+   cron stylesheet itself, so they mirror without an override here. The old
+   `flex-start` override pushed one-button rows to the inner edge. */
 body.rtl .brikpanel-cron-filter-actions { margin-left: 0; margin-right: auto; }
-body.rtl .brikpanel-cron-row-actions { justify-content: flex-start; }
 body.rtl .brikpanel-cron-toast { right: auto; left: 20px; transform: translateX(-110%); }
 body.rtl .brikpanel-cron-toast.is-visible { transform: translateX(0); }
 
@@ -858,7 +876,7 @@ body.rtl #wpcontent {
 
 body.rtl .sb-customizer-sidebar { left: auto; right: var(--brikpanel-sidebar-width); }
 
-body.rtl #brikpanel-navigation a::after { left: 0; right: 0; }
+body.rtl #brikpanel-navigation :is(li, .brikpanel-menu-icon-title-container) > a::after { left: 0; right: 0; }
 
 body.rtl #brikpanel-navigation .wp-submenu:where(
     :not(#toplevel_page_woocommerce ul),
@@ -941,7 +959,7 @@ body.rtl .bp-order-notify__progress { transform-origin: right center; }
 /* =============================================================================
    ABANDONED CARTS — list table + "Columns" popover
    ============================================================================= */
-body.rtl .brikpanel-cartab-table th { text-align: right; }
+/* .brikpanel-cartab-table th uses text-align: start, so it mirrors without an override. */
 
 body.rtl .brikpanel-cartab-columns-popover { right: auto; left: 0; }
 

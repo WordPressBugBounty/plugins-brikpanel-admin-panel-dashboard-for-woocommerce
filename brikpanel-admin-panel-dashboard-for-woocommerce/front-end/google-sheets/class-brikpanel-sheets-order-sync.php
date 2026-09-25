@@ -1782,12 +1782,14 @@ class Brikpanel_Sheets_Order_Sync {
 			case 'discount_total':       return (float) $order->get_total_discount();
 			case 'total':                return (float) $order->get_total();
 			case 'payment_method':       return (string) $order->get_payment_method();
-			case 'payment_method_title': return (string) $order->get_payment_method_title();
+			// Gateway and shipping titles are saved through wp_kses_post() and
+			// coupon codes through kses, so a bare "&" is stored as "&amp;".
+			case 'payment_method_title': return brikpanel_plain_label( (string) $order->get_payment_method_title() );
 			case 'transaction_id':       return (string) $order->get_transaction_id();
-			case 'coupon_codes':         return implode( ', ', $order->get_coupon_codes() );
+			case 'coupon_codes':         return implode( ', ', array_map( 'brikpanel_plain_name', $order->get_coupon_codes() ) );
 			case 'customer_note':        return (string) $order->get_customer_note();
 			case 'customer_id':          return (int) $order->get_customer_id();
-			case 'shipping_method':      return (string) $order->get_shipping_method(); // comma-joined titles
+			case 'shipping_method':      return brikpanel_plain_label( (string) $order->get_shipping_method() ); // comma-joined titles
 			case 'order_cogs_total':     return round( $this->order_cogs_total( $order ), 2 );
 
 			// Billing
@@ -1835,7 +1837,8 @@ class Brikpanel_Sheets_Order_Sync {
 					return $p ? (string) $p->get_sku() : '';
 				} ) );
 			case 'product_name':
-				if ( $item ) { return (string) $item->get_name(); }
+				// Item names copy the product title: "&amp;", TranslatePress <span>.
+				if ( $item ) { return brikpanel_plain_label( (string) $item->get_name() ); }
 				return $this->order_items_summary( $order );
 			case 'items_summary':
 				return $item ? $this->format_item_summary( $item ) : $this->order_items_summary( $order );
@@ -1854,7 +1857,12 @@ class Brikpanel_Sheets_Order_Sync {
 						if ( $label === '' || $label === $raw_name ) {
 							$label = brikpanel_title_case( $raw_name );
 						}
-						$attrs[] = $label . ': ' . (string) $v;
+						// Term name rather than the stored slug ("black-white").
+						$value = (string) $product->get_attribute( $raw_name );
+						if ( $value === '' ) {
+							$value = (string) $v;
+						}
+						$attrs[] = brikpanel_plain_name( $label ) . ': ' . brikpanel_plain_name( $value );
 					}
 					return implode( '; ', $attrs );
 				}
@@ -1871,7 +1879,7 @@ class Brikpanel_Sheets_Order_Sync {
 						} elseif ( ! is_scalar( $value ) ) {
 							continue;
 						}
-						$meta_strs[] = wp_strip_all_tags( wc_attribute_label( $key ) ) . ': ' . wp_strip_all_tags( (string) $value );
+						$meta_strs[] = brikpanel_plain_label( wc_attribute_label( $key ) ) . ': ' . brikpanel_plain_label( (string) $value );
 					}
 					return implode( '; ', $meta_strs );
 				}
@@ -1937,7 +1945,7 @@ class Brikpanel_Sheets_Order_Sync {
 	private function format_item_summary( $item ) {
 		$qty     = (float) $item->get_quantity();
 		$qty_str = ( $qty === (float) (int) $qty ) ? (string) (int) $qty : (string) $qty;
-		return $qty_str . '× ' . (string) $item->get_name();
+		return $qty_str . '× ' . brikpanel_plain_label( (string) $item->get_name() );
 	}
 
 	/**

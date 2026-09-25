@@ -199,8 +199,25 @@
             if (isErrorNotice(n)) return;                          // red/error notices stay on screen
             if (!noticeHasContent(n)) return;                      // empty placeholder, leave in place
             n.classList.add('brikpanel-notice');
+            // "Hide third-party admin notices" is off: the notice stays on the
+            // page. The class above keeps the screens' own notice-hiding rules
+            // (products, coupons, taxonomy) off it, so it is shown as promised.
+            if (!hidesForeignNotices()) return;
+            // `inline` too, like the server-side collector: this first sweep runs
+            // before WordPress's common.js, which on jQuery ready moves every
+            // notice that is not `.inline` under the page header. Without it the
+            // notice left the bell again and landed in the title row (B5).
+            n.classList.add('inline');
             panelList.appendChild(n);
         });
+    }
+
+    /**
+     * Whether the store owner keeps "Hide third-party admin notices" on (the
+     * default). Missing settings mean off, so nothing is hidden by mistake.
+     */
+    function hidesForeignNotices() {
+        return !!(window.brikpanelTopbar && window.brikpanelTopbar.hide_foreign);
     }
 
     /**

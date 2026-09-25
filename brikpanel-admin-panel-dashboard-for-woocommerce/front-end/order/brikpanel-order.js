@@ -258,6 +258,51 @@
 		applyHeaderMetrics();
 		window.addEventListener('resize', scheduleHeaderMetrics);
 
+		// The bar gives way in priority order, measured on its real width (field
+		// test B10, CLAUDE.md "Başlık satırı kuralı"): the order number and Save
+		// never do. First Screen Options drops its text, then the date goes, then
+		// the word after the back arrow, then the status label ends in "…"; the
+		// number is cut only when nothing else is left. Breakpoints guessed this
+		// before, and a long order number with a long status pushed Save off the
+		// screen at 961-1100px. Measured on the bar itself ('live'): it is fixed
+		// and stays one row, and its Screen Options button is styled through
+		// WordPress ids that a copy would not keep. The ResizeObserver below
+		// re-publishes the bar's height when a level changes it.
+		// The last two let an item shrink to fill the bar, so they are not
+		// asked to leave room spare (fit-row.js).
+		var fitLevels = [
+			'',
+			'is-meta-icons',
+			'is-meta-icons is-no-date',
+			'is-meta-icons is-no-date is-bare-back',
+			{ cls: 'is-meta-icons is-no-date is-bare-back is-short-status', spare: false },
+			{ cls: 'is-meta-icons is-no-date is-bare-back is-short-status is-cut-title', spare: false }
+		];
+		if (window.brikpanelFitRow) {
+			window.brikpanelFitRow(header, {
+				measure: 'live',
+				title: '.brikpanel-order-header__title',
+				lines: [''],
+				levels: fitLevels,
+				onChange: scheduleHeaderMetrics
+			});
+		} else if (window.matchMedia) {
+			// Without the helper: the breakpoint layout the bar had before.
+			var tabletQuery = window.matchMedia('(max-width: 782px)');
+			var phoneQuery = window.matchMedia('(max-width: 600px)');
+			var applyBreakpoints = function () {
+				header.classList.toggle('is-meta-icons', tabletQuery.matches);
+				['is-no-date', 'is-bare-back', 'is-short-status', 'is-cut-title'].forEach(function (cls) {
+					header.classList.toggle(cls, phoneQuery.matches);
+				});
+			};
+			applyBreakpoints();
+			[tabletQuery, phoneQuery].forEach(function (query) {
+				if (query.addEventListener) query.addEventListener('change', applyBreakpoints);
+				else if (query.addListener) query.addListener(applyBreakpoints);
+			});
+		}
+
 		// Folding the admin menu changes the content column without changing the
 		// window, so it is invisible to the resize listener. Core announces it on
 		// the jQuery document bus, which is the only signal available when
@@ -1301,6 +1346,10 @@
 			safely(renderItemDownloads);
 			safely(watchDownloadPermissions);
 		} finally {
+			// The tabs can bring in the page scrollbar, which narrows the bar:
+			// fit it once more before the page is shown.
+			var fitted = window.brikpanelFitRow && window.brikpanelFitRow.get(document.querySelector('.brikpanel-order-header'));
+			if (fitted) fitted.refit();
 			reveal();
 		}
 	}

@@ -947,6 +947,20 @@ function brikpanel_live_customer_details_enabled() {
 }
 
 /**
+ * Whether the Live visitors list shows where each visitor came from
+ * (channel and source, with the campaign and search term on hover).
+ *
+ * The storefront tracker reads it too: when off, it neither remembers the
+ * visit's entry source in the browser nor sends it, and the server stores
+ * none. Defaults to on.
+ *
+ * @return bool
+ */
+function brikpanel_live_traffic_source_enabled() {
+    return get_option( 'brikpanel_live_traffic_source', 'yes' ) !== 'no';
+}
+
+/**
  * Option name storing the order statuses a merchant counts as valid,
  * realised sales (revenue, order count, AOV, profit, lifetime value).
  */
@@ -2628,6 +2642,20 @@ if ( ! function_exists( 'brikpanel_datetime_format' ) ) {
 	 */
 	function brikpanel_datetime_format() {
 		return brikpanel_date_format() . ' ' . brikpanel_time_format();
+	}
+}
+
+if ( ! function_exists( 'brikpanel_short_date_format' ) ) {
+	/**
+	 * The store's date format with short month and weekday names, for a date
+	 * in a narrow column: "F j, Y" becomes "M j, Y" (Sep 10, 2026, as the
+	 * WooCommerce orders list writes it), "l, j F Y" becomes "D, j M Y". The
+	 * store keeps its own order and separators; escaped letters stay as they are.
+	 *
+	 * @return string
+	 */
+	function brikpanel_short_date_format() {
+		return (string) preg_replace( array( '/(?<!\\\\)F/', '/(?<!\\\\)l/' ), array( 'M', 'D' ), brikpanel_date_format() );
 	}
 }
 
