@@ -246,16 +246,19 @@ class Brikpanel_Sheets_Settings {
 		$css_ver  = is_readable( $css_path ) ? (string) filemtime( $css_path ) : BRIKPANEL_VERSION;
 		$js_ver   = is_readable( $js_path )  ? (string) filemtime( $js_path )  : BRIKPANEL_VERSION;
 
+		// The tab row scrolls inside itself on a phone (shared strip helper).
+		$strip_css = function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'scroll_strip', 'style' ) : [];
+		$strip_js  = function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'scroll_strip' ) : [];
 		wp_enqueue_style(
 			'brikpanel-gs',
 			BRIKPANEL_GS_URL . 'assets/brikpanel-google-sheets.css',
-			[],
+			$strip_css,
 			$css_ver
 		);
 		wp_enqueue_script(
 			'brikpanel-gs',
 			BRIKPANEL_GS_URL . 'assets/brikpanel-google-sheets.js',
-			[],
+			$strip_js,
 			$js_ver,
 			true
 		);

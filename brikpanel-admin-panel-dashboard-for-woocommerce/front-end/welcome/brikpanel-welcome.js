@@ -89,8 +89,10 @@
         /* progress bar */
         if (progress) progress.style.width = ((current + 1) / total * 100) + '%';
 
-        /* keep active rail item in view (matters on mobile horizontal rail) */
-        if (rail[current] && rail[current].scrollIntoView) {
+        /* keep active rail item in view (matters on mobile horizontal rail).
+           The shared strip does it clear of the close button that sits on the
+           row's end; scrollIntoView stays for when it is not loaded. */
+        if (!window.brikpanelScrollStrip && rail[current] && rail[current].scrollIntoView) {
             rail[current].scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
 

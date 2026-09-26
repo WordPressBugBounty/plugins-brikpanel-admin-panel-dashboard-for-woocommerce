@@ -201,9 +201,11 @@ function brikpanel_live_visitor_source( $referrer, $landing_url ) {
  * @param int|null $idle     Seconds since the visitor last interacted with the
  *                           page (0 on a page load), or null when the tracker
  *                           cannot tell.
+ * @param string   $page_ref The page as "post:ID", "term:ID" or "front" (see
+ *                           brikpanel_live_page_names()), '' when unknown.
  * @return string Status keyword: Tracked | Removed | Skipped | Throttled.
  */
-function brikpanel_record_live_visitor( $page_url, $is_exit = false, $entry = [], $idle = null ) {
+function brikpanel_record_live_visitor( $page_url, $is_exit = false, $entry = [], $idle = null, $page_ref = '' ) {
     // Burst lock for a client that did not bring our cookie back (3.3.11).
     //
     // Each row here is keyed on the brikpanel_vid cookie, and a client that
@@ -397,6 +399,11 @@ function brikpanel_record_live_visitor( $page_url, $is_exit = false, $entry = []
         if ( null !== $source ) {
             $visitors[ $visitor_id ]['source'] = $source;
         }
+        // Belongs to this ping's page only, so unlike the source it is never
+        // carried over: a page from an older tracker shows its address.
+        if ( is_string( $page_ref ) && '' !== $page_ref ) {
+            $visitors[ $visitor_id ]['page_ref'] = $page_ref;
+        }
     }
 
     // Cleanup: drop stale entries first so the cap below preserves recent
@@ -505,6 +512,72 @@ function brikpanel_live_active_visitors() {
     }
 
     return $active;
+}
+
+/**
+ * Adds 'page_title' to Live list rows: the name of the page each visitor is
+ * on (product, page, category), read at display time from the post or term
+ * the tracker reported, so a renamed product shows its new name.
+ *
+ * The id comes from the visitor's browser, so only something a visitor can
+ * actually be looking at gets a name: a publicly viewable post or a term of a
+ * public taxonomy. Anything else (a draft or private id sent by hand, a
+ * deleted product), pages with no object of their own (search results, 404)
+ * and rows from an older tracker keep '' and the list shows the address.
+ *
+ * @param array[] $rows Rows from brikpanel_live_active_visitors().
+ * @return array[] The same rows, each with 'page_title'.
+ */
+function brikpanel_live_page_names( $rows ) {
+    $refs  = [];
+    $posts = [];
+    $terms = [];
+    foreach ( $rows as $i => $row ) {
+        $ref = ( isset( $row['page_ref'] ) && is_string( $row['page_ref'] ) ) ? $row['page_ref'] : '';
+        if ( 'front' === $ref ) {
+            $refs[ $i ] = [ 'front', 0 ];
+        } elseif ( preg_match( '/^(post|term):([1-9][0-9]{0,18})$/', $ref, $m ) ) {
+            $refs[ $i ] = [ $m[1], (int) $m[2] ];
+            if ( 'post' === $m[1] ) {
+                $posts[ (int) $m[2] ] = (int) $m[2];
+            } else {
+                $terms[ (int) $m[2] ] = (int) $m[2];
+            }
+        }
+    }
+
+    // One query each, however many visitors are live.
+    if ( $posts ) {
+        _prime_post_caches( array_values( $posts ), false, false );
+    }
+    if ( $terms ) {
+        _prime_term_caches( array_values( $terms ), false );
+    }
+
+    foreach ( $rows as $i => $row ) {
+        $name = '';
+        if ( isset( $refs[ $i ] ) ) {
+            list( $type, $id ) = $refs[ $i ];
+            if ( 'front' === $type ) {
+                $name = __( 'Home page', 'brikpanel' );
+            } elseif ( 'post' === $type ) {
+                $post = get_post( $id );
+                // get_the_title() is display HTML ("&#038;", "&#8211;"); the
+                // list writes the name as text. Same as Most Viewed Pages.
+                if ( $post instanceof WP_Post && is_post_publicly_viewable( $post ) ) {
+                    $name = brikpanel_plain_label( get_the_title( $post ) );
+                }
+            } else {
+                $term = get_term( $id );
+                if ( $term instanceof WP_Term && is_taxonomy_viewable( $term->taxonomy ) ) {
+                    $name = brikpanel_plain_name( $term->name );
+                }
+            }
+        }
+        $rows[ $i ]['page_title'] = $name;
+    }
+
+    return $rows;
 }
 
 function brikpanel_get_live_data() {

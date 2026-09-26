@@ -263,7 +263,7 @@ class Brikpanel_Expenses {
 			</div>
 
 			<!-- Summary bar -->
-			<div class="brikpanel-ex-summary" id="brikpanel-ex-summary">
+			<div class="brikpanel-ex-summary" id="brikpanel-ex-summary" data-bp-tiles>
 				<div class="brikpanel-ex-summary-card">
 					<div class="brikpanel-ex-summary-label"><?php esc_html_e( 'Total (filtered)', 'brikpanel' ); ?></div>
 					<div class="brikpanel-ex-summary-value" id="brikpanel-ex-total">—</div>

@@ -2990,6 +2990,11 @@
                 closeFmtMenus();
                 $fmt.toggleClass('is-open', willOpen);
                 $btn.attr('aria-expanded', willOpen ? 'true' : 'false');
+                // A wrapped toolbar can put the trigger near the card's far
+                // edge (and RTL mirrors it): keep the menu inside the editor.
+                if (willOpen && window.brikpanelTip) {
+                    window.brikpanelTip.nudge($fmt.find('.brikpanel-pe-fmt-menu')[0], $fmt.closest('.brikpanel-pe')[0]);
+                }
                 return;
             }
             if ($btn.hasClass('brikpanel-pe-fmt-item')) {
@@ -3007,6 +3012,9 @@
                 closeFmtMenus();
                 $cp.toggleClass('is-open', cpOpen);
                 $btn.attr('aria-expanded', cpOpen ? 'true' : 'false');
+                if (cpOpen && window.brikpanelTip) {
+                    window.brikpanelTip.nudge($cp.find('.brikpanel-pe-colorpick-menu')[0], $cp.closest('.brikpanel-pe')[0]);
+                }
                 return;
             }
             if ($btn.hasClass('brikpanel-pe-color-swatch')) {

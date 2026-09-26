@@ -165,7 +165,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 		</div>
 
-		<div class="bp-seg-stats" id="bp-seg-stats">
+		<div class="bp-seg-stats" id="bp-seg-stats" data-bp-tiles>
 			<div class="bp-seg-stat">
 				<div class="bp-seg-stat-label"><?php esc_html_e( 'Results', 'brikpanel' ); ?></div>
 				<div class="bp-seg-stat-value" id="bp-seg-stat-count">—</div>

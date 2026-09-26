@@ -906,23 +906,42 @@ add_action( 'update_option_' . BRIKPANEL_PAYMENT_FEES_OPTION, 'brikpanel_bust_da
 add_action( 'add_option_' . BRIKPANEL_PAYMENT_FEES_OPTION, 'brikpanel_bust_data_caches' );
 
 /**
- * Option name behind brikpanel_profit_tax_excluded().
+ * Option name behind brikpanel_profit_tax_mode() ("Tax in the Profit section").
+ * It was a checkbox first, so its two old values keep their meaning.
  */
 const BRIKPANEL_TAX_EXCLUDED_OPTION = 'brikpanel_profit_exclude_tax';
 
 /**
- * Whether the dashboard Profit section shows Revenue without tax.
+ * Where the dashboard Profit section puts order tax.
  *
- * Off by default: Revenue is what customers paid, tax included, and the same
- * tax is counted in Expenses. On, both sides drop it: Revenue is shown net of
- * tax and Expenses no longer carries it, so Net profit is the same figure
- * either way. Dashboard display only; the snapshot that Google Sheets and
- * Copy for AI read keeps its own shape (tax in its own column there).
+ *  - 'expenses' (stored 'no', the default): Revenue is what customers paid,
+ *    tax included, and the same tax is one of the Expenses.
+ *  - 'excluded' (stored 'yes'): Revenue is shown without tax and Expenses
+ *    leave it out.
+ *  - 'revenue' (stored 'revenue'): Revenue keeps the tax and shows the amount
+ *    under its figure, Expenses leave it out, and Net profit takes it off.
+ *
+ * Net profit is the same figure in all three. Dashboard display only; the
+ * snapshot that Google Sheets and Copy for AI read keeps its own shape (tax
+ * in its own column there).
+ *
+ * @return string 'expenses' | 'excluded' | 'revenue'
+ */
+function brikpanel_profit_tax_mode() {
+	$value = get_option( BRIKPANEL_TAX_EXCLUDED_OPTION, 'no' );
+	if ( 'yes' === $value ) {
+		return 'excluded';
+	}
+	return 'revenue' === $value ? 'revenue' : 'expenses';
+}
+
+/**
+ * Whether the Profit section shows Revenue without tax.
  *
  * @return bool
  */
 function brikpanel_profit_tax_excluded() {
-	return 'yes' === get_option( BRIKPANEL_TAX_EXCLUDED_OPTION, 'no' );
+	return 'excluded' === brikpanel_profit_tax_mode();
 }
 
 // Flipping it moves Revenue, Expenses and every "% of revenue" on the cached

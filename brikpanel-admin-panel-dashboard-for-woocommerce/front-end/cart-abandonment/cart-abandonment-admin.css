@@ -35,9 +35,12 @@
    `#wpcontent { padding-right }` so the sidebar does not sit behind an empty
    strip. On a centred column that left a large gap either way; full width it
    would park the cards 2px from the sidebar. Restate the gutter so both
-   directions read the same. */
-body.rtl .brikpanel-cartab-wrap {
-	margin-inline-start: 22px;
+   directions read the same. From 960px down #wpcontent has its 10px on the
+   leading side again (brikpanel-rtl.css), like LTR. */
+@media (min-width: 961px) {
+	body.rtl .brikpanel-cartab-wrap {
+		margin-inline-start: 22px;
+	}
 }
 
 /* Header */
@@ -304,6 +307,62 @@ body.rtl .brikpanel-cartab-wrap {
 
 [dir="rtl"] .brikpanel-cartab-summary-cta svg {
 	transform: scaleX(-1);
+}
+
+/* brikpanel-tiles.js (data-bp-tiles) picks four in a row, 2 x 2 or a list,
+   measured: on a phone the four cards took a full-width row each (field test
+   C). A phone gets less padding and a smaller figure so two fit a row. */
+@media (max-width: 782px) {
+	.brikpanel-cartab-summary {
+		gap: 0.75rem;
+	}
+
+	.brikpanel-cartab-summary-card {
+		padding: 0.875rem 1rem;
+	}
+
+	.brikpanel-cartab-summary-value {
+		font-size: 1.25rem;
+	}
+}
+
+/* The list: figure beside its name, the value line under both. */
+.brikpanel-cartab-summary.is-tiles-list {
+	gap: 0.5rem;
+}
+
+.brikpanel-cartab-summary.is-tiles-list .brikpanel-cartab-summary-card {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	column-gap: 0.75rem;
+	align-items: baseline;
+	padding: 0.75rem 1rem;
+}
+
+.brikpanel-cartab-summary.is-tiles-list .brikpanel-cartab-summary-label {
+	margin-bottom: 0;
+}
+
+.brikpanel-cartab-summary.is-tiles-list .brikpanel-cartab-summary-value {
+	grid-column: 2;
+	grid-row: 1;
+	font-size: 1.125rem;
+	text-align: end;
+}
+
+.brikpanel-cartab-summary.is-tiles-list .brikpanel-cartab-summary-meta {
+	grid-column: 1 / -1;
+	flex-direction: row;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+	padding-top: 0.5rem;
+}
+
+.brikpanel-cartab-summary.is-tiles-list .brikpanel-cartab-summary-cta {
+	grid-column: 1 / -1;
+	justify-self: start;
 }
 
 /* Filters — one toolbar row; every control applies itself, so no Apply button.

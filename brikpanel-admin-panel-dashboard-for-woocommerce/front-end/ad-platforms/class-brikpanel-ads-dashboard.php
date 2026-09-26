@@ -84,40 +84,44 @@ class Brikpanel_Ads_Dashboard {
 		?>
 		<div class="brikpanel-dash-cards brikpanel-dash-cards-ads" id="brikpanel-ads-kpis">
 			<div class="brikpanel-dash-card" data-metric="roas" id="brikpanel-roas-card">
-				<span class="brikpanel-dash-card-label"><?php esc_html_e( 'ROAS', 'brikpanel' ); ?></span>
+				<div class="brikpanel-dash-card-head">
+					<span class="brikpanel-dash-card-label"><span class="brikpanel-dash-card-label-text"><?php esc_html_e( 'ROAS', 'brikpanel' ); ?></span></span>
+					<span class="brikpanel-dash-card-tools">
+						<?php if ( $can_refresh ) : ?>
+						<button type="button" class="brikpanel-dash-ads-refresh" id="brikpanel-ads-refresh"
+							title="<?php esc_attr_e( 'Pull today\'s spend from your connected ad platforms now, instead of waiting for the daily sync.', 'brikpanel' ); ?>"
+							aria-label="<?php esc_attr_e( 'Update ad spend', 'brikpanel' ); ?>">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<polyline points="23 4 23 10 17 10"></polyline>
+								<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+							</svg>
+						</button>
+						<?php endif; ?>
+						<?php
+						/*
+						 * Cost per order is folded away behind a chevron rather than
+						 * printed under the ROAS figure. Printed, it added four lines
+						 * to this card, and because grid items stretch, every other
+						 * card in the KPI row grew with it and stood half empty. This
+						 * is the disclosure the Revenue and Expenses cards already
+						 * use — same classes, so the chevron, the rotation and the
+						 * 0fr-to-1fr open share their styling and cannot drift from
+						 * them. Collapsed it adds no flow height at all, so the ROAS
+						 * card measures exactly like its five neighbours.
+						 */
+						?>
+						<button type="button" class="brikpanel-dash-bd-toggle" id="brikpanel-ads-cpo-toggle"
+							aria-expanded="false" aria-controls="brikpanel-ads-cpo-collapse" hidden
+							title="<?php esc_attr_e( 'Show ad cost per order', 'brikpanel' ); ?>"
+							aria-label="<?php esc_attr_e( 'Show ad cost per order', 'brikpanel' ); ?>">
+							<svg class="brikpanel-dash-bd-chevron" width="14" height="14" viewBox="0 0 24 24"
+								fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+								stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+						</button>
+					</span>
+				</div>
 				<span class="brikpanel-dash-card-value" id="card-roas">--</span>
 				<span class="brikpanel-dash-card-delta brikpanel-dash-card-delta-static" id="delta-roas"></span>
-				<?php if ( $can_refresh ) : ?>
-				<button type="button" class="brikpanel-dash-ads-refresh" id="brikpanel-ads-refresh"
-					title="<?php esc_attr_e( 'Pull today\'s spend from your connected ad platforms now, instead of waiting for the daily sync.', 'brikpanel' ); ?>"
-					aria-label="<?php esc_attr_e( 'Update ad spend', 'brikpanel' ); ?>">
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<polyline points="23 4 23 10 17 10"></polyline>
-						<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-					</svg>
-				</button>
-				<?php endif; ?>
-				<?php
-				/*
-				 * Cost per order is folded away behind a chevron rather than
-				 * printed under the ROAS figure. Printed, it added four lines
-				 * to this card, and because grid items stretch, every other
-				 * card in the KPI row grew with it and stood half empty. This
-				 * is the disclosure the Revenue and Expenses cards already
-				 * use — same classes, so the chevron, the rotation and the
-				 * 0fr-to-1fr open share their styling and cannot drift from
-				 * them. Collapsed it adds no flow height at all, so the ROAS
-				 * card measures exactly like its five neighbours.
-				 */
-				?>
-				<button type="button" class="brikpanel-dash-bd-toggle" id="brikpanel-ads-cpo-toggle"
-					aria-expanded="false" aria-controls="brikpanel-ads-cpo-collapse" hidden
-					title="<?php esc_attr_e( 'Show ad cost per order', 'brikpanel' ); ?>"
-					aria-label="<?php esc_attr_e( 'Show ad cost per order', 'brikpanel' ); ?>">
-					<svg class="brikpanel-dash-bd-chevron" width="14" height="14" viewBox="0 0 24 24"
-						fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-						stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
-				</button>
 				<?php
 				/*
 				 * inert, not just visually collapsed. The "?" inside carries
@@ -188,12 +192,10 @@ class Brikpanel_Ads_Dashboard {
 	 * it: that method is private, and widening a core method's visibility for
 	 * one add-on figure is a worse trade than twelve lines of markup.
 	 *
-	 * The bubble is wider than the card it hangs off and is meant to be: the
-	 * card no longer clips its content, so the explanation paints over the
-	 * neighbouring card rather than being cut down to a sliver. Which side it
-	 * opens on is decided at open time by initHintTooltips() in
-	 * brikpanel-dashboard.js, which measures the viewport and flips the bubble
-	 * when it would spill, so no alignment is baked in here.
+	 * The bubble is wider than the card it hangs off and is meant to be: it
+	 * opens fixed over the page (front-end/shared/brikpanel-tip.js), so the
+	 * card's clip and the folding panel's clip never cut it, and the helper
+	 * measures where it fits on screen at open time.
 	 */
 	private static function render_cpo_hint() {
 		$title = __( 'How Ad cost per order is calculated', 'brikpanel' );
@@ -203,15 +205,15 @@ class Brikpanel_Ads_Dashboard {
 			$body .= '<br>' . __( 'Marketplace orders are not counted, because ad spend drives your own store.', 'brikpanel' );
 		}
 		?>
-		<span class="brikpanel-dash-hint" tabindex="0" role="button" aria-label="<?php echo esc_attr( $title ); ?>">
+		<span class="brikpanel-dash-hint" data-bp-tip="start" tabindex="0" role="button" aria-expanded="false" aria-label="<?php echo esc_attr( $title ); ?>" aria-describedby="brikpanel-cpo-hint-body">
 			<svg class="brikpanel-dash-hint-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 				<circle cx="12" cy="12" r="10"></circle>
 				<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
 				<line x1="12" y1="17" x2="12.01" y2="17"></line>
 			</svg>
-			<span class="brikpanel-dash-hint-tip" role="tooltip">
+			<span class="brikpanel-dash-hint-tip brikpanel-tip" role="tooltip">
 				<span class="brikpanel-dash-hint-title"><?php echo esc_html( $title ); ?></span>
-				<span class="brikpanel-dash-hint-body"><?php echo wp_kses( $body, [ 'br' => [], 'strong' => [] ] ); ?></span>
+				<span class="brikpanel-dash-hint-body" id="brikpanel-cpo-hint-body"><?php echo wp_kses( $body, [ 'br' => [], 'strong' => [] ] ); ?></span>
 			</span>
 		</span>
 		<?php
@@ -755,59 +757,18 @@ class Brikpanel_Ads_Dashboard {
 				.brikpanel-dash-cards.bp-kpi-cols-6,
 				.brikpanel-dash-cards.bp-kpi-cols-7 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 			}
-			/* The base sheet clips these same cards again inside its 600px
-			   block. A phone has no hover and a tap matches neither :hover nor
-			   :focus-visible, so on a touch device that clip ate the "?" bubble
-			   outright. Scoped to this grid, so the Profit rows keep theirs. */
-			@media (max-width: 600px) {
-				.brikpanel-dash-cards.bp-kpi-cols-6 > .brikpanel-dash-card,
-				.brikpanel-dash-cards.bp-kpi-cols-7 > .brikpanel-dash-card { overflow: visible; }
-			}
 			.brikpanel-dash-card[data-metric="roas"] .brikpanel-dash-card-delta {
 				color: #616161; font-size: 0.75rem;
 			}
-			/* Clears the refresh button, which is absolutely positioned against
-			   the padding box and reaches into the content column. "ROAS" is
-			   short in every locale we ship, but a label is the wrong place to
-			   be relying on that. */
-			.brikpanel-dash-card[data-metric="roas"] .brikpanel-dash-card-label {
-				padding-inline-end: 1.75rem;
-			}
-			/* Two icons share this corner, so they are placed as a pair. The
-			   shared .brikpanel-dash-bd-toggle is positioned with a physical
-			   `right`, which would strand it on the wrong side in RTL, so it is
-			   re-anchored here on the logical axis the refresh button already
-			   uses. The chevron keeps the outer slot because it is the one that
-			   is always meaningful when present; refresh steps inboard beside
-			   it, and slides back to the corner on its own when there is no
-			   figure to disclose and the chevron is not rendered. */
-			.brikpanel-dash-card[data-metric="roas"] .brikpanel-dash-bd-toggle {
-				right: auto;
-				inset-inline-end: 0.7rem;
-			}
-			.brikpanel-dash-card[data-metric="roas"].has-cpo .brikpanel-dash-ads-refresh {
-				inset-inline-end: 2.3rem;
-			}
+			/* Refresh and the chevron sit in the head row of the card, beside the
+			   label (.brikpanel-dash-card-tools in brikpanel-dashboard.css), in
+			   the flow: no corner positions, no space held back in the label. */
 
 			/* "Ad cost per order" sits inside the ROAS card rather than beside
 			   it. Two cards for two readings of the same ad spend left the KPI
 			   row ragged, and the two figures are easier to read together than
 			   apart. A rule and a smaller type size keep it clearly secondary
 			   to the ROAS figure above it. */
-			/* The "?" bubble lives inside .brikpanel-dash-bd-inner, whose
-			   overflow: hidden is what makes the 0fr-to-1fr open animate at
-			   all. That clip swallowed the bubble whole: it is taller than the
-			   panel and hangs below it, so the explanation rendered, reported
-			   itself visible to script, and painted nothing. Lift the clip for
-			   exactly as long as a hint is open. Opening cannot be disturbed by
-			   this, because the icon has to be on screen before it can be
-			   hovered or tabbed to, which means the panel is already open.
-			   :focus-within covers the icon itself taking focus as well as
-			   anything inside it, so it spans mouse and keyboard both. */
-			.brikpanel-dash-card[data-metric="roas"] .brikpanel-dash-bd-inner:has(.brikpanel-dash-hint:hover),
-			.brikpanel-dash-card[data-metric="roas"] .brikpanel-dash-bd-inner:has(.brikpanel-dash-hint:focus-within) {
-				overflow: visible;
-			}
 			/* Matches .brikpanel-dash-bd-list, the body of the other two
 			   disclosures on this dashboard, so an opened ROAS card and an
 			   opened Expenses card separate from their heading identically. */
@@ -856,16 +817,12 @@ class Brikpanel_Ads_Dashboard {
 				white-space: nowrap;
 			}
 
-			/* Manual refresh, in the ROAS cards top corner. Same look as the
-			   dashboards own .brikpanel-dash-bd-toggle, with one deliberate
-			   difference: inset-inline-end instead of right, so the icon
-			   mirrors properly in RTL. The card needs position: relative for
-			   it, which the base sheet grants only to the two Profit cards. */
+			/* Manual refresh, in the head row of the ROAS card. Same look as
+			   the .brikpanel-dash-bd-toggle of the dashboard. */
 			.brikpanel-dash-card[data-metric="roas"] { position: relative; }
 			.brikpanel-dash-ads-refresh {
 				appearance: none; -webkit-appearance: none;
-				background: none; border: 0; padding: 0.2rem;
-				position: absolute; top: 0.7rem; inset-inline-end: 0.7rem;
+				background: none; border: 0; padding: 0.1875rem;
 				display: inline-flex; align-items: center; justify-content: center;
 				cursor: pointer; line-height: 0; border-radius: 0.375rem;
 				color: var(--bp-text-muted, #8a8a8a);
@@ -883,18 +840,8 @@ class Brikpanel_Ads_Dashboard {
 			.brikpanel-dash-ads-refresh.is-loading svg { animation: bp-ads-refresh-spin 0.8s linear infinite; }
 			@keyframes bp-ads-refresh-spin { to { transform: rotate(360deg); } }
 
-			/* "Connect ad accounts" CTA next to "Copy everything" */
-			.brikpanel-dash-ads-cta {
-				display: inline-flex; align-items: center; gap: 0.4rem;
-				padding: 0.45rem 0.8rem; margin-left: 0.5rem;
-				background: #fff; color: #303030; text-decoration: none;
-				border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 550;
-				box-shadow: inset 0 0 0 1px #e3e3e3, 0 1px 0 rgba(0,0,0,0.05);
-				transition: background-color 0.15s ease;
-				vertical-align: middle;
-			}
-			.brikpanel-dash-ads-cta:hover { background: #f7f7f7; color: #303030; }
-			.brikpanel-dash-ads-cta-icon { display: inline-flex; }
+			/* The "Connect ad accounts" link beside Export Excel is styled in
+			   brikpanel-dashboard.css with the header it sits in. */
 		';
 		wp_register_style( 'brikpanel-ads-inline', false, [], BRIKPANEL_VERSION );
 		wp_enqueue_style( 'brikpanel-ads-inline' );

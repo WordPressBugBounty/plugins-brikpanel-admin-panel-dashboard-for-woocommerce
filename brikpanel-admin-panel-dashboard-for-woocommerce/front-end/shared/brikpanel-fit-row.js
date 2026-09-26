@@ -41,7 +41,8 @@
  * finish loading, or the row's content changes (MutationObserver). A content
  * change while one of the row's popovers is open (`hold`, default '.is-open')
  * waits until it closes, so an open menu never jumps. Class changes that only
- * toggle `ignoreClasses` (default is-open, is-active) are not content changes.
+ * toggle `ignoreClasses` (default is-open, is-active, is-bp-tip-open) are not
+ * content changes, and neither is a tooltip bubble being placed (.brikpanel-tip).
  *
  * Usage:
  *   var fit = brikpanelFitRow(row, {
@@ -374,7 +375,7 @@
 		this.unfoldSpare = typeof opts.unfoldSpare === 'number' ? opts.unfoldSpare : 0.03;
 		this.useSpare = this.spare;
 		this.hold = typeof opts.hold === 'string' ? opts.hold : '.is-open';
-		this.ignore = Array.isArray(opts.ignoreClasses) ? opts.ignoreClasses : ['is-open', 'is-active'];
+		this.ignore = Array.isArray(opts.ignoreClasses) ? opts.ignoreClasses : ['is-open', 'is-active', 'is-bp-tip-open'];
 		this.onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
 		var defaultLines = normalizeLines(opts.lines || ['']);
 		this.levels = normalizeLevels(opts.levels, defaultLines);
@@ -674,7 +675,9 @@
 					if (!target || (r.target === self.row && r.type === 'attributes')) {
 						continue;
 					}
-					if (target.closest && target.closest('[data-bp-fit-labels]')) {
+					// A label swap is measured already; a tooltip's placement
+					// (brikpanel-tip.js) is not content.
+					if (target.closest && target.closest('[data-bp-fit-labels], .brikpanel-tip')) {
 						continue;
 					}
 					if (r.type === 'attributes' && r.attributeName === 'class') {

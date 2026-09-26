@@ -510,10 +510,14 @@ function brikpanelTableHeader() {
 		document.querySelector('.subsubsub .all a')?.classList.add('current');
 	}
 
-	// Tabs that run under the search button fade out at the edge.
-	const syncTabsOverflow = () => $subsubsub.classList.toggle('is-overflowing', $subsubsub.scrollWidth > $subsubsub.clientWidth + 1);
-	syncTabsOverflow();
-	if ('ResizeObserver' in window) new ResizeObserver(syncTabsOverflow).observe($subsubsub);
+	// One scrolling row (front-end/shared/brikpanel-scroll-strip.js): the tabs
+	// fade only at an edge that has more behind it, and stop short of the search
+	// button on the row's end (58px). A fixed end fade used to cover the last
+	// tabs even with nothing left to scroll, and the first tab was cut hard once
+	// the row was scrolled (field test C11). The current tab is kept in view.
+	if (window.brikpanelScrollStrip) {
+		window.brikpanelScrollStrip($subsubsub, { endClear: 58, fade: 32 });
+	}
 
 	// The search opens by itself when a search or filter is active on load;
 	// that must not play the opening animation.

@@ -22,10 +22,19 @@
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────────────── */
+/* One symmetric gutter on the page itself. WordPress pads the content area on
+   the start side only, and `margin: 0 auto` below takes away the .wrap's end
+   margin: on a phone the cards touched the right edge of the screen. The class
+   match covers both menu places of this page (top level, under Suppliers). */
+body[class*="_page_brikpanel-expenses"] #wpcontent {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
 .brikpanel-expenses-wrap {
-    max-width: 960px;
+    max-width: calc(960px + 40px);
     margin: 0 auto;
-    padding: 0 0 2rem;
+    padding: 0 20px 2rem;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--ex-text);
     box-sizing: border-box;
@@ -63,11 +72,17 @@
 }
 
 /* ── Summary bar ────────────────────────────────────────────────────────────── */
+/* Two figures side by side while both fit, otherwise a short list
+   (front-end/shared/brikpanel-tiles.js, data-bp-tiles). On a phone they
+   wrapped one under the other at two different widths. A figure keeps its
+   own size on a wide screen (--bp-tile-max); the template is the look
+   without the script. */
 .brikpanel-ex-summary {
-    display: flex;
+    --bp-tile-max: 16rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 16rem));
     gap: 1rem;
     margin-bottom: 1rem;
-    flex-wrap: wrap;
 }
 
 .brikpanel-ex-summary-card {
@@ -75,8 +90,30 @@
     border: 1px solid var(--ex-border);
     border-radius: var(--ex-radius-card);
     padding: 1rem 1.25rem;
-    min-width: 140px;
+    min-width: 0;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.brikpanel-ex-summary.is-tiles-list {
+    gap: 0.5rem;
+}
+
+.brikpanel-ex-summary.is-tiles-list .brikpanel-ex-summary-card {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+}
+
+.brikpanel-ex-summary.is-tiles-list .brikpanel-ex-summary-label {
+    margin-bottom: 0;
+}
+
+.brikpanel-ex-summary.is-tiles-list .brikpanel-ex-summary-value {
+    font-size: 1rem;
+    text-align: end;
+    overflow-wrap: anywhere;
 }
 
 .brikpanel-ex-summary-label {
@@ -804,13 +841,28 @@ body.brikpanel-ex-modal-open {
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────────── */
+@media (max-width: 782px) {
+    .brikpanel-expenses-wrap {
+        padding-inline: 14px;
+    }
+
+    .brikpanel-ex-summary {
+        --bp-tile-max: 1fr;
+    }
+}
+
 @media (max-width: 640px) {
     .brikpanel-ex-modal-grid {
         grid-template-columns: 1fr;
     }
 
+    /* A column that may wrap stretches its children only to the widest of
+       them, not to the card (the Segments filter card crossed a 360px screen
+       this way, field test C7): one line per child. */
     .brikpanel-ex-filter-row {
         flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
     }
 
     .brikpanel-ex-filter-row .brikpanel-ex-field,
@@ -820,5 +872,6 @@ body.brikpanel-ex-modal-open {
 
     .brikpanel-ex-header {
         flex-direction: column;
+        flex-wrap: nowrap;
     }
 }

@@ -162,6 +162,11 @@ class Brikpanel_BrikControl {
         // Sample tables stack into cards when they do not fit (field test B6).
         $fit_style  = function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [];
         $fit_script = function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [];
+        // Summary tiles and per-check figures never wrap 2 + 1 (field test C10).
+        if ( function_exists( 'brikpanel_narrow_dep' ) ) {
+            $fit_style  = array_merge( $fit_style, brikpanel_narrow_dep( 'tiles', 'style' ) );
+            $fit_script = array_merge( $fit_script, brikpanel_narrow_dep( 'tiles' ) );
+        }
 
         wp_enqueue_style(
             self::SCRIPT_HANDLE,

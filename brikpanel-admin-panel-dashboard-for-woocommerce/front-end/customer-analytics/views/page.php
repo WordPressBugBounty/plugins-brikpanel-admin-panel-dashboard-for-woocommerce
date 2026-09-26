@@ -15,7 +15,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 <div class="wrap">
 	<div class="bp-ca" id="bp-ca">
 
-		<div class="bp-ca-header">
+		<?php
+		// The header gives way in its own order, measured
+		// (front-end/shared/brikpanel-fit-row.js, CLAUDE.md "Başlık satırı
+		// kuralı"): one line while it fits; then Exclude and Recompute fold into
+		// "More actions"; then the buttons take their own row under the title.
+		// On a phone the three buttons wrapped into two-line buttons and the
+		// title block was squeezed (field test C8).
+		$bp_ca_header_fit = [
+			'title'  => 'h1',
+			'lines'  => [ '' ],
+			'levels' => [
+				'',
+				'is-fold',
+				[ 'cls' => 'is-fold is-two-rows', 'lines' => [ '.bp-ca-header-right' ] ],
+			],
+		];
+		?>
+		<div class="bp-ca-header" id="bp-ca-header" data-bp-fit-row="<?php echo esc_attr( wp_json_encode( $bp_ca_header_fit ) ); ?>">
+			<?php
+			// Fit as soon as the header opens (the helper is printed in <head>).
+			wp_print_inline_script_tag( 'if(window.brikpanelFitRow){window.brikpanelFitRow.auto(document.getElementById("bp-ca-header"));}' );
+			?>
 			<div class="bp-ca-header-left">
 				<h1><?php esc_html_e( 'Customer Analytics', 'brikpanel' ); ?></h1>
 				<span class="bp-ca-meta" id="bp-ca-meta">
@@ -30,13 +51,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</span>
 			</div>
 			<div class="bp-ca-header-right">
-				<button type="button" class="bp-ca-btn bp-ca-btn-secondary" id="bp-ca-exclude">
-					<?php esc_html_e( 'Exclude customers', 'brikpanel' ); ?>
-					<span class="bp-ca-excl-badge" id="bp-ca-excl-badge" hidden></span>
-				</button>
-				<button type="button" class="bp-ca-btn bp-ca-btn-secondary" id="bp-ca-refresh">
-					<?php esc_html_e( 'Recompute now', 'brikpanel' ); ?>
-				</button>
+				<div class="brikpanel-overflow">
+					<?php
+					if ( function_exists( 'brikpanel_overflow_trigger' ) ) {
+						brikpanel_overflow_trigger( 'bp-ca-more-menu' );
+					}
+					?>
+					<div class="brikpanel-overflow__menu" id="bp-ca-more-menu">
+						<button type="button" class="bp-ca-btn bp-ca-btn-secondary" id="bp-ca-exclude">
+							<?php esc_html_e( 'Exclude customers', 'brikpanel' ); ?>
+							<span class="bp-ca-excl-badge" id="bp-ca-excl-badge" hidden></span>
+						</button>
+						<button type="button" class="bp-ca-btn bp-ca-btn-secondary" id="bp-ca-refresh" data-bp-fit-labels="<?php echo esc_attr( wp_json_encode( [ __( 'Recompute now', 'brikpanel' ), __( 'Refreshing…', 'brikpanel' ) ] ) ); ?>">
+							<?php esc_html_e( 'Recompute now', 'brikpanel' ); ?>
+						</button>
+					</div>
+				</div>
 				<button type="button" class="bp-ca-btn bp-ca-btn-primary" id="bp-ca-export">
 					<?php esc_html_e( 'Export CSV', 'brikpanel' ); ?>
 				</button>
@@ -54,7 +84,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		do_action( 'brikpanel_ca_after_header' );
 		?>
 
-		<div class="bp-ca-tabs" role="tablist">
+		<div class="bp-ca-tabs" role="tablist" data-bp-strip>
 			<button type="button" class="bp-ca-tab is-active" data-tab="ltv" role="tab" aria-selected="true">
 				<?php esc_html_e( 'Lifetime Value', 'brikpanel' ); ?>
 			</button>
@@ -71,7 +101,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<!-- ========================================================== -->
 		<div class="bp-ca-tabpanel" data-panel="ltv">
 
-			<div class="bp-ca-stats">
+			<div class="bp-ca-stats" data-bp-tiles>
 				<div class="bp-ca-stat">
 					<div class="bp-ca-stat-label"><?php esc_html_e( 'Total customers', 'brikpanel' ); ?></div>
 					<div class="bp-ca-stat-value" id="bp-ca-stat-customers">—</div>

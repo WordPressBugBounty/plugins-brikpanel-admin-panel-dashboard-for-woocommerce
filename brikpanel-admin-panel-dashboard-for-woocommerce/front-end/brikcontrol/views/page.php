@@ -51,7 +51,7 @@ uasort( $ordered, static function ( $a, $b ) use ( $status_weight ) {
     </div>
     <?php brikpanel_header_end(); ?>
 
-    <div class="brikpanel-bc-summary-card" data-bc-summary>
+    <div class="brikpanel-bc-summary-card" data-bc-summary data-bp-tiles>
         <div class="brikpanel-bc-summary-chip brikpanel-bc-chip-critical">
             <span class="brikpanel-bc-chip-num" data-bc-count="critical"><?php echo esc_html( number_format_i18n( $summary['critical'] ) ); ?></span>
             <span class="brikpanel-bc-chip-label"><?php esc_html_e( 'Critical', 'brikpanel' ); ?></span>

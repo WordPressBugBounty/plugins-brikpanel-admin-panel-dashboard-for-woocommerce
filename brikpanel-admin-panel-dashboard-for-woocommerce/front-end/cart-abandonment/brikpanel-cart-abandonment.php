@@ -4010,7 +4010,7 @@ class Brikpanel_Cart_Abandonment {
 			<?php endif; ?>
 
 			<!-- Stats -->
-			<div class="brikpanel-cartab-summary" id="brikpanel-cartab-summary">
+			<div class="brikpanel-cartab-summary" id="brikpanel-cartab-summary" data-bp-tiles>
 				<div class="brikpanel-cartab-summary-card">
 					<div class="brikpanel-cartab-summary-label"><?php esc_html_e( 'Emails collected', 'brikpanel' ); ?></div>
 					<div class="brikpanel-cartab-summary-value" id="brikpanel-cartab-stat-total">—</div>

@@ -527,7 +527,10 @@
                     : '<span class="brikpanel-ven-muted">—</span>';
                 html +=
                     '<tr>' +
-                        '<td class="brikpanel-fit-lead"><a class="brikpanel-ven-vendor-link" href="' + escapeAttr(cfg.so_edit_url + p.id) + '">' + escapeHtml(p.reference) + '</a></td>' +
+                        // No link while stock orders is switched off: its page does not exist then.
+                        '<td class="brikpanel-fit-lead">' + (cfg.so_edit_url
+                            ? '<a class="brikpanel-ven-vendor-link" href="' + escapeAttr(cfg.so_edit_url + p.id) + '">' + escapeHtml(p.reference) + '</a>'
+                            : escapeHtml(p.reference)) + '</td>' +
                         '<td><span class="brikpanel-ven-status brikpanel-ven-status--' + escapeAttr(p.status) + '">' + escapeHtml(p.status_label) + '</span></td>' +
                         '<td>' + (p.order_date    ? escapeHtml(p.order_date)    : '<span class="brikpanel-ven-muted">—</span>') + '</td>' +
                         '<td>' + (p.received_date ? escapeHtml(p.received_date) : '<span class="brikpanel-ven-muted">—</span>') + '</td>' +

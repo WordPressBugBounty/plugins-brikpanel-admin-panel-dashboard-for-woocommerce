@@ -113,7 +113,6 @@
         initProfitBreakdownToggle();
         initAddExpense();
         initRemoveExpense();
-        initHintTooltips();
         fetchDashboardData();
         startLivePolling();
 
@@ -134,63 +133,6 @@
             }
         });
     });
-
-    // =========================================================================
-    // HELP HINTS
-    // =========================================================================
-
-    // Flip a hint's tooltip to open leftward only when opening rightward (the
-    // default) would spill past the viewport edge. Recomputed on each hover /
-    // focus so it stays correct regardless of card wrapping or window width.
-    function initHintTooltips() {
-        function place(hint) {
-            var tip = hint.querySelector('.brikpanel-dash-hint-tip');
-            if (!tip) return;
-            // Reset any prior placement so each open recomputes cleanly.
-            hint.classList.remove('brikpanel-dash-hint--end');
-            tip.style.left = '';
-            tip.style.right = '';
-            var hintRect = hint.getBoundingClientRect();
-            var tipWidth = tip.offsetWidth;
-            var margin = 12;
-            // Use the document client width, not window.innerWidth: the dashboard
-            // scrolls inside <body> (the topbar layout), so a vertical scrollbar
-            // makes innerWidth ~15px wider than the usable content area. Clamping
-            // to innerWidth left the tip a few px past the real right edge.
-            var vw = document.documentElement.clientWidth || window.innerWidth;
-            if (vw <= 600) {
-                // Phone: a left/right flip alone can't keep a ~270px tip inside a
-                // ~375px screen for centre/right cards — it clips against the
-                // dashboard's overflow-x:clip box. Anchor near the icon but clamp
-                // the whole tip into the viewport so it is always fully readable.
-                var desiredLeft = hintRect.left - 8;
-                var maxLeft = vw - margin - tipWidth;
-                var clampedLeft = Math.max(margin, Math.min(desiredLeft, maxLeft));
-                tip.style.left = (clampedLeft - hintRect.left) + 'px';
-                tip.style.right = 'auto';
-                return;
-            }
-            // Desktop/tablet: flip leftward only if opening rightward would spill.
-            if (hintRect.left - 8 + tipWidth + margin > vw) {
-                hint.classList.add('brikpanel-dash-hint--end');
-            }
-        }
-        // Delegate from the document: most hints (the KPI cards in particular)
-        // are rendered later by the dashboard AJAX load, so binding directly to
-        // the elements present at init missed them entirely — their tooltips
-        // never got placed and overflowed the viewport on mobile. `pointerover`
-        // and `focusin` both bubble, so a single delegated pair covers hints
-        // added at any time. Recomputed on every open, so width/viewport changes
-        // stay correct.
-        document.addEventListener('pointerover', function (e) {
-            var hint = e.target.closest && e.target.closest('.brikpanel-dash-hint');
-            if (hint) place(hint);
-        });
-        document.addEventListener('focusin', function (e) {
-            var hint = e.target.closest && e.target.closest('.brikpanel-dash-hint');
-            if (hint) place(hint);
-        });
-    }
 
     // =========================================================================
     // DATE PRESETS
@@ -496,6 +438,7 @@
         updateCard('card-profit-expenses', p.expenses);
         updateCard('card-profit-net', p.net);
 
+
         // Revenue here is the SAME figure as the "Total Sales" KPI card and
         // is just the top line of the P&L — repeating its trend arrow makes
         // users think they're two different numbers. Label the relationship
@@ -506,10 +449,17 @@
             // Total Sales KPI, so label it accordingly instead of claiming they
             // match. The breakdown below spells out gross minus returns.
             var netted = p.returns_on && Number(p.returns_raw) > 0;
-            // The "Exclude tax from Revenue and Expenses" setting takes the tax
-            // off this figure too, so it no longer matches Total Sales either.
+            // "Tax in the Profit section" set to take tax out of Revenue takes
+            // it off this figure too, so it no longer matches Total Sales either.
             var noTax = !!p.tax_excluded && Number(p.tax_raw) > 0;
-            if (netted && noTax) {
+            // "Tax in the Profit section" kept tax in Revenue: the line names
+            // the amount (server-built, translated), and the returns stay in
+            // the breakdown below. The title carries it when the line is cut.
+            var taxNote = (p.tax_in_revenue && typeof p.tax_note === 'string') ? p.tax_note : '';
+            revDelta.title = taxNote;
+            if (taxNote) {
+                revDelta.textContent = taxNote;
+            } else if (netted && noTax) {
                 revDelta.textContent = i18n.profit_revenue_net_tax_note || 'Net of returns and tax';
             } else if (noTax) {
                 revDelta.textContent = i18n.profit_revenue_tax_note || 'Excluding tax';
@@ -621,10 +571,11 @@
         }
     }
 
-    // Add/remove a small "!" marker (with a hover/focus tooltip telling the
-    // user what to fix) next to a card's label. Idempotent — safe to call
+    // Add/remove a small "!" marker (with a hover/focus/tap tooltip telling
+    // the user what to fix) next to a card's label. Idempotent — safe to call
     // on every render. Keyboard-reachable via tabindex; the styled tooltip
     // is the only visible one (no native `title` so it doesn't double up).
+    // front-end/shared/brikpanel-tip.js opens and places it (data-bp-tip).
     function setEstimateFlag(card, show, msg) {
         if (!card) return;
         var label = card.querySelector('.brikpanel-dash-card-label');
@@ -640,9 +591,10 @@
             flag.className = 'brikpanel-dash-flag';
             flag.setAttribute('tabindex', '0');
             flag.setAttribute('role', 'note');
+            flag.setAttribute('data-bp-tip', '');
             flag.innerHTML =
                 '<span class="brikpanel-dash-flag-mark" aria-hidden="true">!</span>'
-                + '<span class="brikpanel-dash-flag-tip"></span>';
+                + '<span class="brikpanel-dash-flag-tip brikpanel-tip"></span>';
             label.appendChild(flag);
         }
         flag.setAttribute('aria-label', msg);
@@ -667,6 +619,7 @@
         flag.className = 'brikpanel-dash-flag brikpanel-dash-flag-list';
         flag.setAttribute('tabindex', '0');
         flag.setAttribute('role', 'note');
+        flag.setAttribute('data-bp-tip', '');
 
         var mark = document.createElement('span');
         mark.className = 'brikpanel-dash-flag-mark';
@@ -674,7 +627,8 @@
         mark.textContent = '!';
 
         var tip = document.createElement('span');
-        tip.className = 'brikpanel-dash-flag-tip brikpanel-dash-flag-tip-list';
+        // Interactive: the pointer may enter it to scroll the list.
+        tip.className = 'brikpanel-dash-flag-tip brikpanel-dash-flag-tip-list brikpanel-tip brikpanel-tip--interactive';
 
         var title = document.createElement('strong');
         title.className = 'brikpanel-dash-flag-tip-title';
@@ -1699,7 +1653,8 @@
         orders.forEach(function (o) {
             var sourceHtml = '';
             if (o.source && o.source.label) {
-                sourceHtml = '<span class="brikpanel-dash-source" style="background:' + escapeHtml(o.source.color) + ';">' + escapeHtml(o.source.label) + '</span>';
+                // title: a long source name can shorten with "…" in the two-line rows.
+                sourceHtml = '<span class="brikpanel-dash-source" style="background:' + escapeHtml(o.source.color) + ';" title="' + escapeAttr(o.source.label) + '">' + escapeHtml(o.source.label) + '</span>';
             }
 
             var rowAttr = o.edit_url
@@ -1714,10 +1669,16 @@
             // lines (number + date), so this adds no height.
             // <bdi>: "3 items" keeps its order on a right-to-left screen.
             var itemsHtml = o.items_label ? '<span class="brikpanel-dash-order-items"><bdi>' + escapeHtml(o.items_label) + '</bdi></span>' : '';
+            // The same count beside the customer, shown only when the table
+            // turns into two-line rows (phone, half-width card): "Name · 3 items".
+            var whoItemsHtml = o.items_label ? '<span class="brikpanel-dash-order-who-items"><bdi>' + escapeHtml(o.items_label) + '</bdi></span>' : '';
 
             html += '<tr' + rowAttr + '>' +
-                '<td class="brikpanel-fit-lead">#' + escapeHtml(String(o.number || o.id)) + dateHtml + '</td>' +
-                '<td>' + escapeHtml(o.customer) + '</td>' +
+                // <bdi>: an order number with letters ("#2026-INV-0001") keeps
+                // its order on a right-to-left screen. The space keeps number
+                // and date two words for screen readers.
+                '<td class="brikpanel-fit-lead"><bdi>#' + escapeHtml(String(o.number || o.id)) + '</bdi> ' + dateHtml + '</td>' +
+                '<td class="brikpanel-dash-order-who"><span class="brikpanel-dash-order-who-name">' + escapeHtml(o.customer) + '</span>' + whoItemsHtml + '</td>' +
                 '<td>' + sourceHtml + '</td>' +
                 '<td><span class="brikpanel-dash-status ' + escapeHtml(o.status) + (statusLabel ? '' : ' brikpanel-dash-status--slug') + '">' + escapeHtml(statusLabel || o.status) + '</span></td>' +
                 '<td class="brikpanel-fit-headline">' + o.total + (o.total_base ? '<div class="brikpanel-dash-total-base">≈ ' + o.total_base + '</div>' : '') + itemsHtml + '</td>' +
@@ -1727,7 +1688,8 @@
         html += '</tbody></table>';
         wrap.innerHTML = html;
         // Five columns squeezed under 340px only fit by breaking the date over
-        // three lines (short status names, as in Arabic); cards read better.
+        // three lines (short status names, as in Arabic); rows read better.
+        // Stacked, each order is two lines (brikpanel-dashboard.css).
         refitDashTable(wrap, 340);
     }
 
@@ -2786,15 +2748,26 @@
             var displayName = v.customer_name ? escapeHtml(v.customer_name) : (v.ip_address || '');
             var ipLabel = v.ip_address ? '<span class="brikpanel-dash-live-ip">' + escapeHtml(v.ip_address) + '</span>' : '';
 
+            // The page's name (product, page, category) when the server could
+            // find one; the address otherwise (search results, older trackers).
+            var pageTitle = (typeof v.page_title === 'string') ? v.page_title : '';
+
             // Where the visitor came from ("Traffic source in Live view"): the
-            // channel as a small pill with the source after it. The campaign
-            // details from their link go into the hover card below.
+            // channel as a small pill, then the source, campaign and search
+            // term, cut with "…" when long.
+            //
+            // dir="auto" here and on the page name: the line takes the
+            // direction of its own text, so a long English name on a
+            // right-to-left screen is cut at its end, not at its start.
             var src = (v.source && typeof v.source === 'object' && v.source.channel) ? v.source : null;
             var srcChannel = src ? sourceChannelLabel(src.channel) : '';
+            var srcBits = src ? [src.name, src.campaign, src.term].filter(function (b) {
+                return typeof b === 'string' && b !== '';
+            }) : [];
             var srcHtml = src
                 ? '<span class="brikpanel-dash-live-src">' +
                     '<span class="brikpanel-dash-live-src-ch">' + escapeHtml(srcChannel) + '</span>' +
-                    (src.name ? '<span class="brikpanel-dash-live-src-name">' + escapeHtml(src.name) + '</span>' : '') +
+                    (srcBits.length ? '<span class="brikpanel-dash-live-src-name" dir="auto">' + escapeHtml(srcBits.join(' · ')) + '</span>' : '') +
                   '</span>'
                 : '';
 
@@ -2804,6 +2777,7 @@
             if (deviceLabel) tooltipParts.push(deviceLabel);
             if (v.customer_email) tooltipParts.push(v.customer_email);
             if (v.customer_phone) tooltipParts.push(v.customer_phone);
+            if (pageTitle) tooltipParts.push(pageTitle);
             if (v.page_url) tooltipParts.push(v.page_url);
             if (src) {
                 tooltipParts.push(liveSourceLine(i18n.live_src_source, srcChannel + (src.name ? ' · ' + src.name : '')));
@@ -2819,7 +2793,10 @@
                 '<div class="brikpanel-dash-live-info">' +
                     '<span class="brikpanel-dash-live-name">' + displayName + '</span>' +
                     (v.customer_name ? ipLabel : '') +
-                    '<span class="brikpanel-dash-live-page" title="' + escapeAttr(v.page_url) + '">' + escapeHtml(pagePath) + '</span>' +
+                    // No title attribute: the row's own hover card already
+                    // carries the full name and address, and a native tooltip
+                    // would open on top of it.
+                    '<span class="brikpanel-dash-live-page" dir="auto">' + escapeHtml(pageTitle || pagePath) + '</span>' +
                     srcHtml +
                 '</div>' +
                 '<span class="brikpanel-dash-live-badge ' + badgeClass + '">' + badgeText + '</span>' +

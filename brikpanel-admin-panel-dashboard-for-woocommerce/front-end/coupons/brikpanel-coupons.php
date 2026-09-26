@@ -116,28 +116,52 @@ class Brikpanel_Coupons {
         <div class="wrap">
         <div class="brikpanel-cp" id="brikpanel-coupons-list">
 
+            <?php
+            // The header row gives way in its own order, measured
+            // (front-end/shared/brikpanel-fit-row.js, CLAUDE.md "Başlık satırı
+            // kuralı"): one line while it fits; then the title and Add coupon on
+            // top with the search below; Add coupon's label goes to its icon only
+            // as the last resort. On a 360px phone the search box could not
+            // shrink and pushed Add coupon off the screen (field test C4).
+            $bpc_header_fit = [
+                'title'  => 'h1',
+                'lines'  => [''],
+                'levels' => [
+                    '',
+                    [ 'cls' => 'is-two-rows', 'lines' => [ '.brikpanel-cp-header-main' ] ],
+                    [ 'cls' => 'is-two-rows is-icon-add', 'lines' => [ '.brikpanel-cp-header-main' ] ],
+                ],
+            ];
+            ?>
             <!-- Header -->
-            <div class="brikpanel-cp-header">
-                <div class="brikpanel-cp-header-left">
-                    <h1><?php esc_html_e('Coupons', 'brikpanel'); ?></h1>
-                    <span class="brikpanel-cp-count" id="bpc-total-count"><?php echo esc_html($all); ?></span>
-                </div>
-                <div class="brikpanel-cp-header-right">
-                    <div class="brikpanel-cp-search-wrap">
-                        <svg class="brikpanel-cp-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                        <input type="text" id="bpc-search" class="brikpanel-cp-search" placeholder="<?php esc_attr_e('Search coupons...', 'brikpanel'); ?>">
+            <div class="brikpanel-cp-header" id="bpc-header" data-bp-fit-row="<?php echo esc_attr(wp_json_encode($bpc_header_fit)); ?>">
+                <?php
+                // Fit as soon as the header opens: the page arrives in pieces and
+                // each is painted (the helper itself is printed in <head>).
+                wp_print_inline_script_tag('if(window.brikpanelFitRow){window.brikpanelFitRow.auto(document.getElementById("bpc-header"));}');
+                ?>
+                <div class="brikpanel-cp-header-main">
+                    <div class="brikpanel-cp-header-left">
+                        <h1><?php esc_html_e('Coupons', 'brikpanel'); ?></h1>
+                        <span class="brikpanel-cp-count" id="bpc-total-count"><?php echo esc_html($all); ?></span>
                     </div>
-                    <button type="button" class="brikpanel-cp-btn primary" id="bpc-add-new">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        <?php esc_html_e('Add coupon', 'brikpanel'); ?>
-                    </button>
+                    <div class="brikpanel-cp-header-right">
+                        <button type="button" class="brikpanel-cp-btn primary" id="bpc-add-new">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span class="brikpanel-cp-add-label"><?php esc_html_e('Add coupon', 'brikpanel'); ?></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="brikpanel-cp-search-wrap">
+                    <svg class="brikpanel-cp-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" id="bpc-search" class="brikpanel-cp-search" placeholder="<?php esc_attr_e('Search coupons...', 'brikpanel'); ?>" aria-label="<?php esc_attr_e('Search coupons...', 'brikpanel'); ?>">
                 </div>
             </div>
             <?php brikpanel_header_end(); ?>
 
             <!-- Filters Bar -->
             <div class="brikpanel-cp-filters">
-                <div class="brikpanel-cp-tabs">
+                <div class="brikpanel-cp-tabs" data-bp-strip>
                     <button class="brikpanel-cp-tab active" data-status="any">
                         <?php esc_html_e('All', 'brikpanel'); ?>
                         <span class="brikpanel-cp-tab-count" data-count="all"><?php echo esc_html($all); ?></span>
@@ -184,7 +208,7 @@ class Brikpanel_Coupons {
             <!-- Coupons Table -->
             <div class="brikpanel-cp-card">
                 <div class="brikpanel-cp-table-wrap">
-                    <table class="brikpanel-cp-table" id="bpc-table">
+                    <table class="brikpanel-cp-table brikpanel-fit-table" id="bpc-table">
                         <thead>
                             <tr>
                                 <th class="brikpanel-cp-th-check">
@@ -203,7 +227,7 @@ class Brikpanel_Coupons {
                         </thead>
                         <tbody id="bpc-table-body">
                             <tr class="brikpanel-cp-loading-row">
-                                <td colspan="9">
+                                <td colspan="10">
                                     <div class="brikpanel-cp-spinner"></div>
                                 </td>
                             </tr>

@@ -149,18 +149,23 @@
 	color: #fff;
 }
 
+/* The search box shrinks down to 10rem, then the "More filters" button goes
+   under it. A search box that kept its own width (min-width: auto) and a
+   button that cannot wrap pushed the card past a 360px screen (field test C7). */
 .bp-seg-quick-search {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 0.5rem;
 	flex: 1;
 	max-width: 420px;
-	min-width: 260px;
+	min-width: min(260px, 100%);
 	justify-content: flex-end;
 }
 
 .bp-seg-quick-search input[type="search"] {
-	flex: 1;
+	flex: 1 1 10rem;
+	min-width: 0;
 	padding: 0.5rem 0.75rem;
 	font-size: 0.875rem;
 	border: 1px solid var(--bp-seg-input-border);
@@ -453,11 +458,36 @@
 .bp-seg-selected-chip button:hover { color: var(--bp-seg-error); }
 
 /* ===== Stats row ===== */
+/* Three figures: side by side while each fits its tile, otherwise a short
+   list (front-end/shared/brikpanel-tiles.js, never 2 + 1). The template below
+   is the look without the script. */
 .bp-seg-stats {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 	gap: 0.75rem;
 	margin-bottom: 1rem;
+}
+
+.bp-seg-stats.is-tiles-list {
+	gap: 0.5rem;
+}
+
+.bp-seg-stats.is-tiles-list .bp-seg-stat {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.625rem 1rem;
+}
+
+.bp-seg-stats.is-tiles-list .bp-seg-stat-label {
+	margin-bottom: 0;
+}
+
+.bp-seg-stats.is-tiles-list .bp-seg-stat-value {
+	font-size: 1rem;
+	text-align: end;
+	overflow-wrap: anywhere;
 }
 
 .bp-seg-stat {
@@ -683,13 +713,15 @@
    the panel a few px off-centre. Zero both and let .brikpanel-segments' own
    1rem padding be the single symmetric gutter. */
 @media (max-width: 782px) {
-	body.toplevel_page_brikpanel-segments #wpcontent { padding-left: 0 !important; }
+	body.toplevel_page_brikpanel-segments #wpcontent { padding-left: 0 !important; padding-right: 0 !important; }
 	body.toplevel_page_brikpanel-segments .wrap { margin: 0 !important; }
 }
 
 @media (max-width: 720px) {
 	.bp-seg-header { flex-direction: column; align-items: flex-start; }
-	.bp-seg-filter-bar { flex-direction: column; align-items: stretch; }
+	/* One line per child: in a column that may wrap, "stretch" only reaches
+	   the width of the widest child, not the card's. */
+	.bp-seg-filter-bar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
 	.bp-seg-quick-search { max-width: none; min-width: 0; justify-content: flex-start; }
 	.bp-seg-grid { grid-template-columns: 1fr; }
 	.bp-seg-header-right { width: 100%; justify-content: flex-end; }

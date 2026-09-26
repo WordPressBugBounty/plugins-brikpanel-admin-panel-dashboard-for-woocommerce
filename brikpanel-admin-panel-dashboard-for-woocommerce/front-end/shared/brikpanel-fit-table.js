@@ -47,6 +47,12 @@
  *                body cells in the same column (cells that have one are kept)
  *   prepareClone function(copy) run on the detached copy before it is measured
  *   onChange     function(stacked, controller) run when the state flips
+ *   spanRows     false keeps message rows as rendered. By default a body row
+ *                with a single spanning cell (empty, loading, error) spans
+ *                exactly the header cells that show: with `table-layout:fixed`
+ *                a colspan that also counts hidden columns makes the browser
+ *                add phantom columns, which took their share of the width and
+ *                ended the header's background half way (field test C12).
  */
 (function (window, document) {
 	'use strict';
@@ -109,6 +115,28 @@
 		});
 	}
 
+	// A one-cell message row spans the header cells that show, no more.
+	function syncSpans(table) {
+		var head = table.tHead && table.tHead.rows[0];
+		if (!head) {
+			return;
+		}
+		var cols = 0;
+		forEach(head.cells, function (th) {
+			if (window.getComputedStyle(th).display !== 'none') {
+				cols += th.colSpan || 1;
+			}
+		});
+		cols = Math.max(1, cols);
+		forEach(table.tBodies, function (tbody) {
+			forEach(tbody.rows, function (row) {
+				if (row.cells.length === 1 && row.cells[0].colSpan > 1 && row.cells[0].colSpan !== cols) {
+					row.cells[0].colSpan = cols;
+				}
+			});
+		});
+	}
+
 	function Controller(target, opts) {
 		opts = opts || {};
 		this.isTable = target.tagName === 'TABLE';
@@ -121,6 +149,7 @@
 		this.labels = opts.labels || false;
 		this.prepareClone = typeof opts.prepareClone === 'function' ? opts.prepareClone : null;
 		this.onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
+		this.spanRows = opts.spanRows !== false;
 		this.need = -1;
 		this.measuredTable = null;
 		this.lastRoom = 0;
@@ -165,6 +194,9 @@
 		var table = this.table();
 		if (!table) {
 			return;
+		}
+		if (this.spanRows) {
+			syncSpans(table);
 		}
 		if (this.need < 0 || this.measuredTable !== table) {
 			this.measure(table);
@@ -330,6 +362,14 @@
 			var t = c.table();
 			return { table: t ? t.className : '', room: s.room, need: s.need, stacked: s.stacked };
 		});
+	};
+
+	// For a table that is not fitted (its phone layout is its own) but still
+	// shows message rows: brikpanelFitTable.syncSpans(table).
+	brikpanelFitTable.syncSpans = function (table) {
+		if (table && table.tagName === 'TABLE') {
+			syncSpans(table);
+		}
 	};
 
 	window.brikpanelFitTable = brikpanelFitTable;

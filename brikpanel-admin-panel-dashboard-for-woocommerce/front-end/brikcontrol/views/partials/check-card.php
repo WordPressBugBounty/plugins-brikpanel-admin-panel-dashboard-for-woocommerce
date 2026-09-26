@@ -174,7 +174,7 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
     // a check whose totals use different keys.
     ?>
     <?php if ( ! empty( $meta['stats'] ) && is_array( $meta['stats'] ) ) : ?>
-        <div class="brikpanel-bc-stats">
+        <div class="brikpanel-bc-stats" data-bp-tiles>
             <?php
             foreach ( $meta['stats'] as $stat ) :
                 $tone       = isset( $stat['tone'] ) ? (string) $stat['tone'] : '';
@@ -191,7 +191,7 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
     <?php elseif ( ! empty( $meta['totals'] ) ) :
         $totals = $meta['totals'];
         ?>
-        <div class="brikpanel-bc-stats">
+        <div class="brikpanel-bc-stats" data-bp-tiles>
             <?php if ( isset( $totals['attachments'] ) ) : ?>
                 <div class="brikpanel-bc-stat">
                     <span class="brikpanel-bc-stat-num"><?php echo esc_html( number_format_i18n( $totals['attachments'] ) ); ?></span>

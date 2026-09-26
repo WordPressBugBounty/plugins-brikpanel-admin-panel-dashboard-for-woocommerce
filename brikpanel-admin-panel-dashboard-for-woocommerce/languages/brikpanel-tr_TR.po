@@ -19952,3 +19952,121 @@ msgid "%s item"
 msgid_plural "%s items"
 msgstr[0] "%s ürün"
 msgstr[1] "%s ürün"
+
+#: back-end/live/brikpanel-live.php:562
+msgid "Home page"
+msgstr "Ana sayfa"
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the \"Tax in the Profit section\" setting, so it is not in Expenses either."
+msgstr "Seçili tarihler için tüm ödenmiş siparişlerin toplamı (varsayılan olarak İşleniyor ve Tamamlandı), kargo dahil, vergi çıkarılmış ve dönemdeki müşteri iadeleri düşülmüş olarak. Mağaza yöneticileri tarafından verilen siparişler dışarıda bırakılır, böylece kendi test siparişleriniz bunu değiştirmez. Vergi, \"Kâr bölümünde vergi\" ayarı nedeniyle çıkarılır; bu yüzden Giderler'de de yer almaz."
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the \"Tax in the Profit section\" setting, so it is not in Expenses either."
+msgstr "Seçili tarihler için tüm ödenmiş siparişlerin toplamı (varsayılan olarak İşleniyor ve Tamamlandı), kargo dahil ve vergi çıkarılmış olarak. Mağaza yöneticileri tarafından verilen siparişler dışarıda bırakılır, böylece kendi test siparişleriniz bunu değiştirmez. Vergi, \"Kâr bölümünde vergi\" ayarı nedeniyle çıkarılır; bu yüzden Giderler'de de yer almaz."
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it has a card of its own. Open the breakdown to see each part."
+msgstr "Dönemin işletme giderleri: bağlı reklam platformlarından gelen reklam harcaması (yalnızca mağaza para biriminde), ödeme altyapısının kestiği işlem ücretleri, teslim alınan satın alma siparişlerinden gelen tedarikçi ve stok maliyetleri ile Giderler modülüne girilen her şey. Vergi burada yok, çünkü kendi kartı var. Her kalemi görmek için dökümü açın."
+
+msgid "What Tax includes"
+msgstr "Vergi neleri içerir"
+
+msgid "The tax on paid orders for the selected dates, tax on shipping included. It is part of Revenue, so it is taken off here: Net profit is Revenue minus Cost of goods, Tax and Expenses. The \"Tax in the Profit section\" setting decides where tax is shown."
+msgstr "Seçili tarihlerdeki ödenmiş siparişlerin vergisi, kargo vergisi dahil. Gelir'in içinde olduğu için burada düşülür: Net kâr, Gelir eksi Mal maliyeti, Vergi ve Giderler'dir. Verginin nerede gösterileceğini \"Kâr bölümünde vergi\" ayarı belirler."
+
+msgid "Revenue minus Cost of goods, Tax and Expenses. This is what is left after the cost of what you sold, the tax and your operating costs for the period. A negative figure means a loss."
+msgstr "Gelir eksi Mal maliyeti, Vergi ve Giderler. Bu, sattığınız şeyin maliyeti, vergi ve dönem için işletme maliyetlerinizden sonra geriye kalandır. Negatif bir rakam zarar anlamına gelir."
+
+msgid "Tax in the Profit section"
+msgstr "Kâr bölümünde vergi"
+
+msgid "Where the tax your customers paid appears in the Profit section. Inside Expenses: Revenue includes the tax and the same tax is one of the Expenses. Taken out of Revenue and Expenses: Revenue is shown without tax. On its own card: Revenue includes the tax and the tax has a card of its own instead of being in Expenses. Net profit is exactly the same in all three."
+msgstr "Müşterilerinizin ödediği verginin Kâr bölümünde nerede görüneceği. Giderler'in içinde: Gelir vergiyi içerir ve aynı vergi Giderler'den biridir. Gelirden ve Giderlerden çıkarılsın: Gelir vergisiz gösterilir. Ayrı kartta: Gelir vergiyi içerir ve vergi Giderler yerine kendi kartında gösterilir. Net kâr üçünde de tamamen aynıdır."
+
+msgid "Inside Expenses"
+msgstr "Giderler'in içinde"
+
+msgid "Taken out of Revenue and Expenses"
+msgstr "Gelirden ve Giderlerden çıkarılsın"
+
+msgid "On its own card (Revenue keeps the tax)"
+msgstr "Ayrı kartta (Gelir vergiyi içerir)"
+
+msgid "In Revenue, taken off Net profit"
+msgstr "Gelir'in içinde, Net Kâr'dan düşülür"
+
+msgid "Includes %s tax"
+msgstr "%s vergi dahil"
+
+msgid "Includes tax"
+msgstr "Vergi dahil"
+
+msgid "Kept in Revenue (not in Expenses)"
+msgstr "Gelir'de kalsın (Giderler'de olmasın)"
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is shown under Revenue and taken off Net profit. Open the breakdown to see each part."
+msgstr "Dönemin işletme giderleri: bağlı reklam platformlarından gelen reklam harcaması (yalnızca mağaza para biriminde), ödeme altyapısının kestiği işlem ücretleri, teslim alınan satın alma siparişlerinden gelen tedarikçi ve stok maliyetleri ile Giderler modülüne girilen her şey. Vergi burada yok, çünkü Gelir'in altında gösteriliyor ve Net Kâr'dan düşülüyor. Her kalemi görmek için dökümü açın."
+
+msgid "Where the tax your customers paid appears in the Profit section. Inside Expenses: Revenue includes the tax and the same tax is one of the Expenses. Taken out of Revenue and Expenses: Revenue is shown without tax. Kept in Revenue: Revenue includes the tax, the amount is shown under it, and it is not counted in Expenses. Net profit is exactly the same in all three."
+msgstr "Müşterilerinizin ödediği verginin Kâr bölümünde nerede görüneceği. Giderler'in içinde: Gelir vergiyi içerir ve aynı vergi Giderler'den biridir. Gelirden ve Giderlerden çıkarılsın: Gelir vergisiz gösterilir. Gelir'de kalsın: Gelir vergiyi içerir, tutarı altında yazılır ve Giderler'e sayılmaz. Net kâr üçünde de tamamen aynıdır."
+
+#. translators: %s: screen name, e.g. "Suppliers".
+#: includes/brikpanel-module-pages.php:388
+#, php-format
+msgid "%s is not available"
+msgstr "%s kullanılamıyor"
+
+#. translators: %s: screen name, e.g. "Suppliers".
+#: includes/brikpanel-module-pages.php:393
+#, php-format
+msgid "%s is turned off"
+msgstr "%s kapalı"
+
+#: includes/brikpanel-module-pages.php:52
+#: includes/brikpanel-module-pages.php:404
+msgid "Back to the dashboard"
+msgstr "Kontrol Paneline dön"
+
+#: front-end/products/brikpanel-products-list.php:1632
+msgid "Filters"
+msgstr "Filtreler"
+
+#. translators: %d: how many product list filters are set. The Filters button's accessible name.
+#: includes/brikpanel-enqueue.php:1508
+#, php-format
+msgid "Filters, %d active"
+msgstr "Filtreler, %d etkin"
+
+#: includes/brikpanel-module-pages.php:80
+msgid "Open the WooCommerce coupon list"
+msgstr "WooCommerce kupon listesini aç"
+
+#: includes/brikpanel-module-pages.php:71
+msgid "Open the WooCommerce product list"
+msgstr "WooCommerce ürün listesini aç"
+
+#: includes/brikpanel-module-pages.php:389
+msgid "The BrikPanel interface is switched off for your account, so this page is not available."
+msgstr "BrikPanel arayüzü hesabınız için kapalı, bu yüzden bu sayfa kullanılamıyor."
+
+#: includes/brikpanel-module-pages.php:400
+msgid "This page is turned off in the BrikPanel settings. Ask your store administrator to turn it on."
+msgstr "Bu sayfa BrikPanel ayarlarında kapalı. Açması için mağaza yöneticinize başvurun."
+
+#: includes/brikpanel-module-pages.php:396
+msgid "This page is turned off in the BrikPanel settings. Turn it on there and this address works again."
+msgstr "Bu sayfa BrikPanel ayarlarında kapalı. Oradan açın, bu adres yeniden çalışır."
+
+#: includes/brikpanel-module-pages.php:398
+msgid "This page is turned off on this store."
+msgstr "Bu sayfa bu mağazada kapalı."
+
+#: includes/brikpanel-module-pages.php:441
+msgid "Turn it on in Settings"
+msgstr "Ayarlardan açın"
+
+#: includes/brikpanel-module-pages.php:342
+msgid "Turned off"
+msgstr "Kapalı"
+
+#: front-end/products/brikpanel-product-editor.php:1925
+msgid "More information"
+msgstr "Daha fazla bilgi"

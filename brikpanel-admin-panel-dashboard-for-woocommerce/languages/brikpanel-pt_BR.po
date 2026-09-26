@@ -20036,3 +20036,121 @@ msgid "%s item"
 msgid_plural "%s items"
 msgstr[0] "%s item"
 msgstr[1] "%s itens"
+
+#: back-end/live/brikpanel-live.php:562
+msgid "Home page"
+msgstr "Página inicial"
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the \"Tax in the Profit section\" setting, so it is not in Expenses either."
+msgstr "O total de todos os pedidos pagos nas datas selecionadas (Processando e Concluído por padrão), com frete incluído, impostos descontados e os reembolsos a clientes do período subtraídos. Pedidos feitos por administradores da loja são deixados de fora para que seus próprios pedidos de teste não o alterem. Os impostos são descontados por causa da configuração \"Impostos na seção de lucro\", então eles também não entram nas despesas."
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the \"Tax in the Profit section\" setting, so it is not in Expenses either."
+msgstr "O total de todos os pedidos pagos nas datas selecionadas (Processando e Concluído por padrão), com frete incluído e impostos descontados. Pedidos feitos por administradores da loja são deixados de fora para que seus próprios pedidos de teste não o alterem. Os impostos são descontados por causa da configuração \"Impostos na seção de lucro\", então eles também não entram nas despesas."
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it has a card of its own. Open the breakdown to see each part."
+msgstr "Custos operacionais do período: gastos com anúncios das plataformas conectadas (somente na moeda da loja), taxas de pagamento cobradas pelo gateway, custos de fornecedores e estoque dos pedidos de compra recebidos, além de tudo o que foi registrado no módulo Despesas. Os impostos não estão aqui porque têm um cartão próprio. Abra o detalhamento para ver cada parte."
+
+msgid "What Tax includes"
+msgstr "O que os Impostos incluem"
+
+msgid "The tax on paid orders for the selected dates, tax on shipping included. It is part of Revenue, so it is taken off here: Net profit is Revenue minus Cost of goods, Tax and Expenses. The \"Tax in the Profit section\" setting decides where tax is shown."
+msgstr "Os impostos dos pedidos pagos nas datas selecionadas, incluindo os impostos sobre o frete. Eles fazem parte da receita, por isso são descontados aqui: o lucro líquido é a receita menos o custo das mercadorias, os impostos e as despesas. A configuração \"Impostos na seção de lucro\" decide onde os impostos aparecem."
+
+msgid "Revenue minus Cost of goods, Tax and Expenses. This is what is left after the cost of what you sold, the tax and your operating costs for the period. A negative figure means a loss."
+msgstr "Receita menos Custo das mercadorias, Impostos e Despesas. Isto é o que sobra após o custo do que você vendeu, os impostos e seus custos operacionais do período. Um valor negativo significa prejuízo."
+
+msgid "Tax in the Profit section"
+msgstr "Impostos na seção de lucro"
+
+msgid "Where the tax your customers paid appears in the Profit section. Inside Expenses: Revenue includes the tax and the same tax is one of the Expenses. Taken out of Revenue and Expenses: Revenue is shown without tax. On its own card: Revenue includes the tax and the tax has a card of its own instead of being in Expenses. Net profit is exactly the same in all three."
+msgstr "Onde os impostos pagos pelos seus clientes aparecem na seção de lucro. Dentro das despesas: a receita inclui os impostos e esses mesmos impostos são uma das despesas. Fora da receita e das despesas: a receita é mostrada sem impostos. Em um cartão próprio: a receita inclui os impostos e os impostos têm um cartão próprio em vez de ficarem nas despesas. O lucro líquido é exatamente o mesmo nos três casos."
+
+msgid "Inside Expenses"
+msgstr "Dentro das despesas"
+
+msgid "Taken out of Revenue and Expenses"
+msgstr "Fora da receita e das despesas"
+
+msgid "On its own card (Revenue keeps the tax)"
+msgstr "Em um cartão próprio (a receita inclui os impostos)"
+
+msgid "In Revenue, taken off Net profit"
+msgstr "Na receita, descontados do lucro líquido"
+
+msgid "Includes %s tax"
+msgstr "Inclui %s de impostos"
+
+msgid "Includes tax"
+msgstr "Impostos incluídos"
+
+msgid "Kept in Revenue (not in Expenses)"
+msgstr "Na receita (não nas despesas)"
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is shown under Revenue and taken off Net profit. Open the breakdown to see each part."
+msgstr "Custos operacionais do período: gastos com anúncios das plataformas conectadas (somente na moeda da loja), taxas de pagamento cobradas pelo gateway, custos de fornecedores e estoque dos pedidos de compra recebidos, além de tudo o que foi registrado no módulo Despesas. Os impostos não estão aqui porque aparecem abaixo da receita e são descontados do lucro líquido. Abra o detalhamento para ver cada parte."
+
+msgid "Where the tax your customers paid appears in the Profit section. Inside Expenses: Revenue includes the tax and the same tax is one of the Expenses. Taken out of Revenue and Expenses: Revenue is shown without tax. Kept in Revenue: Revenue includes the tax, the amount is shown under it, and it is not counted in Expenses. Net profit is exactly the same in all three."
+msgstr "Onde os impostos pagos pelos seus clientes aparecem na seção de lucro. Dentro das despesas: a receita inclui os impostos e esses mesmos impostos são uma das despesas. Fora da receita e das despesas: a receita é mostrada sem impostos. Na receita: a receita inclui os impostos, o valor aparece abaixo dela e eles não entram nas despesas. O lucro líquido é exatamente o mesmo nos três casos."
+
+#. translators: %s: screen name, e.g. "Suppliers".
+#: includes/brikpanel-module-pages.php:388
+#, php-format
+msgid "%s is not available"
+msgstr "A página %s não está disponível"
+
+#. translators: %s: screen name, e.g. "Suppliers".
+#: includes/brikpanel-module-pages.php:393
+#, php-format
+msgid "%s is turned off"
+msgstr "A página %s está desativada"
+
+#: includes/brikpanel-module-pages.php:52
+#: includes/brikpanel-module-pages.php:404
+msgid "Back to the dashboard"
+msgstr "Voltar ao painel"
+
+#: front-end/products/brikpanel-products-list.php:1632
+msgid "Filters"
+msgstr "Filtros"
+
+#. translators: %d: how many product list filters are set. The Filters button's accessible name.
+#: includes/brikpanel-enqueue.php:1508
+#, php-format
+msgid "Filters, %d active"
+msgstr "Filtros, %d ativos"
+
+#: includes/brikpanel-module-pages.php:80
+msgid "Open the WooCommerce coupon list"
+msgstr "Abrir a lista de cupons do WooCommerce"
+
+#: includes/brikpanel-module-pages.php:71
+msgid "Open the WooCommerce product list"
+msgstr "Abrir a lista de produtos do WooCommerce"
+
+#: includes/brikpanel-module-pages.php:389
+msgid "The BrikPanel interface is switched off for your account, so this page is not available."
+msgstr "A interface do BrikPanel está desativada para a sua conta, por isso esta página não está disponível."
+
+#: includes/brikpanel-module-pages.php:400
+msgid "This page is turned off in the BrikPanel settings. Ask your store administrator to turn it on."
+msgstr "Esta página está desativada nas configurações do BrikPanel. Peça ao administrador da sua loja para ativá-la."
+
+#: includes/brikpanel-module-pages.php:396
+msgid "This page is turned off in the BrikPanel settings. Turn it on there and this address works again."
+msgstr "Esta página está desativada nas configurações do BrikPanel. Ative-a lá e este endereço voltará a funcionar."
+
+#: includes/brikpanel-module-pages.php:398
+msgid "This page is turned off on this store."
+msgstr "Esta página está desativada nesta loja."
+
+#: includes/brikpanel-module-pages.php:441
+msgid "Turn it on in Settings"
+msgstr "Ative nas configurações"
+
+#: includes/brikpanel-module-pages.php:342
+msgid "Turned off"
+msgstr "Desativada"
+
+#: front-end/products/brikpanel-product-editor.php:1925
+msgid "More information"
+msgstr "Mais informações"

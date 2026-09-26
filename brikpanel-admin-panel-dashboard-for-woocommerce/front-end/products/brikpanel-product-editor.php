@@ -1922,7 +1922,7 @@ class Brikpanel_Product_Editor {
                         <div class="brikpanel-pe-field brikpanel-pe-field-vendor">
                             <label for="bpe-vendor-sku">
                                 <?php esc_html_e('Supplier SKU', 'brikpanel'); ?>
-                                <span class="brikpanel-pe-tooltip" data-tip="<?php esc_attr_e('The supplier\'s product code. Optional — used by stock orders to match this product on incoming POs.', 'brikpanel'); ?>">?</span>
+                                <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-vendor-sku">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-vendor-sku" role="tooltip"><?php esc_html_e('The supplier\'s product code. Optional — used by stock orders to match this product on incoming POs.', 'brikpanel'); ?></span></span>
                             </label>
                             <input type="text" id="bpe-vendor-sku" name="bp_vendor_sku" value="<?php echo esc_attr($bp_current_v_sku); ?>" placeholder="<?php esc_attr_e('Optional', 'brikpanel'); ?>">
                         </div>
@@ -1986,7 +1986,7 @@ class Brikpanel_Product_Editor {
                         <div class="brikpanel-pe-field">
                             <label for="bpe-sku">
                                 <?php esc_html_e('SKU', 'brikpanel'); ?>
-                                <span class="brikpanel-pe-tooltip" data-tip="<?php esc_attr_e('Important for marketplace synchronization. Should match your Trendyol/Hepsiburada product code.', 'brikpanel'); ?>">?</span>
+                                <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-sku">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-sku" role="tooltip"><?php esc_html_e('Important for marketplace synchronization. Should match your Trendyol/Hepsiburada product code.', 'brikpanel'); ?></span></span>
                             </label>
                             <input type="text" id="bpe-sku" value="<?php echo esc_attr($data['sku']); ?>" placeholder="<?php esc_attr_e('e.g.: TSH-001', 'brikpanel'); ?>">
                         </div>
@@ -2029,7 +2029,7 @@ class Brikpanel_Product_Editor {
                     <div class="brikpanel-pe-field">
                         <label for="bpe-gtin">
                             <?php esc_html_e('GTIN, UPC, EAN, or ISBN', 'brikpanel'); ?>
-                            <span class="brikpanel-pe-tooltip" data-tip="<?php esc_attr_e('The global product barcode. Used by Google Shopping and marketplace feeds. Leave empty if you do not have one.', 'brikpanel'); ?>">?</span>
+                            <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-gtin">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-gtin" role="tooltip"><?php esc_html_e('The global product barcode. Used by Google Shopping and marketplace feeds. Leave empty if you do not have one.', 'brikpanel'); ?></span></span>
                         </label>
                         <input type="text" id="bpe-gtin" value="<?php echo esc_attr($data['global_unique_id']); ?>" placeholder="<?php esc_attr_e('e.g.: 0012345678905', 'brikpanel'); ?>" inputmode="numeric" autocomplete="off">
                     </div>
@@ -2083,7 +2083,7 @@ class Brikpanel_Product_Editor {
                     <div class="brikpanel-pe-field">
                         <label for="bpe-upsells-search">
                             <?php esc_html_e('Upsells', 'brikpanel'); ?>
-                            <span class="brikpanel-pe-tooltip" data-tip="<?php esc_attr_e('Products promoted on the product page as a higher-value alternative.', 'brikpanel'); ?>">?</span>
+                            <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-upsells">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-upsells" role="tooltip"><?php esc_html_e('Products promoted on the product page as a higher-value alternative.', 'brikpanel'); ?></span></span>
                         </label>
                         <div class="brikpanel-pe-linked" data-field="upsells">
                             <div class="brikpanel-pe-linked-chips" id="bpe-upsells-chips"></div>
@@ -2094,7 +2094,7 @@ class Brikpanel_Product_Editor {
                     <div class="brikpanel-pe-field">
                         <label for="bpe-crosssells-search">
                             <?php esc_html_e('Cross-sells', 'brikpanel'); ?>
-                            <span class="brikpanel-pe-tooltip" data-tip="<?php esc_attr_e('Products promoted in the cart alongside this one.', 'brikpanel'); ?>">?</span>
+                            <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-crosssells">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-crosssells" role="tooltip"><?php esc_html_e('Products promoted in the cart alongside this one.', 'brikpanel'); ?></span></span>
                         </label>
                         <div class="brikpanel-pe-linked" data-field="cross_sells">
                             <div class="brikpanel-pe-linked-chips" id="bpe-crosssells-chips"></div>

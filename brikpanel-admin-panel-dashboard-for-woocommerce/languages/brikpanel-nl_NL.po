@@ -20083,3 +20083,121 @@ msgid "%s item"
 msgid_plural "%s items"
 msgstr[0] "%s artikel"
 msgstr[1] "%s artikelen"
+
+#: back-end/live/brikpanel-live.php:562
+msgid "Home page"
+msgstr "Startpagina"
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the \"Tax in the Profit section\" setting, so it is not in Expenses either."
+msgstr "Het totaal van alle betaalde bestellingen voor de geselecteerde datums (standaard In behandeling en Voltooid), inclusief verzending, zonder belasting en met de terugbetalingen aan klanten in de periode eraf. Bestellingen die door winkelbeheerders zijn geplaatst, worden weggelaten zodat uw eigen testbestellingen het niet wijzigen. De belasting is eraf gehaald vanwege de instelling \"Belasting in de sectie Winst\", dus staat die ook niet bij de uitgaven."
+
+msgid "The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the \"Tax in the Profit section\" setting, so it is not in Expenses either."
+msgstr "Het totaal van alle betaalde bestellingen voor de geselecteerde datums (standaard In behandeling en Voltooid), inclusief verzending en zonder belasting. Bestellingen die door winkelbeheerders zijn geplaatst, worden weggelaten zodat uw eigen testbestellingen het niet wijzigen. De belasting is eraf gehaald vanwege de instelling \"Belasting in de sectie Winst\", dus staat die ook niet bij de uitgaven."
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it has a card of its own. Open the breakdown to see each part."
+msgstr "Bedrijfskosten voor de periode: advertentie-uitgaven van gekoppelde advertentieplatformen (alleen in de winkelvaluta), transactiekosten van de betaalprovider, leveranciers- en voorraadkosten uit ontvangen inkooporders, plus alles wat in de module Uitgaven is vastgelegd. Belasting staat hier niet bij, omdat die een eigen kaart heeft. Open de uitsplitsing om elk onderdeel te zien."
+
+msgid "What Tax includes"
+msgstr "Wat Belasting omvat"
+
+msgid "The tax on paid orders for the selected dates, tax on shipping included. It is part of Revenue, so it is taken off here: Net profit is Revenue minus Cost of goods, Tax and Expenses. The \"Tax in the Profit section\" setting decides where tax is shown."
+msgstr "De belasting op betaalde bestellingen in de geselecteerde datums, inclusief belasting op verzending. Die zit in de omzet en wordt daarom hier afgetrokken: nettowinst is omzet min kostprijs van goederen, belasting en uitgaven. De instelling \"Belasting in de sectie Winst\" bepaalt waar belasting wordt getoond."
+
+msgid "Revenue minus Cost of goods, Tax and Expenses. This is what is left after the cost of what you sold, the tax and your operating costs for the period. A negative figure means a loss."
+msgstr "Omzet min kostprijs van goederen, belasting en uitgaven. Dit is wat overblijft na de kostprijs van wat u verkocht, de belasting en uw bedrijfskosten voor de periode. Een negatief cijfer betekent verlies."
+
+msgid "Tax in the Profit section"
+msgstr "Belasting in de sectie Winst"
+
+msgid "Where the tax your customers paid appears in the Profit section. Inside Expenses: Revenue includes the tax and the same tax is one of the Expenses. Taken out of Revenue and Expenses: Revenue is shown without tax. On its own card: Revenue includes the tax and the tax has a card of its own instead of being in Expenses. Net profit is exactly the same in all three."
+msgstr "Waar de belasting die uw klanten hebben betaald in de sectie Winst verschijnt. Binnen de uitgaven: de omzet bevat de belasting en dezelfde belasting is een van de uitgaven. Uit omzet en uitgaven gehaald: de omzet wordt zonder belasting getoond. Op een eigen kaart: de omzet bevat de belasting en de belasting heeft een eigen kaart in plaats van bij de uitgaven te staan. De nettowinst is in alle drie precies hetzelfde."
+
+msgid "Inside Expenses"
+msgstr "Binnen de uitgaven"
+
+msgid "Taken out of Revenue and Expenses"
+msgstr "Uit omzet en uitgaven gehaald"
+
+msgid "On its own card (Revenue keeps the tax)"
+msgstr "Op een eigen kaart (omzet bevat de belasting)"
+
+msgid "In Revenue, taken off Net profit"
+msgstr "In de omzet, afgetrokken van de nettowinst"
+
+msgid "Includes %s tax"
+msgstr "Inclusief %s belasting"
+
+msgid "Includes tax"
+msgstr "Inclusief belasting"
+
+msgid "Kept in Revenue (not in Expenses)"
+msgstr "In de omzet laten (niet in de uitgaven)"
+
+msgid "Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is shown under Revenue and taken off Net profit. Open the breakdown to see each part."
+msgstr "Bedrijfskosten voor de periode: advertentie-uitgaven van gekoppelde advertentieplatformen (alleen in de winkelvaluta), transactiekosten van de betaalprovider, leveranciers- en voorraadkosten uit ontvangen inkooporders, plus alles wat in de module Uitgaven is vastgelegd. Belasting staat hier niet bij, omdat die onder de omzet wordt getoond en van de nettowinst wordt afgetrokken. Open de uitsplitsing om elk onderdeel te zien."
+
+msgid "Where the tax your customers paid appears in the Profit section. Inside Expenses: Revenue includes the tax and the same tax is one of the Expenses. Taken out of Revenue and Expenses: Revenue is shown without tax. Kept in Revenue: Revenue includes the tax, the amount is shown under it, and it is not counted in Expenses. Net profit is exactly the same in all three."
+msgstr "Waar de belasting die uw klanten hebben betaald in de sectie Winst verschijnt. Binnen de uitgaven: de omzet bevat de belasting en dezelfde belasting is een van de uitgaven. Uit omzet en uitgaven gehaald: de omzet wordt zonder belasting getoond. In de omzet laten: de omzet bevat de belasting, het bedrag staat eronder en de belasting telt niet mee in de uitgaven. De nettowinst is in alle drie precies hetzelfde."
+
+#. translators: %s: screen name, e.g. "Suppliers".
+#: includes/brikpanel-module-pages.php:388
+#, php-format
+msgid "%s is not available"
+msgstr "De pagina %s is niet beschikbaar"
+
+#. translators: %s: screen name, e.g. "Suppliers".
+#: includes/brikpanel-module-pages.php:393
+#, php-format
+msgid "%s is turned off"
+msgstr "De pagina %s is uitgeschakeld"
+
+#: includes/brikpanel-module-pages.php:52
+#: includes/brikpanel-module-pages.php:404
+msgid "Back to the dashboard"
+msgstr "Terug naar het dashboard"
+
+#: front-end/products/brikpanel-products-list.php:1632
+msgid "Filters"
+msgstr "Filters"
+
+#. translators: %d: how many product list filters are set. The Filters button's accessible name.
+#: includes/brikpanel-enqueue.php:1508
+#, php-format
+msgid "Filters, %d active"
+msgstr "Filters, %d actief"
+
+#: includes/brikpanel-module-pages.php:80
+msgid "Open the WooCommerce coupon list"
+msgstr "Open de WooCommerce-couponlijst"
+
+#: includes/brikpanel-module-pages.php:71
+msgid "Open the WooCommerce product list"
+msgstr "Open de WooCommerce-productlijst"
+
+#: includes/brikpanel-module-pages.php:389
+msgid "The BrikPanel interface is switched off for your account, so this page is not available."
+msgstr "De BrikPanel-interface is voor uw account uitgeschakeld, dus deze pagina is niet beschikbaar."
+
+#: includes/brikpanel-module-pages.php:400
+msgid "This page is turned off in the BrikPanel settings. Ask your store administrator to turn it on."
+msgstr "Deze pagina is uitgeschakeld in de BrikPanel-instellingen. Vraag de beheerder van uw winkel om deze in te schakelen."
+
+#: includes/brikpanel-module-pages.php:396
+msgid "This page is turned off in the BrikPanel settings. Turn it on there and this address works again."
+msgstr "Deze pagina is uitgeschakeld in de BrikPanel-instellingen. Schakel haar daar in en dit adres werkt weer."
+
+#: includes/brikpanel-module-pages.php:398
+msgid "This page is turned off on this store."
+msgstr "Deze pagina is in deze winkel uitgeschakeld."
+
+#: includes/brikpanel-module-pages.php:441
+msgid "Turn it on in Settings"
+msgstr "Inschakelen in de instellingen"
+
+#: includes/brikpanel-module-pages.php:342
+msgid "Turned off"
+msgstr "Uitgeschakeld"
+
+#: front-end/products/brikpanel-product-editor.php:1925
+msgid "More information"
+msgstr "Meer informatie"

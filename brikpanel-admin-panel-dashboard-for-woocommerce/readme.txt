@@ -1,10 +1,10 @@
 === BrikPanel: WooCommerce Dashboard, Abandoned Cart Recovery, Google Sheets Sync, Inventory Management & Bulk Editor ===
 Contributors: brksoft
 Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
-Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, roas
+Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.23
+Stable tag: 3.3.24
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -492,6 +492,11 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.24 (2026-09-26) =
+* New: **Page names in Live Visitors.** Each row shows the name of the product, page or category the visitor is on instead of its address, and the campaign and search term appear next to the source without hovering. Pages cached before the update show the address until the page cache is cleared.
+* New: **Tax kept in Revenue.** Dashboard → "Tax in the Profit section" (formerly "Exclude tax from Revenue and Expenses") has a new "Kept in Revenue (not in Expenses)" choice: Revenue keeps the tax and shows the amount under it, and Expenses leave it out. Net profit stays the same.
+* Fix: **Profit cards in right-to-left languages.** The buttons in the corner of the Revenue and Expenses cards no longer cover the card title.
+
 = 3.3.23 (2026-09-25) =
 * New: **Items sold on the dashboard.** The Orders and Order Rates cards show how many items were sold, each Recent Orders row shows its item count, and the Excel report has an "Items sold" row.
 * New: **Order dates in Recent Orders.** Each order on the dashboard shows its date, and its status in WooCommerce's translated wording.
@@ -577,8 +582,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **A connection you have just re-made is no longer deleted by a renewal already in progress.** A background renewal that was still using the previous credential could get a rejection back from Meta and act on it, removing the connection you had created seconds earlier. The renewal now checks that the credential it was rejected for is still the stored one.
 * Fix: **A background renewal no longer reverts the ad account you just picked.** Choosing a different ad account while a scheduled sync was running could silently put the old choice back.
 * Fix: **The Ad Platforms and Google Sheets cards now say when stored credentials cannot be read**, instead of simply showing "Not connected" with no explanation, and name the usual causes: a changed site address, a move to a new server, or new security keys in wp-config.php.
-= 3.3.13 (2026-09-18) =
-* New: **The signup popup waits for your cookie banner.** On a store with a cookie banner, visitors used to meet two things at once: the banner and, seconds later, the signup popup on top of it. The popup now holds back until the visitor has answered the banner, and accepting or declining both release it, because signing up for an offer is not tracking. Nothing changes on a store without a banner, the floating coupon tab is never held back, and the popup opens after 30 seconds whatever the banner does, so no signup can be lost. Turn it off under WooCommerce → Settings → BrikPanel → Cart abandonment → "Wait for cookie banner".
-* Fix: **Orders renumbered by a sequential order number plugin now show that number everywhere, not just in the orders list.** Opening an order showed WooCommerce's internal ID in the header instead of the number the list had just shown. The dashboard's recent orders, the Segments table, the recovered-order link on Abandoned Carts and the status-change bar on the orders list had the same problem.
-* Fix: **Cmd/Ctrl + K finds an order by phone number however it was typed.** A number kept as "+44 7911 123456" was not found by typing "07911 123456", or the other way round. Spaces, dashes, brackets and a leading 0 or 00 no longer matter, and the last digits of a number are enough to find it. Names now match inside a word and across spellings, so "yilmaz" finds "Yılmaz", and an exact name comes before a partial one. Trashed and draft orders no longer take up result slots, an order that matches twice is listed once, the closest match is first again, and a search beginning with "-" no longer fails. On a store with 700,000 orders a search by customer name went from 761 ms to 1 ms.
-* Dev: **New filters `brikpanel_search_terms`** (add your own spellings of what was typed) **and `brikpanel_search_order_ids`** (add or drop the orders the palette found), and **`window.brikpanel_popup_consent_answered()`**, which tells the signup popup that a banner not speaking the WordPress Consent API has been answered. All three are documented on the Developer page.

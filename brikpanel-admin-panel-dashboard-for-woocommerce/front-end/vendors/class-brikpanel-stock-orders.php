@@ -88,13 +88,19 @@ class Brikpanel_Stock_Orders {
 		wp_enqueue_style(
 			'brikpanel-stock-orders',
 			$base . 'brikpanel-stock-orders.css',
-			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [],
+			array_merge(
+				function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [],
+				function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'tiles', 'style' ) : []
+			),
 			file_exists( $path . 'brikpanel-stock-orders.css' ) ? filemtime( $path . 'brikpanel-stock-orders.css' ) : BRIKPANEL_VERSION
 		);
 		wp_enqueue_script(
 			'brikpanel-stock-orders',
 			$base . 'brikpanel-stock-orders.js',
-			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [],
+			array_merge(
+				function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [],
+				function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'tiles' ) : []
+			),
 			file_exists( $path . 'brikpanel-stock-orders.js' ) ? filemtime( $path . 'brikpanel-stock-orders.js' ) : BRIKPANEL_VERSION,
 			true
 		);
@@ -150,7 +156,7 @@ class Brikpanel_Stock_Orders {
 			<?php brikpanel_header_end(); ?>
 
 			<!-- Summary -->
-			<div class="brikpanel-so-summary" id="brikpanel-so-summary">
+			<div class="brikpanel-so-summary" id="brikpanel-so-summary" data-bp-tiles>
 				<div class="brikpanel-so-summary-card">
 					<div class="brikpanel-so-summary-label"><?php esc_html_e( 'Open POs', 'brikpanel' ); ?></div>
 					<div class="brikpanel-so-summary-value" id="brikpanel-so-open">—</div>

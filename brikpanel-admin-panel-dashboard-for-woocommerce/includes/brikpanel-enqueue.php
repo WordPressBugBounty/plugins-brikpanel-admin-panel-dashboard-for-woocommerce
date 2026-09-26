@@ -115,6 +115,92 @@ function brikpanel_fit_row_dep() {
 }
 
 // =============================================================================
+// SHARED NARROW-SCREEN PARTS (field test C)
+// =============================================================================
+/**
+ * The shared parts that keep a screen inside a phone's width, each a script and
+ * a stylesheet under front-end/shared/:
+ * - `brikpanel_scroll_strip`: a tab row that scrolls inside itself and fades
+ *   only where more tabs are hidden (the Google Sheets tabs pushed the page
+ *   sideways, the Customer Analytics tabs wrapped their labels);
+ * - `brikpanel_overflow`: the "More actions" menu secondary buttons fold into
+ *   (CLAUDE.md, "Başlık satırı kuralı");
+ * - `brikpanel_tiles`: summary tiles that never leave one stretched tile alone
+ *   on a line;
+ * - `brikpanel_tip`: "?" and "!" bubbles placed by measurement, fixed and kept
+ *   inside the visible screen (the dashboard's Copy everything "?" opened off
+ *   the phone's edge), plus `brikpanelTip.nudge()` for popovers that stay under
+ *   their button and the WooCommerce help-tip fix.
+ *
+ * @return void
+ */
+function brikpanel_register_narrow_assets() {
+    if ( wp_script_is( 'brikpanel_scroll_strip', 'registered' ) ) {
+        return;
+    }
+    foreach ( [ 'scroll_strip' => 'scroll-strip', 'overflow' => 'overflow', 'tiles' => 'tiles', 'tip' => 'tip' ] as $handle => $file ) {
+        $js  = 'front-end/shared/brikpanel-' . $file . '.js';
+        $css = 'front-end/shared/brikpanel-' . $file . '.css';
+        if ( file_exists( BRIKPANEL_PATH . $js ) ) {
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- falls back to the plugin version.
+            wp_register_script( 'brikpanel_' . $handle, BRIKPANEL_URL . $js, [], @filemtime( BRIKPANEL_PATH . $js ) ?: BRIKPANEL_VERSION, true );
+        }
+        if ( file_exists( BRIKPANEL_PATH . $css ) ) {
+            // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- falls back to the plugin version.
+            wp_register_style( 'brikpanel_' . $handle, BRIKPANEL_URL . $css, [], @filemtime( BRIKPANEL_PATH . $css ) ?: BRIKPANEL_VERSION );
+        }
+    }
+}
+add_action( 'admin_enqueue_scripts', 'brikpanel_register_narrow_assets', 1 );
+
+/**
+ * Dependency list for one of the shared narrow-screen parts. Empty when it is
+ * not registered, so a lost file never takes the screen's own script or style
+ * with it (the screen keeps its plain layout).
+ *
+ * @param string $part 'scroll_strip', 'overflow', 'tiles' or 'tip'.
+ * @param string $type 'script' or 'style'.
+ * @return string[]
+ */
+function brikpanel_narrow_dep( $part, $type = 'script' ) {
+    brikpanel_register_narrow_assets();
+    $handle = 'brikpanel_' . $part;
+    $ok     = ( 'style' === $type ) ? wp_style_is( $handle, 'registered' ) : wp_script_is( $handle, 'registered' );
+    return $ok ? [ $handle ] : [];
+}
+
+/**
+ * Prints the trigger of a "More actions" menu (front-end/shared/brikpanel-overflow.js):
+ * a "..." button, hidden until the menu folds. The label is also its tooltip.
+ *
+ * @param string $menu_id Id of the menu element the trigger opens.
+ * @return void
+ */
+function brikpanel_overflow_trigger( $menu_id ) {
+    $label = __( 'More actions', 'brikpanel' );
+    printf(
+        '<button type="button" class="brikpanel-overflow__trigger" aria-expanded="false" aria-controls="%1$s" aria-label="%2$s" title="%2$s"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>',
+        esc_attr( $menu_id ),
+        esc_attr( $label )
+    );
+}
+
+/**
+ * Several parts at once, e.g. brikpanel_narrow_deps( [ 'overflow', 'scroll_strip' ], 'style' ).
+ *
+ * @param string[] $parts Part names.
+ * @param string   $type  'script' or 'style'.
+ * @return string[]
+ */
+function brikpanel_narrow_deps( $parts, $type = 'script' ) {
+    $out = [];
+    foreach ( (array) $parts as $part ) {
+        $out = array_merge( $out, brikpanel_narrow_dep( $part, $type ) );
+    }
+    return $out;
+}
+
+// =============================================================================
 // CUSTOM DASHBOARD PAGE ASSETS
 // =============================================================================
 function brikpanel_enqueue_custom_dashboard_assets($hook) {
@@ -232,7 +318,7 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
     wp_enqueue_style(
         'brikpanel_dashboard_styles',
         BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard.css',
-        brikpanel_fit_table_dep( 'style' ),
+        array_merge( brikpanel_fit_table_dep( 'style' ), brikpanel_narrow_deps( [ 'overflow', 'tip' ], 'style' ) ),
         $dash_css_ver
     );
 
@@ -240,7 +326,7 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
     wp_enqueue_script(
         'brikpanel_dashboard_scripts',
         BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard.js',
-        array_merge( [ 'flatpickr-js', 'chart-js', 'cobe-globe' ], brikpanel_fit_table_dep() ),
+        array_merge( [ 'flatpickr-js', 'chart-js', 'cobe-globe' ], brikpanel_fit_table_dep(), brikpanel_fit_row_dep(), brikpanel_narrow_deps( [ 'overflow', 'tip' ] ) ),
         $dash_js_ver,
         true
     );
@@ -434,7 +520,7 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'profit_fees_none'      => __('Payment fees are turned on, but none of the orders in this period record a processing fee. Your payment gateway may not store one, so this cost is not included.', 'brikpanel'),
             'profit_revenue_note'   => __('Same as Total Sales', 'brikpanel'),
             'profit_revenue_net_note' => __('Net of returns', 'brikpanel'),
-            // "Exclude tax from Revenue and Expenses" is on (Settings, Dashboard).
+            // "Tax in the Profit section" takes tax out of Revenue (Settings, Dashboard).
             'profit_revenue_tax_note'     => __('Excluding tax', 'brikpanel'),
             'profit_revenue_net_tax_note' => __('Net of returns and tax', 'brikpanel'),
             'profit_net_revenue'    => __('Net revenue', 'brikpanel'),
@@ -474,14 +560,14 @@ function brikpanel_enqueue_segments_assets($hook) {
     wp_enqueue_style(
         'brikpanel_segments_styles',
         BRIKPANEL_URL . 'front-end/segments/brikpanel-segments.css',
-        [],
+        brikpanel_narrow_dep( 'tiles', 'style' ),
         $seg_css_ver
     );
 
     wp_enqueue_script(
         'brikpanel_segments_scripts',
         BRIKPANEL_URL . 'front-end/segments/brikpanel-segments.js',
-        brikpanel_fit_table_dep(),
+        array_merge( brikpanel_fit_table_dep(), brikpanel_narrow_dep( 'tiles' ) ),
         $seg_js_ver,
         true
     );
@@ -566,14 +652,14 @@ function brikpanel_enqueue_customer_analytics_assets($hook) {
     wp_enqueue_style(
         'brikpanel_customer_analytics_styles',
         BRIKPANEL_URL . 'front-end/customer-analytics/brikpanel-customer-analytics.css',
-        brikpanel_fit_table_dep( 'style' ),
+        array_merge( brikpanel_fit_table_dep( 'style' ), brikpanel_narrow_deps( [ 'overflow', 'scroll_strip', 'tiles' ], 'style' ) ),
         $ca_css_ver
     );
 
     wp_enqueue_script(
         'brikpanel_customer_analytics_scripts',
         BRIKPANEL_URL . 'front-end/customer-analytics/brikpanel-customer-analytics.js',
-        array_merge( [ 'chart-js' ], brikpanel_fit_table_dep() ),
+        array_merge( [ 'chart-js' ], brikpanel_fit_table_dep(), brikpanel_fit_row_dep(), brikpanel_narrow_deps( [ 'overflow', 'scroll_strip', 'tiles' ] ) ),
         $ca_js_ver,
         true
     );
@@ -1066,7 +1152,7 @@ function brikpanel_enqueue_woo_assets($hook) {
             wp_enqueue_script(
                 'brikpanel_orders_scripts',
                 BRIKPANEL_URL . 'front-end/orders/brikpanel-orders.js',
-                ['jquery', 'wc-enhanced-select'],
+                array_merge( ['jquery', 'wc-enhanced-select'], brikpanel_narrow_dep( 'scroll_strip' ) ),
                 $orders_js_ver,
                 true
             );
@@ -1074,7 +1160,7 @@ function brikpanel_enqueue_woo_assets($hook) {
             wp_enqueue_style(
                 'brikpanel_orders_styles',
                 BRIKPANEL_URL . 'front-end/orders/brikpanel-orders.css',
-                ['woocommerce_admin_styles'],
+                array_merge( ['woocommerce_admin_styles'], brikpanel_narrow_dep( 'scroll_strip', 'style' ) ),
                 $orders_css_ver
             );
 
@@ -1303,17 +1389,20 @@ function brikpanel_enqueue_woo_assets($hook) {
         $pl_css_ver = @filemtime( BRIKPANEL_PATH . 'front-end/products/brikpanel-products-list.css' ) ?: BRIKPANEL_VERSION;
         $pl_js_ver  = @filemtime( BRIKPANEL_PATH . 'front-end/products/brikpanel-products-list.js' ) ?: BRIKPANEL_VERSION;
 
+        // Narrow screens (field test C2): the header gives way in order
+        // (fit-row), secondary buttons fold into "More actions" (overflow), the
+        // status tabs scroll in one row (scroll strip).
         wp_enqueue_style(
             'brikpanel_products_list_styles',
             BRIKPANEL_URL . 'front-end/products/brikpanel-products-list.css',
-            [],
+            brikpanel_narrow_deps( [ 'overflow', 'scroll_strip' ], 'style' ),
             $pl_css_ver
         );
 
         wp_enqueue_script(
             'brikpanel_products_list_scripts',
             BRIKPANEL_URL . 'front-end/products/brikpanel-products-list.js',
-            ['jquery', 'jquery-ui-sortable'],
+            array_merge( ['jquery', 'jquery-ui-sortable'], brikpanel_fit_row_dep(), brikpanel_narrow_deps( [ 'overflow', 'scroll_strip', 'tip' ] ) ),
             $pl_js_ver,
             true
         );
@@ -1418,6 +1507,9 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'export_starting'     => __('Preparing export...', 'brikpanel'),
                 'export_no_selection' => __('No products selected for export.', 'brikpanel'),
                 'more_categories'     => __('%d more categories', 'brikpanel'),
+                'more_actions'        => __('More actions', 'brikpanel'),
+                /* translators: %d: how many product list filters are set. The Filters button's accessible name. */
+                'filters_active'      => __('Filters, %d active', 'brikpanel'),
                 'plugin_columns'      => __('Plugin columns', 'brikpanel'),
                 'cogs_partial'        => __('%d variations have no cost on file', 'brikpanel'),
                 'profit_partial'      => __('%d variations have no cost or price on file', 'brikpanel'),
@@ -1941,14 +2033,14 @@ function brikpanel_enqueue_woo_assets($hook) {
         wp_enqueue_style(
             'brikpanel_product_editor_styles',
             BRIKPANEL_URL . 'front-end/products/brikpanel-product-editor.css',
-            [],
+            brikpanel_narrow_dep( 'tip', 'style' ),
             $pe_css_ver
         );
 
         wp_enqueue_script(
             'brikpanel_product_editor_scripts',
             BRIKPANEL_URL . 'front-end/products/brikpanel-product-editor.js',
-            array_merge(['jquery', 'jquery-ui-sortable', 'flatpickr-js'], brikpanel_fit_table_dep(), brikpanel_fit_row_dep()),
+            array_merge(['jquery', 'jquery-ui-sortable', 'flatpickr-js'], brikpanel_fit_table_dep(), brikpanel_fit_row_dep(), brikpanel_narrow_dep( 'tip' )),
             $pe_js_ver,
             true
         );
@@ -2262,17 +2354,20 @@ function brikpanel_enqueue_woo_assets($hook) {
         $cp_css_ver = @filemtime( BRIKPANEL_PATH . 'front-end/coupons/brikpanel-coupons.css' ) ?: BRIKPANEL_VERSION;
         $cp_js_ver  = @filemtime( BRIKPANEL_PATH . 'front-end/coupons/brikpanel-coupons.js' ) ?: BRIKPANEL_VERSION;
 
+        // Shared parts (field test C4): the table stacks its rows when it does
+        // not fit, the header gives way in order (fit-row, printed in <head>),
+        // the status tabs scroll inside themselves.
         wp_enqueue_style(
             'brikpanel_coupons_styles',
             BRIKPANEL_URL . 'front-end/coupons/brikpanel-coupons.css',
-            [],
+            array_merge( brikpanel_fit_table_dep( 'style' ), brikpanel_narrow_dep( 'scroll_strip', 'style' ) ),
             $cp_css_ver
         );
 
         wp_enqueue_script(
             'brikpanel_coupons_scripts',
             BRIKPANEL_URL . 'front-end/coupons/brikpanel-coupons.js',
-            ['jquery'],
+            array_merge( ['jquery'], brikpanel_fit_table_dep(), brikpanel_fit_row_dep(), brikpanel_narrow_dep( 'scroll_strip' ) ),
             $cp_js_ver,
             true
         );
@@ -2443,14 +2538,14 @@ function brikpanel_enqueue_expenses_assets( $hook ) {
     wp_enqueue_style(
         'brikpanel_expenses_styles',
         BRIKPANEL_URL . 'front-end/expenses/brikpanel-expenses.css',
-        brikpanel_fit_table_dep( 'style' ),
+        array_merge( brikpanel_fit_table_dep( 'style' ), brikpanel_narrow_dep( 'tiles', 'style' ) ),
         $exp_css_ver
     );
 
     wp_enqueue_script(
         'brikpanel_expenses_scripts',
         BRIKPANEL_URL . 'front-end/expenses/brikpanel-expenses.js',
-        brikpanel_fit_table_dep(),
+        array_merge( brikpanel_fit_table_dep(), brikpanel_narrow_dep( 'tiles' ) ),
         $exp_js_ver,
         true
     );
@@ -2473,14 +2568,14 @@ function brikpanel_enqueue_cartab_assets( $hook ) {
     wp_enqueue_style(
         'brikpanel_cartab_admin_styles',
         BRIKPANEL_URL . 'front-end/cart-abandonment/cart-abandonment-admin.css',
-        [],
+        brikpanel_narrow_dep( 'tiles', 'style' ),
         $css_ver
     );
 
     wp_enqueue_script(
         'brikpanel_cartab_admin_scripts',
         BRIKPANEL_URL . 'front-end/cart-abandonment/cart-abandonment-admin.js',
-        brikpanel_fit_table_dep(),
+        array_merge( brikpanel_fit_table_dep(), brikpanel_narrow_dep( 'tiles' ) ),
         $js_ver,
         true
     );

@@ -21,7 +21,10 @@
 	tabs.forEach(function (btn) {
 		btn.addEventListener('click', function () {
 			var target = btn.getAttribute('data-tab');
-			tabs.forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+			tabs.forEach(function (b) {
+				b.classList.toggle('is-active', b === btn);
+				b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+			});
 			panels.forEach(function (p) {
 				p.classList.toggle('is-active', p.getAttribute('data-panel') === target);
 			});

@@ -488,88 +488,126 @@ class Brikpanel_Dashboard {
         <div id="brikpanel-dashboard" class="brikpanel-dashboard">
             <?php wp_nonce_field( 'brikpanel_dashboard_nonce', 'security' ); ?>
 
+            <?php
+            // The header gives way in its own order, measured
+            // (front-end/shared/brikpanel-fit-row.js, CLAUDE.md "Başlık satırı
+            // kuralı"): one line while it fits; then the ad platforms link and
+            // Export Excel fold into "More actions"; then the date buttons take
+            // their own row, then an even 3 x 2 grid; then the buttons go under
+            // the title; Copy everything's label goes to its icon last. On a
+            // phone the buttons stacked at uneven widths and the date buttons
+            // wrapped ragged (field test C6).
+            $bp_dash_header_fit = [
+                'title'  => 'h1',
+                'lines'  => [ '' ],
+                'levels' => [
+                    '',
+                    'is-fold',
+                    [ 'cls' => 'is-fold is-two-rows', 'lines' => [ '.brikpanel-dash-header-main', '.brikpanel-dash-presets' ] ],
+                    [ 'cls' => 'is-fold is-two-rows is-preset-grid', 'lines' => [ '.brikpanel-dash-header-main' ] ],
+                    [ 'cls' => 'is-fold is-two-rows is-preset-grid is-stacked-main', 'lines' => [ '.brikpanel-dash-actions' ] ],
+                    [ 'cls' => 'is-fold is-two-rows is-preset-grid is-stacked-main is-icon-copy', 'lines' => [ '.brikpanel-dash-actions' ] ],
+                ],
+            ];
+            ?>
             <!-- Header -->
-            <div class="brikpanel-dash-header">
-                <h1>
-                    <?php esc_html_e( 'Dashboard', 'brikpanel' ); ?>
-                    <?php if ( function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active() ) : ?>
-                        <span class="brikpanel-dash-header-suffix"><?php esc_html_e( 'With Marketplace', 'brikpanel' ); ?></span>
-                    <?php endif; ?>
-                </h1>
-                <div class="brikpanel-dash-filters">
-                    <div class="brikpanel-dash-copy-wrap">
-                        <button type="button" class="brikpanel-dash-copy-summary" id="brikpanel-copy-summary">
-                            <span class="brikpanel-dash-copy-icon" aria-hidden="true">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            </span>
-                            <span class="brikpanel-dash-copy-label"><?php esc_html_e( 'Copy everything', 'brikpanel' ); ?></span>
-                            <span class="brikpanel-dash-copy-progress" aria-hidden="true"><span></span></span>
-                        </button>
-                        <span class="brikpanel-dash-copy-help" tabindex="0" role="button"
-                              aria-label="<?php esc_attr_e( 'What does “Copy everything” do?', 'brikpanel' ); ?>">
-                            <svg class="brikpanel-dash-copy-help-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                            </svg>
-                            <span class="brikpanel-dash-copy-help-tip" role="tooltip">
-                                <span class="brikpanel-dash-copy-help-title"><?php esc_html_e( 'Copy everything', 'brikpanel' ); ?></span>
-                                <span class="brikpanel-dash-copy-help-body"><?php esc_html_e( 'Bundles your store’s key data — KPIs, profit and margins, cost of goods, ad spend, expenses, top products and categories, customers and settings — into a single Markdown report and copies it to your clipboard. Paste it into ChatGPT, Claude or any AI tool to get instant analysis, insights and recommendations about your store.', 'brikpanel' ); ?></span>
-                            </span>
-                        </span>
-                        <?php
-                        // Ad Platforms quick-access CTA. Self-gates: only renders
-                        // when the module is enabled. Label adapts to whether any
-                        // platform is already connected.
-                        if ( class_exists( 'Brikpanel_Ads_Tokens' )
-                            && function_exists( 'brikpanel_ads_module_is_enabled' )
-                            && brikpanel_ads_module_is_enabled() ) :
-                            $bp_ads_connected = Brikpanel_Ads_Tokens::is_connected( 'google_ads' )
-                                || Brikpanel_Ads_Tokens::is_connected( 'meta_ads' );
-                            ?>
-                            <a class="brikpanel-dash-ads-cta" href="<?php echo esc_url( admin_url( 'admin.php?page=brikpanel-ad-platforms' ) ); ?>">
-                                <span class="brikpanel-dash-ads-cta-icon" aria-hidden="true">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
-                                </span>
-                                <span class="brikpanel-dash-ads-cta-label">
-                                    <?php echo $bp_ads_connected
-                                        ? esc_html__( 'Ad spend settings', 'brikpanel' )
-                                        : esc_html__( 'Connect ad accounts', 'brikpanel' ); ?>
-                                </span>
-                            </a>
+            <div class="brikpanel-dash-header" id="brikpanel-dash-header" data-bp-fit-row="<?php echo esc_attr( wp_json_encode( $bp_dash_header_fit ) ); ?>">
+                <?php
+                // Fit as soon as the header opens (the helper is printed in <head>).
+                wp_print_inline_script_tag( 'if(window.brikpanelFitRow){window.brikpanelFitRow.auto(document.getElementById("brikpanel-dash-header"));}' );
+                ?>
+                <div class="brikpanel-dash-header-main">
+                    <h1>
+                        <?php esc_html_e( 'Dashboard', 'brikpanel' ); ?>
+                        <?php if ( function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active() ) : ?>
+                            <span class="brikpanel-dash-header-suffix"><?php esc_html_e( 'With Marketplace', 'brikpanel' ); ?></span>
                         <?php endif; ?>
+                    </h1>
+                    <div class="brikpanel-dash-actions">
+                        <div class="brikpanel-dash-copy-wrap">
+                            <button type="button" class="brikpanel-dash-copy-summary" id="brikpanel-copy-summary">
+                                <span class="brikpanel-dash-copy-icon" aria-hidden="true">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </span>
+                                <span class="brikpanel-dash-copy-label" data-bp-fit-labels="<?php echo esc_attr( wp_json_encode( [ __( 'Copy everything', 'brikpanel' ), __( 'Collecting data…', 'brikpanel' ), __( 'Copied to clipboard!', 'brikpanel' ), __( 'Failed — try again', 'brikpanel' ) ] ) ); ?>"><?php esc_html_e( 'Copy everything', 'brikpanel' ); ?></span>
+                                <span class="brikpanel-dash-copy-progress" aria-hidden="true"><span></span></span>
+                            </button>
+                            <span class="brikpanel-dash-copy-help" data-bp-tip tabindex="0" role="button" aria-expanded="false"
+                                  aria-label="<?php esc_attr_e( 'What does “Copy everything” do?', 'brikpanel' ); ?>"
+                                  aria-describedby="brikpanel-copy-help-body">
+                                <svg class="brikpanel-dash-copy-help-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                <span class="brikpanel-dash-copy-help-tip brikpanel-tip" role="tooltip">
+                                    <span class="brikpanel-dash-copy-help-title"><?php esc_html_e( 'Copy everything', 'brikpanel' ); ?></span>
+                                    <span class="brikpanel-dash-copy-help-body" id="brikpanel-copy-help-body"><?php esc_html_e( 'Bundles your store’s key data — KPIs, profit and margins, cost of goods, ad spend, expenses, top products and categories, customers and settings — into a single Markdown report and copies it to your clipboard. Paste it into ChatGPT, Claude or any AI tool to get instant analysis, insights and recommendations about your store.', 'brikpanel' ); ?></span>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="brikpanel-overflow">
+                            <?php
+                            if ( function_exists( 'brikpanel_overflow_trigger' ) ) {
+                                brikpanel_overflow_trigger( 'brikpanel-dash-more' );
+                            }
+                            ?>
+                            <div class="brikpanel-overflow__menu" id="brikpanel-dash-more">
+                                <?php
+                                // Ad Platforms quick-access CTA. Self-gates: only renders
+                                // when the module is enabled. Label adapts to whether any
+                                // platform is already connected.
+                                if ( class_exists( 'Brikpanel_Ads_Tokens' )
+                                    && function_exists( 'brikpanel_ads_module_is_enabled' )
+                                    && brikpanel_ads_module_is_enabled() ) :
+                                    $bp_ads_connected = Brikpanel_Ads_Tokens::is_connected( 'google_ads' )
+                                        || Brikpanel_Ads_Tokens::is_connected( 'meta_ads' );
+                                    ?>
+                                    <a class="brikpanel-dash-ads-cta" href="<?php echo esc_url( admin_url( 'admin.php?page=brikpanel-ad-platforms' ) ); ?>">
+                                        <span class="brikpanel-dash-ads-cta-icon" aria-hidden="true">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
+                                        </span>
+                                        <span class="brikpanel-dash-ads-cta-label">
+                                            <?php echo $bp_ads_connected
+                                                ? esc_html__( 'Ad spend settings', 'brikpanel' )
+                                                : esc_html__( 'Connect ad accounts', 'brikpanel' ); ?>
+                                        </span>
+                                    </a>
+                                <?php endif; ?>
+                                <button type="button" class="brikpanel-dash-export" id="brikpanel-export-xlsx"
+                                        title="<?php esc_attr_e( 'Download the selected period as an Excel workbook (opens in Excel / Google Sheets)', 'brikpanel' ); ?>">
+                                    <span class="brikpanel-dash-export-icon" aria-hidden="true">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    </span>
+                                    <span class="brikpanel-dash-export-label" data-bp-fit-labels="<?php echo esc_attr( wp_json_encode( [ __( 'Export Excel', 'brikpanel' ), __( 'Preparing…', 'brikpanel' ) ] ) ); ?>"><?php esc_html_e( 'Export Excel', 'brikpanel' ); ?></span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <button type="button" class="brikpanel-dash-export" id="brikpanel-export-xlsx"
-                            title="<?php esc_attr_e( 'Download the selected period as an Excel workbook (opens in Excel / Google Sheets)', 'brikpanel' ); ?>">
-                        <span class="brikpanel-dash-export-icon" aria-hidden="true">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        </span>
-                        <span class="brikpanel-dash-export-label"><?php esc_html_e( 'Export Excel', 'brikpanel' ); ?></span>
-                    </button>
-                    <?php
-                    // The remembered range decides which preset renders active,
-                    // so the button state matches the data on first paint —
-                    // marking "Today" here and correcting it from JS would flash
-                    // the wrong selection on every load.
-                    $bp_saved_range = self::get_range_preference();
-                    $bp_presets     = [
-                        'today'     => __( 'Today', 'brikpanel' ),
-                        'yesterday' => __( 'Yesterday', 'brikpanel' ),
-                        '7days'     => __( 'Last 7 Days', 'brikpanel' ),
-                        '30days'    => __( 'Last 30 Days', 'brikpanel' ),
-                        '90days'    => __( 'Last 90 Days', 'brikpanel' ),
-                        'custom'    => __( 'Custom', 'brikpanel' ),
-                    ];
-                    ?>
-                    <div class="brikpanel-dash-range-wrap">
-                        <div class="brikpanel-dash-presets">
-                            <?php foreach ( $bp_presets as $bp_key => $bp_label ) : ?>
-                                <button class="brikpanel-dash-preset<?php echo ( $bp_saved_range['range'] === $bp_key ) ? ' active' : ''; ?>" data-range="<?php echo esc_attr( $bp_key ); ?>"><?php echo esc_html( $bp_label ); ?></button>
-                            <?php endforeach; ?>
-                        </div>
-                        <div class="brikpanel-dash-custom-range"<?php echo ( 'custom' === $bp_saved_range['range'] ) ? '' : ' style="display:none;"'; ?>>
-                            <input type="text" id="brikpanel-dash-datepicker" placeholder="<?php esc_attr_e( 'Select dates', 'brikpanel' ); ?>" readonly>
-                        </div>
+                </div>
+                <?php
+                // The remembered range decides which preset renders active,
+                // so the button state matches the data on first paint —
+                // marking "Today" here and correcting it from JS would flash
+                // the wrong selection on every load.
+                $bp_saved_range = self::get_range_preference();
+                $bp_presets     = [
+                    'today'     => __( 'Today', 'brikpanel' ),
+                    'yesterday' => __( 'Yesterday', 'brikpanel' ),
+                    '7days'     => __( 'Last 7 Days', 'brikpanel' ),
+                    '30days'    => __( 'Last 30 Days', 'brikpanel' ),
+                    '90days'    => __( 'Last 90 Days', 'brikpanel' ),
+                    'custom'    => __( 'Custom', 'brikpanel' ),
+                ];
+                ?>
+                <div class="brikpanel-dash-range-wrap">
+                    <div class="brikpanel-dash-presets">
+                        <?php foreach ( $bp_presets as $bp_key => $bp_label ) : ?>
+                            <button class="brikpanel-dash-preset<?php echo ( $bp_saved_range['range'] === $bp_key ) ? ' active' : ''; ?>" data-range="<?php echo esc_attr( $bp_key ); ?>"><?php echo esc_html( $bp_label ); ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="brikpanel-dash-custom-range"<?php echo ( 'custom' === $bp_saved_range['range'] ) ? '' : ' style="display:none;"'; ?>>
+                        <input type="text" id="brikpanel-dash-datepicker" placeholder="<?php esc_attr_e( 'Select dates', 'brikpanel' ); ?>" readonly>
                     </div>
                 </div>
             </div>
@@ -628,26 +666,28 @@ class Brikpanel_Dashboard {
     }
 
     /**
-     * Render a small "?" help icon with an on-hover / on-focus tooltip,
-     * reusing the shared dashboard hint styling.
+     * Render a small "?" help icon with a tooltip that opens on hover, focus
+     * or a tap, reusing the shared dashboard hint styling. The bubble is
+     * placed by front-end/shared/brikpanel-tip.js, which keeps it on screen.
      *
      * @param string $title Short bold heading (plain text).
      * @param string $body  Explanation. Allows <br> and <strong> only.
-     * @param string $align 'start' (tooltip opens rightward, default) or 'end'
-     *                      (opens leftward, for right-most elements).
+     * @param string $align 'start' (the bubble hangs from the icon's start
+     *                      edge, default) or 'end' (from its end edge, for
+     *                      right-most elements).
      */
     private function render_hint( $title, $body, $align = 'start' ) {
-        $modifier = ( 'end' === $align ) ? ' brikpanel-dash-hint--end' : '';
+        $body_id = wp_unique_id( 'brikpanel-hint-' );
         ?>
-        <span class="brikpanel-dash-hint<?php echo esc_attr( $modifier ); ?>" tabindex="0" role="button" aria-label="<?php echo esc_attr( $title ); ?>">
+        <span class="brikpanel-dash-hint" data-bp-tip="<?php echo esc_attr( 'end' === $align ? 'end' : 'start' ); ?>" tabindex="0" role="button" aria-expanded="false" aria-label="<?php echo esc_attr( $title ); ?>" aria-describedby="<?php echo esc_attr( $body_id ); ?>">
             <svg class="brikpanel-dash-hint-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"></circle>
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
-            <span class="brikpanel-dash-hint-tip" role="tooltip">
+            <span class="brikpanel-dash-hint-tip brikpanel-tip" role="tooltip">
                 <span class="brikpanel-dash-hint-title"><?php echo esc_html( $title ); ?></span>
-                <span class="brikpanel-dash-hint-body"><?php echo wp_kses( $body, [ 'br' => [], 'strong' => [] ] ); ?></span>
+                <span class="brikpanel-dash-hint-body" id="<?php echo esc_attr( $body_id ); ?>"><?php echo wp_kses( $body, [ 'br' => [], 'strong' => [] ] ); ?></span>
             </span>
         </span>
         <?php
@@ -776,22 +816,27 @@ class Brikpanel_Dashboard {
         $show_cogs     = ! $has_pref || brikpanel_dashboard_profit_field_enabled( 'cogs' );
         $show_expenses = ! $has_pref || brikpanel_dashboard_profit_field_enabled( 'expenses' );
         $returns_on    = ! $has_pref || brikpanel_dashboard_profit_field_enabled( 'returns' );
-        $tax_excluded  = function_exists( 'brikpanel_profit_tax_excluded' ) && brikpanel_profit_tax_excluded();
+        // "Tax in the Profit section" (Settings, Dashboard): inside Expenses,
+        // taken out of Revenue and Expenses, or kept in Revenue.
+        $tax_mode       = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'expenses';
+        $tax_in_revenue = 'revenue' === $tax_mode;
 
         // Revenue is paid orders for the period, optionally net of refunds, with
-        // tax and shipping included and admin orders excluded. The setting that
-        // takes tax out of Revenue and Expenses gets its own wording, so the
-        // explanation never describes a figure the card is not showing.
-        if ( $tax_excluded ) {
+        // tax and shipping included and admin orders excluded. Each place the
+        // setting can put the tax gets its own wording, so the explanation
+        // never describes a figure the card is not showing.
+        if ( 'excluded' === $tax_mode ) {
             $rev_body = $returns_on
-                ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the "Exclude tax from Revenue and Expenses" setting is on, so it is not in Expenses either.', 'brikpanel' )
-                : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because the "Exclude tax from Revenue and Expenses" setting is on, so it is not in Expenses either.', 'brikpanel' );
+                ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the "Tax in the Profit section" setting, so it is not in Expenses either.', 'brikpanel' )
+                : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the "Tax in the Profit section" setting, so it is not in Expenses either.', 'brikpanel' );
             $exp_body = __( 'Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is already taken out of Revenue. Open the breakdown to see each part.', 'brikpanel' );
         } else {
             $rev_body = $returns_on
                 ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' )
                 : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' );
-            $exp_body = __( 'Operating costs for the period: order tax, ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Open the breakdown to see each part.', 'brikpanel' );
+            $exp_body = $tax_in_revenue
+                ? __( 'Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is shown under Revenue and taken off Net profit. Open the breakdown to see each part.', 'brikpanel' )
+                : __( 'Operating costs for the period: order tax, ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Open the breakdown to see each part.', 'brikpanel' );
         }
         ?>
             <!-- Profit -->
@@ -799,18 +844,22 @@ class Brikpanel_Dashboard {
             <div class="brikpanel-dash-profit" id="brikpanel-profit-section">
                 <div class="brikpanel-dash-cards brikpanel-dash-cards-profit bp-profit-cols-<?php echo (int) $profit_cols; ?>" id="brikpanel-profit-cards">
                     <div class="brikpanel-dash-card" data-metric="profit_revenue" id="profit-revenue-card">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Revenue', 'brikpanel' ); ?><?php
-                            $this->render_hint( __( 'How Revenue is calculated', 'brikpanel' ), $rev_body ); ?></span>
+                        <div class="brikpanel-dash-card-head">
+                            <span class="brikpanel-dash-card-label"><span class="brikpanel-dash-card-label-text"><?php esc_html_e( 'Revenue', 'brikpanel' ); ?></span><?php
+                                $this->render_hint( __( 'How Revenue is calculated', 'brikpanel' ), $rev_body ); ?></span>
+                            <span class="brikpanel-dash-card-tools">
+                                <button type="button" class="brikpanel-dash-bd-toggle" id="profit-rev-bd-toggle"
+                                        aria-expanded="false" aria-controls="profit-rev-bd-collapse" hidden
+                                        title="<?php esc_attr_e( 'Show revenue breakdown', 'brikpanel' ); ?>"
+                                        aria-label="<?php esc_attr_e( 'Show revenue breakdown', 'brikpanel' ); ?>">
+                                    <svg class="brikpanel-dash-bd-chevron" width="14" height="14" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                         stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                            </span>
+                        </div>
                         <span class="brikpanel-dash-card-value" id="card-profit-revenue">--</span>
                         <span class="brikpanel-dash-card-delta" id="delta-profit-revenue"></span>
-                        <button type="button" class="brikpanel-dash-bd-toggle" id="profit-rev-bd-toggle"
-                                aria-expanded="false" aria-controls="profit-rev-bd-collapse" hidden
-                                title="<?php esc_attr_e( 'Show revenue breakdown', 'brikpanel' ); ?>"
-                                aria-label="<?php esc_attr_e( 'Show revenue breakdown', 'brikpanel' ); ?>">
-                            <svg class="brikpanel-dash-bd-chevron" width="14" height="14" viewBox="0 0 24 24"
-                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                 stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
                         <div class="brikpanel-dash-bd-collapse" id="profit-rev-bd-collapse">
                             <div class="brikpanel-dash-bd-inner">
                                 <div class="brikpanel-dash-bd-list" id="profit-revenue-breakdown"></div>
@@ -819,36 +868,42 @@ class Brikpanel_Dashboard {
                     </div>
                     <?php if ( $show_cogs ) : ?>
                     <div class="brikpanel-dash-card" data-metric="profit_cogs">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Cost of Goods', 'brikpanel' ); ?><?php
-                            $this->render_hint(
-                                __( 'How Cost of Goods is calculated', 'brikpanel' ),
-                                __( 'The "Cost of goods" you set on each product, multiplied by the quantity sold in paid orders for the period. Variations use their own cost and fall back to the parent product. Any product with no cost set counts as zero, which overstates Net profit, so fill those in for an accurate margin.', 'brikpanel' )
-                            ); ?></span>
+                        <div class="brikpanel-dash-card-head">
+                            <span class="brikpanel-dash-card-label"><span class="brikpanel-dash-card-label-text"><?php esc_html_e( 'Cost of Goods', 'brikpanel' ); ?></span><?php
+                                $this->render_hint(
+                                    __( 'How Cost of Goods is calculated', 'brikpanel' ),
+                                    __( 'The "Cost of goods" you set on each product, multiplied by the quantity sold in paid orders for the period. Variations use their own cost and fall back to the parent product. Any product with no cost set counts as zero, which overstates Net profit, so fill those in for an accurate margin.', 'brikpanel' )
+                                ); ?></span>
+                        </div>
                         <span class="brikpanel-dash-card-value" id="card-profit-cogs">--</span>
                         <span class="brikpanel-dash-card-delta brikpanel-dash-card-delta-static" id="delta-profit-cogs"></span>
                     </div>
                     <?php endif; ?>
                     <?php if ( $show_expenses ) : ?>
                     <div class="brikpanel-dash-card" data-metric="profit_expenses" id="profit-expenses-card">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Expenses', 'brikpanel' ); ?><?php
-                            $this->render_hint( __( 'What Expenses includes', 'brikpanel' ), $exp_body ); ?></span>
+                        <div class="brikpanel-dash-card-head">
+                            <span class="brikpanel-dash-card-label"><span class="brikpanel-dash-card-label-text"><?php esc_html_e( 'Expenses', 'brikpanel' ); ?></span><?php
+                                $this->render_hint( __( 'What Expenses includes', 'brikpanel' ), $exp_body ); ?></span>
+                            <span class="brikpanel-dash-card-tools">
+                                <button type="button" class="brikpanel-dash-bd-add" id="profit-exp-add"
+                                        title="<?php esc_attr_e( 'Add expense', 'brikpanel' ); ?>"
+                                        aria-label="<?php esc_attr_e( 'Add expense', 'brikpanel' ); ?>">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </button>
+                                <button type="button" class="brikpanel-dash-bd-toggle" id="profit-bd-toggle"
+                                        aria-expanded="false" aria-controls="profit-bd-collapse" hidden
+                                        title="<?php esc_attr_e( 'Show expense breakdown', 'brikpanel' ); ?>"
+                                        aria-label="<?php esc_attr_e( 'Show expense breakdown', 'brikpanel' ); ?>">
+                                    <svg class="brikpanel-dash-bd-chevron" width="14" height="14" viewBox="0 0 24 24"
+                                         fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                         stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                            </span>
+                        </div>
                         <span class="brikpanel-dash-card-value" id="card-profit-expenses">--</span>
                         <span class="brikpanel-dash-card-delta brikpanel-dash-card-delta-static" id="delta-profit-expenses"></span>
-                        <button type="button" class="brikpanel-dash-bd-add" id="profit-exp-add"
-                                title="<?php esc_attr_e( 'Add expense', 'brikpanel' ); ?>"
-                                aria-label="<?php esc_attr_e( 'Add expense', 'brikpanel' ); ?>">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        </button>
-                        <button type="button" class="brikpanel-dash-bd-toggle" id="profit-bd-toggle"
-                                aria-expanded="false" aria-controls="profit-bd-collapse" hidden
-                                title="<?php esc_attr_e( 'Show expense breakdown', 'brikpanel' ); ?>"
-                                aria-label="<?php esc_attr_e( 'Show expense breakdown', 'brikpanel' ); ?>">
-                            <svg class="brikpanel-dash-bd-chevron" width="14" height="14" viewBox="0 0 24 24"
-                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                 stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
                         <div class="brikpanel-dash-bd-collapse" id="profit-bd-collapse">
                             <div class="brikpanel-dash-bd-inner">
                                 <div class="brikpanel-dash-bd-list" id="profit-expenses-breakdown"></div>
@@ -857,11 +912,15 @@ class Brikpanel_Dashboard {
                     </div>
                     <?php endif; ?>
                     <div class="brikpanel-dash-card" data-metric="profit_net">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Net Profit', 'brikpanel' ); ?><?php
-                            $this->render_hint(
-                                __( 'How Net Profit is calculated', 'brikpanel' ),
-                                __( 'Revenue minus Cost of goods minus Expenses. This is what is left after the cost of what you sold and your operating costs for the period. A negative figure means a loss.', 'brikpanel' )
-                            ); ?></span>
+                        <div class="brikpanel-dash-card-head">
+                            <span class="brikpanel-dash-card-label"><span class="brikpanel-dash-card-label-text"><?php esc_html_e( 'Net Profit', 'brikpanel' ); ?></span><?php
+                                $this->render_hint(
+                                    __( 'How Net Profit is calculated', 'brikpanel' ),
+                                    $tax_in_revenue
+                                        ? __( 'Revenue minus Cost of goods, Tax and Expenses. This is what is left after the cost of what you sold, the tax and your operating costs for the period. A negative figure means a loss.', 'brikpanel' )
+                                        : __( 'Revenue minus Cost of goods minus Expenses. This is what is left after the cost of what you sold and your operating costs for the period. A negative figure means a loss.', 'brikpanel' )
+                                ); ?></span>
+                        </div>
                         <span class="brikpanel-dash-card-value" id="card-profit-net">--</span>
                         <span class="brikpanel-dash-card-delta" id="delta-profit-net"></span>
                     </div>
@@ -2007,11 +2066,15 @@ class Brikpanel_Dashboard {
     private function build_profit_block( $revenue, $start_gmt, $end_gmt, $start_local, $end_local, $exclude_marketplace = false ) {
         $s = brikpanel_profit_snapshot( $revenue, $start_gmt, $end_gmt, $start_local, $end_local, $exclude_marketplace );
 
-        // "Exclude tax from Revenue and Expenses" (Settings, Dashboard). Off:
-        // Revenue is what customers paid, tax included, and the tax is one of
-        // the Expenses lines. On: Revenue is shown without the tax and Expenses
-        // no longer carries it, so Net profit comes out the same either way.
-        $tax_excluded = function_exists( 'brikpanel_profit_tax_excluded' ) && brikpanel_profit_tax_excluded();
+        // "Tax in the Profit section" (Settings, Dashboard). Inside Expenses
+        // (default): Revenue is what customers paid, tax included, and the tax
+        // is one of the Expenses lines. Taken out: Revenue is shown without the
+        // tax and Expenses no longer carries it. Kept in Revenue: Revenue keeps
+        // the tax and names the amount under its figure, Expenses drop it and
+        // Net profit takes it off. Net profit comes out the same in all three.
+        $tax_mode       = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'expenses';
+        $tax_excluded   = 'excluded' === $tax_mode;
+        $tax_in_revenue = 'revenue' === $tax_mode;
 
         // Expenses breakdown. External costs (ad spend, tax) keep their fixed
         // translated labels; manual expenses are listed by their OWN category
@@ -2023,7 +2086,7 @@ class Brikpanel_Dashboard {
             'google_ads' => __( 'Google Ads', 'brikpanel' ),
             'meta_ads'   => __( 'Meta Ads', 'brikpanel' ),
         ];
-        if ( ! $tax_excluded ) {
+        if ( 'expenses' === $tax_mode ) {
             $fixed_labels['tax'] = __( 'Tax', 'brikpanel' );
         }
         // Shipping is opt-in and gated on the setting HERE as well as in
@@ -2238,8 +2301,12 @@ class Brikpanel_Dashboard {
             // Revenue − Cost of goods − Expenses lands on the same Net profit.
             $rev_raw  -= $tax;
             $expenses -= $tax;
+        } elseif ( $tax_in_revenue ) {
+            // Out of Expenses only; Net profit takes it off instead:
+            // Revenue − Cost of goods − Tax − Expenses.
+            $expenses -= $tax;
         }
-        $net_raw = $rev_raw - $cogs - $expenses;
+        $net_raw = $rev_raw - $cogs - $expenses - ( $tax_in_revenue ? $tax : 0 );
 
         $pctf       = function ( $part ) use ( $rev_raw ) {
             return $rev_raw > 0 ? round( ( $part / $rev_raw ) * 100, 1 ) : 0.0;
@@ -2303,9 +2370,16 @@ class Brikpanel_Dashboard {
             'returns_on'    => $returns_on,
             'coupons'       => wc_price( $coupons ),
             'coupons_raw'   => $coupons,
-            // Whether the setting took tax out of Revenue and Expenses above.
-            'tax_excluded'  => $tax_excluded,
-            'tax_raw'       => $tax,
+            // Whether the setting took tax out of Revenue and Expenses above,
+            // or kept it in Revenue. In that case `tax_note` is the line under
+            // the Revenue figure, plain text ready for textContent.
+            'tax_excluded'   => $tax_excluded,
+            'tax_in_revenue' => $tax_in_revenue,
+            'tax_note'       => ( $tax_in_revenue && $tax > 0 )
+                /* translators: %s: tax amount, for example "$837.56". */
+                ? sprintf( __( 'Includes %s tax', 'brikpanel' ), brikpanel_money_text( $tax ) )
+                : '',
+            'tax_raw'        => $tax,
             'revenue_breakdown' => $rev_breakdown,
             'cogs'          => wc_price( $cogs ),
             'cogs_raw'      => $cogs,
@@ -2415,9 +2489,12 @@ class Brikpanel_Dashboard {
         // The payment-fees toggle moves the same three figures, so it earns a
         // segment of its own for exactly the reason spelled out above.
         $fees_for_key = ( function_exists( 'brikpanel_payment_fees_enabled' ) && brikpanel_payment_fees_enabled() ) ? 1 : 0;
-        // Taking tax out of Revenue and Expenses moves both figures and every
-        // share of revenue, so it is part of the identity for the same reason.
-        $tax_for_key = ( function_exists( 'brikpanel_profit_tax_excluded' ) && brikpanel_profit_tax_excluded() ) ? 1 : 0;
+        // Where tax sits in the Profit section moves Revenue, Expenses and every
+        // share of revenue, so it is part of the identity for the same reason:
+        // e (inside Expenses), x (taken out), r (kept in Revenue).
+        $tax_keys    = [ 'expenses' => 'e', 'excluded' => 'x', 'revenue' => 'r' ];
+        $tax_mode    = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'expenses';
+        $tax_for_key = $tax_keys[ $tax_mode ] ?? 'e';
         // The payload carries text in the requesting admin's language (month
         // names in the Recent Orders dates and chart labels, "Guest"), so
         // admins who use different languages must not share one copy.
@@ -2727,7 +2804,13 @@ class Brikpanel_Dashboard {
         // One rule for every reader of the Live list (ping timeout, idle limit,
         // traffic source setting): back-end/live/brikpanel-live.php. Without
         // that module nothing writes the list, so there is nobody to show.
-        wp_send_json_success( function_exists( 'brikpanel_live_active_visitors' ) ? brikpanel_live_active_visitors() : [] );
+        $visitors = function_exists( 'brikpanel_live_active_visitors' ) ? brikpanel_live_active_visitors() : [];
+        // Page names are looked up here, not in the shared read: the top bar
+        // only counts the rows.
+        if ( $visitors && function_exists( 'brikpanel_live_page_names' ) ) {
+            $visitors = brikpanel_live_page_names( $visitors );
+        }
+        wp_send_json_success( $visitors );
     }
 
     // =========================================================================
@@ -4190,7 +4273,10 @@ class Brikpanel_Dashboard {
         // The Revenue row says what the card says under its figure.
         $rev_netted  = ! empty( $profit['returns_on'] ) && (float) ( $profit['returns_raw'] ?? 0 ) > 0;
         $rev_no_tax  = ! empty( $profit['tax_excluded'] ) && (float) ( $profit['tax_raw'] ?? 0 ) > 0;
-        if ( $rev_netted && $rev_no_tax ) {
+        $rev_has_tax = ! empty( $profit['tax_in_revenue'] ) && (float) ( $profit['tax_raw'] ?? 0 ) > 0;
+        if ( $rev_has_tax ) {
+            $rev_context = __( 'Includes tax', 'brikpanel' );
+        } elseif ( $rev_netted && $rev_no_tax ) {
             $rev_context = __( 'Net of returns and tax', 'brikpanel' );
         } elseif ( $rev_no_tax ) {
             $rev_context = __( 'Excluding tax', 'brikpanel' );
@@ -4244,6 +4330,11 @@ class Brikpanel_Dashboard {
                 : [] ),
             /* translators: %s: percentage of revenue. */
             [ __( 'Cost of Goods', 'brikpanel' ), $money( $profit['cogs_raw'] ), sprintf( __( '%s%% of revenue', 'brikpanel' ), $profit['cogs_pct'] ) ],
+            // Kept in Revenue by the setting: its own line, because Net profit
+            // takes it off while Expenses no longer carry it.
+            ...( $rev_has_tax
+                ? [ [ __( 'Tax', 'brikpanel' ), $money( $profit['tax_raw'] ), __( 'In Revenue, taken off Net profit', 'brikpanel' ) ] ]
+                : [] ),
             /* translators: %s: percentage of revenue. */
             [ __( 'Expenses', 'brikpanel' ), $money( $profit['expenses_raw'] ), sprintf( __( '%s%% of revenue', 'brikpanel' ), $profit['expenses_pct'] ) ],
             // Called out separately because it is already inside Expenses above:

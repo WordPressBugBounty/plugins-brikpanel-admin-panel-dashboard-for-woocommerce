@@ -1510,50 +1510,84 @@ class Brikpanel_Products_List {
         <div class="wrap">
         <div class="brikpanel-pl" id="brikpanel-products-list" data-tax-filters="<?php echo esc_attr(wp_json_encode((object) $active_tax_filters)); ?>">
 
+            <?php
+            // The header gives way in its own order, measured
+            // (front-end/shared/brikpanel-fit-row.js, CLAUDE.md "Başlık satırı
+            // kuralı"): one line while it fits; then Import, Export and Bulk
+            // update fold into "More actions"; then the search takes its own row
+            // under the title; Add product's label goes to its icon only as the
+            // last resort. Below 480px the three buttons used to lose their
+            // labels and stand as look-alike icons (field test C2).
+            $bpl_header_fit = [
+                'title'  => 'h1',
+                'lines'  => [''],
+                'levels' => [
+                    '',
+                    'is-fold',
+                    ['cls' => 'is-fold is-two-rows', 'lines' => ['.brikpanel-pl-header-main']],
+                    ['cls' => 'is-fold is-two-rows is-icon-add', 'lines' => ['.brikpanel-pl-header-main']],
+                ],
+            ];
+            ?>
             <!-- Header -->
-            <div class="brikpanel-pl-header">
-                <div class="brikpanel-pl-header-left">
-                    <h1><?php esc_html_e('Products', 'brikpanel'); ?></h1>
-                    <span class="brikpanel-pl-count" id="bpl-total-count"><?php echo esc_html($all_count); ?></span>
-                </div>
-                <div class="brikpanel-pl-header-right">
-                    <div class="brikpanel-pl-search-wrap">
-                        <svg class="brikpanel-pl-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                        <input type="text" id="bpl-search" class="brikpanel-pl-search" placeholder="<?php esc_attr_e('Search products...', 'brikpanel'); ?>">
+            <div class="brikpanel-pl-header" id="bpl-header" data-bp-fit-row="<?php echo esc_attr(wp_json_encode($bpl_header_fit)); ?>">
+                <?php
+                // Fit as soon as the header opens (the helper is printed in <head>).
+                wp_print_inline_script_tag('if(window.brikpanelFitRow){window.brikpanelFitRow.auto(document.getElementById("bpl-header"));}');
+                ?>
+                <div class="brikpanel-pl-header-main">
+                    <div class="brikpanel-pl-header-left">
+                        <h1><?php esc_html_e('Products', 'brikpanel'); ?></h1>
+                        <span class="brikpanel-pl-count" id="bpl-total-count"><?php echo esc_html($all_count); ?></span>
                     </div>
-                    <?php
-                    // This page only needs `edit_products`, but WooCommerce's importer
-                    // and exporter each check their own capability (`import`,
-                    // `export`) on top of it. A button the user cannot follow is a
-                    // dead link, so each one is shown only to those who can.
-                    if ( current_user_can( 'import' ) ) :
-                        ?>
-                    <a href="<?php echo esc_url(admin_url('edit.php?post_type=product&page=product_importer')); ?>" class="brikpanel-pl-btn secondary">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        <?php esc_html_e('Import', 'brikpanel'); ?>
-                    </a>
-                    <?php endif; ?>
-                    <?php if ( current_user_can( 'export' ) ) : ?>
-                    <a href="<?php echo esc_url(admin_url('edit.php?post_type=product&page=product_exporter')); ?>" class="brikpanel-pl-btn secondary">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <?php esc_html_e('Export', 'brikpanel'); ?>
-                    </a>
-                    <?php endif; ?>
-                    <button type="button" class="brikpanel-pl-btn secondary" id="bpl-bulk-update-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        <?php esc_html_e('Bulk update', 'brikpanel'); ?>
-                    </button>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=brikpanel-product-editor')); ?>" class="brikpanel-pl-btn primary" id="bpl-add-new">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        <?php esc_html_e('Add product', 'brikpanel'); ?>
-                    </a>
+                    <div class="brikpanel-pl-header-right">
+                        <div class="brikpanel-overflow">
+                            <?php
+                            if (function_exists('brikpanel_overflow_trigger')) {
+                                brikpanel_overflow_trigger('bpl-header-more');
+                            }
+                            ?>
+                            <div class="brikpanel-overflow__menu" id="bpl-header-more">
+                                <?php
+                                // This page only needs `edit_products`, but WooCommerce's importer
+                                // and exporter each check their own capability (`import`,
+                                // `export`) on top of it. A button the user cannot follow is a
+                                // dead link, so each one is shown only to those who can.
+                                if ( current_user_can( 'import' ) ) :
+                                    ?>
+                                <a href="<?php echo esc_url(admin_url('edit.php?post_type=product&page=product_importer')); ?>" class="brikpanel-pl-btn secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <?php esc_html_e('Import', 'brikpanel'); ?>
+                                </a>
+                                <?php endif; ?>
+                                <?php if ( current_user_can( 'export' ) ) : ?>
+                                <a href="<?php echo esc_url(admin_url('edit.php?post_type=product&page=product_exporter')); ?>" class="brikpanel-pl-btn secondary">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    <?php esc_html_e('Export', 'brikpanel'); ?>
+                                </a>
+                                <?php endif; ?>
+                                <button type="button" class="brikpanel-pl-btn secondary" id="bpl-bulk-update-btn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    <?php esc_html_e('Bulk update', 'brikpanel'); ?>
+                                </button>
+                            </div>
+                        </div>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=brikpanel-product-editor')); ?>" class="brikpanel-pl-btn primary" id="bpl-add-new">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span class="brikpanel-pl-add-label"><?php esc_html_e('Add product', 'brikpanel'); ?></span>
+                        </a>
+                    </div>
+                </div>
+                <div class="brikpanel-pl-search-wrap">
+                    <svg class="brikpanel-pl-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" id="bpl-search" class="brikpanel-pl-search" placeholder="<?php esc_attr_e('Search products...', 'brikpanel'); ?>" aria-label="<?php esc_attr_e('Search products...', 'brikpanel'); ?>">
                 </div>
             </div>
             <?php brikpanel_header_end(); ?>
 
             <!-- Filters Bar -->
             <div class="brikpanel-pl-filters">
-                <div class="brikpanel-pl-tabs">
+                <div class="brikpanel-pl-tabs" data-bp-strip>
                     <button class="brikpanel-pl-tab active" data-status="any">
                         <?php esc_html_e('All', 'brikpanel'); ?>
                         <span class="brikpanel-pl-tab-count" data-count="all"><?php echo esc_html($all_count); ?></span>
@@ -1585,7 +1619,20 @@ class Brikpanel_Products_List {
                     </button>
                     <?php endif; ?>
                 </div>
-                <div class="brikpanel-pl-filter-group">
+                <div class="brikpanel-pl-filter-group" id="bpl-filter-group">
+                    <?php
+                    // Phones (782px and below): the filters fold behind one
+                    // button that shows how many are set; Columns stays beside
+                    // it. They used to fill the first screen, six selects and
+                    // two buttons deep (field test C2). Wider screens never see
+                    // the button: the fields sit in the row as before.
+                    ?>
+                    <button type="button" class="brikpanel-pl-btn secondary brikpanel-pl-filters-toggle" id="bpl-filters-toggle" aria-expanded="false" aria-controls="bpl-filter-fields">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+                        <span class="brikpanel-pl-filters-toggle-label"><?php esc_html_e('Filters', 'brikpanel'); ?></span>
+                        <span class="brikpanel-pl-filters-count" id="bpl-filters-count" hidden></span>
+                    </button>
+                    <div class="brikpanel-pl-filter-fields" id="bpl-filter-fields">
                     <select id="bpl-cat-filter" class="brikpanel-pl-select">
                         <option value=""><?php esc_html_e('All categories', 'brikpanel'); ?></option>
                         <?php foreach ($categories as $cat) : ?>
@@ -1646,6 +1693,7 @@ class Brikpanel_Products_List {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                         <span class="brikpanel-pl-sort-toggle-label"><?php esc_html_e('Sort', 'brikpanel'); ?></span>
                     </button>
+                    </div>
                     <div class="brikpanel-pl-columns-menu" id="bpl-columns-menu">
                         <button type="button" class="brikpanel-pl-btn secondary brikpanel-pl-columns-btn" id="bpl-columns-btn" aria-haspopup="true" aria-expanded="false">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
@@ -1778,6 +1826,14 @@ class Brikpanel_Products_List {
                             </tr>
                         </tbody>
                     </table>
+                    <?php
+                    // The spinner row spans the header cells that show, before
+                    // the page paints: on a phone most columns are hidden, and
+                    // with a fixed table layout the extra span added phantom
+                    // columns that cut the header's background half way (field
+                    // test C12). The list script keeps it in step afterwards.
+                    wp_print_inline_script_tag('(function(t){var h=t&&t.tHead&&t.tHead.rows[0],b=t&&t.tBodies[0]&&t.tBodies[0].rows[0],n=0,i;if(!h||!b||b.cells.length!==1){return;}for(i=0;i<h.cells.length;i++){if(window.getComputedStyle(h.cells[i]).display!=="none"){n+=h.cells[i].colSpan||1;}}b.cells[0].colSpan=Math.max(1,n);})(document.getElementById("bpl-table"));');
+                    ?>
                 </div>
 
                 <!-- Pagination -->

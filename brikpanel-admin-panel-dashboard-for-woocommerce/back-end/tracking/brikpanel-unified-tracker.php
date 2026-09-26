@@ -41,6 +41,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   src_ref, src_url        — with live: where the visit began (referring
  *                             page, landing address). Only sent while
  *                             "Traffic source in Live view" is on.
+ *   live_page               — with live: the page as "post:ID", "term:ID"
+ *                             or "front", so the Live list can name it.
  *   page_id                 — page-view counter for "Most visited pages".
  *   visitor=1, ref, url     — daily visitor + device + traffic-source count.
  *   product=1               — daily product-view counter.
@@ -123,7 +125,16 @@ function brikpanel_ajax_unified_track() {
         } else {
             $idle = null;
         }
-        $done['live']   = brikpanel_record_live_visitor( $page_url, false, $entry, $idle );
+        // The page's post or term, named on the dashboard. Absent from pages
+        // cached with an older tracker, which then show their address.
+        $page_ref = '';
+        if ( isset( $_POST['live_page'] ) && is_string( $_POST['live_page'] ) ) {
+            $raw_ref = wp_unslash( $_POST['live_page'] );
+            if ( preg_match( '/^(?:(?:post|term):[1-9][0-9]{0,18}|front)$/', $raw_ref ) ) {
+                $page_ref = $raw_ref;
+            }
+        }
+        $done['live']   = brikpanel_record_live_visitor( $page_url, false, $entry, $idle, $page_ref );
     }
 
     // 2) Page-view counter (fires on every page view by design).
@@ -213,6 +224,9 @@ function brikpanel_unified_tracker_js() {
         : [ 'id' => (int) get_the_ID(), 'type' => 'post' ];
     $page_id          = (int) $view['id'];
     $page_type        = (string) $view['type'];
+    // What the Live list calls this page: its post or term, or the front page
+    // when that is a list of latest posts with no post of its own.
+    $live_page        = $page_id > 0 ? $page_type . ':' . $page_id : ( is_front_page() ? 'front' : '' );
     $ping_interval_ms = ( function_exists( 'brikpanel_live_ping_interval' ) ? brikpanel_live_ping_interval() : 30 ) * 1000;
     $idle_ms          = ( function_exists( 'brikpanel_live_idle_timeout' ) ? brikpanel_live_idle_timeout() : 30 * MINUTE_IN_SECONDS ) * 1000;
     // Site-level settings, not visitor state — safe to bake into cached HTML.
@@ -230,6 +244,7 @@ function brikpanel_unified_tracker_js() {
         var isProduct   = <?php echo $is_product ? 'true' : 'false'; ?>;
         var pageId      = <?php echo (int) $page_id; ?>;
         var pageType    = "<?php echo esc_js( $page_type ); ?>";
+        var LIVE_PAGE   = "<?php echo esc_js( $live_page ); ?>";
 
         // Where this visit came from, for the Live visitors list.
         var LIVE_SOURCE = <?php echo $live_source ? 'true' : 'false'; ?>;
@@ -262,6 +277,9 @@ function brikpanel_unified_tracker_js() {
             fd.append('live', '1');
             fd.append('page_url', window.location.href);
             fd.append('idle', String(Math.max(0, Math.floor(idleFor() / 1000))));
+            // Which page this is, so the Live list can show its name. Not
+            // page_id: that one counts a page view, once per page load.
+            if (LIVE_PAGE) fd.append('live_page', LIVE_PAGE);
             if (REQUIRE_CONSENT) fd.append('consent', '1');
             // Sent with every ping, not once: the live row is rewritten on each
             // ping and can expire while the tab sits in the background.

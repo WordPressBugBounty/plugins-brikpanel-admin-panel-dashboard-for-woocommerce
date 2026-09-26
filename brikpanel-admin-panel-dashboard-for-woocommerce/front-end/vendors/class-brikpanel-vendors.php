@@ -75,13 +75,19 @@ class Brikpanel_Vendors {
 		wp_enqueue_style(
 			'brikpanel-vendors',
 			$base . 'brikpanel-vendors.css',
-			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [],
+			array_merge(
+				function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep( 'style' ) : [],
+				function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'tiles', 'style' ) : []
+			),
 			file_exists( $path . 'brikpanel-vendors.css' ) ? filemtime( $path . 'brikpanel-vendors.css' ) : BRIKPANEL_VERSION
 		);
 		wp_enqueue_script(
 			'brikpanel-vendors',
 			$base . 'brikpanel-vendors.js',
-			function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [],
+			array_merge(
+				function_exists( 'brikpanel_fit_table_dep' ) ? brikpanel_fit_table_dep() : [],
+				function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'tiles' ) : []
+			),
 			file_exists( $path . 'brikpanel-vendors.js' ) ? filemtime( $path . 'brikpanel-vendors.js' ) : BRIKPANEL_VERSION,
 			true
 		);
@@ -143,7 +149,7 @@ class Brikpanel_Vendors {
 			<?php brikpanel_header_end(); ?>
 
 			<!-- Summary bar -->
-			<div class="brikpanel-ven-summary" id="brikpanel-ven-summary">
+			<div class="brikpanel-ven-summary" id="brikpanel-ven-summary" data-bp-tiles>
 				<div class="brikpanel-ven-summary-card">
 					<div class="brikpanel-ven-summary-label"><?php esc_html_e( 'Active suppliers', 'brikpanel' ); ?></div>
 					<div class="brikpanel-ven-summary-value" id="brikpanel-ven-active-count">—</div>
@@ -334,6 +340,12 @@ class Brikpanel_Vendors {
 		$so_url     = admin_url( 'admin.php?page=' . Brikpanel_Stock_Orders::PAGE_SLUG );
 		$so_new_url = $so_url . '&action=new&vendor_id=' . $id;
 		$so_edit_url = $so_url . '&action=edit&id=';
+		// Stock orders has its own switch: while it is off its page is not
+		// registered, so no link here may lead to it (field test C5).
+		$so_on = function_exists( 'brikpanel_module_available' ) ? brikpanel_module_available( Brikpanel_Stock_Orders::PAGE_SLUG ) : true;
+		if ( ! $so_on ) {
+			$so_edit_url = '';
+		}
 		$currency   = function_exists( 'get_woocommerce_currency_symbol' )
 			? html_entity_decode( get_woocommerce_currency_symbol(), ENT_QUOTES | ENT_HTML5, 'UTF-8' )
 			: '$';
@@ -365,14 +377,16 @@ class Brikpanel_Vendors {
 					<?php endif; ?>
 				</div>
 				<div class="brikpanel-ven-detail-header-right">
+					<?php if ( $so_on ) : ?>
 					<a class="brikpanel-ven-btn brikpanel-ven-btn-secondary" href="<?php echo esc_url( $so_new_url ); ?>"><?php esc_html_e( 'New stock order', 'brikpanel' ); ?></a>
+					<?php endif; ?>
 					<button type="button" class="brikpanel-ven-btn brikpanel-ven-btn-secondary" id="brikpanel-ven-detail-edit-btn"><?php esc_html_e( 'Edit supplier', 'brikpanel' ); ?></button>
 				</div>
 			</div>
 			<?php brikpanel_header_end(); ?>
 
 			<!-- Stats grid -->
-			<div class="brikpanel-ven-detail-stats" id="brikpanel-ven-detail-stats">
+			<div class="brikpanel-ven-detail-stats" id="brikpanel-ven-detail-stats" data-bp-tiles>
 				<div class="brikpanel-ven-summary-card"><div class="brikpanel-ven-summary-label"><?php esc_html_e( 'Lifetime spend', 'brikpanel' ); ?></div><div class="brikpanel-ven-summary-value" data-stat="lifetime_spend">—</div></div>
 				<div class="brikpanel-ven-summary-card"><div class="brikpanel-ven-summary-label"><?php esc_html_e( 'Spend (90d)', 'brikpanel' ); ?></div><div class="brikpanel-ven-summary-value" data-stat="spend_90d">—</div></div>
 				<div class="brikpanel-ven-summary-card"><div class="brikpanel-ven-summary-label"><?php esc_html_e( 'Open POs', 'brikpanel' ); ?></div><div class="brikpanel-ven-summary-value" data-stat="open_pos">—</div><div class="brikpanel-ven-summary-sub" data-stat-sub="open_value"></div></div>
@@ -434,7 +448,9 @@ class Brikpanel_Vendors {
 			<div class="brikpanel-ven-card">
 				<header class="brikpanel-ven-card__header brikpanel-ven-card__header--row">
 					<h2><?php esc_html_e( 'Recent stock orders', 'brikpanel' ); ?></h2>
+					<?php if ( $so_on ) : ?>
 					<a class="brikpanel-ven-card__link" href="<?php echo esc_url( $so_url . '&search=' . rawurlencode( $vendor->name ) ); ?>"><?php esc_html_e( 'View all →', 'brikpanel' ); ?></a>
+					<?php endif; ?>
 				</header>
 				<div class="brikpanel-ven-table-wrap">
 					<table class="brikpanel-ven-table brikpanel-fit-table" id="brikpanel-ven-detail-pos">

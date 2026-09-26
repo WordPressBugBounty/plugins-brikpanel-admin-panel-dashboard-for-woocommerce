@@ -26,20 +26,30 @@
     padding: 0;
 }
 
-/* ---------- Header ---------- */
+/* ---------- Header ----------
+   Levels set by brikpanel-fit-row.js (the PHP lists them): one line while it
+   fits (title, search, Add coupon); `is-two-rows` puts the title and Add
+   coupon on top and the search under them; `is-icon-add` shows Add coupon as
+   its icon (last resort). The main group is `display: contents` on one line,
+   so the search can sit between the title and the button. */
 .brikpanel-cp-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    flex-wrap: nowrap;
     padding: 1.25rem 0;
     gap: 1rem;
-    flex-wrap: wrap;
+}
+
+.brikpanel-cp-header-main {
+    display: contents;
 }
 
 .brikpanel-cp-header-left {
     display: flex;
     align-items: center;
     gap: 0.625rem;
+    flex: none;
+    order: 0;
 }
 
 .brikpanel-cp-header-left h1 {
@@ -70,13 +80,57 @@
     display: flex;
     align-items: center;
     gap: 0.625rem;
+    flex: none;
+    order: 2;
 }
 
 /* ---------- Search ---------- */
+/* On one line the box may shrink, but not below 12rem: a narrower row is the
+   helper's cue to take the next level instead. */
 .brikpanel-cp-search-wrap {
     position: relative;
     display: flex;
     align-items: center;
+    order: 1;
+    flex: 0 1 240px;
+    min-width: 12rem;
+    margin-inline-start: auto;
+}
+
+.brikpanel-cp-header.is-two-rows {
+    flex-wrap: wrap;
+    row-gap: 0.75rem;
+}
+
+.brikpanel-cp-header.is-two-rows .brikpanel-cp-header-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
+.brikpanel-cp-header.is-two-rows .brikpanel-cp-search-wrap {
+    flex: 1 1 100%;
+    min-width: 0;
+    margin-inline-start: 0;
+}
+
+.brikpanel-cp-header.is-icon-add .brikpanel-cp-add-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.brikpanel-cp-header.is-icon-add #bpc-add-new {
+    padding: 0.5rem;
 }
 
 .brikpanel-cp-search-icon {
@@ -87,7 +141,8 @@
 }
 
 .brikpanel-cp input[type="text"].brikpanel-cp-search {
-    width: 240px;
+    width: 100%;
+    min-width: 0;
     padding: 8px 12px 8px 36px;
     border: 1px solid var(--border);
     border-radius: 0.5rem;
@@ -172,16 +227,22 @@
     margin-bottom: 0.75rem;
 }
 
-/* ---------- Status Tabs ---------- */
+/* ---------- Status Tabs ----------
+   One line that scrolls inside itself when it runs out of room (data-bp-strip,
+   the shared strip helper): it never widens the page. */
 .brikpanel-cp-tabs {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    min-width: 0;
+    flex: 0 1 auto;
 }
 
 .brikpanel-cp-tab {
     display: inline-flex;
     align-items: center;
+    flex: none;
+    white-space: nowrap;
     gap: 0.375rem;
     padding: 0.375rem 0.75rem;
     border: none;
@@ -204,10 +265,16 @@
     font-weight: 600;
 }
 
+/* Counts read at 4.5:1 or more: the muted gray was 3:1 on a tab and 2.5:1 on
+   the selected one. */
 .brikpanel-cp-tab-count {
     font-size: 0.6875rem;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-weight: 500;
+}
+
+.brikpanel-cp-tab.active .brikpanel-cp-tab-count {
+    color: inherit;
 }
 
 /* ---------- Filter Selects ---------- */
@@ -234,7 +301,18 @@
     max-width: 180px;
 }
 
-.brikpanel-cp-select:focus {
+/* WordPress 7.1 styles every admin select at (0,1,1) (`.wp-core-ui select`:
+   square corners, dark gray border, blue focus); the card look needs more. */
+.wp-core-ui select.brikpanel-cp-select {
+    min-height: 2.25rem;
+    padding-block: 0.375rem;
+    padding-inline: 0.75rem 2rem;
+    border-color: var(--border);
+    border-radius: 0.5rem;
+    line-height: 1.4;
+}
+
+.wp-core-ui select.brikpanel-cp-select:focus {
     border-color: var(--input-focus);
     box-shadow: 0 0 0 1px var(--input-focus);
 }
@@ -303,10 +381,12 @@
     -webkit-overflow-scrolling: touch;
 }
 
+/* No min-width: brikpanel-fit-table.js measures what the columns need and
+   stacks the rows into cards when the card is narrower (field test C4; the
+   rows used to hide four columns and their buttons in a sideways scroll). */
 .brikpanel-cp-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 700px;
 }
 
 .brikpanel-cp-table thead {
@@ -314,56 +394,26 @@
     border-bottom: 1px solid var(--border);
 }
 
+/* Headings of two words ("Usage / Limit", "Expiry date") may take two lines;
+   the columns are as wide as their content, with no fixed floors, so the
+   table fits the card as long as it can (brikpanel-fit-table.js measures). */
 .brikpanel-cp-table thead th {
-    padding: 0.75rem 1rem;
-    text-align: left;
+    padding: 0.75rem;
+    text-align: start;
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.02em;
-    white-space: nowrap;
     user-select: none;
 }
 
 .brikpanel-cp-table thead th:first-child {
-    padding-left: 1.25rem;
+    padding-inline-start: 1.25rem;
 }
 
 .brikpanel-cp-th-check {
     width: 40px;
-}
-
-.brikpanel-cp-th-code {
-    min-width: 140px;
-}
-
-.brikpanel-cp-th-type {
-    min-width: 100px;
-}
-
-.brikpanel-cp-th-amount {
-    min-width: 80px;
-}
-
-.brikpanel-cp-th-desc {
-    min-width: 120px;
-}
-
-.brikpanel-cp-th-usage {
-    min-width: 80px;
-}
-
-.brikpanel-cp-th-expiry {
-    min-width: 100px;
-}
-
-.brikpanel-cp-th-status {
-    min-width: 80px;
-}
-
-.brikpanel-cp-th-actions {
-    width: 100px;
 }
 
 /* ---------- Table Rows ---------- */
@@ -382,14 +432,14 @@
 }
 
 .brikpanel-cp-row td {
-    padding: 0.625rem 1rem;
+    padding: 0.625rem 0.75rem;
     font-size: 0.875rem;
     vertical-align: middle;
     color: var(--text);
 }
 
 .brikpanel-cp-row td:first-child {
-    padding-left: 1.25rem;
+    padding-inline-start: 1.25rem;
 }
 
 .brikpanel-cp-row-deleting {
@@ -439,8 +489,11 @@
     white-space: nowrap;
 }
 
-/* ---------- Description Cell ---------- */
+/* ---------- Description Cell ----------
+   A block, so the long text ends in "..." at 180px instead of widening the
+   column (an inline span ignored both the cap and the ellipsis). */
 .brikpanel-cp-desc-cell {
+    display: block;
     max-width: 180px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -458,7 +511,6 @@
 
 /* ---------- Expiry Cell ---------- */
 .brikpanel-cp-expiry-cell {
-    white-space: nowrap;
     font-size: 0.8125rem;
 }
 
@@ -506,8 +558,8 @@
 
 /* ---------- Actions ---------- */
 .brikpanel-cp-actions-cell {
-    text-align: right;
-    padding-right: 1.25rem !important;
+    text-align: end;
+    padding-inline-end: 1.25rem !important;
 }
 
 .brikpanel-cp-actions {
@@ -515,12 +567,96 @@
     align-items: center;
     justify-content: flex-end;
     gap: 0.25rem;
-    opacity: 0;
-    transition: opacity 0.15s;
 }
 
-.brikpanel-cp-row:hover .brikpanel-cp-actions {
-    opacity: 1;
+/* Row buttons wait for the pointer only where there is a pointer that hovers:
+   on a touch screen they were invisible and still took taps (field test C4).
+   Keyboard focus shows them too. */
+@media (hover: hover) and (pointer: fine) {
+    .brikpanel-cp-table:not(.is-stacked) .brikpanel-cp-actions {
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .brikpanel-cp-table .brikpanel-cp-row:hover .brikpanel-cp-actions,
+    .brikpanel-cp-table .brikpanel-cp-row:focus-within .brikpanel-cp-actions {
+        opacity: 1;
+    }
+}
+
+/* ---------- Stacked rows ----------
+   The table did not fit its card (brikpanel-fit-table.js set `is-stacked`):
+   each coupon is a card. The checkbox and the code share the first line, the
+   figures follow as label-over-value tiles, the row buttons close the card. */
+.brikpanel-cp-table.brikpanel-fit-table.is-stacked > tbody > tr.brikpanel-cp-row:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.625rem 1.25rem;
+    padding: 0.875rem 1rem;
+}
+
+.brikpanel-cp-table.is-stacked > tbody > tr.brikpanel-cp-row > td {
+    flex: 0 1 auto;
+    padding: 0;
+}
+
+.brikpanel-cp-table.is-stacked > tbody > tr.brikpanel-cp-row > td.brikpanel-cp-cell-check {
+    order: -3;
+    flex: none;
+    padding-top: 0.125rem;
+}
+
+.brikpanel-cp-table.is-stacked > tbody > tr.brikpanel-cp-row > td.brikpanel-fit-lead {
+    order: -2;
+    flex: 1 1 0;
+    min-width: 0;
+    align-self: center;
+}
+
+/* The status badge closes the first line, across from the code; its label is
+   not needed there. The row's ::after ends that line. */
+.brikpanel-cp-table.is-stacked > tbody > tr.brikpanel-cp-row > td.brikpanel-cp-cell-status {
+    order: -2;
+    flex: none;
+    align-self: center;
+}
+
+.brikpanel-cp-table.is-stacked > tbody > tr.brikpanel-cp-row > td.brikpanel-cp-cell-status::before {
+    display: none;
+}
+
+.brikpanel-cp-table.brikpanel-fit-table.is-stacked > tbody > tr.brikpanel-cp-row:not([hidden])::after {
+    content: "";
+    order: -2;
+    flex: 0 0 100%;
+    height: 0;
+    margin-top: -0.625rem;
+}
+
+.brikpanel-cp-table.is-stacked > tbody > tr.brikpanel-cp-row > td.brikpanel-fit-full {
+    order: 9;
+    flex: 1 1 100%;
+}
+
+.brikpanel-cp-table.is-stacked td.brikpanel-cp-actions-cell {
+    padding: 0 !important;
+    text-align: start;
+}
+
+.brikpanel-cp-table.is-stacked .brikpanel-cp-actions {
+    justify-content: flex-start;
+    margin-inline-start: -0.375rem;
+}
+
+/* The amount's edit box keeps its padding; its figure lines up with the label. */
+.brikpanel-cp-table.is-stacked .brikpanel-cp-editable {
+    margin-inline-start: -0.375rem;
+}
+
+.brikpanel-cp-table.is-stacked .brikpanel-cp-desc-cell {
+    max-width: none;
+    white-space: normal;
 }
 
 .brikpanel-cp-actions button,
@@ -1215,19 +1351,26 @@
 
 /* ---------- Responsive ---------- */
 @media screen and (max-width: 782px) {
-    .brikpanel-cp-header {
-        flex-direction: column;
-        align-items: flex-start;
+    /* Without the fit helper (a caching plugin dropped it) the header takes
+       its two-row layout on phones. */
+    .brikpanel-cp-header:not([data-bp-fit-level]) {
+        flex-wrap: wrap;
+        row-gap: 0.75rem;
     }
 
-    .brikpanel-cp-header-right {
-        width: 100%;
-    }
-
-    .brikpanel-cp input[type="text"].brikpanel-cp-search {
-        flex: 1;
-        width: auto;
+    .brikpanel-cp-header:not([data-bp-fit-level]) .brikpanel-cp-header-main {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex: 1 1 100%;
         min-width: 0;
+    }
+
+    .brikpanel-cp-header:not([data-bp-fit-level]) .brikpanel-cp-search-wrap {
+        flex: 1 1 100%;
+        min-width: 0;
+        margin-inline-start: 0;
     }
 
     .brikpanel-cp-filters {
@@ -1237,17 +1380,17 @@
 
     .brikpanel-cp-tabs {
         width: 100%;
-        overflow-x: auto;
-        padding-bottom: 0.25rem;
     }
 
     .brikpanel-cp-filter-group {
         width: 100%;
     }
 
-    .brikpanel-cp-select {
+    /* WordPress keeps its 16px text here so iOS does not zoom in. */
+    .wp-core-ui .brikpanel-cp-filter-group select.brikpanel-cp-select {
         flex: 1;
         max-width: none;
+        min-height: 2.5rem;
     }
 
     .brikpanel-cp-bulk-bar {
@@ -1266,13 +1409,6 @@
     .brikpanel-cp-pagination {
         flex-direction: column;
         align-items: center;
-    }
-
-    .brikpanel-cp-th-desc,
-    .brikpanel-cp-cell-desc,
-    .brikpanel-cp-th-usage,
-    .brikpanel-cp-cell-usage {
-        display: none;
     }
 
     .brikpanel-cp-drawer {
@@ -1301,10 +1437,25 @@ body.admin_page_brikpanel-coupons #wpbody-content {
     margin: 0 !important;
 }
 
+/* One symmetric gutter, on the page itself. WordPress pads the content area
+   on one side only (20px, 10px from 960px down, and in RTL not at all), so
+   `0 10px` here left 30px on one side and 10px on the other, and an RTL phone
+   had the cards against the screen edge (field test C4). */
+body.admin_page_brikpanel-coupons #wpcontent {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
 body.admin_page_brikpanel-coupons .wrap {
     margin: 0 !important;
-    padding: 0 10px !important;
+    padding: 0 20px !important;
     max-width: none !important;
+}
+
+@media screen and (max-width: 782px) {
+    body.admin_page_brikpanel-coupons .wrap {
+        padding: 0 14px !important;
+    }
 }
 
 /* Lock body scroll when drawer open */
@@ -1317,7 +1468,7 @@ body.brikpanel-cp-drawer-open {
     padding: 0.625rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 600;
-    text-align: left;
+    text-align: start;
     color: #303030;
     white-space: nowrap;
 }
@@ -1359,7 +1510,7 @@ body.brikpanel-cp-drawer-open {
     display: inline-flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-left: 0.5rem;
+    margin-inline-start: 0.5rem;
     font-size: 0.6875rem;
     color: #8a8a8a;
     line-height: 1;

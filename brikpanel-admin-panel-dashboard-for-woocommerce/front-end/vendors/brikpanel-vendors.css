@@ -23,10 +23,18 @@
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
+/* One symmetric gutter on the page itself. WordPress pads the content area on
+   the start side only, and `margin: 0 auto` takes away the .wrap's end margin:
+   on a phone the cards touched the right edge of the screen (field test C). */
+body[class*="_page_brikpanel-vendors"] #wpcontent {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
 .brikpanel-ven-wrap {
-    max-width: 1100px;
+    max-width: calc(1100px + 40px);
     margin: 0 auto;
-    padding: 0 0 2rem;
+    padding: 0 20px 2rem;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--ven-text);
     box-sizing: border-box;
@@ -59,20 +67,50 @@
 }
 
 /* ── Summary bar ────────────────────────────────────────────────────────── */
+/* Equal tiles side by side while each fits, otherwise a short list
+   (front-end/shared/brikpanel-tiles.js, data-bp-tiles): growing cards wrapped
+   2 + 1 on a phone with the last one stretched. The template is the look
+   without the script. */
 .brikpanel-ven-summary {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
-    flex-wrap: wrap;
 }
 .brikpanel-ven-summary-card {
     background: var(--ven-card);
     border: 1px solid var(--ven-border);
     border-radius: var(--ven-radius-card);
     padding: 1rem 1.25rem;
-    min-width: 160px;
-    flex: 1 1 160px;
+    min-width: 0;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+:is(.brikpanel-ven-summary, .brikpanel-ven-detail-stats).is-tiles-list {
+    gap: 0.5rem;
+}
+:is(.brikpanel-ven-summary, .brikpanel-ven-detail-stats).is-tiles-list .brikpanel-ven-summary-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.625rem 1rem;
+}
+:is(.brikpanel-ven-summary, .brikpanel-ven-detail-stats).is-tiles-list .brikpanel-ven-summary-label {
+    margin-bottom: 0;
+}
+:is(.brikpanel-ven-summary, .brikpanel-ven-detail-stats).is-tiles-list .brikpanel-ven-summary-value {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 1rem;
+    text-align: end;
+}
+:is(.brikpanel-ven-summary, .brikpanel-ven-detail-stats).is-tiles-list .brikpanel-ven-summary-sub {
+    grid-column: 1 / -1;
+}
+@media (max-width: 782px) {
+    .brikpanel-ven-wrap {
+        padding-inline: 14px;
+    }
 }
 .brikpanel-ven-summary-label {
     font-size: 0.75rem;
@@ -447,7 +485,7 @@
  * DETAIL PAGE
  * ────────────────────────────────────────────────────────────────────── */
 
-.brikpanel-ven-detail-wrap { max-width: 1100px; }
+.brikpanel-ven-detail-wrap { max-width: calc(1100px + 40px); }
 
 .brikpanel-ven-detail-topbar {
     padding: 1rem 0 0;
@@ -495,10 +533,8 @@
     gap: 0.75rem;
     margin-bottom: 1rem;
 }
-.brikpanel-ven-detail-stats .brikpanel-ven-summary-card {
-    min-width: 0;
-    flex: none;
-}
+/* data-bp-tiles picks five in a row or a list (3 + 2 and 2 + 2 + 1 left tiles
+   alone); the breakpoints are the look without the script. */
 @media (max-width: 1024px) { .brikpanel-ven-detail-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px)  { .brikpanel-ven-detail-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 

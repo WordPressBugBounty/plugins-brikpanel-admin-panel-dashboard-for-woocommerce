@@ -642,12 +642,20 @@ function brikpanel_settings_fields() {
             'options'  => function_exists('brikpanel_dashboard_profit_field_labels') ? brikpanel_dashboard_profit_field_labels() : [],
             'default'  => function_exists('brikpanel_dashboard_profit_field_labels') ? array_keys(brikpanel_dashboard_profit_field_labels()) : [],
         ],
+        // Was the "Exclude tax from Revenue and Expenses" checkbox: 'no' and
+        // 'yes' keep their meaning, so nobody's dashboard changes on update.
         [
-            'name'    => __('Exclude tax from Revenue and Expenses', 'brikpanel'),
-            'id'      => 'brikpanel_profit_exclude_tax',
-            'type'    => 'checkbox',
-            'desc'    => __('Off by default: Revenue in the Profit section includes the tax your customers paid, and the same tax is counted in Expenses. Turn this on to show Revenue without tax and leave tax out of Expenses. Net profit stays exactly the same.', 'brikpanel'),
-            'default' => 'no',
+            'name'     => __('Tax in the Profit section', 'brikpanel'),
+            'id'       => 'brikpanel_profit_exclude_tax',
+            'type'     => 'select',
+            'desc'     => __('Where the tax your customers paid appears in the Profit section. Inside Expenses: Revenue includes the tax and the same tax is one of the Expenses. Taken out of Revenue and Expenses: Revenue is shown without tax. Kept in Revenue: Revenue includes the tax, the amount is shown under it, and it is not counted in Expenses. Net profit is exactly the same in all three.', 'brikpanel'),
+            'desc_tip' => true,
+            'options'  => [
+                'no'      => __('Inside Expenses', 'brikpanel'),
+                'yes'     => __('Taken out of Revenue and Expenses', 'brikpanel'),
+                'revenue' => __('Kept in Revenue (not in Expenses)', 'brikpanel'),
+            ],
+            'default'  => 'no',
         ],
         [
             'type' => 'sectionend',
@@ -1251,6 +1259,32 @@ function brikpanel_settings_render_section_nav( $current_section ) {
 
     echo '<nav class="brikpanel-settings-sidebar brikpanel-settings-sections" aria-label="' . esc_attr__( 'BrikPanel settings sections', 'brikpanel' ) . '">';
 
+    // 880px and narrower: the list folds behind one button that names the
+    // section on screen; a tap opens the search and the groups under it. The
+    // list used to flow as wrapped pill rows that filled the first screen of a
+    // phone before any setting (field test C1). Wider screens never show the
+    // button. A button with no `name`, so nothing reaches the settings POST.
+    $current_label = isset( $sections[ $current_section ] ) ? $sections[ $current_section ] : (string) reset( $sections );
+    $current_group = '';
+    foreach ( $groups as $group ) {
+        $group_ids = array_map( 'strval', isset( $group['sections'] ) ? (array) $group['sections'] : [] );
+        if ( in_array( (string) $current_section, $group_ids, true ) ) {
+            $current_group = isset( $group['label'] ) ? (string) $group['label'] : '';
+            break;
+        }
+    }
+    echo '<button type="button" class="bp-nav-toggle" id="brikpanel-settings-nav-toggle" aria-expanded="false" aria-controls="brikpanel-settings-nav-panel">';
+    echo brikpanel_settings_section_icon( $current_section ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — static inline SVG.
+    echo '<span class="bp-nav-toggle__text">';
+    if ( '' !== $current_group ) {
+        echo '<span class="bp-nav-toggle__group">' . esc_html( $current_group ) . '</span>';
+    }
+    echo '<span class="bp-nav-toggle__label">' . esc_html( $current_label ) . '</span>';
+    echo '</span>';
+    echo '<svg class="bp-nav-toggle__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    echo '</button>';
+    echo '<div class="bp-nav-panel" id="brikpanel-settings-nav-panel"><div class="bp-nav-panel__inner">';
+
     // Search box. No `name` attribute: the input lives inside WC's #mainform
     // and must never be serialized into the settings POST. The
     // `wc-settings-prevent-change-event` class is WC's official opt-out from
@@ -1304,6 +1338,7 @@ function brikpanel_settings_render_section_nav( $current_section ) {
     }
     echo '</div>'; // .bp-nav-groups
 
+    echo '</div></div>'; // .bp-nav-panel__inner, .bp-nav-panel
     echo '</nav>';
 
     // Search index for the sidebar box — JSON, parsed by the inline JS.
@@ -1444,6 +1479,27 @@ add_action( 'woocommerce_update_options_brikpanel', function () {
     woocommerce_update_options( brikpanel_settings_fields_for_section( $current ) );
     // Flag a branded "settings saved" toast for the next page load.
     set_transient( 'brikpanel_settings_saved_' . get_current_user_id(), 1, 30 );
+} );
+
+/**
+ * The shared scroll strip for WooCommerce's own tab row on the BrikPanel tab:
+ * on a phone the row was cut hard at the edge and the BrikPanel tab, the one
+ * on screen, sat out of view (field test C1). Wired in the inline script below.
+ * Also the shared tooltip script, whose WooCommerce help-tip fix keeps the
+ * settings' "?" bubbles on a phone's screen (field report 2026-09-26).
+ */
+add_action( 'admin_enqueue_scripts', function () {
+    if ( ! isset( $_GET['page'], $_GET['tab'] ) || 'wc-settings' !== sanitize_key( wp_unslash( $_GET['page'] ) ) || 'brikpanel' !== sanitize_key( wp_unslash( $_GET['tab'] ) ) ) {
+        return;
+    }
+    if ( function_exists( 'brikpanel_narrow_dep' ) ) {
+        foreach ( brikpanel_narrow_deps( [ 'scroll_strip', 'tip' ] ) as $handle ) {
+            wp_enqueue_script( $handle );
+        }
+        foreach ( brikpanel_narrow_dep( 'scroll_strip', 'style' ) as $handle ) {
+            wp_enqueue_style( $handle );
+        }
+    }
 } );
 
 /**
@@ -1603,11 +1659,15 @@ add_action( 'admin_head', function () {
         border-color: rgba(255,255,255,.25);
     }
 
+    /* The section button and its panel (brikpanel_settings_render_section_nav):
+       the button is for 880px and narrower only; wider, the panel is plain. */
+    #mainform .bp-nav-toggle { display: none; }
+
     /* Sidebar search box */
     #mainform .bp-nav-search { position: relative; margin: 0 0 .9rem; }
     #mainform .bp-nav-search > svg.bp-nav-ico {
         position: absolute;
-        left: .6rem;
+        inset-inline-start: .6rem;
         top: 50%;
         transform: translateY(-50%);
         color: #8a8a8a;
@@ -1617,7 +1677,8 @@ add_action( 'admin_head', function () {
         width: 100%;
         box-sizing: border-box;
         margin: 0;
-        padding: .45rem .6rem .45rem 2rem;
+        padding-block: .45rem;
+        padding-inline: 2rem .6rem;
         background: #ffffff;
         border: 1px solid #d6d6d6;
         border-radius: .5rem;
@@ -2271,23 +2332,98 @@ add_action( 'admin_head', function () {
             align-items: stretch;
             gap: 1rem;
         }
+        /* As wide as the column (the desktop `align-self: flex-start` made the
+           list only as wide as its own content), folded behind one button
+           that names the section on screen (field test C1). */
         #mainform .brikpanel-settings-sidebar {
             position: static;
             flex-basis: auto;
+            align-self: stretch;
             width: auto;
-            max-width: 100%;
+            max-width: 760px; /* the cards' column cap: one right edge */
             max-height: none;
             overflow: visible;
         }
-        #mainform .bp-nav-group { margin-bottom: .65rem; }
-        #mainform .bp-nav-list {
-            flex-direction: row;
-            flex-wrap: wrap;
-            gap: 4px;
+        #mainform .bp-nav-toggle {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            box-sizing: border-box;
+            width: 100%;
+            min-height: 44px;
+            margin: 0;
+            padding: .5rem .85rem;
+            background: #ffffff;
+            border: 1px solid #e3e3e3;
+            border-radius: .75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+            color: #303030;
+            font: inherit;
+            font-size: .875rem;
+            font-weight: 600;
+            line-height: 1.25;
+            text-align: start;
+            cursor: pointer;
         }
-        #mainform .bp-nav-search { max-width: 480px; }
+        #mainform .bp-nav-toggle:hover { background: #f7f7f7; }
+        #mainform .bp-nav-toggle:focus-visible {
+            outline: 2px solid #303030;
+            outline-offset: 2px;
+        }
+        #mainform .bp-nav-toggle svg.bp-nav-ico { flex: 0 0 16px; color: #616161; }
+        #mainform .bp-nav-toggle__text {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        #mainform .bp-nav-toggle__group {
+            font-size: .6875rem;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: #616161;
+        }
+        #mainform .bp-nav-toggle__label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #mainform .bp-nav-toggle__chevron {
+            flex: none;
+            color: #616161;
+            transition: transform .2s ease;
+        }
+        #mainform .brikpanel-settings-sidebar.is-open .bp-nav-toggle__chevron { transform: rotate(180deg); }
+        /* Closed, the panel's inside is also visibility:hidden (after the
+           fold), so Tab skips links nobody can see. Only with the script
+           (html.bp-settings-js, set in the head): without it the list stays
+           open and every section can still be reached. */
+        html.bp-settings-js #mainform .bp-nav-panel {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows .25s cubic-bezier(.4,0,.2,1);
+        }
+        html.bp-settings-js #mainform .bp-nav-panel__inner {
+            min-height: 0;
+            overflow: hidden;
+            visibility: hidden;
+            transition: visibility 0s linear .25s;
+        }
+        html.bp-settings-js #mainform .brikpanel-settings-sidebar.is-open .bp-nav-panel { grid-template-rows: 1fr; }
+        html.bp-settings-js #mainform .brikpanel-settings-sidebar.is-open .bp-nav-panel__inner {
+            visibility: visible;
+            transition: visibility 0s;
+        }
+        #mainform .bp-nav-panel__inner > :first-child { margin-top: .75rem; }
+        #mainform .bp-nav-group { margin-bottom: .65rem; }
+        #mainform .bp-nav-search { max-width: none; }
         #wpbody-content .wrap form#mainform > p.submit {
             margin-inline-start: 0 !important;
+        }
+        /* WooCommerce's own tab strip keeps its side inside the column. */
+        #wpbody-content .wrap .nav-tab-wrapper {
+            margin-inline: 0;
         }
         .bp-settings-card__header {
             padding: .9rem 1.1rem .65rem;
@@ -2308,8 +2444,20 @@ add_action( 'admin_head', function () {
             border-top: 1px solid #f1f1f1 !important;
         }
     }
+    @media (min-width: 600px) and (max-width: 880px) {
+        /* Room for two columns of sections in the open panel. */
+        #mainform .bp-nav-groups { columns: 2; column-gap: 1.25rem; }
+        #mainform .bp-nav-group { break-inside: avoid; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        html.bp-settings-js #mainform .bp-nav-panel,
+        #mainform .bp-nav-toggle__chevron { transition: none; }
+    }
     </style>
     <script>
+    /* The section list folds on narrow screens only when this script runs. */
+    document.documentElement.classList.add('bp-settings-js');
+
     /* Always allow saving on the BrikPanel tab. WC 10+ ships the submit
        button with `disabled` and only flips it on after the form goes dirty,
        which is confusing on a settings screen — users expect a save button
@@ -2434,6 +2582,42 @@ add_action( 'admin_head', function () {
         }
         window.addEventListener('hashchange', jumpToHashTarget);
         jumpToHashTarget();
+        }
+    })();
+
+    /* 880px and narrower: the section button opens and closes the list
+       (brikpanel_settings_render_section_nav). Escape closes it, and so does a
+       jump to a setting on this same section. */
+    (function () {
+        function initNavToggle() {
+            /* WooCommerce's tab row scrolls in itself, fades only where more
+               tabs wait, and keeps the BrikPanel tab in view. */
+            var tabs = document.querySelector('#wpbody-content .wrap .nav-tab-wrapper');
+            if (tabs && window.brikpanelScrollStrip) {
+                window.brikpanelScrollStrip(tabs, { active: '.nav-tab-active' });
+            }
+            var nav = document.querySelector('#mainform .brikpanel-settings-sidebar');
+            var btn = document.getElementById('brikpanel-settings-nav-toggle');
+            if (!nav || !btn) { return; }
+            function setOpen(open, focusBack) {
+                nav.classList.toggle('is-open', open);
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (!open && focusBack) { btn.focus(); }
+            }
+            btn.addEventListener('click', function () {
+                setOpen(!nav.classList.contains('is-open'), false);
+            });
+            nav.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && nav.classList.contains('is-open')) {
+                    setOpen(false, true);
+                }
+            });
+            window.addEventListener('hashchange', function () { setOpen(false, false); });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initNavToggle);
+        } else {
+            initNavToggle();
         }
     })();
 

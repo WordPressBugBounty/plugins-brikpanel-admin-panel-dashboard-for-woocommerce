@@ -55,13 +55,14 @@ $order_statuses = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_stat
 
 		<div class="bp-gs-toast" id="bp-gs-toast" hidden></div>
 
-		<div class="bp-gs-tabs" role="tablist">
-			<button type="button" class="bp-gs-tab is-active" data-tab="connection" role="tab"><?php esc_html_e( 'Connection', 'brikpanel' ); ?></button>
-			<button type="button" class="bp-gs-tab"           data-tab="orders"     role="tab"><?php esc_html_e( 'Orders',     'brikpanel' ); ?></button>
-			<button type="button" class="bp-gs-tab"           data-tab="products"   role="tab"><?php esc_html_e( 'Products',   'brikpanel' ); ?></button>
-			<button type="button" class="bp-gs-tab"           data-tab="reports"    role="tab"><?php esc_html_e( 'Reports',    'brikpanel' ); ?></button>
-			<button type="button" class="bp-gs-tab"           data-tab="customers"  role="tab"><?php esc_html_e( 'Customers',  'brikpanel' ); ?></button>
-			<button type="button" class="bp-gs-tab"           data-tab="expenses"   role="tab"><?php esc_html_e( 'Expenses',   'brikpanel' ); ?></button>
+		<?php // One line that scrolls inside itself on a phone (shared strip helper, field test C3). ?>
+		<div class="bp-gs-tabs" role="tablist" data-bp-strip>
+			<button type="button" class="bp-gs-tab is-active" data-tab="connection" role="tab" aria-selected="true"><?php esc_html_e( 'Connection', 'brikpanel' ); ?></button>
+			<button type="button" class="bp-gs-tab"           data-tab="orders"     role="tab" aria-selected="false"><?php esc_html_e( 'Orders',     'brikpanel' ); ?></button>
+			<button type="button" class="bp-gs-tab"           data-tab="products"   role="tab" aria-selected="false"><?php esc_html_e( 'Products',   'brikpanel' ); ?></button>
+			<button type="button" class="bp-gs-tab"           data-tab="reports"    role="tab" aria-selected="false"><?php esc_html_e( 'Reports',    'brikpanel' ); ?></button>
+			<button type="button" class="bp-gs-tab"           data-tab="customers"  role="tab" aria-selected="false"><?php esc_html_e( 'Customers',  'brikpanel' ); ?></button>
+			<button type="button" class="bp-gs-tab"           data-tab="expenses"   role="tab" aria-selected="false"><?php esc_html_e( 'Expenses',   'brikpanel' ); ?></button>
 		</div>
 
 		<!-- ============================================================== -->

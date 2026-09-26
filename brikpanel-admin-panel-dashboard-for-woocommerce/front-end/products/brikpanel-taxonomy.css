@@ -38,8 +38,8 @@
    into a scroll box, which stops the bulk action bar from sticking; clip
    crops the same way without that. */
 body.brikpanel-tax #wpcontent {
-    padding-right: 0;
-    padding-left: 0;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
     overflow-x: clip !important;
 }
 

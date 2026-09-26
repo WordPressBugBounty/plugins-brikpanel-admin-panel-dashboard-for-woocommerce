@@ -498,6 +498,22 @@
     // FETCH COUPONS
     // =========================================================================
 
+    // The table stacks its rows into cards when it does not fit its card
+    // (front-end/shared/brikpanel-fit-table.js, CLAUDE.md "Tablo sığma kuralı").
+    // Measured again after every render of the body.
+    var tableFit = null;
+    function refitTable() {
+        if (!tableFit && window.brikpanelFitTable) {
+            var table = document.getElementById('bpc-table');
+            if (table) {
+                tableFit = window.brikpanelFitTable(table, { labels: 'head', slack: 0 });
+            }
+        }
+        if (tableFit) {
+            tableFit.refit();
+        }
+    }
+
     function totalColumnCount() {
         // 9 native cols (check, code, type, amount, desc, usage, revenue, expiry,
         // status) + 1 actions col + N extras.
@@ -535,6 +551,7 @@
 
         var $body = $('#bpc-table-body');
         $body.html('<tr class="brikpanel-cp-loading-row"><td colspan="' + totalColumnCount() + '"><div class="brikpanel-cp-spinner"></div></td></tr>');
+        refitTable();
 
         $.ajax({
             url: CP.ajax_url,
@@ -552,6 +569,7 @@
                 state.loading = false;
                 if (!res.success) {
                     $body.html('<tr><td colspan="' + totalColumnCount() + '" class="brikpanel-cp-empty">' + escHtml(res.data.message || CP.i18n.error) + '</td></tr>');
+                    refitTable();
                     return;
                 }
 
@@ -572,6 +590,7 @@
             error: function () {
                 state.loading = false;
                 $body.html('<tr><td colspan="' + totalColumnCount() + '" class="brikpanel-cp-empty">' + escHtml(CP.i18n.error) + '</td></tr>');
+                refitTable();
             }
         });
     }
@@ -589,6 +608,7 @@
                 '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="1.5"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>' +
                 '<p>' + escHtml(CP.i18n.no_coupons) + '</p>' +
                 '</div></td></tr>');
+            refitTable();
             return;
         }
 
@@ -603,6 +623,7 @@
         state.selected.forEach(function (id) {
             $body.find('.brikpanel-cp-row-check[value="' + id + '"]').prop('checked', true);
         });
+        refitTable();
     }
 
     function renderCouponRow(c) {
@@ -698,16 +719,16 @@
 
         return '<tr class="brikpanel-cp-row" data-id="' + c.id + '">' +
             '<td class="brikpanel-cp-cell-check"><input type="checkbox" class="brikpanel-cp-row-check brikpanel-cp-checkbox" value="' + c.id + '"' + checked + '></td>' +
-            '<td class="brikpanel-cp-cell-code"><span class="brikpanel-cp-code-text">' + escHtml(c.code) + '</span>' + aseActionsHtml + '</td>' +
+            '<td class="brikpanel-cp-cell-code brikpanel-fit-lead"><span class="brikpanel-cp-code-text">' + escHtml(c.code) + '</span>' + aseActionsHtml + '</td>' +
             '<td class="brikpanel-cp-cell-type"><span class="brikpanel-cp-type-badge">' + escHtml(typeLabel) + '</span></td>' +
-            '<td class="brikpanel-cp-cell-amount"><span class="brikpanel-cp-editable brikpanel-cp-amount-cell" data-field="amount" data-value="' + escAttr(c.amount) + '">' + amountDisplay + '</span></td>' +
+            '<td class="brikpanel-cp-cell-amount brikpanel-fit-headline"><span class="brikpanel-cp-editable brikpanel-cp-amount-cell" data-field="amount" data-value="' + escAttr(c.amount) + '">' + amountDisplay + '</span></td>' +
             '<td class="brikpanel-cp-cell-desc"><span class="brikpanel-cp-desc-cell">' + descHtml + '</span></td>' +
             '<td class="brikpanel-cp-cell-usage"><span class="brikpanel-cp-usage-cell">' + usageHtml + '</span></td>' +
             '<td class="brikpanel-cp-cell-revenue">' + revenueHtml + '</td>' +
             '<td class="brikpanel-cp-cell-expiry"><span class="brikpanel-cp-expiry-cell">' + expiryHtml + '</span></td>' +
             '<td class="brikpanel-cp-cell-status"><span class="brikpanel-cp-status-badge ' + statusClass + '" title="' + escAttr(CP.i18n.click_to_toggle) + '">' + escHtml(statusLabel) + '</span></td>' +
             aseCellsHtml +
-            '<td class="brikpanel-cp-actions-cell">' + actionsHtml + '</td>' +
+            '<td class="brikpanel-cp-actions-cell brikpanel-fit-full">' + actionsHtml + '</td>' +
             '</tr>';
     }
 

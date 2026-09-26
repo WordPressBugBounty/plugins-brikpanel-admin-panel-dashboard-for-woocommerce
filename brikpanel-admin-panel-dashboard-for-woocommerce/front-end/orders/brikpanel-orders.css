@@ -2236,9 +2236,15 @@ html.brikpanel-modal-lock {
 	transition: background-color .15s ease, color .15s ease;
 }
 
+/* Counts read at 4.5:1 or more: #8a8a8a was 3.3:1 on white and 2.9:1 on
+   the selected tab. */
 .brikpanel-orders-table-header-1 .subsubsub a .count {
-	color: #8a8a8a;
+	color: #616161;
 	font-weight: 400;
+}
+
+.brikpanel-orders-table-header-1 .subsubsub a.current .count {
+	color: inherit;
 }
 
 .brikpanel-orders-table-header-1 .subsubsub a:hover {
@@ -2528,17 +2534,8 @@ html.brikpanel-modal-lock {
 	pointer-events: none !important;
 }
 
-/* Tabs that run under the search button fade out instead of being cut off
-   (is-overflowing is set by brikpanelTableHeader). */
-.brikpanel-orders-table-header-1 .subsubsub.is-overflowing {
-	-webkit-mask-image: linear-gradient(to left, transparent 58px, #000 96px);
-	mask-image: linear-gradient(to left, transparent 58px, #000 96px);
-}
-
-.rtl .brikpanel-orders-table-header-1 .subsubsub.is-overflowing {
-	-webkit-mask-image: linear-gradient(to right, transparent 58px, #000 96px);
-	mask-image: linear-gradient(to right, transparent 58px, #000 96px);
-}
+/* Tabs that run under the search button fade out at that edge only while
+   more tabs are hidden there: brikpanel-scroll-strip.js/.css (brikpanelTableHeader). */
 
 /* No animation while the page sets itself up (search already open on load). */
 .bp-anim-off,

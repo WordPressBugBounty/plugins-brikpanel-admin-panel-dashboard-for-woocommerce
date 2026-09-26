@@ -201,6 +201,30 @@
         try { window.history.replaceState(null, '', newUrl); } catch (e) {}
     }
 
+    // The phone Filters button shows how many filters are set (the fields
+    // themselves are folded away there). Sort is not a filter.
+    function syncFiltersCount() {
+        var badge = document.getElementById('bpl-filters-count');
+        var btn = document.getElementById('bpl-filters-toggle');
+        if (!badge || !btn) {
+            return;
+        }
+        var n = 0;
+        ['category', 'brand', 'stock_filter', 'product_type', 'featured'].forEach(function (key) {
+            if (state[key]) { n++; }
+        });
+        Object.keys(state.tax_filters || {}).forEach(function (slug) {
+            if (state.tax_filters[slug]) { n++; }
+        });
+        badge.textContent = n ? String(n) : '';
+        badge.hidden = !n;
+        if (n && PL.i18n.filters_active) {
+            btn.setAttribute('aria-label', PL.i18n.filters_active.replace('%d', n));
+        } else {
+            btn.removeAttribute('aria-label');
+        }
+    }
+
     // The list URL to hand the editor as a return target — only when a filter
     // is actually active, so unfiltered views keep clean editor URLs and fall
     // back to the plain product list.
@@ -227,6 +251,14 @@
                 state.page = 1;
                 fetchProducts();
             }, 350);
+        });
+
+        // Phones: the filters fold behind one button (field test C2).
+        $('#bpl-filters-toggle').on('click', function () {
+            var $group = $('#bpl-filter-group');
+            var open = !$group.hasClass('is-filters-open');
+            $group.toggleClass('is-filters-open', open);
+            $(this).attr('aria-expanded', open ? 'true' : 'false');
         });
 
         // Remove an active taxonomy-filter chip (Brand/Tag/custom).
@@ -375,6 +407,12 @@
             var willOpen = $colsPopover.prop('hidden');
             $colsPopover.prop('hidden', !willOpen);
             $colsBtn.attr('aria-expanded', willOpen ? 'true' : 'false');
+            // Keep it inside the page column: from 783px up the button is not
+            // always at the row's end, and the popover ran past the screen or
+            // under the admin menu.
+            if (willOpen && window.brikpanelTip) {
+                window.brikpanelTip.nudge($colsPopover[0], $colsPopover.closest('.wrap')[0]);
+            }
         });
 
         $colsPopover.on('click', function (e) { e.stopPropagation(); });
@@ -383,7 +421,16 @@
             var col = $(this).data('col');
             applyColumnVisibility(col, this.checked);
             saveColumns();
+            syncMessageSpans();
         });
+
+        // Crossing the phone width hides or shows columns: re-span the message row.
+        if (window.matchMedia) {
+            var phoneMq = window.matchMedia('(max-width: 782px)');
+            var onPhoneChange = function () { syncMessageSpans(); };
+            if (phoneMq.addEventListener) { phoneMq.addEventListener('change', onPhoneChange); }
+            else if (phoneMq.addListener) { phoneMq.addListener(onPhoneChange); }
+        }
 
         $(document).on('click', function () {
             if (!$colsPopover.prop('hidden')) {
@@ -782,6 +829,43 @@
     }
 
     /**
+     * The header cells that show right now. A message row (loading, empty,
+     * error) spans exactly these: with the phone's `table-layout: fixed` a
+     * colspan that also counted hidden columns made the browser add phantom
+     * columns, which took their share of the width and ended the header's
+     * background half way (field test C12).
+     */
+    function visibleColumnCount() {
+        var head = document.querySelector('#bpl-table thead tr');
+        if (!head) {
+            return totalColumnCount();
+        }
+        var n = 0;
+        for (var i = 0; i < head.cells.length; i++) {
+            if (window.getComputedStyle(head.cells[i]).display !== 'none') {
+                n += head.cells[i].colSpan || 1;
+            }
+        }
+        return Math.max(1, n);
+    }
+
+    // Re-span the message row after the visible columns changed (a column
+    // switched on or off, the window crossed the phone width).
+    function syncMessageSpans() {
+        var body = document.getElementById('bpl-table-body');
+        if (!body) {
+            return;
+        }
+        var span = visibleColumnCount();
+        for (var i = 0; i < body.rows.length; i++) {
+            var cells = body.rows[i].cells;
+            if (cells.length === 1 && cells[0].colSpan !== span) {
+                cells[0].colSpan = span;
+            }
+        }
+    }
+
+    /**
      * Sync the table <thead> with the latest set of ASE-contributed
      * columns so plugin-added headers stay aligned with the row cells.
      * Inserted right before the trailing actions column.
@@ -910,7 +994,7 @@
         // be what stops the row from being drawn.
         var span = 18;
         try {
-            span = totalColumnCount();
+            span = visibleColumnCount();
         } catch (e) {}
 
         $body.html('<tr><td colspan="' + span + '" class="brikpanel-pl-empty">' +
@@ -930,6 +1014,7 @@
         // Keep the URL in step with what we are about to render, so a reload
         // or the editor back link reproduces this exact view.
         syncStateToUrl();
+        syncFiltersCount();
 
         state.loading = true;
         showProgress();
@@ -939,7 +1024,7 @@
         // (e.g. just-removed rows after a bulk action) stays visible while
         // the background fetch syncs counts and pagination.
         if (!silent) {
-            $body.html('<tr class="brikpanel-pl-loading-row"><td colspan="' + totalColumnCount() + '"><div class="brikpanel-pl-spinner"></div></td></tr>');
+            $body.html('<tr class="brikpanel-pl-loading-row"><td colspan="' + visibleColumnCount() + '"><div class="brikpanel-pl-spinner"></div></td></tr>');
         }
 
         currentFetchXhr = $.ajax({
@@ -1070,7 +1155,7 @@
         var $body = $('#bpl-table-body');
 
         if (!state.products.length) {
-            $body.html('<tr><td colspan="' + totalColumnCount() + '" class="brikpanel-pl-empty">' +
+            $body.html('<tr><td colspan="' + visibleColumnCount() + '" class="brikpanel-pl-empty">' +
                 '<div class="brikpanel-pl-empty-state">' +
                 '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>' +
                 '<p>' + escHtml(PL.i18n.no_products) + '</p>' +
@@ -1299,6 +1384,28 @@
         return out;
     }
 
+    // A row button's name: read out always, shown as text only in the phone
+    // "More actions" menu (front-end/shared/brikpanel-overflow.css).
+    function actionLabel(text) {
+        return '<span class="brikpanel-overflow__label">' + escHtml(text || '') + '</span>';
+    }
+
+    // The row buttons sit in the row as before; at phone widths they fold into
+    // one "More actions" menu. Four icons squeezed the product name to a
+    // 94px column on a 360px phone (field test C2).
+    function rowActionsWrap(id, buttonsHtml) {
+        var menuId = 'bpl-row-more-' + id;
+        var more = PL.i18n.more_actions || '';
+        return '<div class="brikpanel-pl-actions">' +
+            '<div class="brikpanel-overflow brikpanel-overflow--phone">' +
+                '<button type="button" class="brikpanel-overflow__trigger" aria-expanded="false" aria-controls="' + escAttr(menuId) + '" aria-label="' + escAttr(more) + '" title="' + escAttr(more) + '">' +
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>' +
+                '</button>' +
+                '<div class="brikpanel-overflow__menu" id="' + escAttr(menuId) + '">' + buttonsHtml + '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
     function renderProductRow(p) {
         var checked = state.selected.indexOf(p.id) > -1 ? ' checked' : '';
         var statusClass, statusLabel, statusTitle = PL.i18n.click_to_toggle;
@@ -1413,10 +1520,12 @@
         var trashActions = '';
         if (p.status === 'trash') {
             trashActions = '<button type="button" class="brikpanel-pl-action-restore" title="' + escAttr(PL.i18n.restore) + '">' +
-                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>' +
+                actionLabel(PL.i18n.restore) +
                 '</button>' +
                 '<button type="button" class="brikpanel-pl-action-delete-perm" title="' + escAttr(PL.i18n.delete_permanently) + '">' +
-                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d72c0d" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d72c0d" stroke-width="2" aria-hidden="true" focusable="false"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+                actionLabel(PL.i18n.delete_permanently) +
                 '</button>';
         }
 
@@ -1522,6 +1631,14 @@
                 '</span>' +
             '</td>';
 
+        // Price and status under the name, shown only at phone widths where
+        // their own columns are hidden (field test C2). Hidden from screen
+        // readers: the columns carry the same values.
+        var rowMetaHtml = '<span class="brikpanel-pl-row-meta" aria-hidden="true">' +
+            '<span class="brikpanel-pl-row-meta-price">' + priceDisplay + '</span>' +
+            '<span class="brikpanel-pl-row-meta-status ' + statusClass + '">' + escHtml(statusLabel) + '</span>' +
+            '</span>';
+
         // Carry the active filtered list URL into the editor so its "Back to
         // products" link returns to this exact view instead of the full list.
         var ret = currentReturnUrl();
@@ -1533,7 +1650,7 @@
             handleCell +
             '<td class="brikpanel-pl-cell-check"><input type="checkbox" class="brikpanel-pl-row-check brikpanel-pl-checkbox" value="' + p.id + '"' + checked + '></td>' +
             '<td class="brikpanel-pl-cell-image brikpanel-pl-col brikpanel-pl-col-image"><img src="' + escAttr(p.image) + '" alt="" class="brikpanel-pl-thumb" loading="lazy"></td>' +
-            '<td class="brikpanel-pl-cell-name brikpanel-pl-col brikpanel-pl-col-name"><span class="brikpanel-pl-name-id" title="' + escAttr(PL.i18n.product_id || '') + '">#' + p.id + '</span>' + featuredStarHtml + '<a href="' + escAttr(editHref) + '" class="brikpanel-pl-product-name-link"' + (PL.open_in_new_tab ? ' target="_blank" rel="noopener"' : '') + '><span class="brikpanel-pl-product-name-text">' + escHtml(p.name) + '</span></a>' + typeLabel + aseActionsHtml + '</td>' +
+            '<td class="brikpanel-pl-cell-name brikpanel-pl-col brikpanel-pl-col-name"><span class="brikpanel-pl-name-id" title="' + escAttr(PL.i18n.product_id || '') + '">#' + p.id + '</span>' + featuredStarHtml + '<a href="' + escAttr(editHref) + '" class="brikpanel-pl-product-name-link"' + (PL.open_in_new_tab ? ' target="_blank" rel="noopener"' : '') + '><span class="brikpanel-pl-product-name-text">' + escHtml(p.name) + '</span></a>' + typeLabel + rowMetaHtml + aseActionsHtml + '</td>' +
             '<td class="brikpanel-pl-cell-sku brikpanel-pl-col brikpanel-pl-col-sku"><span class="brikpanel-pl-editable brikpanel-pl-sku-cell" data-field="sku" data-value="' + escAttr(p.sku || '') + '">' + (p.sku ? escHtml(p.sku) : '<span class="brikpanel-pl-text-muted">—</span>') + '</span></td>' +
             varSkusCell +
             '<td class="brikpanel-pl-cell-guid brikpanel-pl-col brikpanel-pl-col-global_unique_id">' + gidInner + '</td>' +
@@ -1550,22 +1667,24 @@
             '<td class="brikpanel-pl-cell-date brikpanel-pl-col brikpanel-pl-col-date">' + (p.date ? escHtml(p.date) : '<span class="brikpanel-pl-text-muted">—</span>') + '</td>' +
             aseCellsHtml +
             '<td class="brikpanel-pl-actions-cell">' +
-                (p.status !== 'trash' ?
-                '<div class="brikpanel-pl-actions">' +
+                rowActionsWrap(p.id, p.status !== 'trash' ?
                     '<a href="' + escAttr(p.view_url) + '" target="_blank" class="brikpanel-pl-action-view" title="' + escAttr(PL.i18n.view || 'View') + '">' +
-                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' +
+                    actionLabel(PL.i18n.view) +
                     '</a>' +
                     '<button type="button" class="brikpanel-pl-action-edit" title="' + escAttr(PL.i18n.quick_edit) + '">' +
-                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+                    actionLabel(PL.i18n.quick_edit) +
                     '</button>' +
                     '<button type="button" class="brikpanel-pl-action-duplicate" title="' + escAttr(PL.i18n.duplicate) + '">' +
-                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+                    actionLabel(PL.i18n.duplicate) +
                     '</button>' +
                     '<button type="button" class="brikpanel-pl-action-delete" title="' + escAttr(PL.i18n.trash) + '">' +
-                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
-                    '</button>' +
-                '</div>'
-                : '<div class="brikpanel-pl-actions">' + trashActions + '</div>') +
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+                    actionLabel(PL.i18n.trash) +
+                    '</button>'
+                    : trashActions) +
             '</td>' +
             '</tr>';
     }

@@ -334,8 +334,11 @@ class Brikpanel_Dashboard_Topbar {
                         // The logo leads to the BrikPanel dashboard, a page registered
                         // with `manage_woocommerce`. The bar is also drawn for
                         // `manage_options` holders without it, and for them that link
-                        // answered 403, so they land on the WordPress dashboard.
-                        $brikpanel_brand_to_dashboard = current_user_can( 'manage_woocommerce' );
+                        // answered 403, so they land on the WordPress dashboard. The
+                        // same happens while the BrikPanel dashboard is switched off.
+                        $brikpanel_brand_to_dashboard = function_exists( 'brikpanel_module_available' )
+                            ? brikpanel_module_available( 'brikpanel-dashboard' )
+                            : current_user_can( 'manage_woocommerce' );
                         ?>
                     <a class="brikpanel-topbar-brand" href="<?php echo esc_url( $brikpanel_brand_to_dashboard ? admin_url( 'admin.php?page=brikpanel-dashboard' ) : admin_url() ); ?>" aria-label="<?php echo esc_attr( $brikpanel_brand_to_dashboard ? __( 'BrikPanel dashboard', 'brikpanel' ) : __( 'Dashboard', 'brikpanel' ) ); ?>">
                         <span class="<?php echo esc_attr( $mark_class ); ?>" aria-hidden="true">
@@ -414,7 +417,7 @@ class Brikpanel_Dashboard_Topbar {
                             </a>
                             <?php endif; ?>
                             <?php if ( brikpanel_topbar_create_item_is_visible( 'coupon' ) ) : ?>
-                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( admin_url( 'admin.php?page=brikpanel-coupons&action=new' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( function_exists( 'brikpanel_module_url' ) ? brikpanel_module_url( 'brikpanel-coupons', [ 'action' => 'new' ], admin_url( 'post-new.php?post_type=shop_coupon' ) ) : admin_url( 'admin.php?page=brikpanel-coupons&action=new' ) ); ?>">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a2 2 0 0 1 2-2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2 2 2 0 0 1-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 1-2-2z"/><line x1="9" y1="9" x2="15" y2="15"/><circle cx="9" cy="9" r=".6"/><circle cx="15" cy="15" r=".6"/></svg>
                                 <span><?php esc_html_e( 'New coupon', 'brikpanel' ); ?></span>
                             </a>
@@ -500,7 +503,7 @@ class Brikpanel_Dashboard_Topbar {
                                 // own URL params; otherwise fall back to the native list,
                                 // which understands `stock_status` but has no matching
                                 // "published only" filter beyond `post_status`.
-                                $brikpanel_oos_url = get_option( 'brikpanel_modern_products_list', 'yes' ) === 'yes'
+                                $brikpanel_oos_url = ( function_exists( 'brikpanel_module_available' ) ? brikpanel_module_available( 'brikpanel-products' ) : get_option( 'brikpanel_modern_products_list', 'yes' ) === 'yes' )
                                     ? admin_url( 'admin.php?page=brikpanel-products&bpl_stock=outofstock&bpl_status=publish' )
                                     : admin_url( 'edit.php?post_type=product&stock_status=outofstock&post_status=publish' );
                                 ?>
