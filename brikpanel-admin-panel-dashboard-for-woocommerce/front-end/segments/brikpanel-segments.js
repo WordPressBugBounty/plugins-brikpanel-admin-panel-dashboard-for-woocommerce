@@ -236,7 +236,15 @@
 	// Table rendering
 	// -----------------------------------------------------------------------
 
-	function renderOrdersTable(data) {
+	// An empty page with nothing narrowing it (and no rows on other pages)
+	// means the store has nothing to list yet; "match these filters" would send
+	// the merchant hunting for a filter that is not there.
+	function emptyRow(data, narrowed, filteredText, noneText) {
+		const text = (narrowed || Number(data.total) > 0) ? filteredText : noneText;
+		return '<tr><td class="bp-seg-empty" colspan="8">' + escape(text) + '</td></tr>';
+	}
+
+	function renderOrdersTable(data, narrowed) {
 		const L = {
 			order: I18N.col_order, date: I18N.col_date, status: I18N.col_status, customer: I18N.col_customer,
 			phone: I18N.col_phone, location: I18N.col_location, payment: I18N.col_payment, total: I18N.col_total,
@@ -254,7 +262,7 @@
 			+ '</tr>';
 
 		if (!data.items.length) {
-			setBody('<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.no_results) + '</td></tr>');
+			setBody(emptyRow(data, narrowed, I18N.no_results, I18N.no_orders_yet));
 			return;
 		}
 
@@ -273,7 +281,7 @@
 		}).join(''));
 	}
 
-	function renderCustomersTable(data) {
+	function renderCustomersTable(data, narrowed) {
 		const L = {
 			customer: I18N.col_customer, email: I18N.col_email, phone: I18N.col_phone, registered: I18N.col_registered,
 			orders: I18N.col_orders, spent: I18N.col_spent, aov: I18N.col_aov, lastOrder: I18N.col_last_order,
@@ -291,7 +299,7 @@
 			+ '</tr>';
 
 		if (!data.items.length) {
-			setBody('<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.no_customers) + '</td></tr>');
+			setBody(emptyRow(data, narrowed, I18N.no_customers, I18N.no_customers_yet));
 			return;
 		}
 
@@ -335,8 +343,9 @@
 			: (I18N.total_revenue || 'Total revenue');
 	}
 
+	// The store's separators, not the browser's language (field test E2).
 	function formatNumber(n) {
-		try { return new Intl.NumberFormat().format(Number(n || 0)); } catch (e) { return String(n || 0); }
+		return window.brikpanelFormat ? window.brikpanelFormat.number(n || 0) : String(Number(n) || 0);
 	}
 
 	// -----------------------------------------------------------------------
@@ -402,7 +411,14 @@
 
 	function runQuery() {
 		collectFilters();
+		// Captured with the request: a later keystroke must not change which
+		// empty text this answer shows. The search box and the preset chips
+		// sit outside "More filters", so the badge count leaves them out.
+		// Only this tab's filters count here: a value left in a field of the
+		// other tab is hidden and this tab's query ignores it, so it must not
+		// turn "No customers yet." into "No customers match these filters.".
 		updateActiveFilterCount();
+		const narrowed = countActiveFilters(state.tab) > 0 || state.preset !== '' || state.filters.search !== '';
 		ROOT.classList.add('bp-seg-loading');
 
 		const reqId = ++state.lastRequestId;
@@ -415,7 +431,7 @@
 				setBody('<tr><td class="bp-seg-empty" colspan="8">' + escape(I18N.error) + '</td></tr>');
 				return;
 			}
-			if (state.tab === 'customers') renderCustomersTable(res.data); else renderOrdersTable(res.data);
+			if (state.tab === 'customers') renderCustomersTable(res.data, narrowed); else renderOrdersTable(res.data, narrowed);
 			renderStats(res.data);
 			renderPagination(res.data);
 		}).catch(function () {
@@ -428,18 +444,48 @@
 	// Active-filter count for the "More filters" badge
 	// -----------------------------------------------------------------------
 
-	function updateActiveFilterCount() {
-		let count = 0;
+	// Which tab's query reads each "More filters" key: '' both, otherwise only
+	// that tab. Matches query_orders() / query_customers() in
+	// brikpanel-segments.php and the .bp-seg-orders-only /
+	// .bp-seg-customers-only fields in views/page.php (coupon is orders only).
+	const FILTER_TABS = {
+		date_from: '',
+		date_to: '',
+		countries: '',
+		city: '',
+		product_ids: '',
+		category_ids: '',
+		statuses: 'orders',
+		total_min: 'orders',
+		total_max: 'orders',
+		payment_methods: 'orders',
+		coupon: 'orders',
+		spent_min: 'customers',
+		spent_max: 'customers',
+		order_count_min: 'customers',
+		order_count_max: 'customers',
+		last_order_from: 'customers',
+		last_order_to: 'customers',
+		registered_from: 'customers',
+		registered_to: 'customers',
+		rfm_segments: 'customers',
+	};
+
+	// Filled "More filters" keys. With a tab, keys that belong only to the
+	// other tab are skipped; without one, every key counts (the badge).
+	function countActiveFilters(tab) {
 		const f = state.filters;
-		[
-			'date_from', 'date_to', 'city', 'coupon',
-			'total_min', 'total_max', 'spent_min', 'spent_max',
-			'order_count_min', 'order_count_max',
-			'last_order_from', 'last_order_to', 'registered_from', 'registered_to',
-		].forEach(function (k) { if (f[k] !== '' && f[k] != null) count++; });
-		['statuses', 'payment_methods', 'countries', 'product_ids', 'category_ids', 'rfm_segments'].forEach(function (k) {
-			if (f[k] && f[k].length) count++;
+		let count = 0;
+		Object.keys(FILTER_TABS).forEach(function (k) {
+			if (tab && FILTER_TABS[k] !== '' && FILTER_TABS[k] !== tab) return;
+			const v = f[k];
+			if (Array.isArray(v) ? v.length > 0 : (v !== '' && v != null)) count++;
 		});
+		return count;
+	}
+
+	function updateActiveFilterCount() {
+		const count = countActiveFilters('');
 
 		const badge = el('bp-seg-active-filter-count');
 		if (count > 0) {
@@ -448,6 +494,7 @@
 		} else {
 			badge.hidden = true;
 		}
+		return count;
 	}
 
 	// -----------------------------------------------------------------------
@@ -464,7 +511,7 @@
 			const list = res.data.products || [];
 			const box = el('bp-seg-product-suggestions');
 			if (!list.length) {
-				box.innerHTML = '<div class="bp-seg-suggestion" style="color:#8a8a8a">' + escape(I18N.no_products || 'No products found.') + '</div>';
+				box.innerHTML = '<div class="bp-seg-suggestion" style="color:#616161">' + escape(I18N.no_products || '') + '</div>';
 				box.hidden = false;
 				return;
 			}

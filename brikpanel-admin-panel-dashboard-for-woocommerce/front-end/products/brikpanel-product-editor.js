@@ -452,12 +452,45 @@
     }
 
     /* Sale schedule date pickers (flatpickr) */
+    /* Calendars and name sorting go through the shared formatter
+       (front-end/shared/brikpanel-format.js): the viewer's language and the
+       store's first weekday, never the browser's. Plain flatpickr and code
+       point order only if that file failed to load. */
+    function datePicker(el, opts) {
+        if (window.brikpanelFormat) return window.brikpanelFormat.datePicker(el, opts);
+        return typeof flatpickr === 'function' ? flatpickr(el, opts) : null;
+    }
+
+    function compareNames(a, b) {
+        if (window.brikpanelFormat) return window.brikpanelFormat.compare(a, b);
+        a = String(a);
+        b = String(b);
+        return a < b ? -1 : (a > b ? 1 : 0);
+    }
+
+    /* Counts made in the browser ("3 values added"): the message comes from
+       brikpanel_js_plural() with every plural form of the translation, and the
+       shared formatter picks the one the language needs (field test E7). */
+    function countText(msg, n) {
+        return window.brikpanelFormat ? window.brikpanelFormat.count(msg, n) : '';
+    }
+
+    function fmtCount(n) {
+        return window.brikpanelFormat ? window.brikpanelFormat.number(n) : String(n);
+    }
+
+    function fillText(pattern, value) {
+        return window.brikpanelFormat ? window.brikpanelFormat.fill(pattern || '', value) : String(pattern || '').replace('%s', value);
+    }
+
     function initSaleDates() {
         if (typeof flatpickr !== 'function') return;
         var $from = $('#bpe-sale-from'), $to = $('#bpe-sale-to');
         if (!$from.length || !$to.length) return;
 
-        var fpFrom = flatpickr($from.get(0), {
+        // The fields keep WooCommerce's YYYY-MM-DD; the calendar speaks the
+        // viewer's language and starts on the store's first weekday.
+        var fpFrom = datePicker($from.get(0), {
             dateFormat: 'Y-m-d',
             allowInput: false,
             onChange: function (dates) {
@@ -466,7 +499,7 @@
                 }
             }
         });
-        var fpTo = flatpickr($to.get(0), {
+        var fpTo = datePicker($to.get(0), {
             dateFormat: 'Y-m-d',
             allowInput: false,
             minDate: $from.val() || null
@@ -569,6 +602,16 @@
         // [data-required] selector would match those wrappers too — see the
         // note in validateAll().
         $(':input[data-required]').on('blur', function () { validateField($(this)); });
+        // "Require a price to publish" off: the price box is optional, so all it
+        // can show is the sale-price warning from validateSalePrice(). Leaving
+        // the price box re-checks it; leaving the sale price box only re-checks
+        // a warning already on screen, so typing the sale price first does not
+        // flag the price box before the merchant gets to it.
+        $('#bpe-price').not('[data-required]').on('blur', function () { validateSalePrice(); });
+        $('#bpe-sale-price').on('blur', function () {
+            var $p = $('#bpe-price');
+            if (!$p.data('required') && $p.hasClass('has-error')) validateSalePrice();
+        });
 
         // Ctrl+S shortcut
         $(document).on('keydown', function (e) {
@@ -679,12 +722,20 @@
         if (shift) pop.style.setProperty('--bpe-pop-shift', Math.round(shift) + 'px');
     }
 
-    /* Build a datetime-local value (Y-m-d\TH:i) for ~24h from now, in the
-       browser's local time — used to seed the schedule picker when the merchant
-       first switches to "Scheduled" and the field is empty. */
+    /* Build a datetime-local value (Y-m-d\TH:i) for ~24h from now on the
+       store's clock (the publish date is store time) — used to seed the
+       schedule picker when the merchant first switches to "Scheduled" and the
+       field is empty. The browser's clock is only a fallback. */
     function defaultScheduleValue() {
-        var d = new Date(Date.now() + 24 * 60 * 60 * 1000);
         function p(n) { return (n < 10 ? '0' : '') + n; }
+        var s = window.brikpanelFormat ? window.brikpanelFormat.now() : null;
+        var d = s
+            ? new Date(Date.UTC(s.y, s.m - 1, s.d + 1, s.H, s.i))
+            : new Date(Date.now() + 24 * 60 * 60 * 1000);
+        if (s) {
+            return d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()) +
+                   'T' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+        }
         return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
                'T' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
@@ -696,25 +747,18 @@
        the single #bpe-schedule-date input with the scheduling flow. */
 
     /* Format the datetime-local value for the trigger label. Empty → the
-       localized "Immediately". Uses the browser locale for the date/time so it
-       reads naturally; the word "Immediately" comes from the server i18n bag.
-       The inline script printed right after the editor header applies the same
-       format before the header is fitted (brikpanel-product-editor.php), so the
-       header is measured with this label and does not change level when init
-       rewrites it. Change both together. */
+       localized "Immediately" (server i18n bag). The date is the store's short
+       date format plus its time format in the viewer's language, character for
+       character what the server prints into the label
+       (brikpanel_short_date_format() . ' ' . brikpanel_time_format() in
+       brikpanel-product-editor.php), so the header measured at load keeps its
+       level when init and the picker rewrite the label. It used to be the
+       browser's language: "22 Eyl 2026" on an English store (field test E2). */
     function formatPubDateLabel(val) {
         var immediately = (PE.i18n && PE.i18n.immediately) || 'Immediately';
         if (!val) return immediately;
-        var d = new Date(val);
-        if (isNaN(d.getTime())) return immediately;
-        try {
-            return d.toLocaleString(undefined, {
-                year: 'numeric', month: 'short', day: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
-        } catch (e) {
-            return val.replace('T', ' ');
-        }
+        if (!window.brikpanelFormat) return String(val).replace('T', ' ');
+        return window.brikpanelFormat.dateShortTime(val) || immediately;
     }
 
     function syncPubDateLabel() {
@@ -1096,9 +1140,7 @@
             var local  = (state.variations || []).filter(function (v) { return v && v.id; }).length;
             var n = Math.max(stored, local);
             if (n < 1) return true;
-            var msg = PE.i18n.confirm_convert_to_simple
-                || 'This product has %d variations. Changing it to a simple product deletes them permanently and this cannot be undone.';
-            return window.confirm(msg.replace('%d', n));
+            return window.confirm(countText(PE.i18n.confirm_convert_to_simple, n));
         }
 
         // Bound to `click`, not `change`, on purpose: the editor flips this
@@ -1573,7 +1615,8 @@
             var $item = $('<div class="brikpanel-pe-gallery-item" data-id="' + img.id + '">');
             $item.append('<img src="' + esc(img.url) + '" alt="">');
             if (idx === 0) $item.append('<span class="brikpanel-pe-gallery-item-badge">' + (PE.i18n.featured || 'Featured') + '</span>');
-            var $rm = $('<button type="button" class="brikpanel-pe-gallery-item-remove">&times;</button>');
+            var $rm = $('<button type="button" class="brikpanel-pe-gallery-item-remove">&times;</button>')
+                .attr({ title: PE.i18n.remove_image, 'aria-label': PE.i18n.remove_image });
             $rm.on('click', function (e) { e.stopPropagation(); removeImage(img.id); });
             $item.append($rm);
             var vb = videoButtonHtml(img.id, idx === 0 ? 'featured' : 'gallery', 'brikpanel-pe-gallery-item-video', false);
@@ -3255,8 +3298,8 @@
                 $selectAll
                     .attr('data-mode', remaining ? 'all' : 'none')
                     .text(remaining
-                        ? (PE.i18n.select_all_terms || 'Select all (%d)').replace('%d', remaining)
-                        : (PE.i18n.clear_all_terms || 'Clear all'));
+                        ? fillText(PE.i18n.select_all_terms, fmtCount(remaining))
+                        : (PE.i18n.clear_all_terms || ''));
             };
             $selectAll.on('click', function (e) {
                 e.preventDefault();
@@ -3319,7 +3362,7 @@
             e.preventDefault();
             var n = addValues(text);
             if (n) {
-                showToast((PE.i18n.values_added || '%d values added').replace('%d', n), 'success');
+                showToast(countText(PE.i18n.values_added, n), 'success');
             }
         });
 
@@ -3874,7 +3917,7 @@
         // the server caps the save anyway). Refuse and tell the user to trim.
         var MAX_GEN = 500;
         if (combos.length > MAX_GEN) {
-            showToast((PE.i18n.too_many_variations || 'That combination would create more than %d variations. Reduce the number of attribute values, then try again.').replace('%d', MAX_GEN), 'error');
+            showToast(countText(PE.i18n.too_many_variations, MAX_GEN), 'error');
             return;
         }
         var existing = state.variations || [];
@@ -3929,18 +3972,12 @@
         fetchVariationPreviews();
 
         if (appended.length) {
-            var addedMsg = appended.length === 1
-                ? (PE.i18n.variations_generated_one  || '%d new variation added at the end of the list.')
-                : (PE.i18n.variations_generated_many || '%d new variations added at the end of the list.');
-            showToast(addedMsg.replace('%d', appended.length), 'success');
+            showToast(countText(PE.i18n.variations_generated, appended.length), 'success');
         } else {
-            showToast(PE.i18n.variations_generated_none || 'No new combinations to add — every variation already exists.', 'success');
+            showToast(PE.i18n.variations_generated_none || '', 'success');
         }
         if (orphans) {
-            var orphanMsg = orphans === 1
-                ? (PE.i18n.variations_orphaned_one  || '%d variation no longer matches your attribute values. It is marked in the list and kept until you delete it.')
-                : (PE.i18n.variations_orphaned_many || '%d variations no longer match your attribute values. They are marked in the list and kept until you delete them.');
-            showToast(orphanMsg.replace('%d', orphans), 'error', 7000);
+            showToast(countText(PE.i18n.variations_orphaned, orphans), 'error', 7000);
         }
     }
 
@@ -4087,11 +4124,9 @@
             var dir = (mode === 'name-desc') ? -1 : 1;
             src.forEach(function (v, i) { v.__s = i; });
             src.sort(function (a, b) {
-                // `numeric` so "Size 2" sorts before "Size 10"; `base`
-                // sensitivity so case and accents don't split otherwise equal
-                // labels. Locale comes from the browser, which gets Turkish
-                // i/İ and German umlauts right without a lookup table here.
-                var c = String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+                // Numeric ("Size 2" before "Size 10"), case and accents
+                // ignored, in the viewer's language (Turkish i/İ, umlauts).
+                var c = compareNames(a.name || '', b.name || '');
                 return c !== 0 ? dir * c : a.__s - b.__s; // stable
             });
         }
@@ -4192,9 +4227,7 @@
     function clearAllVariations() {
         var n = (state.variations || []).length;
         if (!n) return;
-        var confirmMsg = PE.i18n.confirm_clear_variations
-            || 'Delete all %d variations? They are removed immediately and this cannot be undone. The product stays a variable product and its attributes are kept.';
-        if (!window.confirm(confirmMsg.replace('%d', n))) return;
+        if (!window.confirm(countText(PE.i18n.confirm_clear_variations, n))) return;
 
         var pid = parseInt($('#bpe-product-id').val() || 0, 10) || 0;
         if (!pid) {
@@ -4241,7 +4274,7 @@
                     // would loop forever (a variation some plugin refuses to
                     // delete). Stop and say so instead of hanging the button.
                     if (batch < 1) { failed(); return; }
-                    $btn.text((PE.i18n.clearing_variations_left || 'Deleting… %d left').replace('%d', remaining));
+                    $btn.text(countText(PE.i18n.clearing_variations_left, remaining));
                     runBatch();
                     return;
                 }
@@ -4257,12 +4290,9 @@
                 // reports 0, so say what actually happened instead.
                 var doneMsg;
                 if (!totalDeleted) {
-                    doneMsg = PE.i18n.variations_cleared_local || 'Variation list cleared.';
+                    doneMsg = PE.i18n.variations_cleared_local || '';
                 } else {
-                    doneMsg = (totalDeleted === 1
-                        ? (PE.i18n.variations_cleared_one  || '%d variation deleted.')
-                        : (PE.i18n.variations_cleared_many || '%d variations deleted.')
-                    ).replace('%d', totalDeleted);
+                    doneMsg = countText(PE.i18n.variations_cleared, totalDeleted);
                 }
                 showToast(doneMsg, 'success');
                 release();
@@ -4591,7 +4621,7 @@
         // and inline they would be the thing that pushes the strip onto a
         // second line. Each select still names its own axis ("No default
         // Color…"), so the popover needs no per-field labels.
-        var groupLabel = i18n.default_form_values || 'Default Form Values';
+        var groupLabel = i18n.default_form_values || 'Default form values';
 
         $row.empty();
         attrs.forEach(function (a) {
@@ -4602,7 +4632,7 @@
 
             var $sel = $('<select class="brikpanel-pe-select bpe-var-default"></select>').attr('data-key', key);
             var noneLabel = (i18n.no_default_for || 'No default %s…').replace('%s', a.name);
-            $sel.attr('aria-label', groupLabel + ' — ' + a.name);
+            $sel.attr('aria-label', groupLabel + ': ' + a.name);
             $sel.append($('<option value=""></option>').text(noneLabel));
             a.values.forEach(function (val) {
                 var $opt = $('<option></option>').attr('value', val).text(val);
@@ -5123,7 +5153,7 @@
         if (typeof flatpickr === 'function') {
             $tb.find('.var-sale-from, .var-sale-to').each(function () {
                 if (this._flatpickr) return;
-                flatpickr(this, { dateFormat: 'Y-m-d', allowInput: false });
+                datePicker(this, { dateFormat: 'Y-m-d', allowInput: false });
             });
         }
 
@@ -5330,11 +5360,26 @@
         $(':input[data-required]:visible').each(function () { if (!validateField($(this))) ok = false; });
         return ok;
     }
+    /* With "Require a price to publish" off the price box may stay empty, but
+       not behind a sale price: WooCommerce drops a sale price that has no
+       regular price, so the product would go live with no price at all while
+       the merchant believes it is on sale. With the setting on, validateAll()
+       has already stopped an empty price before this runs. */
+    function validateSalePrice() {
+        var $p = $('#bpe-price');
+        if (!$p.length || !$p.is(':visible')) return true;
+        var $e = $p.closest('.brikpanel-pe-field').find('.brikpanel-pe-field-error');
+        if (!$.trim($p.val()) && $.trim($('#bpe-sale-price').val())) {
+            $p.addClass('has-error'); $e.text(PE.i18n.sale_needs_price); return false;
+        }
+        $p.removeClass('has-error'); $e.text(''); return true;
+    }
 
     /* Save */
     function saveProduct(status, silent) {
         if (state.saving) return;
         if (!silent && (status === 'publish' || status === 'future') && !validateAll()) { showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error'); return; }
+        if (!silent && (status === 'publish' || status === 'future') && !validateSalePrice()) { showToast(PE.i18n.fill_price, 'error'); return; }
         var name = $.trim($('#bpe-name').val());
         if (!name) { if (!silent) { showToast(PE.i18n.fill_name || 'Please fill in the product name', 'error'); validateField($('#bpe-name')); } return; }
 
@@ -6124,7 +6169,7 @@
             e.preventDefault();
             var n = addTags(text);
             if (n) {
-                showToast((PE.i18n.tags_added || '%d tags added').replace('%d', n), 'success');
+                showToast(countText(PE.i18n.tags_added, n), 'success');
             }
         });
 

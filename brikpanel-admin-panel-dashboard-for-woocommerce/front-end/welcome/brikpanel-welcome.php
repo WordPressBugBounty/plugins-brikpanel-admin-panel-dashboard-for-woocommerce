@@ -63,7 +63,8 @@ add_action( 'admin_enqueue_scripts', function () {
 
     // On a phone the step rail is one scrolling row under the close button
     // (front-end/shared/brikpanel-scroll-strip.js).
-    $strip_style  = function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'scroll_strip', 'style' ) : [];
+    // The shared UI parts carry the "New" badge of the step rail.
+    $strip_style  = function_exists( 'brikpanel_narrow_deps' ) ? brikpanel_narrow_deps( [ 'scroll_strip', 'ui' ], 'style' ) : [];
     $strip_script = function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'scroll_strip' ) : [];
 
     wp_enqueue_style(
@@ -87,7 +88,7 @@ add_action( 'admin_enqueue_scripts', function () {
         'i18n'     => [
             'next'        => __( 'Next', 'brikpanel' ),
             'previous'    => __( 'Previous', 'brikpanel' ),
-            'get_started' => __( 'Get Started', 'brikpanel' ),
+            'get_started' => __( 'Get started', 'brikpanel' ),
             'skip'        => __( 'Skip tour', 'brikpanel' ),
         ],
     ] );
@@ -289,7 +290,7 @@ add_action( 'admin_footer', function () {
                             <span class="brikpanel-welcome-rail-ico"><?php echo $sec['rail_icon']; ?></span>
                             <span class="brikpanel-welcome-rail-title"><?php echo esc_html( $sec['rail_title'] ); ?></span>
                             <?php if ( ! empty( $sec['rail_badge'] ) ) : ?>
-                                <span class="brikpanel-welcome-rail-badge"><?php echo esc_html( $sec['rail_badge'] ); ?></span>
+                                <span class="brikpanel-badge brikpanel-badge--new brikpanel-welcome-rail-badge"><?php echo esc_html( $sec['rail_badge'] ); ?></span>
                             <?php endif; ?>
                         </button>
                     <?php endforeach; ?>

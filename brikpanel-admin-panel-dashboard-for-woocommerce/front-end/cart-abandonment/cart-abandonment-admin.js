@@ -11,8 +11,9 @@
 	}
 
 	// items is kept so a column reorder can repaint the table without asking
-	// the server for the same page again.
-	var state = { page: 1, pages: 1, items: [] };
+	// the server for the same page again. storeTotal is every captured row,
+	// filters ignored: it picks the empty text on those repaints too.
+	var state = { page: 1, pages: 1, items: [], storeTotal: 0 };
 
 	// Incremented per list request; only the newest response is allowed to
 	// paint. See load().
@@ -421,7 +422,7 @@
 			// translated in PHP: wa_title spells out the number that will be
 			// dialled, wa_opens_title how often the draft was opened. Neither
 			// is an English fallback.
-			link.setAttribute('aria-label', [cfg.i18n.whatsapp, row.wa_opens_title || ''].filter(Boolean).join(' — '));
+			link.setAttribute('aria-label', [cfg.i18n.whatsapp, row.wa_opens_title || ''].filter(Boolean).join(', '));
 			link.title = [row.wa_title || cfg.i18n.whatsapp, row.wa_opens_title || ''].filter(Boolean).join('\n');
 
 			// Nothing is sent from this page, but opening the draft is worth
@@ -720,7 +721,9 @@
 			var td = document.createElement('td');
 			td.colSpan = fullColSpan();
 			td.className = 'brikpanel-cartab-empty';
-			td.textContent = cfg.i18n.empty;
+			// Rows exist but the filters hide them all: "No emails captured
+			// yet." would read as if nothing had ever been captured.
+			td.textContent = state.storeTotal > 0 ? cfg.i18n.empty_filtered : cfg.i18n.empty;
 			tr.appendChild(td);
 			tbody.appendChild(tr);
 			fitTable();
@@ -821,8 +824,21 @@
 				return;
 			}
 			var d = json.data;
+			// The page asked for is past the end but earlier pages still hold
+			// rows: the last row of the last page was deleted, or rows went
+			// away since the page was opened. Step back to the new last page
+			// before painting, otherwise the list shows "No carts match these
+			// filters." with no pager to get back. state.page only goes down
+			// here, so this cannot loop.
+			var lastPage = Math.max(1, Number(d.pages) || 1);
+			if (!(d.items && d.items.length) && (Number(d.total) || 0) > 0 && state.page > lastPage) {
+				state.page = lastPage;
+				load();
+				return;
+			}
 			state.pages = d.pages;
 			state.items = d.items || [];
+			state.storeTotal = Number(d.counts && d.counts.total) || 0;
 			render(state.items);
 
 			$('brikpanel-cartab-stat-total').textContent = d.counts.total;

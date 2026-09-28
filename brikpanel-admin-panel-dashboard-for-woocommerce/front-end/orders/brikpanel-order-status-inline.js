@@ -425,4 +425,44 @@
 				window.alert(i18n.error || 'Error');
 			});
 	}
+
+	// ── Status changed by another script ────────────────────────────────
+	// The tracking window (brikpanel-order-tracking.js) lets Trakoo move an
+	// order to a new status. The badge follows it, and a change staged on that
+	// same badge is dropped: saving or discarding it later would undo the
+	// status the order has now.
+	document.addEventListener('brikpanel:order-status-changed', function (e) {
+		var detail = e.detail || {};
+		var orderId = parseInt(detail.orderId, 10);
+		var slug = typeof detail.slug === 'string' && /^[a-z0-9_-]+$/.test(detail.slug) ? detail.slug : '';
+		if (!orderId || !slug) return;
+		var $row = document.getElementById('order-' + orderId) || document.getElementById('post-' + orderId);
+		if (!$row) return;
+		var el = $row.querySelector('td.column-order_status .order-status'); // i18n-ignore: CSS selector
+		if (!el && renamedCell) el = $row.querySelector(renamedCell + ' .order-status');
+		if (!el) return;
+
+		if (activeContext && activeContext.el === el) {
+			$dropdown.classList.remove('open');
+			hideBar();
+			activeContext = null;
+		}
+
+		var label = typeof detail.label === 'string' && detail.label ? detail.label : labelForStatus(slug);
+		var classes = el.className.split(/\s+/);
+		for (var i = 0; i < classes.length; i++) {
+			if (classes[i].indexOf('status-') === 0 && classes[i] !== 'order-status') {
+				el.classList.remove(classes[i]);
+			}
+		}
+		el.classList.remove('brikpanel-status-pending');
+		el.classList.add('status-' + slug);
+		var $span = el.querySelector('span');
+		if ($span) {
+			$span.textContent = label;
+		}
+		if (el.hasAttribute('data-tip')) {
+			el.setAttribute('data-tip', label);
+		}
+	});
 })();

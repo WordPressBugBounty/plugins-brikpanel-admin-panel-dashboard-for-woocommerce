@@ -67,7 +67,7 @@ class Brikpanel_Cron_Page {
 		$known    = Brikpanel_Cron::get_registered_hooks();
 		$as_ready = Brikpanel_Cron::is_available();
 		?>
-		<div class="wrap brikpanel-cron-wrap" id="brikpanel-cron">
+		<div class="wrap brikpanel-cron-wrap brikpanel-shell__page" id="brikpanel-cron">
 			<div class="brikpanel-cron-header">
 				<div class="brikpanel-cron-header-left">
 					<h1><?php esc_html_e( 'Scheduled Tasks', 'brikpanel' ); ?></h1>
@@ -91,7 +91,7 @@ class Brikpanel_Cron_Page {
 			<?php endif; ?>
 
 			<!-- KPI cards -->
-			<div class="brikpanel-cron-kpis" id="brikpanel-cron-kpis">
+			<div class="brikpanel-cron-kpis" id="brikpanel-cron-kpis" data-bp-tiles>
 				<div class="brikpanel-cron-kpi" data-kpi="pending">
 					<div class="brikpanel-cron-kpi-label"><?php esc_html_e( 'Pending', 'brikpanel' ); ?></div>
 					<div class="brikpanel-cron-kpi-value">—</div>
@@ -112,10 +112,10 @@ class Brikpanel_Cron_Page {
 
 			<!-- Filters -->
 			<div class="brikpanel-cron-card brikpanel-cron-filters">
-				<div class="brikpanel-cron-filter-row">
-					<div class="brikpanel-cron-field">
+				<div class="brikpanel-cron-filter-row brikpanel-filter-bar">
+					<div class="brikpanel-cron-field brikpanel-cron-field--status brikpanel-field">
 						<label for="brikpanel-cron-status-filter"><?php esc_html_e( 'Status', 'brikpanel' ); ?></label>
-						<select id="brikpanel-cron-status-filter">
+						<select id="brikpanel-cron-status-filter" class="brikpanel-control">
 							<option value=""><?php esc_html_e( 'All statuses', 'brikpanel' ); ?></option>
 							<option value="pending"><?php esc_html_e( 'Pending', 'brikpanel' ); ?></option>
 							<option value="in-progress"><?php esc_html_e( 'Running', 'brikpanel' ); ?></option>
@@ -124,9 +124,9 @@ class Brikpanel_Cron_Page {
 							<option value="canceled"><?php esc_html_e( 'Cancelled', 'brikpanel' ); ?></option>
 						</select>
 					</div>
-					<div class="brikpanel-cron-field">
+					<div class="brikpanel-cron-field brikpanel-cron-field--hook brikpanel-field">
 						<label for="brikpanel-cron-hook-filter"><?php esc_html_e( 'Job type', 'brikpanel' ); ?></label>
-						<select id="brikpanel-cron-hook-filter">
+						<select id="brikpanel-cron-hook-filter" class="brikpanel-control">
 							<option value=""><?php esc_html_e( 'All job types', 'brikpanel' ); ?></option>
 							<?php foreach ( $known as $hook => $meta ) : ?>
 								<option value="<?php echo esc_attr( $hook ); ?>">
@@ -135,7 +135,7 @@ class Brikpanel_Cron_Page {
 							<?php endforeach; ?>
 						</select>
 					</div>
-					<div class="brikpanel-cron-filter-actions">
+					<div class="brikpanel-cron-filter-actions brikpanel-filter-bar__actions">
 						<button type="button" class="brikpanel-cron-btn brikpanel-cron-btn-secondary" id="brikpanel-cron-apply-btn">
 							<?php esc_html_e( 'Apply', 'brikpanel' ); ?>
 						</button>
@@ -235,8 +235,16 @@ class Brikpanel_Cron_Page {
 	}
 
 	/**
-	 * Count actions in our group with the given status whose date_gmt is
-	 * within the last $window seconds.
+	 * Count actions in our group with the given status whose last attempt
+	 * (the time they failed or finished) is within the last $window seconds.
+	 *
+	 * The cut-off must be a \DateTime. Action Scheduler applies `modified`
+	 * and `date` only to a DateTime (not even a DateTimeImmutable) and
+	 * silently drops anything else: this used to pass a date string, so the
+	 * "Failed (24h)" and "Done (24h)" tiles counted every row ever kept, and
+	 * one failure from weeks ago still read as a failure today. `modified`
+	 * filters last_attempt_gmt, which is indexed; `date` would filter when the
+	 * job was due, not when it ran.
 	 *
 	 * @param string $status
 	 * @param int    $window
@@ -247,17 +255,15 @@ class Brikpanel_Cron_Page {
 			return 0;
 		}
 		try {
-			$store = ActionScheduler::store();
+			return (int) ActionScheduler::store()->query_actions( [
+				'group'            => Brikpanel_Cron::GROUP,
+				'status'           => $status,
+				'modified'         => new \DateTime( '@' . ( time() - (int) $window ) ),
+				'modified_compare' => '>=',
+			], 'count' );
 		} catch ( \Throwable $e ) {
 			return 0;
 		}
-		$since = gmdate( 'Y-m-d H:i:s', time() - (int) $window );
-		return (int) $store->query_actions( [
-			'group'         => Brikpanel_Cron::GROUP,
-			'status'        => $status,
-			'date'          => $since,
-			'date_compare'  => '>=',
-		], 'count' );
 	}
 
 	// =========================================================================

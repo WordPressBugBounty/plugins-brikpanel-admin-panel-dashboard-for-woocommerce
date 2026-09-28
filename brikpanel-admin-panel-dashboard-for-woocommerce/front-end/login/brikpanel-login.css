@@ -110,21 +110,26 @@ body.login {
 }
 
 /* ---------- Login Form Card ---------- */
+/* The reset password screen (#resetpassform) is the same card: it was left
+   out of these lists and kept WordPress's own look (field test D6). */
 #loginform,
 #lostpasswordform,
-#registerform {
+#registerform,
+#resetpassform {
     background: #ffffff;
     border: 1px solid #e3e3e3;
     border-radius: 0.75rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     padding: 1.5rem;
     margin: 0;
+    transition: box-shadow 0.2s ease;
 }
 
 /* ---------- Labels ---------- */
 #loginform label,
 #lostpasswordform label,
-#registerform label {
+#registerform label,
+#resetpassform p > label {
     display: block;
     font-size: 0.8125rem;
     font-weight: 600;
@@ -133,17 +138,14 @@ body.login {
     line-height: 1.5;
 }
 
-#loginform label[for="user_login"],
-#loginform label[for="user_pass"] {
-    margin-bottom: 0.375rem;
-}
-
 /* ---------- Input Fields ---------- */
 #loginform input[type="text"],
 #loginform input[type="password"],
 #lostpasswordform input[type="text"],
 #registerform input[type="text"],
-#registerform input[type="email"] {
+#registerform input[type="email"],
+#resetpassform input[type="text"],
+#resetpassform input[type="password"] {
     width: 100%;
     padding: 0.625rem 0.75rem;
     border: 1px solid #8a8a8a;
@@ -164,7 +166,9 @@ body.login {
 #loginform input[type="password"]:focus,
 #lostpasswordform input[type="text"]:focus,
 #registerform input[type="text"]:focus,
-#registerform input[type="email"]:focus {
+#registerform input[type="email"]:focus,
+#resetpassform input[type="text"]:focus,
+#resetpassform input[type="password"]:focus {
     border-color: var(--bp-input-focus, #303030);
     box-shadow: 0 0 0 1px var(--bp-input-focus, #303030);
 }
@@ -218,29 +222,100 @@ body.login {
     height: 1.125rem;
 }
 
-/* ---------- Form Rows / Spacing ---------- */
-#loginform p,
-#lostpasswordform p,
-#registerform p {
+/* ---------- Form Rows / Spacing ----------
+   One rhythm on every login form: label to box .375rem (the label rule above),
+   row to row .75rem, last row to the button 1rem. Every selector starts with
+   #login: WordPress's own `#login form p { margin-bottom: 0 }` (1,0,2) beat the
+   old `#loginform p` (1,0,1), so the username box sat right on the Password
+   label and the gaps below it came from float clearing (field test D6). */
+#login #loginform > p,
+#login #loginform > .user-pass-wrap,
+#login #lostpasswordform > p,
+#login #registerform > p,
+#login #resetpassform > p,
+#login #resetpassform > .user-pass1-wrap {
     margin: 0 0 0.75rem;
 }
 
-#loginform p:last-of-type,
-#lostpasswordform p:last-of-type,
-#registerform p:last-of-type {
-    margin-bottom: 0;
+#login :is(#loginform, #lostpasswordform, #registerform, #resetpassform) > p.submit {
+    margin: 1rem 0 0;
 }
 
-/* Username field container */
-#loginform .user-pass-wrap {
-    margin-bottom: 0.75rem;
+/* WordPress floats Remember Me left and the button right. */
+#login #loginform .forgetmenot,
+#login #wp-submit {
+    float: none;
+}
+
+/* Reset password: the label's own row, the strength meter under the box, and
+   "Generate password" as the secondary button above "Save password". */
+#login #resetpassform .user-pass1-wrap > p {
+    margin: 0;
+}
+
+/* Here .wp-pwd also holds the strength meter, so centring the eye button on
+   the whole wrapper put it on the box's bottom edge: centre it on the 43px box
+   (padding 2 x .625rem + a 1.5 line of .875rem + 2px border). */
+#login #resetpassform .wp-pwd .button.wp-hide-pw {
+    top: calc(0.625rem + 0.65625rem + 1px);
+}
+
+#login #resetpassform #pass-strength-result {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0.5rem 0 0;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+}
+
+#login #resetpassform .pw-weak {
+    margin-top: 0.5rem;
+}
+
+#login #resetpassform .indicator-hint {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: #616161;
+}
+
+#login #resetpassform .reset-pass-submit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#login #resetpassform .reset-pass-submit .wp-generate-pw {
+    float: none;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 550;
+    line-height: 1.5;
+    color: #303030;
+    background: #ffffff;
+    border: 0;
+    border-radius: 0.5rem;
+    box-shadow: inset 0 0 0 1px #e3e3e3, 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+
+#login #resetpassform .reset-pass-submit .wp-generate-pw:hover,
+#login #resetpassform .reset-pass-submit .wp-generate-pw:focus {
+    color: #303030;
+    background: #f7f7f7;
+    box-shadow: inset 0 0 0 1px #e3e3e3, 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+
+#login #resetpassform .reset-pass-submit .wp-generate-pw:focus-visible {
+    outline: 2px solid #303030;
+    outline-offset: 2px;
 }
 
 /* ---------- Remember Me + Submit Row ---------- */
 .forgetmenot {
     display: flex;
     align-items: center;
-    margin-bottom: 1rem !important;
 }
 
 .forgetmenot label {
@@ -316,7 +391,6 @@ body.login {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: 0.25rem;
 }
 
 #wp-submit:hover,
@@ -335,9 +409,8 @@ body.login {
     box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--bp-primary, #303030), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
 }
 
-/* Submit wrapper */
+/* Submit wrapper (its top margin is in the rhythm above) */
 .submit {
-    margin-top: 0.25rem !important;
     padding: 0 !important;
 }
 
@@ -364,7 +437,7 @@ body.login {
     display: flex !important;
     justify-content: center !important;
     align-items: center;
-    margin: 0.75rem -0.5rem 0.25rem !important;
+    margin: 0 -0.5rem 0.75rem !important;
     padding: 0 !important;
     overflow: visible;
     min-width: 0;
@@ -521,7 +594,7 @@ body.login {
     text-align: center;
     margin-top: 2rem;
     font-size: 0.75rem;
-    color: #8a8a8a;
+    color: #616161;
     line-height: 1.5;
 }
 
@@ -553,22 +626,18 @@ body.login {
 
     #loginform,
     #lostpasswordform,
-    #registerform {
+    #registerform,
+    #resetpassform {
         padding: 1.25rem;
         border-radius: 0.5rem;
     }
 }
 
-/* ---------- Transition for form elements ---------- */
-#loginform,
-#lostpasswordform,
-#registerform {
-    transition: box-shadow 0.2s ease;
-}
-
+/* ---------- Focus lift of the form card ---------- */
 #loginform:focus-within,
 #lostpasswordform:focus-within,
-#registerform:focus-within {
+#registerform:focus-within,
+#resetpassform:focus-within {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -581,11 +650,6 @@ body.login {
 /* Remove WP default padding on p.submit */
 .login form .submit {
     padding-top: 0;
-}
-
-/* Fix the password field label spacing */
-.user-pass-wrap > label {
-    margin-bottom: 0.375rem;
 }
 
 /* ---------- RTL ---------- */

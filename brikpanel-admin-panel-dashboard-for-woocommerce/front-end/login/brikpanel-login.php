@@ -303,7 +303,7 @@ class Brikpanel_Login {
                 <?php
                 printf(
                     /* translators: %s: site name */
-                    esc_html__( '%s — Powered by WordPress', 'brikpanel' ),
+                    esc_html__( '%s · Powered by WordPress', 'brikpanel' ),
                     esc_html( $site_name )
                 );
                 ?>

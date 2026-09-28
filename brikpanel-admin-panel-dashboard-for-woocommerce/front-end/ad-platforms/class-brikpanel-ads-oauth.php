@@ -201,6 +201,9 @@ class Brikpanel_Ads_OAuth {
 
 		Brikpanel_Ads_Tokens::disconnect( $platform );
 		Brikpanel_Ads_Tokens::clear_needs_reconnect( $platform );
+		if ( class_exists( 'Brikpanel_Ads_Settings' ) ) {
+			Brikpanel_Ads_Settings::forget_account_list( $platform );
+		}
 
 		// The confirmation dialog promises "your synced spend data will be
 		// deleted", and until now nothing ever deleted it. The leftover rows
@@ -350,10 +353,12 @@ class Brikpanel_Ads_OAuth {
 		}
 
 		// The card must stop announcing a stopped history import the moment the
-		// merchant fixes the connection. Reconnecting wipes primary_account, so
-		// the backfill flag below finds no account and schedules nothing, and
-		// the halted record would otherwise sit there saying "connection lost"
-		// over a healthy connection for good.
+		// merchant fixes the connection. A connection that died took the account
+		// selection with it, so the backfill flag below finds no account and
+		// queues nothing, and the halted record would otherwise sit there saying
+		// "connection lost" over a healthy connection for good. Only the halt is
+		// cleared: the per-account progress stays, so ticking the accounts again
+		// resumes the imports that had not finished.
 		if ( class_exists( 'Brikpanel_Ads_Sync' ) ) {
 			Brikpanel_Ads_Sync::clear_halted_backfill( $platform );
 		}

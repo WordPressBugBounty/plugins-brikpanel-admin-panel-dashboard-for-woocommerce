@@ -408,6 +408,44 @@ function brikpanel_module_off_render_page() {
 	$fallback       = ! empty( $page['fallback'] ) ? (string) $page['fallback'] : admin_url( 'index.php' );
 	$fallback_label = ! empty( $page['fallback_label'] ) ? (string) $page['fallback_label'] : __( 'Back to the dashboard', 'brikpanel' );
 
+	$actions = [];
+	if ( $settings !== '' ) {
+		$actions[] = [
+			'label'   => __( 'Turn it on in Settings', 'brikpanel' ),
+			'url'     => $settings,
+			'primary' => true,
+		];
+	}
+	$actions[] = [
+		'label'   => $fallback_label,
+		'url'     => $fallback,
+		'primary' => $settings === '',
+	];
+
+	brikpanel_render_notice_card( [
+		'icon'    => 'power',
+		'title'   => $title,
+		'text'    => $text,
+		'actions' => $actions,
+	] );
+}
+
+/**
+ * The explanation card BrikPanel shows in place of a page the user cannot
+ * open here: a module switched off (above), or a page the Navigation rules
+ * close (front-end/navigation/brikpanel-nav-page-access.php). One card, so the
+ * two never drift apart.
+ *
+ * @param array{icon?:string,title:string,text:string,actions:array<int,array{label:string,url:string,primary?:bool}>} $card
+ *        icon: 'power' (switched off) or 'lock' (closed to this user).
+ * @return void
+ */
+function brikpanel_render_notice_card( array $card ) {
+	$title   = isset( $card['title'] ) ? (string) $card['title'] : '';
+	$text    = isset( $card['text'] ) ? (string) $card['text'] : '';
+	$icon    = ( isset( $card['icon'] ) && 'lock' === $card['icon'] ) ? 'lock' : 'power';
+	$actions = ( isset( $card['actions'] ) && is_array( $card['actions'] ) ) ? $card['actions'] : [];
+
 	// Styles inline, scoped to this page: for a user BrikPanel is switched off
 	// for, the asset sweep removes every BrikPanel stylesheet.
 	?>
@@ -423,12 +461,18 @@ function brikpanel_module_off_render_page() {
 		.brikpanel-module-off .brikpanel-module-off__btn:focus-visible { outline: 2px solid #303030; outline-offset: 2px; box-shadow: none; }
 		.brikpanel-module-off .brikpanel-module-off__btn--primary { background: #303030; color: #fff; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .1); }
 		.brikpanel-module-off .brikpanel-module-off__btn--primary:hover { background: #1a1a1a; color: #fff; }
+		/* In the narrow page shell (brikpanel_shell_pages()) the shell gives the
+		   page its width and one symmetric gutter; the card keeps its own width
+		   and some air above it. Without the shell (BrikPanel switched off for
+		   this user) the rules above lay the page out alone. */
+		body.brikpanel-shell .brikpanel-module-off .brikpanel-module-off__card { box-sizing: border-box; max-width: 560px; margin: 1.75rem auto 0; }
 		@media (max-width: 600px) {
 			.brikpanel-module-off { margin-top: 1.5rem; padding: 0; }
 			.brikpanel-module-off .brikpanel-module-off__card { padding: 1.5rem 1.25rem 1.25rem; }
+			body.brikpanel-shell .brikpanel-module-off .brikpanel-module-off__card { margin-top: .5rem; }
 		}
 	</style>
-	<div class="wrap brikpanel-module-off">
+	<div class="wrap brikpanel-module-off brikpanel-shell__page">
 		<?php
 		// The page title for assistive tech and the notice marker come first,
 		// so WordPress puts any notice above the card, not inside it (B5).
@@ -437,15 +481,23 @@ function brikpanel_module_off_render_page() {
 		<?php brikpanel_header_end(); ?>
 		<div class="brikpanel-module-off__card">
 			<span class="brikpanel-module-off__icon" aria-hidden="true">
+				<?php if ( 'lock' === $icon ) : ?>
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+				<?php else : ?>
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+				<?php endif; ?>
 			</span>
 			<h2 class="brikpanel-module-off__title" aria-hidden="true"><?php echo esc_html( $title ); ?></h2>
 			<p class="brikpanel-module-off__text"><?php echo esc_html( $text ); ?></p>
 			<div class="brikpanel-module-off__actions">
-				<?php if ( $settings !== '' ) : ?>
-					<a class="brikpanel-module-off__btn brikpanel-module-off__btn--primary" href="<?php echo esc_url( $settings ); ?>"><?php esc_html_e( 'Turn it on in Settings', 'brikpanel' ); ?></a>
-				<?php endif; ?>
-				<a class="brikpanel-module-off__btn<?php echo $settings === '' ? ' brikpanel-module-off__btn--primary' : ''; ?>" href="<?php echo esc_url( $fallback ); ?>"><?php echo esc_html( $fallback_label ); ?></a>
+				<?php foreach ( $actions as $action ) : ?>
+					<?php
+					if ( ! is_array( $action ) || empty( $action['url'] ) || ! isset( $action['label'] ) ) {
+						continue;
+					}
+					?>
+					<a class="brikpanel-module-off__btn<?php echo ! empty( $action['primary'] ) ? ' brikpanel-module-off__btn--primary' : ''; ?>" href="<?php echo esc_url( (string) $action['url'] ); ?>"><?php echo esc_html( (string) $action['label'] ); ?></a>
+				<?php endforeach; ?>
 			</div>
 		</div>
 	</div>

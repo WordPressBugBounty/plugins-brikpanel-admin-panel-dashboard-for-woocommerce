@@ -584,7 +584,7 @@ function brikpanel_brikmentor_render_fab() {
         .brikpanel-bm-panel__ghost {
             background: transparent; border: none; cursor: pointer; text-decoration: none;
             padding: 0.375rem 0.5rem; border-radius: 0.375rem;
-            font-size: 0.8125rem; font-weight: 550; font-family: inherit; color: #8a8a8a;
+            font-size: 0.8125rem; font-weight: 550; font-family: inherit; color: #616161;
             transition: background 0.15s ease, color 0.15s ease;
         }
         .brikpanel-bm-panel__ghost:hover { background: #f7f7f7; color: #303030; text-decoration: none; }
@@ -857,14 +857,21 @@ function brikpanel_brikmentor_render_settings_field( $field ) {
                 );
                 ?>
             </p>
-            <a class="button button-primary brikpanel-bm-settings-btn" href="<?php echo esc_url( $checkout_url ); ?>" target="_blank" rel="noopener noreferrer">
-                <?php echo esc_html( brikpanel_brikmentor_price_text( __( 'Try BrikMentor for %s', 'brikpanel' ) ) ); ?>
-            </a>
-            <a class="brikpanel-bm-settings-learn" href="<?php echo esc_url( $cta_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Learn more', 'brikpanel' ); ?></a>
+            <?php
+            // The shared dark button (front-end/shared/brikpanel-ui.css): WordPress's
+            // button-primary took the admin color scheme's accent, blue by default
+            // and red under Midnight (field test D4).
+            ?>
+            <div class="brikpanel-bm-settings-actions">
+                <a class="brikpanel-btn brikpanel-btn--primary brikpanel-bm-settings-btn" href="<?php echo esc_url( $checkout_url ); ?>" target="_blank" rel="noopener noreferrer">
+                    <?php echo esc_html( brikpanel_brikmentor_price_text( __( 'Try BrikMentor for %s', 'brikpanel' ) ) ); ?>
+                </a>
+                <a class="brikpanel-bm-settings-learn" href="<?php echo esc_url( $cta_url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'Learn more', 'brikpanel' ); ?></a>
+            </div>
             <style>
                 .brikpanel-bm-settings-desc { max-width: 640px; color: #616161; margin: 0 0 0.75rem; }
-                .brikpanel-bm-settings-btn { display: inline-flex; align-items: center; }
-                .brikpanel-bm-settings-learn { margin-inline-start: 0.75rem; color: #616161; text-decoration: none; font-size: 0.8125rem; }
+                .brikpanel-bm-settings-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+                .brikpanel-bm-settings-learn { color: #616161; text-decoration: none; font-size: 0.8125rem; }
                 .brikpanel-bm-settings-learn:hover { color: #303030; }
             </style>
         </td>
@@ -1172,7 +1179,7 @@ function brikpanel_brikmentor_render_announce() {
         .brikpanel-bm-ann__ghost {
             background: transparent; border: none; cursor: pointer; text-decoration: none;
             padding: 0.375rem 0.5rem; border-radius: 0.375rem;
-            font-size: 0.8125rem; font-weight: 550; font-family: inherit; color: #8a8a8a;
+            font-size: 0.8125rem; font-weight: 550; font-family: inherit; color: #616161;
             transition: background 0.15s ease, color 0.15s ease;
         }
         .brikpanel-bm-ann__ghost:hover { background: #f7f7f7; color: #303030; text-decoration: none; }
@@ -1356,7 +1363,7 @@ function brikpanel_brikmentor_pitch_amount( array $pitch ) {
     if ( function_exists( 'brikpanel_money_text' ) ) {
         return brikpanel_money_text( $amount, array( 'currency' => (string) ( $pitch['currency'] ?? '' ) ) );
     }
-    return number_format_i18n( $amount, 2 );
+    return brikpanel_number( $amount, 2 );
 }
 
 /**
@@ -1370,7 +1377,7 @@ function brikpanel_brikmentor_pitch_label( array $pitch ) {
     return sprintf(
         /* translators: %s: number of abandoned carts */
         _n( '%s abandoned cart in the last 30 days', '%s abandoned carts in the last 30 days', $count, 'brikpanel' ),
-        number_format_i18n( $count )
+        brikpanel_number( $count )
     );
 }
 
@@ -1607,7 +1614,7 @@ function brikpanel_brikmentor_rfm_label( array $pitch ) {
     return sprintf(
         /* translators: %s: number of customers in the At Risk, Can't Lose Them and Hibernating segments */
         _n( '%s customer is drifting away', '%s customers are drifting away', $count, 'brikpanel' ),
-        number_format_i18n( $count )
+        brikpanel_number( $count )
     );
 }
 
@@ -1650,7 +1657,7 @@ function brikpanel_brikmentor_render_analytics_pitch() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.5l2.95 5.98 6.6.96-4.78 4.66 1.13 6.58L12 17.58l-5.9 3.1 1.13-6.58L2.45 9.44l6.6-.96L12 2.5z" fill="#fff"/></svg>
         </div>
         <div class="brikpanel-bm-pitch__stat">
-            <span class="brikpanel-bm-pitch__amount"><?php echo esc_html( number_format_i18n( (int) $pitch['count'] ) ); ?></span>
+            <span class="brikpanel-bm-pitch__amount"><?php echo esc_html( brikpanel_number( (int) $pitch['count'] ) ); ?></span>
             <span class="brikpanel-bm-pitch__label"><?php echo esc_html( brikpanel_brikmentor_rfm_label( $pitch ) ); ?></span>
         </div>
         <div class="brikpanel-ea-card__text">
@@ -1767,7 +1774,7 @@ function brikpanel_brikmentor_menu_badge( $title, $slug ) {
     if ( BRIKPANEL_BM_PAGE_SLUG !== (string) $slug ) {
         return $title;
     }
-    return $title . ' <span class="brikpanel-nav-badge-new">' . esc_html__( 'New', 'brikpanel' ) . '</span>';
+    return $title . ' <span class="brikpanel-badge brikpanel-badge--new brikpanel-nav-badge-new">' . esc_html__( 'New', 'brikpanel' ) . '</span>';
 }
 
 /**
@@ -1904,7 +1911,7 @@ function brikpanel_brikmentor_render_page() {
         array( 'phone', __( 'Unlocks phone numbers and one-click WhatsApp messages on Abandoned Carts.', 'brikpanel' ) ),
     );
     ?>
-    <div class="wrap brikpanel-bm-page">
+    <div class="wrap brikpanel-bm-page brikpanel-shell__page">
         <div class="brikpanel-bm-page__head">
             <h1>BrikMentor</h1>
             <p class="brikpanel-bm-page__sub"><?php esc_html_e( 'The AI assistant and email marketing engine for your store data is out now. Automated cart recovery, win-back and segment campaigns, running inside WooCommerce.', 'brikpanel' ); ?></p>
@@ -1959,8 +1966,10 @@ function brikpanel_brikmentor_render_page() {
         </div>
     </div>
     <style>
+        /* Width, gutters and top spacing: the narrow page shell
+           (front-end/shared/brikpanel-ui.css, `brikpanel-shell__page`). */
         .brikpanel-bm-page {
-            max-width: 820px; margin: 1.25rem auto 2rem;
+            padding-bottom: 2rem;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: #303030;
         }
@@ -1996,7 +2005,7 @@ function brikpanel_brikmentor_render_page() {
         }
         .brikpanel-bm-page__price-label { font-size: 0.75rem; font-weight: 550; color: #616161; text-transform: uppercase; letter-spacing: 0.04em; }
         .brikpanel-bm-page__price-value { font-size: 1.125rem; font-weight: 600; color: #303030; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
-        .brikpanel-bm-page__then { margin: -0.125rem 0 0; padding: 0; text-align: center; font-size: 0.75rem; color: #8a8a8a; }
+        .brikpanel-bm-page__then { margin: -0.125rem 0 0; padding: 0; text-align: center; font-size: 0.75rem; color: #616161; }
         .brikpanel-bm-page__cta {
             display: flex; align-items: center; justify-content: center; text-align: center;
             padding: 0.625rem 1rem; border-radius: 0.5rem;
@@ -2010,7 +2019,7 @@ function brikpanel_brikmentor_render_page() {
         .brikpanel-bm-page__ghost {
             display: block; text-align: center; text-decoration: none;
             padding: 0.25rem 0.5rem; border-radius: 0.375rem;
-            font-size: 0.8125rem; font-weight: 550; color: #8a8a8a;
+            font-size: 0.8125rem; font-weight: 550; color: #616161;
             transition: background 0.15s ease, color 0.15s ease;
         }
         .brikpanel-bm-page__ghost:hover { background: #f7f7f7; color: #303030; }

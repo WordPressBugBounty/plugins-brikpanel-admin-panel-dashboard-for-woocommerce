@@ -7,6 +7,23 @@
 	--brikpanel-sidebar-width: 220px;
 }
 
+/* WordPress's accent color follows the user's admin color scheme (blue by
+   default, red under Midnight) and paints core buttons and focus rings. The
+   scheme only exists to match WordPress's own menu, which the BrikPanel look
+   replaces, so there the accent is BrikPanel's (field test D4/D8). The body
+   class comes from brikpanel_admin_body_class(); the untouched WordPress menu
+   (native mode) does not get it and keeps its scheme. (0,2,1) beats core's
+   and WooCommerce's `body.admin-color-*` (0,1,1) at any load order. A custom
+   accent from Appearance is printed later with the same selector. */
+body.wp-admin.brikpanel-chrome {
+	--wp-admin-theme-color: #303030;
+	--wp-admin-theme-color--rgb: 48, 48, 48;
+	--wp-admin-theme-color-darker-10: #1a1a1a;
+	--wp-admin-theme-color-darker-10--rgb: 26, 26, 26;
+	--wp-admin-theme-color-darker-20: #000;
+	--wp-admin-theme-color-darker-20--rgb: 0, 0, 0;
+}
+
 /* Brikpanel açma kapama butonu */
 .brikpanel-site-management-toggle,
 .brikpanel-menu-group-toggle {
@@ -342,20 +359,11 @@
 #brikpanel-navigation span.count-0 {
 	display: none;
 }
-/* "New" pill beside a freshly added sidebar item (BrikMentor). Sized like the
-   count bubbles above so a badged row stays exactly as tall as its neighbours;
-   filled dark like the nav customizer's own new-item badge. */
+/* "New" pill beside a freshly added sidebar item (BrikMentor). Its look is the
+   shared dark badge (.brikpanel-badge--new in front-end/shared/brikpanel-ui.css,
+   one line as tall as the count bubbles above); only its placement is here. */
 #brikpanel-navigation a > .brikpanel-nav-badge-new {
-	display: inline-block;
-	font-size: 0.6875rem;
-	font-weight: 600;
-	line-height: 16px;
-	color: #fff;
-	background: #303030;
-	border-radius: 0.5rem;
-	padding: 0 0.45rem;
 	margin-top: 0.06rem;
-	letter-spacing: 0.02em;
 }
 /* This ensures that no submenu item will get an icon, except for the
 WooCommerce submenu which we move out of a submenu visually. */

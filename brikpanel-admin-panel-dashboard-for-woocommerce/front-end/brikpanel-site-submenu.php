@@ -21,8 +21,16 @@ function brikpanel_customize_admin_bar($wp_admin_bar) {
     $brikpanel_orders_type = get_post_type_object( 'shop_order' );
     $brikpanel_product_type = get_post_type_object( 'product' );
 
+    // With "Block pages hidden from the menu" on, a screen the Navigation rules
+    // close for this user gets no shortcut either: it would only open the
+    // "not available" card. The check exists in wp-admin only; the storefront
+    // has no sidebar to hide anything.
+    $brikpanel_closed = static function ( $url ) {
+        return function_exists( 'brikpanel_nav_url_blocked_for_current_user' ) && brikpanel_nav_url_blocked_for_current_user( $url );
+    };
+
     // 🛒 "Orders" Menu (with custom SVG icon)
-    if ( $brikpanel_orders_type && current_user_can( $brikpanel_orders_type->cap->edit_posts ) ) {
+    if ( $brikpanel_orders_type && current_user_can( $brikpanel_orders_type->cap->edit_posts ) && ! $brikpanel_closed( admin_url( 'edit.php?post_type=shop_order' ) ) ) {
         $wp_admin_bar->add_node([
             'id'     => 'brikpanel_orders',
             'title'  => __('Orders', 'brikpanel'),
@@ -32,7 +40,7 @@ function brikpanel_customize_admin_bar($wp_admin_bar) {
     }
 
     // "Products" Menu
-    if ( $brikpanel_product_type && current_user_can( $brikpanel_product_type->cap->edit_posts ) ) {
+    if ( $brikpanel_product_type && current_user_can( $brikpanel_product_type->cap->edit_posts ) && ! $brikpanel_closed( admin_url( 'edit.php?post_type=product' ) ) ) {
         $wp_admin_bar->add_node([
             'id'     => 'brikpanel_products',
             'title'  => __('Products', 'brikpanel'),
@@ -49,7 +57,8 @@ function brikpanel_customize_admin_bar($wp_admin_bar) {
     // screen for the old fixed `/analytics/overview` link.
     if ( current_user_can( 'view_woocommerce_reports' )
         && function_exists( 'brikpanel_wc_analytics_enabled' )
-        && brikpanel_wc_analytics_enabled() ) {
+        && brikpanel_wc_analytics_enabled()
+        && ! $brikpanel_closed( brikpanel_wc_analytics_landing_url() ) ) {
         $wp_admin_bar->add_node([
             'id'     => 'brikpanel_analytics',
             'title'  => __('Analytics', 'brikpanel'),

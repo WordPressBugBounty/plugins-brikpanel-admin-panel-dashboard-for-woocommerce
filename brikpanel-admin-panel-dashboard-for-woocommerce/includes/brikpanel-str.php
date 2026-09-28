@@ -387,6 +387,38 @@ if ( ! function_exists( 'brikpanel_plain_label' ) ) {
 	}
 }
 
+if ( ! function_exists( 'brikpanel_product_label' ) ) {
+	/**
+	 * A product's name as plain text for a list that has its own SKU column
+	 * or line: the name, plus for a variation the options its title does not
+	 * already carry. Never the SKU or ID.
+	 *
+	 * WooCommerce's get_formatted_name() appends "(SKU)" (or "(#123)"), so the
+	 * dashboard's Low stock table read "Notebook 6 - White, S (BPT-V-0006-wh-s)"
+	 * next to a SKU column with the same code (field test E3). A variation's
+	 * title holds up to two option values ("Notebook 6 - White, S"); with more
+	 * options it is just the parent's name and the options follow here.
+	 *
+	 * @param WC_Product|false|null $product Product or variation.
+	 * @return string
+	 */
+	function brikpanel_product_label( $product ) {
+		if ( ! $product instanceof WC_Product ) {
+			return '';
+		}
+		$name = brikpanel_plain_label( $product->get_name() );
+		if ( $product->is_type( 'variation' ) && function_exists( 'wc_get_formatted_variation' ) ) {
+			// Flat, values only, skipping the options already in the title.
+			$extra = brikpanel_plain_label( wc_get_formatted_variation( $product, true, false, true ) );
+			if ( '' !== $extra ) {
+				$sep  = (string) apply_filters( 'woocommerce_product_variation_title_attributes_separator', ' - ', $product );
+				$name = ( '' !== $name ? $name . $sep : '' ) . $extra;
+			}
+		}
+		return $name;
+	}
+}
+
 if ( ! function_exists( 'brikpanel_term_ref' ) ) {
 	/**
 	 * A term name the browser will send back to be matched against the stored

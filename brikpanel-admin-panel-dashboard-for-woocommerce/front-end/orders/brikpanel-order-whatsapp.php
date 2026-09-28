@@ -926,6 +926,8 @@ add_filter( 'brikpanel_settings_fields', function ( $fields ) {
 			'id'       => BRIKPANEL_WHATSAPP_OPT_HIDDEN_ROLES,
 			'type'     => 'multiselect',
 			'class'    => 'wc-enhanced-select',
+			// What an empty box means, written inside it (field test D13).
+			'placeholder' => __( 'No roles selected: everyone sees it', 'brikpanel' ),
 			'desc'     => __( 'Users with any of the selected roles no longer see the WhatsApp shortcut, while everyone else keeps it. A user hidden this way can switch it back on for their own account from their WordPress profile page. Leave empty to show it to everyone who can manage WooCommerce orders.', 'brikpanel' ),
 			'desc_tip' => true,
 			'options'  => brikpanel_whatsapp_collect_roles(),
@@ -967,15 +969,16 @@ add_filter( 'brikpanel_settings_fields', function ( $fields ) {
 /**
  * The placeholders offered in the UI helper, as token => human description.
  *
- * Intentionally the same vocabulary as the status-change emails helper
+ * The same vocabulary as the status-change emails helper
  * (brikpanel_status_email_placeholder_help), so a merchant who has written one
  * already knows the other. Only the resolved values differ: plain text here,
- * HTML there.
+ * HTML there. The drafts add the tracking tokens while a tracking plugin is
+ * installed (front-end/orders/brikpanel-order-tracking.php).
  *
  * @return array<string,string>
  */
 function brikpanel_whatsapp_order_placeholder_help() {
-	return [
+	$help = [
 		'{customer_first_name}' => __( 'Customer first name', 'brikpanel' ),
 		'{customer_full_name}'  => __( 'Customer full name', 'brikpanel' ),
 		'{order_number}'        => __( 'Order number', 'brikpanel' ),
@@ -987,6 +990,29 @@ function brikpanel_whatsapp_order_placeholder_help() {
 		'{billing_email}'       => __( 'Customer email', 'brikpanel' ),
 		'{site_title}'          => __( 'Store name', 'brikpanel' ),
 	];
+
+	/**
+	 * Filter the placeholders offered under the WhatsApp messages.
+	 *
+	 * Pairs with brikpanel_whatsapp_order_tokens: a token a developer fills
+	 * there can be offered here, as a button that inserts it.
+	 *
+	 * @param array<string,string> $help Token => description.
+	 */
+	$filtered = apply_filters( 'brikpanel_whatsapp_order_placeholder_help', $help );
+	if ( ! is_array( $filtered ) ) {
+		return $help;
+	}
+
+	// Only real tokens: each is printed as an insert button and listed under the
+	// Message field.
+	$clean = [];
+	foreach ( $filtered as $token => $description ) {
+		if ( is_string( $token ) && preg_match( '/^\{[A-Za-z0-9_]+\}$/', $token ) && is_scalar( $description ) ) {
+			$clean[ $token ] = wp_strip_all_tags( (string) $description );
+		}
+	}
+	return $clean;
 }
 
 /**
@@ -1014,7 +1040,7 @@ function brikpanel_render_whatsapp_status_messages_field() {
 	}
 	?>
 	</table>
-	<section class="bp-cse-card">
+	<section class="bp-settings-card bp-settings-card--custom bp-cse-card">
 		<header class="bp-cos-card__head">
 			<div>
 				<h3 class="bp-cos-card__title"><?php esc_html_e( 'Message per order status', 'brikpanel' ); ?></h3>

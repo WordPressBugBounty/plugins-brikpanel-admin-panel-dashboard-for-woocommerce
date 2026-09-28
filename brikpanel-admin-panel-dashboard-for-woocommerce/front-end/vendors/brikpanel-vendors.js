@@ -55,9 +55,15 @@
         s = String(s || '');
         return s.length > n ? s.slice(0, n - 1) + '…' : s;
     }
+    // The store's price format (symbol side, separators, decimals) through
+    // front-end/shared/brikpanel-format.js; it was always "$1,234.56".
     function fmtMoney(n) {
         n = parseFloat(n) || 0;
-        return cfg.currency + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return window.brikpanelFormat ? window.brikpanelFormat.money(n) : cfg.currency + n.toFixed(2);
+    }
+    // A stored Y-m-d in the store's short date format.
+    function fmtDate(ymd) {
+        return window.brikpanelFormat ? window.brikpanelFormat.dateShort(ymd) : String(ymd || '');
     }
     function toast(message, isError) {
         var el = document.createElement('div');
@@ -248,10 +254,10 @@
                         (v.address ? '<div class="brikpanel-ven-vendor-meta">' + escapeHtml(truncate(v.address, 60)) + '</div>' : '') +
                         (v.default_shipping_fee_fmt ? '<div class="brikpanel-ven-vendor-meta">' + escapeHtml(cfg.i18n.ship || 'Shipping') + ': ' + escapeHtml(v.default_shipping_fee_fmt) + '</div>' : '') +
                     '</td>' +
-                    '<td>' + (contact ? contact : '<span style="color:#8a8a8a;">—</span>') + '</td>' +
+                    '<td>' + (contact ? contact : '<span style="color:#8a8a8a;">—</span>') + '</td>' + // contrast-ok: empty-value marker.
                     '<td class="brikpanel-ven-num">' + escapeHtml(v.spend_90d_fmt) + '</td>' +
                     '<td class="brikpanel-ven-num">' + leadHtml + '</td>' +
-                    '<td class="brikpanel-ven-num">' + (v.open_pos > 0 ? v.open_pos : '<span style="color:#8a8a8a;">0</span>') + '</td>' +
+                    '<td class="brikpanel-ven-num">' + (v.open_pos > 0 ? v.open_pos : '<span style="color:#616161;">0</span>') + '</td>' +
                     '<td class="brikpanel-ven-num brikpanel-fit-full">' +
                         '<div class="brikpanel-ven-row-actions">' +
                             '<a class="brikpanel-ven-btn brikpanel-ven-btn-icon" href="' + escapeAttr(detailUrl) + '" title="' + escapeAttr(cfg.i18n.view || 'View') + '" aria-label="' + escapeAttr(cfg.i18n.view || 'View') + '">' +
@@ -505,7 +511,7 @@
             } else {
                 if (vendor.default_lead_time_days > 0) {
                     setStatHtml('avg_lead_time', '<span class="brikpanel-ven-muted">' + vendor.default_lead_time_days + escapeHtml(cfg.i18n.days_short) + '</span>');
-                    setStatSub('default_lead_time', '<span class="brikpanel-ven-muted">' + escapeHtml(cfg.i18n.default_no_pos || 'default — no received POs yet') + '</span>');
+                    setStatSub('default_lead_time', '<span class="brikpanel-ven-muted">' + escapeHtml(cfg.i18n.default_no_pos || '') + '</span>');
                 } else {
                     setStatHtml('avg_lead_time', '—');
                     setStatSub('default_lead_time', '');
@@ -532,8 +538,8 @@
                             ? '<a class="brikpanel-ven-vendor-link" href="' + escapeAttr(cfg.so_edit_url + p.id) + '">' + escapeHtml(p.reference) + '</a>'
                             : escapeHtml(p.reference)) + '</td>' +
                         '<td><span class="brikpanel-ven-status brikpanel-ven-status--' + escapeAttr(p.status) + '">' + escapeHtml(p.status_label) + '</span></td>' +
-                        '<td>' + (p.order_date    ? escapeHtml(p.order_date)    : '<span class="brikpanel-ven-muted">—</span>') + '</td>' +
-                        '<td>' + (p.received_date ? escapeHtml(p.received_date) : '<span class="brikpanel-ven-muted">—</span>') + '</td>' +
+                        '<td>' + (p.order_date    ? escapeHtml(fmtDate(p.order_date))    : '<span class="brikpanel-ven-muted">—</span>') + '</td>' +
+                        '<td>' + (p.received_date ? escapeHtml(fmtDate(p.received_date)) : '<span class="brikpanel-ven-muted">—</span>') + '</td>' +
                         '<td class="brikpanel-ven-num">' + lead + '</td>' +
                         '<td class="brikpanel-ven-num brikpanel-fit-headline">' + escapeHtml(p.total_fmt) + '</td>' +
                     '</tr>';
@@ -602,7 +608,7 @@
                 svg += '<title>' + escapeHtml(t.label + ': ' + t.value_fmt) + '</title>';
                 svg += '</rect>';
                 // Month label
-                svg += '<text x="' + (x + barW / 2) + '" y="' + (h - 8) + '" text-anchor="middle" font-size="10" fill="#8a8a8a" font-family="-apple-system, Segoe UI, sans-serif">' + escapeHtml(t.label) + '</text>';
+                svg += '<text x="' + (x + barW / 2) + '" y="' + (h - 8) + '" text-anchor="middle" font-size="10" fill="#616161" font-family="-apple-system, Segoe UI, sans-serif">' + escapeHtml(t.label) + '</text>';
             }
             svg += '</svg>';
             dom.chart.innerHTML = svg;

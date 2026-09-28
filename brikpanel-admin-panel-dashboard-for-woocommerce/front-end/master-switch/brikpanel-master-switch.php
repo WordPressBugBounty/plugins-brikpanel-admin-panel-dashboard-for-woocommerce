@@ -382,7 +382,7 @@ class Brikpanel_Master_Switch {
    control that turns BrikPanel back on is always styled while the panel is off
    and the topbar CSS has been swept. */
 /* ---- In-top-bar switch (shown while BrikPanel is on) ---- */
-.brikpanel-topbar-masterswitch{display:inline-flex;align-items:center;gap:6px;padding:0 4px;height:32px;flex:0 0 auto;color:var(--bp-topbar-text-3,#8a8a8a);}
+.brikpanel-topbar-masterswitch{display:inline-flex;align-items:center;gap:6px;padding:0 4px;height:32px;flex:0 0 auto;color:var(--bp-topbar-placeholder,#8a8a8a);} /* contrast-ok: icon and switch only, no text. */
 .brikpanel-topbar-masterswitch-icon{flex:0 0 auto;}
 .brikpanel-masterswitch-toggle{position:relative;display:inline-block;width:40px;height:22px;flex:0 0 auto;border:0;padding:0;margin:0;border-radius:22px;background:#cccccc;cursor:pointer;transition:background .15s ease;-webkit-appearance:none;appearance:none;}
 .brikpanel-masterswitch-toggle.is-on{background:var(--bp-topbar-primary,#303030);}

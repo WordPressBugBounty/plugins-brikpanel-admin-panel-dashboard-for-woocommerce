@@ -116,8 +116,12 @@
 
 	function updateKpi(key, value) {
 		if (!$kpisContainer) return;
-		var card = $kpisContainer.querySelector('[data-kpi="' + key + '"] .brikpanel-cron-kpi-value'); // i18n-ignore: selector fragment
+		var box  = $kpisContainer.querySelector('[data-kpi="' + key + '"]'); // i18n-ignore: selector fragment
+		var card = box ? box.querySelector('.brikpanel-cron-kpi-value') : null; // i18n-ignore: selector fragment
+		var n    = (value === undefined || value === null) ? 0 : Number(value);
 		if (card) card.textContent = (value === undefined || value === null) ? '0' : String(value);
+		// Failed/Done take their colour only when they count something.
+		if (box) box.classList.toggle('is-nonzero', n > 0);
 	}
 
 	// ── List loader ──────────────────────────────────────────────────────────

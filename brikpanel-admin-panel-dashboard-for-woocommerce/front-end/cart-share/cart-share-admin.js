@@ -380,7 +380,7 @@
         }
 
         var select = document.createElement( 'select' );
-        select.className = 'brikpanel-cs-variation-select';
+        select.className = 'brikpanel-cs-variation-select brikpanel-control';
 
         var placeholder = document.createElement( 'option' );
         placeholder.value = '';
@@ -390,7 +390,7 @@
         ( row.variations || [] ).forEach( function ( v ) {
             var opt = document.createElement( 'option' );
             opt.value = String( v.id );
-            opt.textContent = v.label + ' — ' + v.price;
+            opt.textContent = v.label + ' · ' + v.price;
             if ( v.id === row.variationId ) {
                 opt.selected = true;
             }
@@ -398,12 +398,13 @@
         } );
 
         if ( ! row.variationId ) {
-            select.classList.add( 'is-required' );
+            select.classList.add( 'is-required', 'is-error' );
         }
 
         select.addEventListener( 'change', function () {
             row.variationId = parseInt( select.value, 10 ) || 0;
             select.classList.toggle( 'is-required', ! row.variationId );
+            select.classList.toggle( 'is-error', ! row.variationId );
             updateLink();
         } );
 

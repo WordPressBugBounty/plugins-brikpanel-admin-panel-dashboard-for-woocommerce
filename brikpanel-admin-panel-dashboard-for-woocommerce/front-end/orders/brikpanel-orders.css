@@ -1701,6 +1701,11 @@ status show in the order number area. This is not needed for Brikpanel’s mobil
 	height: 28px;
 }
 
+/* No activity in the range (or no data yet): keep the box, draw nothing. */
+.brikpanel-metric-spark.is-flat {
+	visibility: hidden;
+}
+
 .brikpanel-spark-svg {
 	display: block;
 	width: 100%;
@@ -2844,7 +2849,7 @@ body.post-type-shop_order .wp-list-table tbody th.column-primary {
 }
 
 .wp-list-table td.column-order_total del {
-	color: #8a8a8a;
+	color: #616161;
 	font-weight: 400;
 }
 
@@ -2889,7 +2894,7 @@ body.post-type-shop_order .wp-list-table tbody th.column-primary {
 .wp-list-table .order-status.status-failed { background-color: #fce4e4; color: #c62828; }
 .wp-list-table .order-status.status-trash { background-color: #fce4e4; color: #c62828; }
 .wp-list-table .order-status.status-checkout-draft,
-.wp-list-table .order-status.status-draft { background-color: #f1f1f1; color: #8a8a8a; }
+.wp-list-table .order-status.status-draft { background-color: #f1f1f1; color: #616161; }
 
 .wp-list-table .order-status.status-pending::before,
 .wp-list-table .order-status.status-checkout-draft::before,
@@ -3084,7 +3089,7 @@ body.bp-orders-compact .wp-list-table .column-payment_method {
 }
 
 .bp-order-muted {
-	color: #8a8a8a;
+	color: #616161;
 }
 
 body.bp-orders-compact .brikpanel-order-number {
@@ -3325,7 +3330,7 @@ body.bp-orders-compact .wp-list-table tbody tr.bp-order-detail:not(.inline-edit-
 
 .bp-od-via {
 	margin-top: 2px;
-	color: #8a8a8a;
+	color: #616161;
 }
 
 .bp-od-items {
@@ -3345,7 +3350,7 @@ body.bp-orders-compact .wp-list-table tbody tr.bp-order-detail:not(.inline-edit-
 }
 
 .bp-od-qty {
-	color: #8a8a8a;
+	color: #616161;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
@@ -3356,7 +3361,7 @@ body.bp-orders-compact .wp-list-table tbody tr.bp-order-detail:not(.inline-edit-
 
 .bp-od-options {
 	display: block;
-	color: #8a8a8a;
+	color: #616161;
 	font-size: .75rem;
 }
 

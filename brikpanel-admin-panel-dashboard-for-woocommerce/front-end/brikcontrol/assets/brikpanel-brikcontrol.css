@@ -17,15 +17,21 @@
     --bp-success-bg: #e4f5e1;
     --bp-error-bg: #fce4e4;
     --bp-error-border: #f1b0b0;
+    /* Text in a status colour: the dot, border and badge fills keep the bright
+       tone, words take a darker one that reads at 4.5:1 on white, the grey
+       figure boxes and the tinted badges alike. */
+    --bp-warning-text: #8a6100;
+    --bp-success-text: #1a6b15;
+    --bp-error-text: #b42318;
 }
 
 /* =============================================================================
    PAGE WRAPPER
+   Width, gutters and top spacing: the narrow page shell
+   (front-end/shared/brikpanel-ui.css, `brikpanel-shell__page`).
    ============================================================================= */
 .brikpanel-bc-wrap {
-    max-width: 880px;
-    margin: 1.5rem auto;
-    padding: 0 1rem;
+    padding-bottom: 1.5rem;
     color: #303030;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 0.875rem;
@@ -60,8 +66,10 @@
 }
 
 .brikpanel-bc-title {
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: var(--brikpanel-title-size, 1.125rem);
+    font-weight: var(--brikpanel-title-weight, 600);
+    line-height: var(--brikpanel-title-line, 1.3);
+    padding: 0;
     margin: 0 0 0.25rem 0;
     color: #303030;
 }
@@ -142,21 +150,25 @@
 }
 
 .brikpanel-bc-chip-label {
-    font-size: 0.75rem;
-    font-weight: 550;
+    font-size: var(--brikpanel-label-size, 0.8125rem);
+    font-weight: var(--brikpanel-label-weight, 550);
     color: #616161;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    text-transform: var(--brikpanel-caps-case, none);
+    letter-spacing: var(--brikpanel-caps-track, normal);
 }
 
 .brikpanel-bc-chip-critical { background: var(--bp-error-bg); border-color: var(--bp-error-border); }
-.brikpanel-bc-chip-critical .brikpanel-bc-chip-num { color: #d72c0d; }
+.brikpanel-bc-chip-critical .brikpanel-bc-chip-num { color: var(--bp-error-text); }
 .brikpanel-bc-chip-warning { background: var(--bp-warning-bg); border-color: var(--bp-warning-border); }
-.brikpanel-bc-chip-warning .brikpanel-bc-chip-num { color: var(--bp-warning); }
+.brikpanel-bc-chip-warning .brikpanel-bc-chip-num { color: var(--bp-warning-text); }
 .brikpanel-bc-chip-ok { background: var(--bp-success-bg); border-color: #b7e1b0; }
-.brikpanel-bc-chip-ok .brikpanel-bc-chip-num { color: #1a8917; }
+.brikpanel-bc-chip-ok .brikpanel-bc-chip-num { color: var(--bp-success-text); }
 .brikpanel-bc-chip-unknown { background: #f7f7f7; border-color: #e3e3e3; }
 .brikpanel-bc-chip-unknown .brikpanel-bc-chip-num { color: #616161; }
+/* A count of zero is not an alert: "0 warnings" was a yellow tile and read as
+   a problem (field test D5). Colour only a chip that counts something. */
+.brikpanel-bc-summary-chip.is-zero { background: #f7f7f7; border-color: #e3e3e3; }
+.brikpanel-bc-summary-chip.is-zero .brikpanel-bc-chip-num { color: #616161; }
 
 /* A phone keeps the three tiles in a row: less padding around and inside. */
 @media (max-width: 782px) {
@@ -170,8 +182,7 @@
     }
 
     .brikpanel-bc-wrap .brikpanel-bc-chip-label {
-        font-size: 0.6875rem;
-        letter-spacing: 0.02em;
+        font-size: 0.75rem;
     }
 }
 
@@ -270,8 +281,8 @@
 }
 
 .brikpanel-bc-card-title {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: var(--brikpanel-card-title-size, 0.9375rem);
+    font-weight: var(--brikpanel-card-title-weight, 600);
     margin: 0;
     color: #303030;
 }
@@ -284,8 +295,8 @@
     border-radius: 1rem;
     font-size: 0.75rem;
     font-weight: 550;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    text-transform: none;
+    letter-spacing: normal;
 }
 
 .brikpanel-bc-status-dot {
@@ -295,11 +306,11 @@
     display: inline-block;
 }
 
-.brikpanel-bc-status-critical { background: var(--bp-error-bg); color: #d72c0d; }
+.brikpanel-bc-status-critical { background: var(--bp-error-bg); color: var(--bp-error-text); }
 .brikpanel-bc-status-critical .brikpanel-bc-status-dot { background: #d72c0d; }
-.brikpanel-bc-status-warning { background: var(--bp-warning-bg); color: var(--bp-warning); }
+.brikpanel-bc-status-warning { background: var(--bp-warning-bg); color: var(--bp-warning-text); }
 .brikpanel-bc-status-warning .brikpanel-bc-status-dot { background: var(--bp-warning); }
-.brikpanel-bc-status-ok { background: var(--bp-success-bg); color: #1a8917; }
+.brikpanel-bc-status-ok { background: var(--bp-success-bg); color: var(--bp-success-text); }
 .brikpanel-bc-status-ok .brikpanel-bc-status-dot { background: #1a8917; }
 .brikpanel-bc-status-unknown { background: #f1f1f1; color: #616161; }
 .brikpanel-bc-status-unknown .brikpanel-bc-status-dot { background: #c0c0c0; }
@@ -320,7 +331,7 @@
 
 .brikpanel-bc-score-suffix {
     font-size: 0.75rem;
-    color: #8a8a8a;
+    color: #616161;
 }
 
 .brikpanel-bc-card-summary {
@@ -353,7 +364,7 @@
 
 .brikpanel-bc-plugin-pill {
     background: var(--bp-success-bg);
-    color: #1a8917;
+    color: var(--bp-success-text);
     border: 1px solid #b7e1b0;
     padding: 0.125rem 0.5rem;
     border-radius: 0.625rem;
@@ -406,25 +417,17 @@
     min-width: 0;
 }
 
-.brikpanel-bc-rec-link {
+/* A recommendation's buttons (the shared .brikpanel-btn): one link, or one
+   per plugin in a single row (field test E6: three rows that differed by one
+   word). They sit at the end of the row and wrap under the text when short of
+   room, never squeezing it. */
+.brikpanel-bc-rec-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     flex-shrink: 0;
+    max-width: 100%;
     margin-inline-start: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: #303030;
-    color: #fff !important;
-    padding: 0.3125rem 0.625rem;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    font-size: 0.75rem;
-    font-weight: 550;
-    transition: background-color 0.15s ease;
-}
-
-.brikpanel-bc-rec-link:hover {
-    background: #1a1a1a;
-    color: #fff;
 }
 
 /* Stats grid */
@@ -454,11 +457,15 @@
 }
 
 .brikpanel-bc-stat-label {
-    font-size: 0.6875rem;
+    font-size: var(--brikpanel-label-size, 0.8125rem);
     color: #616161;
-    text-transform: uppercase;
-    font-weight: 550;
-    letter-spacing: 0.03em;
+    text-transform: var(--brikpanel-caps-case, none);
+    font-weight: var(--brikpanel-label-weight, 550);
+    letter-spacing: var(--brikpanel-caps-track, normal);
+    /* One line per label: side by side, a label that wrapped left the row
+       ragged (field test E7). A label that does not fit makes the tiles
+       script (data-bp-tiles) choose fewer columns or the list. */
+    white-space: nowrap;
 }
 
 /* Figures of a check as a list when they do not fit side by side (data-bp-tiles). */
@@ -473,9 +480,14 @@
     gap: 0.75rem;
 }
 
-.brikpanel-bc-stat-warn .brikpanel-bc-stat-num { color: var(--bp-warning); }
-.brikpanel-bc-stat-good .brikpanel-bc-stat-num { color: #1a8917; }
-.brikpanel-bc-stat-error .brikpanel-bc-stat-num { color: #d72c0d; }
+/* In the list each label has its own row: it may wrap. */
+.brikpanel-bc-stats.is-tiles-list .brikpanel-bc-stat-label {
+    white-space: normal;
+}
+
+.brikpanel-bc-stat-warn .brikpanel-bc-stat-num { color: var(--bp-warning-text); }
+.brikpanel-bc-stat-good .brikpanel-bc-stat-num { color: var(--bp-success-text); }
+.brikpanel-bc-stat-error .brikpanel-bc-stat-num { color: var(--bp-error-text); }
 
 /* Per-check repair action */
 .brikpanel-bc-card-actions {
@@ -528,11 +540,11 @@
 }
 
 .brikpanel-bc-largest-table th {
-    font-weight: 550;
+    font-weight: var(--brikpanel-th-weight, 600);
     color: #616161;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    font-size: var(--brikpanel-th-size, 0.75rem);
+    text-transform: var(--brikpanel-caps-case, none);
+    letter-spacing: var(--brikpanel-caps-track, normal);
     background: #fff;
 }
 
@@ -585,12 +597,12 @@
 
 .brikpanel-bc-card-meta {
     font-size: 0.75rem;
-    color: #8a8a8a;
+    color: #616161;
 }
 
 .brikpanel-bc-empty-state {
     text-align: center;
-    color: #8a8a8a;
+    color: #616161;
     padding: 2rem 1rem;
 }
 
@@ -601,7 +613,7 @@
     position: relative;
 }
 
-.brikpanel-bc-state-ok { color: #8a8a8a; }
+.brikpanel-bc-state-ok { color: #616161; }
 .brikpanel-bc-state-warning { color: var(--bp-warning); }
 .brikpanel-bc-state-critical { color: #d72c0d; }
 
@@ -614,7 +626,7 @@
 
 .brikpanel-bc-last-scan {
     font-size: 0.75rem;
-    color: #8a8a8a;
+    color: #616161;
     font-weight: 400;
 }
 
@@ -669,7 +681,7 @@
 
 .brikpanel-bc-empty {
     padding: 1rem 0.875rem;
-    color: #8a8a8a;
+    color: #616161;
     font-size: 0.8125rem;
     text-align: center;
 }

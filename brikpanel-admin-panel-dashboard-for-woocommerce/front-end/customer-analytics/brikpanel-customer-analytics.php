@@ -37,7 +37,11 @@ class Brikpanel_Customer_Analytics {
 	 */
 	private function cached( $bucket, array $args, callable $compute ) {
 		$ver = (int) get_option( self::CACHE_VER_OPT, 1 );
-		$key = 'bp_ca_' . $ver . '_' . $bucket . '_' . md5( wp_json_encode( $args ) );
+		// The payloads carry translated text (segment names and descriptions,
+		// month names, the repeat line): admins who use different languages
+		// must not share one copy.
+		$locale = function_exists( 'determine_locale' ) ? determine_locale() : get_locale();
+		$key    = 'bp_ca_' . $ver . '_' . $bucket . '_' . md5( wp_json_encode( $args ) . '|' . $locale );
 		$hit = get_transient( $key );
 		if ( false !== $hit ) {
 			return $hit;
@@ -126,7 +130,21 @@ class Brikpanel_Customer_Analytics {
 	private function compute_metrics_meta() {
 		global $wpdb;
 		$tbl = $wpdb->prefix . 'brikpanel_customer_metrics';
-		$row = $wpdb->get_row( "SELECT MAX(computed_at) AS last_computed, COUNT(*) AS total FROM {$tbl}" ); // phpcs:ignore
+		$row   = $wpdb->get_row( "SELECT MAX(computed_at) AS last_computed, COUNT(*) AS total FROM {$tbl}" ); // phpcs:ignore
+		$total = (int) ( $row->total ?? 0 );
+
+		// A store without customers has an empty table whether the job ran or
+		// not, so the job leaves a marker when it finishes
+		// (includes/cron/customer-analytics-jobs.php). Without it the header
+		// said "The first sync is running" forever on a new store (field test F).
+		if ( $total > 0 ) {
+			$state = 'ready';
+		} elseif ( (int) get_option( 'brikpanel_ca_last_run', 0 ) > 0 ) {
+			$state = 'empty';
+		} else {
+			$state = 'never';
+		}
+
 		return [
 			// computed_at is written by MySQL's CURRENT_TIMESTAMP, so it is on the
 			// database session's clock: neither UTC nor store time. It is moved onto
@@ -135,8 +153,33 @@ class Brikpanel_Customer_Analytics {
 			// same clock.
 			'last_computed'  => brikpanel_local_datetime( brikpanel_db_clock_to_utc( $row ? $row->last_computed : '' ) ),
 			'last_computed_iso' => $row && $row->last_computed ? $row->last_computed : '',
-			'total_customers'   => (int) ( $row->total ?? 0 ),
+			'total_customers'   => $total,
+			'state'             => $state,
 		];
+	}
+
+	/**
+	 * The line under the page title, for the page and for Recompute now.
+	 * Kept short: the header row is fitted by width (brikpanel-fit-row.js),
+	 * and a long line pushes the buttons onto a row of their own.
+	 *
+	 * @param array $metrics From compute_metrics_meta().
+	 * @return string Plain text; the caller escapes it.
+	 */
+	private function meta_text( array $metrics ) {
+		$state = $metrics['state'] ?? 'never';
+		if ( 'ready' === $state ) {
+			return brikpanel_safe_sprintf(
+				/* translators: %s: timestamp */
+				__( 'Last refreshed: %s', 'brikpanel' ),
+				$metrics['last_computed']
+			);
+		}
+		if ( 'empty' === $state ) {
+			return __( 'No customers yet.', 'brikpanel' );
+		}
+		/* translators: "Recompute now" is the button next to this line; use the same words as that button's translation. */
+		return __( 'Not calculated yet. Use Recompute now, or wait for the nightly run.', 'brikpanel' );
 	}
 
 	// =========================================================================
@@ -175,6 +218,15 @@ class Brikpanel_Customer_Analytics {
 				'total_customers'    => $total_customers,
 				'repeat_customers'   => $repeat,
 				'repeat_rate'        => $total_customers > 0 ? round( $repeat / $total_customers * 100, 1 ) : 0,
+				// The line under Total customers, finished here: the plural form
+				// for the count and the percent sign where the language writes
+				// it. The browser pasted "0 repeat (0%)" together (field test E9).
+				'repeat_line'        => brikpanel_safe_sprintf(
+					/* translators: 1: number of repeat customers, 2: their share of all customers, already formatted with its percent sign, e.g. "12.5%". */
+					_n( '%1$s repeat (%2$s)', '%1$s repeat (%2$s)', $repeat, 'brikpanel' ),
+					brikpanel_number( $repeat ),
+					brikpanel_percent( $total_customers > 0 ? $repeat / $total_customers * 100 : 0 )
+				),
 				'avg_ltv'            => (float) ( $row->avg_ltv ?? 0 ),
 				'avg_ltv_display'    => $this->price( (float) ( $row->avg_ltv ?? 0 ) ),
 				'median_ltv'         => $median,
@@ -268,7 +320,9 @@ class Brikpanel_Customer_Analytics {
 
 	public function ajax_ltv_distribution() {
 		$this->check_auth();
-		$payload = $this->cached( 'ltv_distribution', [], function () {
+		// "_2": the payload gained `customers`; a copy cached before that must
+		// not be served until the next recompute bumps the version.
+		$payload = $this->cached( 'ltv_distribution_2', [], function () {
 			global $wpdb;
 			$tbl = $wpdb->prefix . 'brikpanel_customer_metrics';
 
@@ -278,7 +332,9 @@ class Brikpanel_Customer_Analytics {
 			$min    = (float) ( $bounds->lo ?? 0 );
 			$max    = (float) ( $bounds->hi ?? 0 );
 			if ( $total === 0 || $max <= 0 ) {
-				return [ 'bins' => [], 'currency_symbol' => $this->currency_symbol() ];
+				// No bins: the page tells "no customers" from "customers who
+				// have not spent anything yet" by this count (field test F3).
+				return [ 'bins' => [], 'customers' => $total, 'currency_symbol' => $this->currency_symbol() ];
 			}
 
 			$bin_count = min( 20, max( 5, (int) ceil( sqrt( $total ) ) ) );
@@ -318,6 +374,7 @@ class Brikpanel_Customer_Analytics {
 
 			return [
 				'bins'            => $bins,
+				'customers'       => $total,
 				'currency_symbol' => $this->currency_symbol(),
 			];
 		} );
@@ -427,7 +484,11 @@ class Brikpanel_Customer_Analytics {
 
 	public function ajax_rfm_summary() {
 		$this->check_auth();
-		$payload = $this->cached( 'rfm_summary', [], function () {
+		// "_4": the payload gained `scored`, then `rfm_supported`, then
+		// `rfm_supported` switched to the MariaDB-aware check (a cached false
+		// from MariaDB behind "5.5.5-" must not survive); see
+		// ajax_ltv_distribution() for why the key changes with the shape.
+		$payload = $this->cached( 'rfm_summary_4', [], function () {
 			global $wpdb;
 			$tbl = $wpdb->prefix . 'brikpanel_customer_metrics';
 
@@ -451,9 +512,11 @@ class Brikpanel_Customer_Analytics {
 			}
 
 			$segments = [];
+			$scored   = 0;
 			foreach ( $labels as $key => $meta ) {
-				$row   = $by_seg[ $key ] ?? null;
-				$count = $row ? (int) $row->customers : 0;
+				$row     = $by_seg[ $key ] ?? null;
+				$count   = $row ? (int) $row->customers : 0;
+				$scored += $count;
 				$segments[] = [
 					'key'               => $key,
 					'label'             => $meta['label'],
@@ -473,6 +536,15 @@ class Brikpanel_Customer_Analytics {
 			return [
 				'segments'        => $segments,
 				'total_customers' => $total_customers,
+				// False while none of the customers has a segment yet (the
+				// scoring pass has not labelled them): the page then says so
+				// instead of showing ten empty cards (field test F3).
+				'scored'          => $scored > 0,
+				// Scoring needs window functions: MySQL 8.0+ or MariaDB 10.2+
+				// (brikpanel_ca_assign_rfm_scores() zeroes every score below
+				// that, using the same helper). Such a store never gets
+				// segments, so it hears why.
+				'rfm_supported'   => brikpanel_db_supports_window_functions(),
 			];
 		} );
 		wp_send_json_success( $payload );
@@ -689,7 +761,7 @@ class Brikpanel_Customer_Analytics {
 					// $key is a bare 'Y-m-01' label, never an instant. strtotime() reads
 					// it as UTC midnight and date_i18n() then adds the site offset, which
 					// labelled every cohort with the previous month west of UTC.
-					'cohort_month_label' => brikpanel_local_label_date( $key, 'M Y' ),
+					'cohort_month_label' => brikpanel_local_label_date( $key, brikpanel_month_year_format() ),
 					'cohort_size'       => (int) $r->cohort_size,
 					'cells'             => [],
 				];
@@ -794,6 +866,9 @@ class Brikpanel_Customer_Analytics {
 				'rows_written' => (int) ( $ltv['rows_written'] ?? 0 ),
 				'cohort_rows'  => (int) ( $cohort['rows_written'] ?? 0 ),
 				'duration'     => round( ( $ltv['duration'] ?? 0 ) + ( $cohort['duration'] ?? 0 ), 3 ),
+				// The header line after this run ("No customers yet." on a
+				// new store instead of "Not calculated yet").
+				'meta_text'    => $this->meta_text( $this->compute_metrics_meta() ),
 			] );
 		} catch ( \Throwable $e ) {
 			wp_send_json_error( [ 'message' => $e->getMessage() ], 500 );
@@ -906,6 +981,8 @@ class Brikpanel_Customer_Analytics {
 			'resolved_count' => count( brikpanel_excluded_customer_ids() ),
 			'users'          => $this->describe_users( $user_ids ),
 			'roles'          => $roles,
+			// Same header line as Recompute now: this save recomputes too.
+			'meta_text'      => $this->meta_text( $this->compute_metrics_meta() ),
 		] );
 	}
 

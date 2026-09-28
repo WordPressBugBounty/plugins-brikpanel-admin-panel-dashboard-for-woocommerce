@@ -135,15 +135,14 @@ function brikpanel_prime_keys_always() {
 		'brikpanel_brikcontrol_scan_pileup_cleaned',
 
 		// Order-status buckets. Read through BRIKPANEL_PAID_STATUSES_OPTION /
-		// _REFUNDED_ / the default-status constant by every revenue query
-		// (dashboard cards, topbar stats, coupon reports), and those run on
-		// admin-ajax AND on the wc-analytics REST routes. REST is not an admin
-		// request, so the admin list does not cover it: measured 1-2 SELECTs
-		// per poll on a store that had never saved the Orders settings section.
-		// Small, read-mostly, and already invalidated by update_option_ hooks.
+		// _REFUNDED_ by every revenue query (dashboard cards, topbar stats,
+		// coupon reports), and those run on admin-ajax AND on the wc-analytics
+		// REST routes. REST is not an admin request, so the admin list does not
+		// cover it: measured 1-2 SELECTs per poll on a store that had never
+		// saved the Orders settings section. Small, read-mostly, and already
+		// invalidated by update_option_ hooks.
 		'brikpanel_paid_statuses',
 		'brikpanel_refunded_statuses',
-		'brikpanel_default_order_status',
 	);
 }
 
@@ -230,6 +229,9 @@ function brikpanel_prime_keys_admin() {
 
 		// Navigation customizer + appearance, read during menu/header render.
 		'brikpanel_nav_config',
+		// Read on every admin page: the page guard and the palette index.
+		'brikpanel_nav_block_hidden_pages',
+		'brikpanel_nav_hide_new_items',
 		'brikpanel_excluded_roles',
 		'brikpanel_excluded_user_ids',
 

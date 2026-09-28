@@ -504,7 +504,7 @@ function brikpanel_orders_compact_plain( $text ) {
  */
 function brikpanel_orders_compact_address_lines( $formatted, $skip = '', $street = array() ) {
 	$lower = static function ( $value ) {
-		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
+		return brikpanel_strtolower( $value );
 	};
 
 	$street_values = array();
@@ -742,6 +742,10 @@ function brikpanel_orders_compact_detail_html( $order ) {
 	// click handler is delegated on the document, so it works from here too.
 	if ( 'trash' !== $order->get_status() ) {
 		$actions .= '<button type="button" class="bp-od-btn bp-od-btn-secondary order-preview" data-order-id="' . absint( $order->get_id() ) . '">' . esc_html__( 'Preview', 'brikpanel' ) . '</button>';
+	}
+	// Trakoo's tracking number, without opening the order (front-end/orders/brikpanel-order-tracking.php).
+	if ( function_exists( 'brikpanel_order_tracking_button_html' ) ) {
+		$actions .= brikpanel_order_tracking_button_html( $order );
 	}
 
 	return '<template class="bp-order-detail-tpl"><div class="bp-od">'

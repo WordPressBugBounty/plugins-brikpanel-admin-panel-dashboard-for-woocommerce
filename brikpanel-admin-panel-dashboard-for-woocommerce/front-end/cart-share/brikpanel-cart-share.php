@@ -313,7 +313,7 @@ class Brikpanel_Cart_Share {
 
     public function render_page() {
         ?>
-        <div class="wrap">
+        <div class="wrap brikpanel-shell__page">
         <div class="brikpanel-cs" id="brikpanel-cart-share">
 
             <div class="brikpanel-cs-header">
@@ -331,7 +331,7 @@ class Brikpanel_Cart_Share {
                     <h2 class="brikpanel-cs-card-title"><?php esc_html_e( 'Products', 'brikpanel' ); ?></h2>
 
                     <div class="brikpanel-cs-search-field">
-                        <input type="text" id="bpcs-search" class="brikpanel-cs-search" autocomplete="off" placeholder="<?php esc_attr_e( 'Search products by name or SKU…', 'brikpanel' ); ?>">
+                        <input type="text" id="bpcs-search" class="brikpanel-cs-search brikpanel-control" autocomplete="off" placeholder="<?php esc_attr_e( 'Search products by name or SKU…', 'brikpanel' ); ?>">
                         <div class="brikpanel-cs-suggestions" id="bpcs-suggestions" hidden></div>
                     </div>
 
@@ -348,7 +348,7 @@ class Brikpanel_Cart_Share {
                     <h2 class="brikpanel-cs-card-title"><?php esc_html_e( 'Share link', 'brikpanel' ); ?></h2>
 
                     <div class="brikpanel-cs-link-row">
-                        <input type="text" id="bpcs-link" class="brikpanel-cs-link-input" readonly placeholder="<?php esc_attr_e( 'Your link appears here once you add a product.', 'brikpanel' ); ?>">
+                        <input type="text" id="bpcs-link" class="brikpanel-cs-link-input brikpanel-control" readonly placeholder="<?php esc_attr_e( 'Your link appears here once you add a product.', 'brikpanel' ); ?>">
                         <button type="button" class="brikpanel-cs-btn primary" id="bpcs-copy" disabled>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             <span><?php esc_html_e( 'Copy', 'brikpanel' ); ?></span>

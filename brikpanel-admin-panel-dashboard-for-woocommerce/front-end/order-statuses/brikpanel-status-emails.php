@@ -601,7 +601,7 @@ function brikpanel_render_status_emails_field() {
 	$help     = brikpanel_status_email_placeholder_help();
 	?>
 	</table>
-	<section class="bp-cse-card">
+	<section class="bp-settings-card bp-settings-card--custom bp-cse-card">
 		<header class="bp-cos-card__head">
 			<div>
 				<h3 class="bp-cos-card__title"><?php esc_html_e( 'Status change emails', 'brikpanel' ); ?></h3>

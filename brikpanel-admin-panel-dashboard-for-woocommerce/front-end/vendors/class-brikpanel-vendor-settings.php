@@ -86,7 +86,7 @@ class Brikpanel_Vendor_Settings {
 				'name'    => __( 'Enable supplier management', 'brikpanel' ),
 				'id'      => 'brikpanel_vendors_enabled',
 				'type'    => 'checkbox',
-				'desc'    => __( 'Master switch — turns the entire suppliers / procurement feature on or off. Off by default; enable it to see the Suppliers menu in the WordPress sidebar.', 'brikpanel' ),
+				'desc'    => __( 'Master switch: turns the entire suppliers / procurement feature on or off. Off by default; enable it to see the Suppliers menu in the WordPress sidebar.', 'brikpanel' ),
 				'default' => 'no',
 			],
 			[

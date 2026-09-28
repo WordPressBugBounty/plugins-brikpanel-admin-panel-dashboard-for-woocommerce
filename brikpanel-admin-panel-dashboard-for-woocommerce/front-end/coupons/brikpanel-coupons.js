@@ -656,13 +656,18 @@
         // Expiry
         var expiryHtml = '';
         if (c.expiry_date) {
-            var today = new Date();
-            today.setHours(0, 0, 0, 0);
-            var expiry = new Date(c.expiry_date + 'T23:59:59');
-            if (expiry < today) {
-                expiryHtml = '<span class="brikpanel-cp-expiry-expired">' + escHtml(c.expiry_date) + '</span>';
+            // The store's short date ("Sep 30, 2026"), not the raw 2026-09-30,
+            // and "expired" against the store's today, not the browser's.
+            var BFx = window.brikpanelFormat;
+            var shown = BFx ? BFx.dateShort(c.expiry_date) : c.expiry_date;
+            var now = BFx ? BFx.now() : null;
+            var todayYmd = now
+                ? now.y + '-' + (now.m < 10 ? '0' : '') + now.m + '-' + (now.d < 10 ? '0' : '') + now.d
+                : '';
+            if (todayYmd && c.expiry_date < todayYmd) {
+                expiryHtml = '<span class="brikpanel-cp-expiry-expired">' + escHtml(shown) + '</span>';
             } else {
-                expiryHtml = escHtml(c.expiry_date);
+                expiryHtml = escHtml(shown);
             }
         } else {
             expiryHtml = '<span class="brikpanel-cp-text-muted">&mdash;</span>';
@@ -707,14 +712,16 @@
             }
         }
 
-        // Row actions injected via post_row_actions filter.
+        // Row actions injected via post_row_actions filter, on their own grey
+        // line under the code (the shared row links in
+        // front-end/shared/brikpanel-ui.css).
         var aseActionsHtml = '';
         if (c.extra_actions && c.extra_actions.length) {
             var parts = [];
             for (var ai = 0; ai < c.extra_actions.length; ai++) {
                 parts.push('<span class="brikpanel-cp-row-action brikpanel-cp-row-action-' + escAttr(c.extra_actions[ai].id || '') + '">' + (c.extra_actions[ai].html || '') + '</span>');
             }
-            aseActionsHtml = '<div class="brikpanel-cp-row-actions">' + parts.join('') + '</div>';
+            aseActionsHtml = '<div class="brikpanel-row-links brikpanel-cp-row-actions">' + parts.join('') + '</div>';
         }
 
         return '<tr class="brikpanel-cp-row" data-id="' + c.id + '">' +
@@ -1116,7 +1123,7 @@
     function bulkStatusChange(newStatus) {
         if (!state.selected.length) return;
 
-        var confirmMsg = CP.i18n.confirm_bulk.replace('%d', state.selected.length);
+        var confirmMsg = window.brikpanelFormat ? window.brikpanelFormat.count(CP.i18n.confirm_bulk, state.selected.length) : '';
         if (!confirm(confirmMsg)) return;
 
         var pending = state.selected.length;
@@ -1149,7 +1156,7 @@
     function bulkTrash() {
         if (!state.selected.length) return;
 
-        var confirmMsg = CP.i18n.confirm_bulk_trash.replace('%d', state.selected.length);
+        var confirmMsg = window.brikpanelFormat ? window.brikpanelFormat.count(CP.i18n.confirm_bulk_trash, state.selected.length) : '';
         if (!confirm(confirmMsg)) return;
 
         var pending = state.selected.length;
@@ -1192,18 +1199,25 @@
     // PAGINATION
     // =========================================================================
 
+    // "Showing 1-20 of 57 coupons": plural by the total, numbers in the
+    // store's format (front-end/shared/brikpanel-format.js).
+    function showingText(msg, values) {
+        var BF = window.brikpanelFormat;
+        if (!BF) return '';
+        return BF.format(BF.plural(msg, state.total), values.map(function (v) { return BF.number(v); }));
+    }
+
     function renderPagination() {
         var $pag = $('#bpc-pagination');
         if (state.pages <= 1) {
-            var showingText = CP.i18n.showing.replace('%1$d', state.total).replace('%2$d', state.total);
-            $pag.html('<span class="brikpanel-cp-showing">' + showingText + '</span>');
+            $pag.html('<span class="brikpanel-cp-showing">' + escHtml(showingText(CP.i18n.showing, [state.total, state.total])) + '</span>');
             return;
         }
 
         var start = (state.page - 1) * state.per_page + 1;
         var end = Math.min(state.page * state.per_page, state.total);
         var html = '<span class="brikpanel-cp-showing">' +
-            CP.i18n.showing_range.replace('%1$d', start).replace('%2$d', end).replace('%3$d', state.total) +
+            escHtml(showingText(CP.i18n.showing_range, [start, end, state.total])) +
             '</span>';
 
         html += '<div class="brikpanel-cp-page-btns">';
@@ -1331,12 +1345,14 @@
         }
     }
 
+    // The store's price format and separators, the percent sign where the
+    // viewer's language writes it (front-end/shared/brikpanel-format.js). The
+    // symbol used to go in front whatever the store's setting (field test E2/E9).
     function formatAmount(amount, type) {
         if (!amount || parseFloat(amount) === 0) return '<span class="brikpanel-cp-text-muted">&mdash;</span>';
-        if (type === 'percent') {
-            return escHtml(amount) + '%';
-        }
-        return escHtml(CP.currency) + escHtml(amount);
+        var BF = window.brikpanelFormat;
+        if (!BF) return escHtml(amount);
+        return escHtml(type === 'percent' ? BF.percent(parseFloat(amount), 2) : BF.money(parseFloat(amount)));
     }
 
     function updateAmountPrefix() {

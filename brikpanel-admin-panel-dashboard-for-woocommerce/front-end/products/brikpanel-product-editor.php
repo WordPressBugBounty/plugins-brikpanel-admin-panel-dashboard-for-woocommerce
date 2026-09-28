@@ -930,6 +930,12 @@ class Brikpanel_Product_Editor {
         $scheduling_on = (get_option('brikpanel_pe_enable_scheduling', 'yes') === 'yes')
             || ($data['status'] === 'future');
 
+        // "Require a price to publish" (on by default). Off lets a store publish
+        // a product with no price, which WooCommerce's own editor allows: the
+        // product shows in the store but cannot be added to the cart. Drafts and
+        // variations never needed a price; this only marks the simple price box.
+        $require_price = get_option('brikpanel_pe_require_price', 'yes') === 'yes';
+
         // Backorder "Notify customer" sub-option — opt-in via settings.
         // When on, selecting "On backorder" reveals a radio group letting
         // the merchant pick between silent backorders and ones that flag
@@ -1203,14 +1209,16 @@ class Brikpanel_Product_Editor {
                         $pd = date_create($data['post_date'], wp_timezone());
                         if ($pd) { $pubdate_ts = $pd->getTimestamp(); }
                     }
-                    // Short date on the store's clock, about as wide as the label
-                    // the editor script writes at init (formatPubDateLabel()):
-                    // when the page arrives in pieces the header is painted with
-                    // this text first, and the store's full date format (e.g.
-                    // "September 22, 2026 12:49 pm") took the header to two rows
-                    // for that moment (field test B10).
+                    // The store's short date (F→M, l→D) and time format on the
+                    // store's clock, in the viewer's language. The editor script
+                    // writes the very same text at init and when the picker
+                    // changes (formatPubDateLabel() through brikpanelFormat), so
+                    // the header is measured once with its final label. The full
+                    // date format ("September 22, 2026 12:49 pm") took the header
+                    // to two rows (field test B10); the browser's language wrote
+                    // "22 Eyl 2026" on an English store (field test E2).
                     $pubdate_label = $pubdate_ts
-                        ? wp_date('j M Y ' . brikpanel_time_format(), $pubdate_ts)
+                        ? wp_date(brikpanel_short_date_format() . ' ' . brikpanel_time_format(), $pubdate_ts)
                         : __('Immediately', 'brikpanel');
                     ?>
                     <div class="brikpanel-pe-pubdate-wrap" id="bpe-pubdate-wrap">
@@ -1398,17 +1406,12 @@ class Brikpanel_Product_Editor {
                 </div>
             </div>
             <?php
-            // The whole header is here now: give the date label the text the
-            // editor script gives it at init (formatPubDateLabel() in
-            // brikpanel-product-editor.js, change both together) and fit once
-            // more, at once. Measured with a different text, the header could
-            // change level a moment after it was painted.
+            // The whole header is here now: fit it once more, at once. The date
+            // label already holds its final text (the server prints what
+            // formatPubDateLabel() writes), so the level chosen here stays.
             wp_print_inline_script_tag(
                 '(function(){'
-                . 'var h=document.getElementById("bpe-header"),l=document.getElementById("bpe-pubdate-label"),i=document.getElementById("bpe-schedule-date");'
-                . 'if(l&&i&&i.value){var d=new Date(i.value);if(!isNaN(d.getTime())){try{'
-                . 'l.textContent=d.toLocaleString(void 0,{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});'
-                . '}catch(e){}}}'
+                . 'var h=document.getElementById("bpe-header");'
                 . 'if(window.brikpanelFitRow&&h){var c=window.brikpanelFitRow.get(h)||window.brikpanelFitRow.auto(h);if(c){c.refit();}}'
                 . '})();'
             );
@@ -1746,7 +1749,7 @@ class Brikpanel_Product_Editor {
                                             <?php // Short placeholder: "Sale Price" in full overruns this box in
                                                   // longer languages. The aria-label and the tooltip still carry
                                                   // the full name. ?>
-                                            <input type="text" id="bpe-bulk-sale-price" data-price="1" placeholder="<?php echo esc_attr($bpe_ph_sale); ?>" aria-label="<?php esc_attr_e('Sale Price', 'brikpanel'); ?>" title="<?php esc_attr_e('Sale price for every variation', 'brikpanel'); ?>">
+                                            <input type="text" id="bpe-bulk-sale-price" data-price="1" placeholder="<?php echo esc_attr($bpe_ph_sale); ?>" aria-label="<?php esc_attr_e('Sale price', 'brikpanel'); ?>" title="<?php esc_attr_e('Sale price for every variation', 'brikpanel'); ?>">
                                         </div>
                                         <input type="number" id="bpe-bulk-stock" class="brikpanel-pe-input small brikpanel-pe-var-bulk-item" min="0" style="--bpe-ph:<?php echo (int) $bpe_ph_w($bpe_ph_stock); ?>" placeholder="<?php echo esc_attr($bpe_ph_stock); ?>" aria-label="<?php esc_attr_e('Stock', 'brikpanel'); ?>" title="<?php esc_attr_e('Stock quantity for every variation', 'brikpanel'); ?>">
                                         <select id="bpe-bulk-active" class="brikpanel-pe-select small brikpanel-pe-var-bulk-item" aria-label="<?php esc_attr_e('Active', 'brikpanel'); ?>" title="<?php esc_attr_e('Active state for every variation', 'brikpanel'); ?>">
@@ -1790,7 +1793,7 @@ class Brikpanel_Product_Editor {
                                       // onto a second line. The button carries a dot while any default
                                       // is set, so the collapsed state still reports itself. ?>
                                 <div class="brikpanel-pe-var-defaults" id="bpe-var-defaults" style="display:none">
-                                    <button type="button" class="brikpanel-pe-btn secondary small brikpanel-pe-var-defaults-toggle" id="bpe-var-defaults-toggle" aria-expanded="false" aria-controls="bpe-var-defaults-pop" aria-label="<?php esc_attr_e('Default Form Values', 'brikpanel'); ?>" title="<?php esc_attr_e('Choose which options are pre-selected on the product page. Leave blank for no default.', 'brikpanel'); ?>">
+                                    <button type="button" class="brikpanel-pe-btn secondary small brikpanel-pe-var-defaults-toggle" id="bpe-var-defaults-toggle" aria-expanded="false" aria-controls="bpe-var-defaults-pop" aria-label="<?php esc_attr_e('Default form values', 'brikpanel'); ?>" title="<?php esc_attr_e('Choose which options are pre-selected on the product page. Leave blank for no default.', 'brikpanel'); ?>">
                                         <span class="brikpanel-pe-var-defaults-dot" aria-hidden="true"></span>
                                         <?php // Short label on purpose: the strip is one line and the full
                                               // name would be its widest item by far. The popover title, the
@@ -1799,7 +1802,7 @@ class Brikpanel_Product_Editor {
                                         <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                                     </button>
                                     <div class="brikpanel-pe-var-defaults-pop" id="bpe-var-defaults-pop" hidden>
-                                        <span class="brikpanel-pe-var-defaults-title"><?php esc_html_e('Default Form Values', 'brikpanel'); ?></span>
+                                        <span class="brikpanel-pe-var-defaults-title"><?php esc_html_e('Default form values', 'brikpanel'); ?></span>
                                         <p class="brikpanel-pe-var-defaults-help"><?php esc_html_e('Choose which options are pre-selected on the product page. Leave blank for no default.', 'brikpanel'); ?></p>
                                         <div class="brikpanel-pe-var-defaults-row" id="bpe-var-defaults-row"></div>
                                     </div>
@@ -1823,7 +1826,7 @@ class Brikpanel_Product_Editor {
                                             <th class="var-expand-col"><button type="button" class="var-expand-all" id="bpe-var-expand-all" aria-expanded="false" aria-label="<?php esc_attr_e('Show all details', 'brikpanel'); ?>" title="<?php esc_attr_e('Show all details', 'brikpanel'); ?>"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></button></th>
                                             <th><?php esc_html_e('Variation', 'brikpanel'); ?></th>
                                             <th><?php esc_html_e('Price', 'brikpanel'); ?></th>
-                                            <th><?php esc_html_e('Sale Price', 'brikpanel'); ?></th>
+                                            <th><?php esc_html_e('Sale price', 'brikpanel'); ?></th>
                                             <th><?php esc_html_e('Stock', 'brikpanel'); ?></th>
                                             <?php if ($cogs_enabled) : ?><th><?php esc_html_e('COGS', 'brikpanel'); ?></th><?php endif; ?>
                                             <th class="var-delete-col" aria-hidden="true"></th>
@@ -1857,7 +1860,7 @@ class Brikpanel_Product_Editor {
                             <label for="bpe-price"><?php esc_html_e('Price', 'brikpanel'); ?></label>
                             <div class="brikpanel-pe-input-group">
                                 <span class="brikpanel-pe-input-prefix"><?php echo esc_html($currency); ?></span>
-                                <input type="text" id="bpe-price" value="<?php echo esc_attr($reg_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00" data-required="1" data-price="1">
+                                <input type="text" id="bpe-price" value="<?php echo esc_attr($reg_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00"<?php echo $require_price ? ' data-required="1"' : ''; ?> data-price="1">
                             </div>
                             <div class="brikpanel-pe-field-error"></div>
                         </div>
@@ -1880,7 +1883,7 @@ class Brikpanel_Product_Editor {
                             <input type="text" id="bpe-sale-to" value="<?php echo esc_attr($data['sale_to']); ?>" placeholder="<?php esc_attr_e('YYYY-MM-DD (optional)', 'brikpanel'); ?>" autocomplete="off">
                         </div>
                     </div>
-                    <p class="brikpanel-pe-help-text"><?php esc_html_e('Schedule your sale in advance — leave the dates empty to start it immediately or keep it running indefinitely.', 'brikpanel'); ?></p>
+                    <p class="brikpanel-pe-help-text"><?php esc_html_e('Schedule your sale in advance. Leave the dates empty to start it immediately or keep it running indefinitely.', 'brikpanel'); ?></p>
                 </div>
                 <?php $section_html['pricing'] = ob_get_clean(); endif; ?>
 
@@ -1908,7 +1911,7 @@ class Brikpanel_Product_Editor {
                                 <?php esc_html_e('Supplier', 'brikpanel'); ?>
                             </label>
                             <select id="bpe-vendor" class="brikpanel-pe-select brikpanel-pe-vendor-select" name="bp_vendor_id" data-vendor-current="<?php echo esc_attr((string) $bp_current_vendor); ?>">
-                                <option value="0"><?php esc_html_e('— None —', 'brikpanel'); ?></option>
+                                <option value="0"><?php esc_html_e('None', 'brikpanel'); ?></option>
                                 <?php foreach ($bp_vendor_options as $v_id => $v_name) : ?>
                                     <option value="<?php echo esc_attr((string) $v_id); ?>" <?php selected($bp_current_vendor, $v_id); ?>><?php echo esc_html($v_name); ?></option>
                                 <?php endforeach; ?>
@@ -1922,7 +1925,7 @@ class Brikpanel_Product_Editor {
                         <div class="brikpanel-pe-field brikpanel-pe-field-vendor">
                             <label for="bpe-vendor-sku">
                                 <?php esc_html_e('Supplier SKU', 'brikpanel'); ?>
-                                <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-vendor-sku">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-vendor-sku" role="tooltip"><?php esc_html_e('The supplier\'s product code. Optional — used by stock orders to match this product on incoming POs.', 'brikpanel'); ?></span></span>
+                                <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-vendor-sku">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-vendor-sku" role="tooltip"><?php esc_html_e('The supplier\'s product code. Optional; stock orders use it to match this product on incoming POs.', 'brikpanel'); ?></span></span>
                             </label>
                             <input type="text" id="bpe-vendor-sku" name="bp_vendor_sku" value="<?php echo esc_attr($bp_current_v_sku); ?>" placeholder="<?php esc_attr_e('Optional', 'brikpanel'); ?>">
                         </div>
@@ -2179,7 +2182,7 @@ class Brikpanel_Product_Editor {
                             <div class="brikpanel-pe-inline-form">
                                 <input type="text" id="bpe-new-cat-name" placeholder="<?php esc_attr_e('Category name', 'brikpanel'); ?>">
                                 <select id="bpe-new-cat-parent">
-                                    <option value="0"><?php esc_html_e('— No parent —', 'brikpanel'); ?></option>
+                                    <option value="0"><?php esc_html_e('No parent', 'brikpanel'); ?></option>
                                     <?php $this->render_category_parent_options($categories); ?>
                                 </select>
                                 <button type="button" class="brikpanel-pe-btn secondary small" id="bpe-add-cat-btn"><?php esc_html_e('Add', 'brikpanel'); ?></button>
@@ -2207,7 +2210,7 @@ class Brikpanel_Product_Editor {
                                 <input type="text" id="bpe-new-brand-name" placeholder="<?php esc_attr_e('Brand name', 'brikpanel'); ?>">
                                 <?php if ($brand_hierarchical) : ?>
                                 <select id="bpe-new-brand-parent">
-                                    <option value="0"><?php esc_html_e('— No parent —', 'brikpanel'); ?></option>
+                                    <option value="0"><?php esc_html_e('No parent', 'brikpanel'); ?></option>
                                     <?php $this->render_category_parent_options($brands); ?>
                                 </select>
                                 <?php endif; ?>
@@ -2236,7 +2239,7 @@ class Brikpanel_Product_Editor {
                     <div class="brikpanel-pe-toggle-row">
                         <span class="brikpanel-pe-toggle-label">
                             <?php esc_html_e('Virtual (no shipping)', 'brikpanel'); ?>
-                            <small class="brikpanel-pe-toggle-help"><?php esc_html_e('Service or intangible product — no physical shipping.', 'brikpanel'); ?></small>
+                            <small class="brikpanel-pe-toggle-help"><?php esc_html_e('Service or intangible product, no physical shipping.', 'brikpanel'); ?></small>
                         </span>
                         <label class="brikpanel-pe-switch">
                             <input type="checkbox" id="bpe-virtual-toggle" <?php checked(!empty($data['is_virtual'])); ?>>
@@ -2482,7 +2485,7 @@ class Brikpanel_Product_Editor {
                     <div class="brikpanel-pe-toggle-row">
                         <span>
                             <strong><?php esc_html_e('Hide from search engines', 'brikpanel'); ?></strong>
-                            <small style="display:block;color:#616161;font-weight:400;"><?php esc_html_e('Adds noindex — the product stays accessible but search engines will not list it.', 'brikpanel'); ?></small>
+                            <small style="display:block;color:#616161;font-weight:400;"><?php esc_html_e('Adds noindex: the product stays accessible but search engines will not list it.', 'brikpanel'); ?></small>
                         </span>
                         <label class="brikpanel-pe-switch">
                             <input type="checkbox" id="bpe-seo-noindex" <?php checked(!empty($data['seo_noindex'])); ?>>
@@ -7840,7 +7843,8 @@ class Brikpanel_Product_Editor {
             $cogs_raw       = sanitize_text_field( $_POST['cogs_value'] );
             $cogs_decimal   = brikpanel_set_product_cogs_raw( $product->get_id(), $cogs_raw );
             $cogs_submitted = $cogs_decimal;
-            if ( method_exists( $product, 'set_cogs_value' ) ) {
+            // Feature off, the setter stores nothing and writes to the error log.
+            if ( brikpanel_wc_cogs_enabled( $product ) ) {
                 $product->set_cogs_value( $cogs_decimal !== '' ? $cogs_decimal : null );
             }
             // A cost plugin's own input rides along in this submission (we
@@ -9946,7 +9950,7 @@ class Brikpanel_Product_Editor {
                 $var_cogs_raw       = sanitize_text_field( $var_data['cogs_value'] );
                 $var_cogs_decimal   = brikpanel_set_product_cogs_raw( $variation->get_id(), $var_cogs_raw );
                 $var_cogs_submitted = $var_cogs_decimal;
-                if ( method_exists( $variation, 'set_cogs_value' ) ) {
+                if ( brikpanel_wc_cogs_enabled( $variation ) ) {
                     $variation->set_cogs_value( $var_cogs_decimal !== '' ? $var_cogs_decimal : null );
                 }
                 // A cost plugin's per-variation input is re-emitted into $_POST

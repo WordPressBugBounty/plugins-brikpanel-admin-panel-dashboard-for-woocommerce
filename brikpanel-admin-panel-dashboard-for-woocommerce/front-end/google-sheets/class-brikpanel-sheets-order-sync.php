@@ -316,22 +316,22 @@ class Brikpanel_Sheets_Order_Sync {
 		Brikpanel_Cron::register_handler(
 			self::HOOK_REALTIME_FLUSH,
 			[ $this, 'handle_flush_realtime' ],
-			static function () { return [ 'label' => __( 'Sheets — flush new orders to Google Sheets', 'brikpanel' ) ]; }
+			static function () { return [ 'label' => __( 'Sheets: flush new orders to Google Sheets', 'brikpanel' ) ]; }
 		);
 		Brikpanel_Cron::register_handler(
 			self::HOOK_BULK_FLUSH,
 			[ $this, 'handle_flush_bulk' ],
-			static function () { return [ 'label' => __( 'Sheets — scheduled bulk order export', 'brikpanel' ) ]; }
+			static function () { return [ 'label' => __( 'Sheets: scheduled bulk order export', 'brikpanel' ) ]; }
 		);
 		Brikpanel_Cron::register_handler(
 			self::HOOK_UPDATE_ROWS,
 			[ $this, 'handle_update_rows' ],
-			static function () { return [ 'label' => __( 'Sheets — update changed-status order rows', 'brikpanel' ) ]; }
+			static function () { return [ 'label' => __( 'Sheets: update changed-status order rows', 'brikpanel' ) ]; }
 		);
 		Brikpanel_Cron::register_handler(
 			self::HOOK_PULL,
 			[ $this, 'handle_pull' ],
-			static function () { return [ 'label' => __( 'Sheets — pull order status changes from Google Sheets', 'brikpanel' ) ]; }
+			static function () { return [ 'label' => __( 'Sheets: pull order status changes from Google Sheets', 'brikpanel' ) ]; }
 		);
 
 		// Schedule recurring bulk export if user picked an interval.
@@ -836,7 +836,7 @@ class Brikpanel_Sheets_Order_Sync {
 			// concurrent edits slip past.
 			if ( $last_push_ts > 0 && $woo_modified_ts > ( $last_push_ts + 10 ) ) {
 				$conflicts++;
-				Brikpanel_Sheets_Logger::log( 'orders', 'Pull conflict for order ' . $order_id . ' — Woo modified after last push; re-pushing row.' );
+				Brikpanel_Sheets_Logger::log( 'orders', 'Pull conflict for order ' . $order_id . ': Woo modified after last push; re-pushing row.' );
 				// Re-push this row so the sheet catches up to Woo.
 				Brikpanel_Cron::enqueue_async( self::HOOK_UPDATE_ROWS, [ 'order_ids' => [ $order_id ] ] );
 				continue;
@@ -1122,7 +1122,7 @@ class Brikpanel_Sheets_Order_Sync {
 		$lock_key = self::FLUSH_LOCK;
 		$held_since = get_transient( $lock_key );
 		if ( $held_since && ( time() - (int) $held_since ) < self::FLUSH_LOCK_TTL ) {
-			Brikpanel_Sheets_Logger::log( 'orders', 'Skipping flush — another flush is in progress (lock held).' );
+			Brikpanel_Sheets_Logger::log( 'orders', 'Skipping flush: another flush is in progress (lock held).' );
 			// Flag it: a plain empty result reads as "everything is synced" to
 			// the interactive drain, which would then stop early and report
 			// success while a background job is still mid-export. The drain
@@ -1251,7 +1251,7 @@ class Brikpanel_Sheets_Order_Sync {
 				$skipped[] = $order->get_id();
 				Brikpanel_Sheets_Logger::log(
 					'orders',
-					'Skipped order ' . $order->get_id() . ' — could not build its rows: ' . $e->getMessage()
+					'Skipped order ' . $order->get_id() . ': could not build its rows: ' . $e->getMessage()
 				);
 				continue;
 			}

@@ -482,6 +482,55 @@ function brikpanel_wc_analytics_enabled() {
 }
 
 // -----------------------------------------------------------------------------
+// Cost of Goods Sold  (WC_Product::set_cogs_value, absent from WooCommerce 4.0.1)
+// -----------------------------------------------------------------------------
+
+/**
+ * Whether WooCommerce's own cost setter will actually store a cost.
+ *
+ * `WC_Product::set_cogs_value()` is not only missing on older stores. Where it
+ * exists but the "Cost of Goods Sold" feature is switched off, it stores
+ * nothing and calls wc_doing_it_wrong() instead, which on AJAX and REST
+ * requests (every BrikPanel save) goes straight to error_log(): one line per
+ * product or variation, on every save. So every caller asks this first.
+ *
+ * Skipping the setter while the feature is off loses nothing. The callers write
+ * the cost meta themselves beforehand (brikpanel_set_product_cogs_raw()), and
+ * WooCommerce's product data store only writes `_cogs_total_value` on save
+ * while the feature is on. The reverse is NOT safe: skipping it while
+ * WooCommerce says "on" lets save() write the object's old cost back over the
+ * one just typed. Hence every doubt answers true, and the answer comes from the
+ * same features engine WooCommerce's own check reads
+ * (CogsAwareTrait::cogs_is_enabled()), never from a guess of ours.
+ *
+ * Not cached: brikpanel_enable_cogs_default() can switch the option on earlier
+ * in the same request, and the check is only an autoloaded option read.
+ *
+ * @since 3.3.25
+ * @param WC_Product|null $product Product or variation about to receive a
+ *                                 cost; null asks about the store only.
+ * @return bool True when set_cogs_value() exists and should be called.
+ */
+function brikpanel_wc_cogs_enabled( $product = null ) {
+    if ( null !== $product && ( ! is_object( $product ) || ! method_exists( $product, 'set_cogs_value' ) ) ) {
+        return false;
+    }
+
+    if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' )
+        && method_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil', 'feature_is_enabled' ) ) {
+        try {
+            return (bool) \Automattic\WooCommerce\Utilities\FeaturesUtil::feature_is_enabled( 'cost_of_goods_sold' );
+        } catch ( \Throwable $e ) {
+            // Unsure means "call the setter": a stray log line is the lesser
+            // harm next to a cost that silently reverts on save.
+            return true;
+        }
+    }
+
+    return 'yes' === get_option( 'woocommerce_feature_cost_of_goods_sold_enabled' );
+}
+
+// -----------------------------------------------------------------------------
 // Admin screens that moved  (wc-orders 7.1, Analytics Overview 4.2 / WC Admin 1.2)
 // -----------------------------------------------------------------------------
 

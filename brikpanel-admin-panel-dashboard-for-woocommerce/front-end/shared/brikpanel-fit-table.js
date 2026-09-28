@@ -43,10 +43,17 @@
  *   slack        tolerated overflow in px before stacking (1)
  *   hysteresis   extra px a stacked table needs before it unstacks on a resize (0)
  *   cls          class set on the table while stacked ('is-stacked')
+ *   levels       class lists the table may take before it stacks, roomiest
+ *                first, e.g. ['', 'is-snug', 'is-snug is-fold']. Each level is
+ *                measured on its own copy and the first one that fits is set
+ *                on the table; only when none fits does it stack, keeping the
+ *                last level's classes. Scope the level rules with
+ *                `:not(.is-stacked)` where the stacked look must not get them.
  *   labels       'head' copies each header text into `data-bp-label` of the
  *                body cells in the same column (cells that have one are kept)
  *   prepareClone function(copy) run on the detached copy before it is measured
- *   onChange     function(stacked, controller) run when the state flips
+ *   onChange     function(stacked, controller) run when the state flips (or,
+ *                with `levels`, when the level changes: controller.level)
  *   spanRows     false keeps message rows as rendered. By default a body row
  *                with a single spanning cell (empty, loading, error) spans
  *                exactly the header cells that show: with `table-layout:fixed`
@@ -150,6 +157,23 @@
 		this.prepareClone = typeof opts.prepareClone === 'function' ? opts.prepareClone : null;
 		this.onChange = typeof opts.onChange === 'function' ? opts.onChange : null;
 		this.spanRows = opts.spanRows !== false;
+		this.levels = null;
+		this.levelClasses = [];
+		if (opts.levels && opts.levels.length) {
+			var all = this.levelClasses;
+			this.levels = Array.prototype.map.call(opts.levels, function (list) {
+				var names = String(list || '').split(/\s+/).filter(Boolean);
+				forEach(names, function (name) {
+					if (all.indexOf(name) === -1) {
+						all.push(name);
+					}
+				});
+				return names;
+			});
+		}
+		this.needs = [];
+		this.level = -1;
+		this.levelTable = null;
 		this.need = -1;
 		this.measuredTable = null;
 		this.lastRoom = 0;
@@ -164,12 +188,19 @@
 		return this.wrap ? this.wrap.querySelector('table') : null;
 	};
 
-	Controller.prototype.measure = function (table) {
+	// Width the table needs with `names` (a level's classes) set on it.
+	Controller.prototype.measureWith = function (table, names) {
 		var box = document.createElement('div');
 		var copy = table.cloneNode(true);
 		box.setAttribute('aria-hidden', 'true');
 		box.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none';
 		copy.classList.remove(this.cls);
+		forEach(this.levelClasses, function (name) {
+			copy.classList.remove(name);
+		});
+		forEach(names || [], function (name) {
+			copy.classList.add(name);
+		});
 		copy.setAttribute('inert', '');
 		sanitizeCopy(copy);
 		if (this.prepareClone) {
@@ -177,9 +208,52 @@
 		}
 		box.appendChild(copy);
 		this.wrap.appendChild(box);
-		this.need = copy.offsetWidth;
+		var need = copy.offsetWidth;
 		this.wrap.removeChild(box);
+		return need;
+	};
+
+	Controller.prototype.measure = function (table) {
+		var self = this;
+		if (this.levels) {
+			this.needs = this.levels.map(function (names) {
+				return self.measureWith(table, names);
+			});
+			this.need = this.needs[this.needs.length - 1];
+		} else {
+			this.need = this.measureWith(table, null);
+		}
 		this.measuredTable = table;
+	};
+
+	// The first level that fits, or -1. A resize only moves to a roomier
+	// level than the current one when that level fits with the hysteresis to
+	// spare, for the same reason a stacked table unstacks late (below).
+	Controller.prototype.pickLevel = function (room, fromResize, current) {
+		for (var i = 0; i < this.needs.length; i++) {
+			var need = this.needs[i];
+			if (need > room + this.slack) {
+				continue;
+			}
+			if (fromResize && this.hysteresis && i < current && need > room - this.hysteresis) {
+				continue;
+			}
+			return i;
+		}
+		return -1;
+	};
+
+	Controller.prototype.setLevel = function (table, level) {
+		if (level === this.level && table === this.levelTable) {
+			return false;
+		}
+		var keep = this.levels[level] || [];
+		forEach(this.levelClasses, function (name) {
+			table.classList.toggle(name, keep.indexOf(name) > -1);
+		});
+		this.level = level;
+		this.levelTable = table;
+		return true;
 	};
 
 	Controller.prototype.apply = function (fromResize) {
@@ -202,18 +276,28 @@
 			this.measure(table);
 		}
 		var was = table.classList.contains(this.cls);
-		var stack = room < this.floor || this.need > room + this.slack;
-		// Only a resize may keep a stacked table stacked a little longer: a
-		// page scrollbar that appears because the cards are taller must not
-		// flip the table straight back.
-		if (!stack && was && fromResize && this.hysteresis && this.need > room - this.hysteresis) {
-			stack = true;
+		var stack;
+		var levelChanged = false;
+		if (this.levels) {
+			var current = was ? this.levels.length : (table === this.levelTable ? this.level : 0);
+			var level = room < this.floor ? -1 : this.pickLevel(room, fromResize, current);
+			stack = level < 0;
+			// Stacked, the table keeps the most compact level's classes.
+			levelChanged = this.setLevel(table, stack ? this.levels.length - 1 : level);
+		} else {
+			stack = room < this.floor || this.need > room + this.slack;
+			// Only a resize may keep a stacked table stacked a little longer: a
+			// page scrollbar that appears because the cards are taller must not
+			// flip the table straight back.
+			if (!stack && was && fromResize && this.hysteresis && this.need > room - this.hysteresis) {
+				stack = true;
+			}
 		}
 		if (stack !== was) {
 			table.classList.toggle(this.cls, stack);
-			if (this.onChange) {
-				this.onChange(stack, this);
-			}
+		}
+		if ((stack !== was || levelChanged) && this.onChange) {
+			this.onChange(stack, this);
 		}
 		this.lastRoom = room;
 	};
@@ -257,7 +341,7 @@
 	};
 
 	Controller.prototype.state = function () {
-		return { room: this.wrap ? this.wrap.clientWidth : 0, need: this.need, stacked: this.isStacked() };
+		return { room: this.wrap ? this.wrap.clientWidth : 0, need: this.need, stacked: this.isStacked(), level: this.level, needs: this.needs.slice() };
 	};
 
 	Controller.prototype.destroy = function () {
@@ -360,7 +444,7 @@
 		return controllers.map(function (c) {
 			var s = c.state();
 			var t = c.table();
-			return { table: t ? t.className : '', room: s.room, need: s.need, stacked: s.stacked };
+			return { table: t ? t.className : '', room: s.room, need: s.need, stacked: s.stacked, level: s.level, needs: s.needs };
 		});
 	};
 

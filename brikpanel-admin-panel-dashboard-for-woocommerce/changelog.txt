@@ -2,6 +2,32 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.25 (2026-09-28) =
+* New: **Several ad accounts.** Ad Platforms → "Ad accounts" is now a list: tick up to 20 Meta or Google Ads accounts. Each account's history loads and updates on its own, and ROAS, Expenses and Net profit add them all up. Reconnecting fills the missing days instead of loading three years again.
+* New: **Trakoo tracking numbers in WhatsApp and the orders list.** With Trakoo (Orders Tracking for WooCommerce) active, WhatsApp messages can use {tracking_number}, {carrier_name} and {tracking_url}, and each order in the list gets an "Add tracking number" button. Trakoo saves it, so its emails and status changes work as usual.
+* New: **Show menu items by permission.** In Navigation, a menu item can be shown to "Users with a permission", and a role list can "Show only to these roles" as well as hide from them.
+* New: **Block pages hidden from the menu.** Setting: Navigation → "Block pages hidden from the menu": people who cannot see an item cannot open its page from a link, search or shortcut either. Administrators are never blocked. Off by default.
+* New: **Publish products without a price.** Setting: Products → "Require a price to publish" can now be turned off. On by default, as before.
+* New: **A starting guide for new stores.** A store with no orders gets first steps on the dashboard, and empty cards and charts say why they are empty. Customer Analytics, Segments, Abandoned Carts and Orders do the same.
+* Fix: **Customers can retry payment with their own discount code.** A single-use popup or BrikMentor code held by the customer's own unpaid order is released when they come back, so they no longer see "usage limit reached".
+* Fix: **Removed the "Default status for new orders" setting.** With a status such as "Processing" chosen, the classic checkout skipped payment. Every order now starts as "Pending payment".
+* Fix: **No "no callback is registered" errors.** Switching off Abandoned carts, Store Health, Google Sheets or Ad Platforms removes their background jobs. "Failed (24h)" and "Done (24h)" in Scheduled Tasks count only the last 24 hours.
+* Fix: **Background jobs stop when BrikPanel is deactivated** and start again when it is activated. No data is deleted.
+* Fix: **The image remove button works in right-to-left languages and on touch screens.** The × no longer sits under the video button, and it is always visible on phones and tablets.
+* Fix: **No "set_cogs_value was called incorrectly" lines in the error log** when WooCommerce's cost of goods feature is off. BrikPanel still saves its own cost.
+* Fix: **Net profit change points the right way** when the previous period was a loss.
+* Fix: **Numbers, percentages, prices and dates follow the store settings on every screen,** not the browser language. Sentences with a count use the right plural in every language.
+* Fix: **Store Health shows its results in the admin's language.** The images card turns red only for large or missing images, and stores without images see "OK".
+* Fix: **The Low stock card tells the real state** and links to out-of-stock products. Variation names no longer repeat the SKU.
+* Fix: **Admin orders are left out of Recent Orders and the Excel report,** and dashboard numbers update right away when an order is trashed, restored or deleted.
+* Fix: **Sale prices are readable in the products list** again, also after quick edit.
+* Fix: **Menu hiding works for Categories, Tags and renamed items,** and BrikPanel search no longer lists pages hidden from the menu.
+* Tweak: **The products list looks like Orders.** One line per product with row icons, tabs and filters inside the card, and "Screen Options" next to Import. When the table does not fit, row buttons fold into a "⋯" menu first, then rows turn into cards.
+* Tweak: **One look on every screen.** Fields, buttons, badges and lists share one style. Lists and reports use the full width, forms 820px, with equal side margins. Titles use normal capitalisation and one size, and WordPress's blue accent is dark grey in the BrikPanel look.
+* Tweak: **Darker text.** Text meant to be read and status colours now have enough contrast.
+* Tweak: **All 9 languages are fully translated.** Two storefront texts changed (the popup's "Check your inbox…" and the login page footer): update them if you translated them yourself.
+* Tweak: **WooCommerce tested up to 11.1.** The Ad Platforms page now says that ad tokens are sent to the brksoft.com helper for syncing.
+
 = 3.3.24 (2026-09-26) =
 * New: **Page names in Live Visitors.** Each row shows the name of the product, page or category the visitor is on instead of its address, and the campaign and search term appear next to the source without hovering. Pages cached before the update show the address until the page cache is cleared.
 * New: **Tax kept in Revenue.** Dashboard → "Tax in the Profit section" (formerly "Exclude tax from Revenue and Expenses") has a new "Kept in Revenue (not in Expenses)" choice: Revenue keeps the tax and shows the amount under it, and Expenses leave it out. Net profit stays the same.

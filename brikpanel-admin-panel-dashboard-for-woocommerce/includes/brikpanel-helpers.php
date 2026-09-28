@@ -188,12 +188,33 @@ add_action( 'transition_post_status', static function ( $new_status, $old_status
     // which fires no order-specific hook.
     if ( $new_status !== $old_status && $post instanceof WP_Post && ( 'product' === $post->post_type || 'shop_order' === $post->post_type ) ) {
         brikpanel_flush_topbar_counts();
+        // Into or out of the trash only: the legacy orders screen trashes
+        // with wp_trash_post() and restores with wp_untrash_post(), which
+        // fire no order hook. Every other transition already reaches
+        // brikpanel_bust_data_caches() through one.
+        if ( 'shop_order' === $post->post_type && ( 'trash' === $old_status || 'trash' === $new_status ) ) {
+            brikpanel_bust_data_caches();
+        }
     }
 }, 10, 3 );
+// Legacy permanent delete (wp_delete_post() from the orders screen) fires no
+// order hook either. The post still exists here, so its type is known.
+add_action( 'delete_post', static function ( $post_id ) {
+    if ( 'shop_order' === get_post_type( $post_id ) ) {
+        brikpanel_bust_data_caches();
+    }
+} );
 
 add_action( 'woocommerce_new_order',            'brikpanel_bust_data_caches' );
 add_action( 'woocommerce_order_status_changed', 'brikpanel_bust_data_caches' );
 add_action( 'woocommerce_order_refunded',       'brikpanel_bust_data_caches' );
+// Trashing, restoring or deleting an order changes no status through
+// set_status(), so the hooks above miss it: without these a deleted test
+// order kept counting (and kept the new-store guide away) until the cached
+// figures expired.
+add_action( 'woocommerce_trash_order',          'brikpanel_bust_data_caches' );
+add_action( 'woocommerce_untrash_order',        'brikpanel_bust_data_caches' );
+add_action( 'woocommerce_delete_order',         'brikpanel_bust_data_caches' );
 
 /**
  * Bust the shared data cache when a product's cost of goods changes so the
@@ -579,8 +600,10 @@ function brikpanel_cogs_sql_join_set( $alias_prefix, $post_id_expr, $extra_on = 
  * WooCommerce product screen on the other. Whichever the merchant uses, this
  * copies the value across so the cost shows up everywhere at once and the
  * dashboard never reports a costed catalogue as zero-cost. It also covers the
- * case where WC's Cost of Goods feature flag is off, which makes
- * WC_Product::set_cogs_value() a silent no-op.
+ * case where WC's Cost of Goods feature flag is off. WC_Product::set_cogs_value()
+ * then stores nothing and, on AJAX and REST requests, also writes a
+ * "called incorrectly" line to the PHP error log, which is why BrikPanel checks
+ * brikpanel_wc_cogs_enabled() before calling it.
  *
  * Scope is deliberately brikpanel_cogs_owned_meta_keys(), NOT every key
  * BrikPanel can read — see that function for why writing near a third-party
@@ -2258,7 +2281,7 @@ function brikpanel_bidi_isolate_numbers( $text ) {
  */
 function brikpanel_money_text( $amount, $args = array() ) {
 	if ( ! function_exists( 'wc_price' ) ) {
-		return brikpanel_bidi_isolate_numbers( number_format_i18n( (float) $amount, 2 ) );
+		return brikpanel_bidi_isolate_numbers( brikpanel_number( (float) $amount, 2 ) );
 	}
 
 	return brikpanel_bidi_isolate_numbers(
@@ -3193,5 +3216,61 @@ if ( ! function_exists( 'brikpanel_local_month_case_sql' ) ) {
 		}
 
 		return 'CASE ' . implode( ' ', $branches ) . ' ELSE ' . $fallback . ' END';
+	}
+}
+
+if ( ! function_exists( 'brikpanel_out_of_stock_url' ) ) {
+	/**
+	 * The products list filtered to published, out-of-stock products: the same
+	 * set the top bar's "Out of stock" count and the dashboard's Low stock card
+	 * count, so the number and the rows on the target screen agree. BrikPanel's
+	 * products list when it is on, WooCommerce's otherwise.
+	 *
+	 * @return string
+	 */
+	function brikpanel_out_of_stock_url() {
+		$modern = function_exists( 'brikpanel_module_available' )
+			? brikpanel_module_available( 'brikpanel-products' )
+			: 'yes' === get_option( 'brikpanel_modern_products_list', 'yes' );
+		return $modern
+			? admin_url( 'admin.php?page=brikpanel-products&bpl_stock=outofstock&bpl_status=publish' )
+			: admin_url( 'edit.php?post_type=product&stock_status=outofstock&post_status=publish' );
+	}
+}
+
+if ( ! function_exists( 'brikpanel_db_supports_window_functions' ) ) {
+	/**
+	 * Whether the database server runs window functions (NTILE() OVER ...),
+	 * which the customer RFM scoring needs: MySQL 8.0+ or MariaDB 10.2+.
+	 *
+	 * $wpdb->db_version() alone is not enough. With mysqlnd older than PHP
+	 * 8.0.16 / 8.1.3, a MariaDB server reports "5.5.5-10.x.y-MariaDB", so
+	 * db_version() says "5.5.5" and a MariaDB 10.x store looked unsupported.
+	 * MariaDB 10.0/10.1 report "10.x", which passed an "8.0" check but has
+	 * no window functions. So MariaDB is read from the server string (same
+	 * "5.5.5-" rule as wpdb::has_cap()) and held to its own minimum.
+	 *
+	 * @return bool
+	 */
+	function brikpanel_db_supports_window_functions() {
+		static $supported = null;
+		if ( null !== $supported ) {
+			return $supported;
+		}
+
+		global $wpdb;
+		$info = method_exists( $wpdb, 'db_server_info' ) ? (string) $wpdb->db_server_info() : '';
+
+		if ( '' !== $info && false !== stripos( $info, 'MariaDB' ) ) {
+			$info      = preg_replace( '/^5\.5\.5-/', '', $info );
+			$version   = (string) preg_replace( '/[^0-9.].*/', '', $info );
+			$supported = '' !== $version && version_compare( $version, '10.2', '>=' );
+			return $supported;
+		}
+
+		// MySQL, or no server string (a db drop-in): the version WordPress reads.
+		$version   = (string) $wpdb->db_version();
+		$supported = '' !== $version && version_compare( $version, '8.0', '>=' );
+		return $supported;
 	}
 }

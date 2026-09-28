@@ -315,12 +315,12 @@ class Brikpanel_Sheets_Products_Sync {
 		Brikpanel_Cron::register_handler(
 			self::HOOK_PUSH_FLUSH,
 			[ $this, 'handle_push' ],
-			static function () { return [ 'label' => __( 'Sheets — push product changes to Google Sheets', 'brikpanel' ) ]; }
+			static function () { return [ 'label' => __( 'Sheets: push product changes to Google Sheets', 'brikpanel' ) ]; }
 		);
 		Brikpanel_Cron::register_handler(
 			self::HOOK_PULL,
 			[ $this, 'handle_pull' ],
-			static function () { return [ 'label' => __( 'Sheets — pull product changes from Google Sheets', 'brikpanel' ) ]; }
+			static function () { return [ 'label' => __( 'Sheets: pull product changes from Google Sheets', 'brikpanel' ) ]; }
 		);
 
 		// Schedule the pull only when both the flow AND the pull half are on.
@@ -1298,16 +1298,19 @@ class Brikpanel_Sheets_Products_Sync {
 							// would be silently ignored on a store running a cost
 							// plugin: that plugin's key is read first, so the sheet
 							// edit would appear to save and change nothing.
-							if ( method_exists( $product, 'set_cogs_value' ) ) {
+							if ( brikpanel_wc_cogs_enabled( $product ) ) {
 								$product->set_cogs_value( $store !== '' ? $store : null );
 							}
 							foreach ( brikpanel_cogs_meta_keys() as $cogs_key ) {
 								// `_cogs_total_value` is a WC_Product PROP, not plain
 								// meta: pushing it through the generic meta API trips
 								// WooCommerce's "doing it wrong" notice on every pulled
-								// row. set_cogs_value() above owns it, and the legacy-key
-								// mirror covers the case where WC's COGS feature flag
-								// makes that setter a no-op.
+								// row. set_cogs_value() above owns it while WC's COGS
+								// feature is on. With the feature off that setter stores
+								// nothing AND writes a "doing it wrong" line to the PHP
+								// error log on AJAX/REST requests, which is why it is
+								// only called once brikpanel_wc_cogs_enabled() says the
+								// feature is on; the legacy-key mirror covers the rest.
 								if ( '_cogs_total_value' === $cogs_key ) {
 									continue;
 								}

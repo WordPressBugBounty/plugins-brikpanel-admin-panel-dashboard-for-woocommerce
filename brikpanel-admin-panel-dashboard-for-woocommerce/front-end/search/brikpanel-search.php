@@ -248,7 +248,12 @@ class Brikpanel_Pro_Search {
 	 * treated as enabled.
 	 */
 	private function is_source_enabled( $source_id ) {
-		return 'no' !== get_option( 'brikpanel_search_' . sanitize_key( $source_id ), 'yes' );
+		if ( 'no' === get_option( 'brikpanel_search_' . sanitize_key( $source_id ), 'yes' ) ) {
+			return false;
+		}
+		// With "Block pages hidden from the menu" on, a source whose results
+		// open a screen closed to this user would only list dead ends.
+		return ! ( function_exists( 'brikpanel_nav_search_source_blocked' ) && brikpanel_nav_search_source_blocked( (string) $source_id ) );
 	}
 
 	// =========================================================================
@@ -1389,7 +1394,7 @@ class Brikpanel_Pro_Search {
 		// catalogue and every order holding it.
 		$sku_escaped = $wpdb->esc_like( $sku );
 		$sku_match   = brikpanel_strlen( $sku ) >= self::SKU_PARTIAL_MIN_LENGTH
-			? '%' . $sku_escaped . '%'
+			? '%' . $sku_escaped . '%' // i18n-ignore: SQL LIKE wildcards, not a percent sign on screen.
 			: $sku_escaped;
 
 		$is_hpos = $this->orders_use_hpos();
@@ -1550,13 +1555,12 @@ class Brikpanel_Pro_Search {
 
 			$divider = '' === $name ? '' : '<span class="text-sm"> • </span>';
 
-			$date_format = esc_html( get_option( 'date_format', 'F j' ) );
-			$time_format = esc_html( get_option( 'time_format', 'g:i a' ) );
-			$format      = "$date_format \a\\t $time_format";
-
+			// The store's date and time format. The format used to carry an
+			// escaped English "at" ("\a\t") that every language printed as is
+			// (field test E2).
 			$date_created           = $order->get_date_created();
 			$date_created_attr      = $date_created ? esc_attr( $date_created->date( 'c' ) ) : '';
-			$date_created_formatted = $date_created ? esc_html( $date_created->date_i18n( $format ) ) : '';
+			$date_created_formatted = $date_created ? esc_html( wp_date( brikpanel_datetime_format(), $date_created->getTimestamp() ) ) : '';
 
 			$product_html = '';
 			if ( isset( $matching_product ) ) {
@@ -1736,9 +1740,10 @@ class Brikpanel_Pro_Search {
 				continue;
 			}
 
-			// Includes ID, SKU, and variation attributes; plain text because it is
-			// printed through esc_html() (the variation <span> showed as text).
-			$title = brikpanel_plain_label( $product->get_formatted_name() );
+			// Name and, for a variation, its options; plain text because it is
+			// printed through esc_html(). No "(SKU)": the line under it already
+			// says "SKU: …" (field test E3).
+			$title = brikpanel_product_label( $product );
 			$sku   = $product->get_sku();
 
 			$parts = array();
@@ -2139,10 +2144,14 @@ class Brikpanel_Pro_Search {
 				if ( '' === $parent_label || ! self::row_is_openable( $top ) ) {
 					continue;
 				}
+				$url = self::normalize_menu_url( $this->resolve_menu_url( $parent_slug, '' ) );
+				if ( self::url_hidden_in_sidebar( $url ) ) {
+					continue;
+				}
 				$index[] = array(
 					'label'  => $parent_label,
 					'parent' => '',
-					'url'    => self::normalize_menu_url( $this->resolve_menu_url( $parent_slug, '' ) ),
+					'url'    => $url,
 				);
 				continue;
 			}
@@ -2159,10 +2168,14 @@ class Brikpanel_Pro_Search {
 					if ( '' === $label ) {
 						continue;
 					}
+					$url = self::normalize_menu_url( $this->resolve_menu_url( $sub[2], $parent_slug ) );
+					if ( self::url_hidden_in_sidebar( $url ) ) {
+						continue;
+					}
 					$index[] = array(
 						'label'  => $label,
 						'parent' => $parent_label,
-						'url'    => self::normalize_menu_url( $this->resolve_menu_url( $sub[2], $parent_slug ) ),
+						'url'    => $url,
 					);
 				}
 			}
@@ -2184,6 +2197,20 @@ class Brikpanel_Pro_Search {
 		return isset( $row[1] )
 			&& ( is_string( $row[1] ) || is_int( $row[1] ) )
 			&& current_user_can( $row[1] );
+	}
+
+	/**
+	 * Whether the user's BrikPanel sidebar hides the page a menu link opens
+	 * (a Navigation rule, or "Hide new menu items by default"). The palette
+	 * lists what the sidebar lists: until 3.3.25 it offered pages the sidebar
+	 * hid, which is how a shop manager with Settings hidden found it anyway.
+	 *
+	 * @param string $url Absolute admin URL from resolve_menu_url().
+	 * @return bool
+	 */
+	private static function url_hidden_in_sidebar( $url ) {
+		return function_exists( 'brikpanel_nav_url_hidden_for_current_user' )
+			&& brikpanel_nav_url_hidden_for_current_user( $url );
 	}
 
 	/**
@@ -2371,11 +2398,11 @@ class Brikpanel_Pro_Search {
 		foreach ( $sections as $key => $label ) {
 			$out[ $key ] = $label;
 			if ( 'orders' === $key ) {
-				$out['search'] = __( 'Search', 'brikpanel' );
+				$out['search'] = _x( 'Search', 'settings section name', 'brikpanel' );
 			}
 		}
 		if ( ! isset( $out['search'] ) ) {
-			$out['search'] = __( 'Search', 'brikpanel' );
+			$out['search'] = _x( 'Search', 'settings section name', 'brikpanel' );
 		}
 		return $out;
 	}

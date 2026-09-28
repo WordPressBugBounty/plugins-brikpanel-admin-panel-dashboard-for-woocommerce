@@ -305,7 +305,7 @@
             // single date or a repeat schedule.
             var isOngoing = item.kind === 'percent' || item.kind === 'per_order';
             html += '<tr data-id="' + item.id + '">';
-            html += '<td class="brikpanel-ex-date-cell">' + escHtml(isOngoing ? (i18n.ongoing || 'Ongoing') : item.date) + '</td>';
+            html += '<td class="brikpanel-ex-date-cell">' + escHtml(isOngoing ? (i18n.ongoing || 'Ongoing') : (item.date_display || item.date)) + '</td>';
             // What this cost is filed under sits above the title as a quiet line
             // rather than claiming a whole column, so the table keeps its six
             // columns and standalone rows look exactly as they always did. A

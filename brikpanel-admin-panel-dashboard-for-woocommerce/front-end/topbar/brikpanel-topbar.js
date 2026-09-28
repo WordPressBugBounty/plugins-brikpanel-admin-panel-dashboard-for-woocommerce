@@ -144,17 +144,18 @@
 
         var badge = menu.querySelector('.brikpanel-topbar-badge');
 
-        // Sync the badge with the live notice count, and retire the button once
-        // every notice has been dismissed (WP core removes each .notice node on
-        // dismiss, so a MutationObserver keeps us honest without per-button wiring).
+        // Sync the badge with the live notice count. The button stays in place
+        // and only mutes while there is nothing to show (field test D19); after
+        // the last notice is dismissed an open panel says so instead of
+        // vanishing (WP core removes each .notice node on dismiss, so a
+        // MutationObserver keeps us honest without per-button wiring).
         var refresh = function () {
             var n = panelList.querySelectorAll(COUNT_SEL).length;
             if (badge) {
                 badge.hidden = n === 0;
                 badge.textContent = n > 99 ? '99+' : String(n);
             }
-            menu.style.display = n === 0 ? 'none' : '';
-            if (n === 0) menu.classList.remove('is-open');
+            menu.classList.toggle('is-empty', n === 0);
         };
 
         // 2) Sweep up any foreign notices the server-side buffer could not
@@ -788,9 +789,10 @@
         }
     }
 
+    // The store's separators, not the browser's language (field test E2).
     function formatNumber(n) {
         n = Number(n) || 0;
-        return n.toLocaleString();
+        return window.brikpanelFormat ? window.brikpanelFormat.number(n) : String(n);
     }
 
 })();

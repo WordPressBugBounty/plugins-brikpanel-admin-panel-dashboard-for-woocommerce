@@ -380,7 +380,7 @@ class Brikpanel_Cart_Abandonment {
 			'couponTeaserLabel' => __( 'Show your discount code', 'brikpanel' ),
 			/* translators: %s: the visitor's email address */
 			'couponEmailed'     => __( 'We sent your discount code to %s', 'brikpanel' ),
-			'couponEmailedHint' => __( 'Check your inbox — if it landed in the Promotions tab, drag it to Primary so you never miss it.', 'brikpanel' ),
+			'couponEmailedHint' => __( 'Check your inbox. If it landed in the Promotions tab, drag it to Primary so you never miss it.', 'brikpanel' ),
 			'editEmail'         => __( 'Wrong address? Edit it', 'brikpanel' ),
 			'editSave'          => __( 'Update & resend', 'brikpanel' ),
 			'editCancel'        => __( 'Cancel', 'brikpanel' ),
@@ -1184,6 +1184,9 @@ class Brikpanel_Cart_Abandonment {
 				'maxWait'     => self::popup_consent_max_wait(),
 				'cooldown'    => $popup['cooldown'],
 				'discount'    => $popup['discount'],
+				// Where the shopper's language writes the percent sign: "10%",
+				// "%10" in Turkish, "10 %" in German (field test E9).
+				'pct'         => function_exists( 'brikpanel_percent_pattern' ) ? brikpanel_percent_pattern() : '%s%%',
 				'style'       => $popup['style'],
 				'title'       => $popup['title'],
 				'message'     => $popup['message'],
@@ -3734,13 +3737,13 @@ class Brikpanel_Cart_Abandonment {
 							? sprintf(
 								/* translators: 1: how many times the WhatsApp draft was opened, 2: date and time of the last time. */
 								_n( 'WhatsApp draft opened %1$s time · last %2$s', 'WhatsApp draft opened %1$s times · last %2$s', $count, 'brikpanel' ),
-								number_format_i18n( $count ),
+								brikpanel_number( $count ),
 								$last
 							)
 							: sprintf(
 								/* translators: %s: how many times the WhatsApp draft was opened. */
 								_n( 'WhatsApp draft opened %s time', 'WhatsApp draft opened %s times', $count, 'brikpanel' ),
-								number_format_i18n( $count )
+								brikpanel_number( $count )
 							);
 					}
 				}
@@ -3769,7 +3772,7 @@ class Brikpanel_Cart_Abandonment {
 				$text = sprintf(
 					/* translators: %s: number of follow-up emails already sent. */
 					_n( '%s email sent', '%s emails sent', $sent, 'brikpanel' ),
-					number_format_i18n( $sent )
+					brikpanel_number( $sent )
 				);
 			} elseif ( $pending > 0 ) {
 				$text = __( 'Scheduled', 'brikpanel' );
@@ -3948,13 +3951,8 @@ class Brikpanel_Cart_Abandonment {
 		$sort_options  = self::sort_options();
 		$range_options = self::date_range_options();
 
-		// Chevron shared by every select in the filter bar. Inlined once as a
-		// closure so the markup below stays readable.
-		$select_arrow = static function () {
-			echo '<svg class="brikpanel-cartab-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg>';
-		};
 		?>
-		<div class="wrap brikpanel-cartab-wrap" id="brikpanel-cartab">
+		<div class="wrap brikpanel-cartab-wrap brikpanel-shell__page" id="brikpanel-cartab">
 			<div class="brikpanel-cartab-header">
 				<div class="brikpanel-cartab-header-left">
 					<h1><?php esc_html_e( 'Abandoned Carts', 'brikpanel' ); ?></h1>
@@ -4056,51 +4054,47 @@ class Brikpanel_Cart_Abandonment {
 				<div class="brikpanel-cartab-filter-row">
 					<div class="brikpanel-cartab-search">
 						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-						<input type="search" id="brikpanel-cartab-search"
+						<input type="search" id="brikpanel-cartab-search" class="brikpanel-control brikpanel-control--quiet"
 							placeholder="<?php esc_attr_e( 'Search email or name…', 'brikpanel' ); ?>"
 							aria-label="<?php esc_attr_e( 'Search email or name', 'brikpanel' ); ?>" />
 					</div>
 
 					<div class="brikpanel-cartab-select">
-						<select id="brikpanel-cartab-status" aria-label="<?php esc_attr_e( 'Filter by status', 'brikpanel' ); ?>">
+						<select id="brikpanel-cartab-status" class="brikpanel-control brikpanel-control--quiet" aria-label="<?php esc_attr_e( 'Filter by status', 'brikpanel' ); ?>">
 							<option value=""><?php esc_html_e( 'All statuses', 'brikpanel' ); ?></option>
 							<?php foreach ( self::display_status_labels() as $key => $label ) : ?>
 								<option value="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></option>
 							<?php endforeach; ?>
 						</select>
-						<?php $select_arrow(); ?>
 					</div>
 
 					<div class="brikpanel-cartab-select">
-						<select id="brikpanel-cartab-source" aria-label="<?php esc_attr_e( 'Filter by source', 'brikpanel' ); ?>">
+						<select id="brikpanel-cartab-source" class="brikpanel-control brikpanel-control--quiet" aria-label="<?php esc_attr_e( 'Filter by source', 'brikpanel' ); ?>">
 							<option value=""><?php esc_html_e( 'All sources', 'brikpanel' ); ?></option>
 							<?php foreach ( self::source_labels() as $key => $label ) : ?>
 								<option value="<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></option>
 							<?php endforeach; ?>
 						</select>
-						<?php $select_arrow(); ?>
 					</div>
 
 					<div class="brikpanel-cartab-select brikpanel-cartab-select-icon">
 						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-						<select id="brikpanel-cartab-range" aria-label="<?php esc_attr_e( 'Filter by date range', 'brikpanel' ); ?>">
+						<select id="brikpanel-cartab-range" class="brikpanel-control brikpanel-control--quiet" aria-label="<?php esc_attr_e( 'Filter by date range', 'brikpanel' ); ?>">
 							<?php foreach ( $range_options as $range_key => $range_label ) : ?>
 								<option value="<?php echo esc_attr( $range_key ); ?>"><?php echo esc_html( $range_label ); ?></option>
 							<?php endforeach; ?>
 						</select>
-						<?php $select_arrow(); ?>
 					</div>
 
 					<div class="brikpanel-cartab-select brikpanel-cartab-select-icon">
 						<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="3 7 7 3 11 7"/><line x1="7" y1="3" x2="7" y2="16"/><polyline points="13 17 17 21 21 17"/><line x1="17" y1="21" x2="17" y2="8"/></svg>
-						<select id="brikpanel-cartab-sort" aria-label="<?php esc_attr_e( 'Sort by', 'brikpanel' ); ?>">
+						<select id="brikpanel-cartab-sort" class="brikpanel-control brikpanel-control--quiet" aria-label="<?php esc_attr_e( 'Sort by', 'brikpanel' ); ?>">
 							<?php foreach ( $sort_options as $sort_key => $sort_label ) : ?>
 								<option value="<?php echo esc_attr( $sort_key ); ?>" <?php selected( $sort_key, self::DEFAULT_SORT ); ?>>
 									<?php echo esc_html( $sort_label ); ?>
 								</option>
 							<?php endforeach; ?>
 						</select>
-						<?php $select_arrow(); ?>
 					</div>
 
 					<button type="button" class="brikpanel-cartab-clear" id="brikpanel-cartab-clear" hidden>
@@ -4148,10 +4142,10 @@ class Brikpanel_Cart_Abandonment {
 				<!-- Only revealed by the "Custom range" preset. -->
 				<div class="brikpanel-cartab-custom-range" id="brikpanel-cartab-custom-range" hidden>
 					<label for="brikpanel-cartab-from"><?php esc_html_e( 'From', 'brikpanel' ); ?></label>
-					<input type="date" id="brikpanel-cartab-from" />
+					<input type="date" id="brikpanel-cartab-from" class="brikpanel-control brikpanel-control--quiet" />
 					<span class="brikpanel-cartab-range-sep" aria-hidden="true">&rarr;</span>
 					<label for="brikpanel-cartab-to"><?php esc_html_e( 'To', 'brikpanel' ); ?></label>
-					<input type="date" id="brikpanel-cartab-to" />
+					<input type="date" id="brikpanel-cartab-to" class="brikpanel-control brikpanel-control--quiet" />
 				</div>
 			</div>
 
@@ -4217,6 +4211,7 @@ class Brikpanel_Cart_Abandonment {
 			i18n: {
 				error:          <?php echo wp_json_encode( __( 'Something went wrong.', 'brikpanel' ) ); ?>,
 				empty:          <?php echo wp_json_encode( __( 'No emails captured yet.', 'brikpanel' ) ); ?>,
+				empty_filtered: <?php echo wp_json_encode( __( 'No carts match these filters.', 'brikpanel' ) ); ?>,
 				confirm_delete: <?php echo wp_json_encode( __( 'Delete this entry?', 'brikpanel' ) ); ?>,
 				delete:         <?php echo wp_json_encode( __( 'Delete', 'brikpanel' ) ); ?>,
 				details:        <?php echo wp_json_encode( __( 'Details', 'brikpanel' ) ); ?>,
@@ -5255,10 +5250,14 @@ if ( ! function_exists( 'brikpanel_cartab_get_entries' ) ) {
 // CRON REGISTRATION — abandonment sweep every 10 minutes
 // =============================================================================
 add_action( 'brikpanel_cron_register', function () {
-	if ( ! class_exists( 'Brikpanel_Cron' ) || ! Brikpanel_Cart_Abandonment::is_enabled() ) {
+	if ( ! class_exists( 'Brikpanel_Cron' ) ) {
 		return;
 	}
 
+	// Registered even while email collection is off: a sweep already queued
+	// when it was switched off must find a handler, or Action Scheduler fails
+	// it with "no callbacks are registered" every ten minutes. The sweep does
+	// nothing while collection is off (flip_abandoned() returns early).
 	Brikpanel_Cron::register_handler(
 		'brikpanel_cartab_flip_abandoned',
 		[ 'Brikpanel_Cart_Abandonment', 'cron_flip' ],
@@ -5270,7 +5269,11 @@ add_action( 'brikpanel_cron_register', function () {
 		}
 	);
 
-	Brikpanel_Cron::schedule_recurring( 'brikpanel_cartab_flip_abandoned', 10 * MINUTE_IN_SECONDS );
+	if ( Brikpanel_Cart_Abandonment::is_enabled() ) {
+		Brikpanel_Cron::schedule_recurring( 'brikpanel_cartab_flip_abandoned', 10 * MINUTE_IN_SECONDS );
+	} else {
+		Brikpanel_Cron::cancel( 'brikpanel_cartab_flip_abandoned' );
+	}
 } );
 
 // =============================================================================

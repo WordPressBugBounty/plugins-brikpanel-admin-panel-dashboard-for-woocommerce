@@ -262,6 +262,9 @@ function brikpanel_export_core_table() {
 		'brikpanel_data_cache_ver',
 		'brikpanel_data_cache_version',
 		'brikpanel_ca_cache_ver',
+		// When the customer metrics job last finished. Only tells "never ran"
+		// apart from "ran, no customers" in the Customer Analytics header.
+		'brikpanel_ca_last_run',
 		'brikpanel_order_notify_latest_id',
 		'brikpanel_completed_orders_count',
 		'brikpanel_last_new_order',
@@ -308,8 +311,12 @@ function brikpanel_export_core_table() {
 	foreach ( [
 		'brikpanel_sidebar_hidden',
 		'brikpanel_dash_range',
+		// The new-store guide this admin closed on the dashboard.
+		'brikpanel_new_store_guide_dismissed',
 		'brikpanel_whatsapp_optin',
 		'brikpanel_brikcontrol_dismissed',
+		// The old-WooCommerce notice this admin closed, keyed by the version it named.
+		'brikpanel_wc_min_notice_dismissed',
 	] as $key ) {
 		$map[ $key ] = [ 'class' => 'internal' ];
 	}

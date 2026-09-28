@@ -101,7 +101,7 @@
         if (skipBtn) skipBtn.style.visibility = current === total - 1 ? 'hidden' : 'visible';
         if (btnNext) {
             var isLast = current === total - 1;
-            var label  = isLast ? (i18n.get_started || 'Get Started') : (i18n.next || 'Next');
+            var label  = isLast ? (i18n.get_started || 'Get started') : (i18n.next || 'Next');
             btnNext.innerHTML = label + ' ' + arrow;
         }
     }

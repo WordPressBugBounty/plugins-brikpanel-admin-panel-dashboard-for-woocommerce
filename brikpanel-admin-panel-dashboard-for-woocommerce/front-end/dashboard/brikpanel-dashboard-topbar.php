@@ -234,7 +234,7 @@ class Brikpanel_Dashboard_Topbar {
         wp_enqueue_script(
             'brikpanel_topbar_scripts',
             BRIKPANEL_URL . 'front-end/topbar/brikpanel-topbar.js',
-            [],
+            function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'format' ) : [],
             $topbar_js_ver,
             true
         );
@@ -405,31 +405,31 @@ class Brikpanel_Dashboard_Topbar {
                         </button>
                         <div class="brikpanel-topbar-dropdown" role="menu">
                             <?php if ( brikpanel_topbar_create_item_is_visible( 'product' ) ) : ?>
-                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( admin_url( 'admin.php?page=brikpanel-product-editor' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( brikpanel_topbar_create_item_url( 'product' ) ); ?>">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4 8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/><line x1="12" y1="11" x2="12" y2="21"/></svg>
                                 <span><?php esc_html_e( 'New product', 'brikpanel' ); ?></span>
                             </a>
                             <?php endif; ?>
                             <?php if ( brikpanel_topbar_create_item_is_visible( 'order' ) ) : ?>
-                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=shop_order' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( brikpanel_topbar_create_item_url( 'order' ) ); ?>">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2l1 4h10l1-4"/><path d="M5 6h14l-1 15H6L5 6z"/><path d="M9 10v6"/><path d="M15 10v6"/></svg>
                                 <span><?php esc_html_e( 'New order', 'brikpanel' ); ?></span>
                             </a>
                             <?php endif; ?>
                             <?php if ( brikpanel_topbar_create_item_is_visible( 'coupon' ) ) : ?>
-                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( function_exists( 'brikpanel_module_url' ) ? brikpanel_module_url( 'brikpanel-coupons', [ 'action' => 'new' ], admin_url( 'post-new.php?post_type=shop_coupon' ) ) : admin_url( 'admin.php?page=brikpanel-coupons&action=new' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( brikpanel_topbar_create_item_url( 'coupon' ) ); ?>">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a2 2 0 0 1 2-2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2 2 2 0 0 1-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 1-2-2z"/><line x1="9" y1="9" x2="15" y2="15"/><circle cx="9" cy="9" r=".6"/><circle cx="15" cy="15" r=".6"/></svg>
                                 <span><?php esc_html_e( 'New coupon', 'brikpanel' ); ?></span>
                             </a>
                             <?php endif; ?>
                             <?php if ( brikpanel_topbar_create_item_is_visible( 'cart_link' ) ) : ?>
-                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( admin_url( 'admin.php?page=brikpanel-cart-share' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( brikpanel_topbar_create_item_url( 'cart_link' ) ); ?>">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                                 <span><?php esc_html_e( 'Cart share link', 'brikpanel' ); ?></span>
                             </a>
                             <?php endif; ?>
                             <?php if ( brikpanel_topbar_create_item_is_visible( 'post' ) ) : ?>
-                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( admin_url( 'post-new.php' ) ); ?>">
+                            <a class="brikpanel-topbar-dropdown-item" role="menuitem" href="<?php echo esc_url( brikpanel_topbar_create_item_url( 'post' ) ); ?>">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
                                 <span><?php esc_html_e( 'New post', 'brikpanel' ); ?></span>
                             </a>
@@ -454,6 +454,16 @@ class Brikpanel_Dashboard_Topbar {
                     $brikpanel_bell_oos       = current_user_can( 'edit_products' );
                     $brikpanel_analytics_on   = function_exists( 'brikpanel_wc_analytics_enabled' ) && brikpanel_wc_analytics_enabled();
                     $brikpanel_bell_customers = current_user_can( $brikpanel_analytics_on ? 'view_woocommerce_reports' : 'list_users' );
+                    // With "Block pages hidden from the menu" on, a row whose screen the
+                    // Navigation rules close for this user would only open the
+                    // "not available" card, so it is left out like a 403 row.
+                    if ( function_exists( 'brikpanel_nav_url_blocked_for_current_user' ) ) {
+                        $brikpanel_bell_orders    = $brikpanel_bell_orders && ! brikpanel_nav_url_blocked_for_current_user( brikpanel_wc_orders_list_url( 'processing' ) );
+                        $brikpanel_bell_oos       = $brikpanel_bell_oos && ! brikpanel_nav_url_blocked_for_current_user( brikpanel_out_of_stock_url() );
+                        $brikpanel_bell_customers = $brikpanel_bell_customers && ! brikpanel_nav_url_blocked_for_current_user(
+                            $brikpanel_analytics_on ? admin_url( 'admin.php?page=wc-admin&path=/customers' ) : admin_url( 'users.php?role=customer' )
+                        );
+                    }
                     $brikpanel_show_bell      = brikpanel_topbar_item_is_visible( 'notifications' )
                         && current_user_can( 'manage_woocommerce' )
                         && ( $brikpanel_bell_orders || $brikpanel_bell_oos || $brikpanel_bell_customers );
@@ -503,9 +513,7 @@ class Brikpanel_Dashboard_Topbar {
                                 // own URL params; otherwise fall back to the native list,
                                 // which understands `stock_status` but has no matching
                                 // "published only" filter beyond `post_status`.
-                                $brikpanel_oos_url = ( function_exists( 'brikpanel_module_available' ) ? brikpanel_module_available( 'brikpanel-products' ) : get_option( 'brikpanel_modern_products_list', 'yes' ) === 'yes' )
-                                    ? admin_url( 'admin.php?page=brikpanel-products&bpl_stock=outofstock&bpl_status=publish' )
-                                    : admin_url( 'edit.php?post_type=product&stock_status=outofstock&post_status=publish' );
+                                $brikpanel_oos_url = brikpanel_out_of_stock_url();
                                 ?>
                             <a class="brikpanel-topbar-dropdown-row" role="menuitem" href="<?php echo esc_url( $brikpanel_oos_url ); ?>">
                                 <span class="brikpanel-topbar-dropdown-row-label"><?php esc_html_e( 'Out of stock', 'brikpanel' ); ?></span>
@@ -536,14 +544,18 @@ class Brikpanel_Dashboard_Topbar {
                     <?php $slot( 'right', 'after', 'notifications' ); ?>
                     <?php $slot( 'right', 'before', 'hidden_notices' ); ?>
 
-                    <!-- Hidden third-party notices. Starts display:none and is
-                         revealed by the script only when suppressed notices are
-                         found on the page and relocated into this panel. Has its
-                         own top bar item ("hidden_notices") so its visibility and
+                    <!-- Hidden third-party notices. Always in its place while
+                         "Hide third-party admin notices" is on, muted while the
+                         page has none: it used to appear only on pages with
+                         notices, and the 40px it took pushed search, Create and
+                         the order bell left from one page to the next (field
+                         test D19). With the setting off nothing is ever
+                         collected, so there is no button at all. Has its own
+                         top bar item ("hidden_notices") so its visibility and
                          audience can be controlled independently of the order
                          notifications bell. -->
-                    <?php if ( ! function_exists( 'brikpanel_topbar_item_is_visible' ) || brikpanel_topbar_item_is_visible( 'hidden_notices' ) ) : ?>
-                    <div class="brikpanel-topbar-menu brikpanel-fn-menu" data-topbar-menu="hidden-notices" style="display:none">
+                    <?php if ( ( ! function_exists( 'brikpanel_topbar_item_is_visible' ) || brikpanel_topbar_item_is_visible( 'hidden_notices' ) ) && get_option( 'brikpanel_hide_foreign_notices', 'yes' ) === 'yes' ) : ?>
+                    <div class="brikpanel-topbar-menu brikpanel-fn-menu is-empty" data-topbar-menu="hidden-notices">
                         <button type="button" class="brikpanel-topbar-icon-btn" data-topbar-toggle="hidden-notices" aria-haspopup="menu" aria-expanded="false" aria-label="<?php esc_attr_e( 'Hidden notices from other plugins', 'brikpanel' ); ?>">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                             <span class="brikpanel-topbar-badge" id="brikpanel-topbar-fn-badge" hidden>0</span>
@@ -554,6 +566,7 @@ class Brikpanel_Dashboard_Topbar {
                                 <span class="brikpanel-fn-panel-hint"><?php esc_html_e( 'From other plugins &amp; themes', 'brikpanel' ); ?></span>
                             </div>
                             <div class="brikpanel-fn-panel-list"></div>
+                            <p class="brikpanel-fn-panel-empty"><?php esc_html_e( 'No hidden notices on this page.', 'brikpanel' ); ?></p>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -716,12 +729,27 @@ class Brikpanel_Dashboard_Topbar {
         $label = get_option( 'woocommerce_store_pages_only' ) === 'yes'
             ? __( 'Store coming soon', 'brikpanel' )
             : _x( 'Coming soon', 'store visibility badge', 'brikpanel' );
-        ?>
-        <a class="brikpanel-topbar-coming-soon" href="<?php echo esc_url( admin_url( 'admin.php?page=wc-settings&tab=site-visibility' ) ); ?>" aria-label="<?php echo esc_attr( $label ); ?>" title="<?php esc_attr_e( 'Your store is hidden from visitors. Click to change site visibility.', 'brikpanel' ); ?>">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        $url = admin_url( 'admin.php?page=wc-settings&tab=site-visibility' );
+        // With "Block pages hidden from the menu" on and the settings screen
+        // closed to this user, the badge still tells them the store is hidden,
+        // but links nowhere: the link would only open the "not available" card.
+        $linked = ! ( function_exists( 'brikpanel_nav_url_blocked_for_current_user' ) && brikpanel_nav_url_blocked_for_current_user( $url ) );
+        $icon   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+        if ( $linked ) :
+            ?>
+        <a class="brikpanel-topbar-coming-soon" href="<?php echo esc_url( $url ); ?>" aria-label="<?php echo esc_attr( $label ); ?>" title="<?php esc_attr_e( 'Your store is hidden from visitors. Click to change site visibility.', 'brikpanel' ); ?>">
+            <?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup above. ?>
             <span class="brikpanel-topbar-coming-soon-label"><?php echo esc_html( $label ); ?></span>
         </a>
-        <?php
+            <?php
+        else :
+            ?>
+        <span class="brikpanel-topbar-coming-soon is-static" role="note" aria-label="<?php echo esc_attr( $label ); ?>" title="<?php esc_attr_e( 'Your store is hidden from visitors.', 'brikpanel' ); ?>">
+            <?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup above. ?>
+            <span class="brikpanel-topbar-coming-soon-label"><?php echo esc_html( $label ); ?></span>
+        </span>
+            <?php
+        endif;
     }
 
     // =========================================================================

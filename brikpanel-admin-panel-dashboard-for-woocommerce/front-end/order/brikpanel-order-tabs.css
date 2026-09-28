@@ -351,7 +351,7 @@
 
 .brikpanel-modern-edit.bp-order-tabs #woocommerce-order-data .woocommerce-order-data__meta {
 	margin: 0 0 16px;
-	color: #8a8a8a;
+	color: #616161;
 	font-size: .75rem;
 }
 
@@ -481,7 +481,7 @@
 .brikpanel-modern-edit.bp-order-tabs #woocommerce-order-notes ul.order_notes li .meta {
 	margin: 4px 0 0;
 	padding: 0;
-	color: #8a8a8a !important;
+	color: #616161 !important;
 	font-size: .75rem;
 }
 
@@ -595,7 +595,7 @@
 }
 
 .bp-osummary__method {
-	color: #8a8a8a;
+	color: #616161;
 	font-size: .75rem;
 }
 
@@ -636,7 +636,7 @@
 }
 
 .bp-osummary__orders {
-	color: #8a8a8a;
+	color: #616161;
 	font-size: .75rem;
 }
 
@@ -894,7 +894,7 @@
 }
 
 .brikpanel-modern-edit.bp-order-tabs .woocommerce_order_items td.item_cost_of_goods {
-	color: #8a8a8a;
+	color: #616161;
 }
 
 /* Inline editing (pencil on an item, refund quantities). */
@@ -1000,7 +1000,7 @@
 .brikpanel-modern-edit.bp-order-tabs #woocommerce-order-items .wc-order-data-row .description {
 	float: none;
 	margin: 0 auto 0 0;
-	color: #8a8a8a;
+	color: #616161;
 	font-size: .75rem;
 }
 
@@ -1090,7 +1090,7 @@
 
 .brikpanel-modern-edit.bp-order-tabs #woocommerce-order-items table.wc-order-totals td .description {
 	display: block;
-	color: #8a8a8a;
+	color: #616161;
 	font-size: .75rem;
 	white-space: normal;
 }
@@ -1105,7 +1105,7 @@
 }
 
 .brikpanel-modern-edit.bp-order-tabs #woocommerce-order-items table.wc-order-totals .cost-total {
-	color: #8a8a8a !important;
+	color: #616161 !important;
 	font-weight: 400 !important;
 }
 

@@ -78,7 +78,7 @@ class Brikpanel_Ads_Dashboard {
 		// The refresh button is gated HARDER than the cards. The cards only need
 		// historical rows to be worth drawing; the button needs a platform that
 		// a pull can actually succeed against, because run_inline() throws
-		// "Pick a primary account first." every single time otherwise, and a
+		// "Choose at least one ad account first." every single time otherwise, and a
 		// button that can only ever fail is worse than no button.
 		$can_refresh = [] !== self::refreshable_platforms();
 		?>
@@ -342,9 +342,10 @@ class Brikpanel_Ads_Dashboard {
 	 * stored credentials went unreadable lands in the "nothing connected"
 	 * branch instead of spending the cooldown on two guaranteed failures.
 	 *
-	 * The primary-account half matters just as much: run_inline() throws
-	 * "Pick a primary account first." before it opens a socket, so a platform
-	 * without one is not a refresh candidate, it is a settings problem.
+	 * The account half matters just as much: run_inline() throws "Choose at
+	 * least one ad account first." before it opens a socket, so a platform
+	 * with no account ticked is not a refresh candidate, it is a settings
+	 * problem.
 	 *
 	 * @return string[]
 	 */
@@ -355,7 +356,7 @@ class Brikpanel_Ads_Dashboard {
 		$out = [];
 		foreach ( [ Brikpanel_Ads_Tokens::PLATFORM_GOOGLE, Brikpanel_Ads_Tokens::PLATFORM_META ] as $platform ) {
 			$desc = Brikpanel_Ads_Tokens::describe( $platform );
-			if ( ! empty( $desc['connected'] ) && '' !== (string) ( $desc['primary_account'] ?? '' ) ) {
+			if ( ! empty( $desc['connected'] ) && ! empty( $desc['accounts'] ) ) {
 				$out[] = $platform;
 			}
 		}
@@ -466,11 +467,16 @@ class Brikpanel_Ads_Dashboard {
 		}
 		self::start_cooldown();
 
-		$sync   = new Brikpanel_Ads_Sync();
-		$ok     = [];
-		$failed = [];
-		$errors = [];
-		$detail = [];
+		$sync     = new Brikpanel_Ads_Sync();
+		$ok       = [];
+		$failed   = [];
+		$errors   = [];
+		$detail   = [];
+		$deferred = false;
+		// One budget for the whole request: every platform may have up to
+		// twenty accounts, pulled one after another inside this browser
+		// request. Accounts left when it runs out wait for the daily sync.
+		$deadline = time() + Brikpanel_Ads_Sync::INLINE_BUDGET_SECONDS;
 
 		foreach ( $targets as $platform ) {
 			// Inside the loop, not before it: set_time_limit RESETS the counter,
@@ -478,12 +484,23 @@ class Brikpanel_Ads_Dashboard {
 			// let a slow Google pull eat Meta's share of the same allowance.
 			@set_time_limit( 90 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			try {
-				$result = (array) $sync->run_inline( $platform );
+				$result = (array) $sync->run_inline( $platform, $deadline );
 				$ok[]   = $platform;
-				// 'days' (rows returned by the API), never 'rows' ($wpdb
-				// affected-rows, which counts 2 for every updated row). The
-				// settings page's own message gets this wrong; do not copy it.
-				$detail[ $platform ] = [ 'ok' => true, 'days' => (int) ( $result['days'] ?? 0 ) ];
+				// 'days' (distinct days returned by the API), never 'rows' ($wpdb
+				// affected-rows, which counts 2 for every updated row).
+				$detail[ $platform ] = [ 'ok' => empty( $result['failed'] ), 'days' => (int) ( $result['days'] ?? 0 ) ];
+
+				// Some accounts of this platform failed while others landed:
+				// that is the partial answer below, like a failed platform.
+				if ( ! empty( $result['failed'] ) ) {
+					$account_id = (string) array_key_first( $result['failed'] );
+					$failed[]   = $platform;
+					$errors[]   = Brikpanel_Ads_Sync::account_error( $account_id, (string) $result['failed'][ $account_id ] );
+					$detail[ $platform ]['error'] = end( $errors );
+				}
+				if ( ! empty( $result['deferred'] ) ) {
+					$deferred = true;
+				}
 
 				// Bust per platform, not once after the loop. The rows are
 				// already written; if this worker dies while pulling the next
@@ -510,17 +527,16 @@ class Brikpanel_Ads_Dashboard {
 				if ( class_exists( 'Brikpanel_Ads_Logger' ) ) {
 					Brikpanel_Ads_Logger::log( 'sync', 'Dashboard refresh ' . $platform . ' failed: ' . $message );
 				}
-				// Same shape handle_daily() writes, and for the same reason:
-				// run_inline() only records success, so without this the
-				// settings card would keep claiming "last synced OK" after a
-				// failure the merchant just watched happen.
-				update_option(
-					'brikpanel_ads_last_sync_' . $platform,
-					[ 'ts' => time(), 'ok' => false, 'error' => $message ],
-					false
-				);
+				// run_inline() records the failed attempt for the settings card
+				// itself, so it no longer claims "last synced OK" after a failure
+				// the merchant just watched happen.
 			}
 		}
+
+		// The lock was taken before the pulls, which may have used most of it.
+		// Hold it for the full period again from now, so the next click cannot
+		// start a second round straight after this one.
+		self::start_cooldown();
 
 		// One last bump, before the response rather than after it.
 		//
@@ -563,12 +579,22 @@ class Brikpanel_Ads_Dashboard {
 			// figures while fresh ones wait in the database — precisely the
 			// failure this button exists to remove. The red toast is what says
 			// something went wrong.
-			wp_send_json_success( [
-				'message'   => sprintf(
+			$first = reset( $failed );
+			// A platform that answered for some accounts and not others is not
+			// "unreachable": name the account and what the platform said.
+			$message = in_array( $first, $ok, true )
+				? sprintf(
+					/* translators: %s: "Account <ID>: <error message from the ad platform>" */
+					__( 'Ad spend updated, but not for every account. %s', 'brikpanel' ),
+					(string) reset( $errors )
+				)
+				: sprintf(
 					/* translators: %s: ad platform name, for example "Google Ads". */
 					__( 'Ad spend updated, but %s could not be reached.', 'brikpanel' ),
-					self::platform_label( reset( $failed ) )
-				),
+					self::platform_label( $first )
+				);
+			wp_send_json_success( [
+				'message'   => $message,
 				'status'    => 'partial',
 				'toast'     => 'error',
 				'refetch'   => true,
@@ -576,8 +602,12 @@ class Brikpanel_Ads_Dashboard {
 			] );
 		}
 
+		$message = __( 'Ad spend updated.', 'brikpanel' );
+		if ( $deferred ) {
+			$message .= ' ' . __( 'The other accounts will be updated by the next daily sync.', 'brikpanel' );
+		}
 		wp_send_json_success( [
-			'message'   => __( 'Ad spend updated.', 'brikpanel' ),
+			'message'   => $message,
 			'status'    => 'ok',
 			'toast'     => 'success',
 			'refetch'   => true,
@@ -825,7 +855,7 @@ class Brikpanel_Ads_Dashboard {
 				background: none; border: 0; padding: 0.1875rem;
 				display: inline-flex; align-items: center; justify-content: center;
 				cursor: pointer; line-height: 0; border-radius: 0.375rem;
-				color: var(--bp-text-muted, #8a8a8a);
+				color: var(--bp-text-secondary, #616161);
 				transition: color 0.15s ease, background-color 0.15s ease;
 			}
 			.brikpanel-dash-ads-refresh:hover {
@@ -847,7 +877,8 @@ class Brikpanel_Ads_Dashboard {
 		wp_enqueue_style( 'brikpanel-ads-inline' );
 		wp_add_inline_style( 'brikpanel-ads-inline', $css );
 
-		wp_register_script( 'brikpanel-ads-inline', '', [], BRIKPANEL_VERSION, true );
+		// The formatter lays numbers and money out like the rest of the dashboard.
+		wp_register_script( 'brikpanel-ads-inline', '', function_exists( 'brikpanel_narrow_dep' ) ? brikpanel_narrow_dep( 'format' ) : [], BRIKPANEL_VERSION, true );
 		wp_enqueue_script( 'brikpanel-ads-inline' );
 		// One bag with an i18n sub-array, rather than the flat string map this
 		// used to be: the refresh button needs an endpoint and a nonce beside
@@ -1025,10 +1056,10 @@ class Brikpanel_Ads_Dashboard {
 				var roasSub = document.getElementById('delta-roas');
 				if (roasEl) {
 					if (typeof ad.roas === 'number' && isFinite(ad.roas)) {
-						roasEl.textContent = ad.roas.toFixed(2) + 'x';
+						roasEl.textContent = (window.brikpanelFormat ? window.brikpanelFormat.number(ad.roas, 2) : ad.roas.toFixed(2)) + 'x';
 						if (roasSub) { roasSub.textContent = i18n.roas_label || ''; }
 					} else {
-						roasEl.textContent = '—';
+						roasEl.textContent = '\u2014'; // Empty-value marker (em dash), the one dash the UI keeps.
 						if (roasSub) { roasSub.textContent = crossCurrency ? (i18n.roas_cross_currency || '') : ''; }
 					}
 				}
@@ -1053,7 +1084,7 @@ class Brikpanel_Ads_Dashboard {
 						cpoEl.textContent = formatMoney(ad.cost_per_order, ad.cost_per_order_currency, ad);
 						haveCpo = true;
 					} else {
-						cpoEl.textContent = '—';
+						cpoEl.textContent = '\u2014';
 					}
 					if (cpoSub) {
 						// Only a caveat goes here now that the figure sits under
@@ -1064,7 +1095,7 @@ class Brikpanel_Ads_Dashboard {
 						cpoSub.textContent = ( ! haveCpo && crossCurrency ) ? ( i18n.roas_cross_currency || '' ) : '';
 					}
 					// No figure and no caveat means the panel would open onto an
-					// em dash, so the chevron is not offered at all — the same
+					// em dash, so the chevron is not offered at all: the same
 					// call renderExpenseBreakdown() makes for an empty
 					// breakdown. The class is what moves the refresh button
 					// aside, so both corners cannot end up on top of each other.
@@ -1090,16 +1121,14 @@ class Brikpanel_Ads_Dashboard {
 				}
 			});
 
+			// Only when the server sent no ready-made figure: the store's price
+			// layout (front-end/shared/brikpanel-format.js), not the browser's.
 			function formatMoney(amount, currency, ad) {
-				try {
-					return new Intl.NumberFormat(undefined, {
-						style: 'currency',
-						currency: currency || (ad && ad.store_currency) || 'USD',
-						maximumFractionDigits: 2
-					}).format(amount);
-				} catch (e) {
-					return ((ad && ad.store_symbol) || currency || '') + ' ' + Number(amount).toFixed(2);
+				var sym = (ad && ad.store_symbol) || currency || '';
+				if (window.brikpanelFormat) {
+					return window.brikpanelFormat.money(Number(amount) || 0, { symbol: sym });
 				}
+				return sym + ' ' + Number(amount).toFixed(2);
 			}
 		})();
 JS;

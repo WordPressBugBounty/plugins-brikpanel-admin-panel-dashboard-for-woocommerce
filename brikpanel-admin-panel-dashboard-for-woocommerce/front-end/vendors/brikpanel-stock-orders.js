@@ -38,9 +38,15 @@
             return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[m];
         });
     }
+    // The store's price format (symbol side, separators, decimals) through
+    // front-end/shared/brikpanel-format.js; it was always "$1,234.56".
     function fmtMoney(n) {
         n = parseFloat(n) || 0;
-        return cfg.currency + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return window.brikpanelFormat ? window.brikpanelFormat.money(n) : cfg.currency + n.toFixed(2);
+    }
+    // A stored Y-m-d in the store's short date format.
+    function fmtDate(ymd) {
+        return window.brikpanelFormat ? window.brikpanelFormat.dateShort(ymd) : String(ymd || '');
     }
     function toast(message, isError) {
         var el = document.createElement('div');
@@ -123,9 +129,9 @@
                     '<td class="brikpanel-fit-lead"><a class="brikpanel-so-ref-link" href="' + url + '">' + escapeHtml(po.reference || ('#' + po.id)) + '</a></td>' +
                     '<td>' + escapeHtml(po.vendor_name) + '</td>' +
                     '<td><span class="brikpanel-so-status brikpanel-so-status--' + escapeHtml(po.status) + '">' + escapeHtml(po.status_label) + '</span></td>' +
-                    '<td>' + (po.order_date    || '<span style="color:#8a8a8a;">—</span>') + '</td>' +
-                    '<td>' + (po.expected_date || '<span style="color:#8a8a8a;">—</span>') + '</td>' +
-                    '<td>' + (po.received_date || '<span style="color:#8a8a8a;">—</span>') + '</td>' +
+                    '<td>' + (po.order_date    ? escapeHtml(fmtDate(po.order_date))    : '<span style="color:#8a8a8a;">—</span>') + '</td>' + // contrast-ok: empty-value marker.
+                    '<td>' + (po.expected_date ? escapeHtml(fmtDate(po.expected_date)) : '<span style="color:#8a8a8a;">—</span>') + '</td>' + // contrast-ok: empty-value marker.
+                    '<td>' + (po.received_date ? escapeHtml(fmtDate(po.received_date)) : '<span style="color:#8a8a8a;">—</span>') + '</td>' + // contrast-ok: empty-value marker.
                     '<td class="brikpanel-so-num brikpanel-fit-headline">' + escapeHtml(po.total_fmt) + '</td>' +
                     '<td class="brikpanel-so-num brikpanel-fit-full">' +
                         '<div class="brikpanel-so-row-actions">' +
@@ -239,7 +245,7 @@
         // ─── render lines ────────────────────────────────────────────────
         function renderLines() {
             if (!items.length) {
-                setLines('<tr class="brikpanel-so-items-empty"><td colspan="6">' + escapeHtml((cfg.i18n && cfg.i18n.empty_items) || 'No items yet — search above to add a product.') + '</td></tr>');
+                setLines('<tr class="brikpanel-so-items-empty"><td colspan="6">' + escapeHtml((cfg.i18n && cfg.i18n.empty_items) || '') + '</td></tr>');
                 recalcTotals();
                 return;
             }

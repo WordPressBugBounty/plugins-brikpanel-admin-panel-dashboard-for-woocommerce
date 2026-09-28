@@ -181,6 +181,13 @@ function brikpanel_recompute_customer_metrics_handler() {
 	$duration = round( microtime( true ) - $start_ts, 3 );
 	$peak     = function_exists( 'memory_get_peak_usage' ) ? round( memory_get_peak_usage( true ) / 1024 / 1024, 1 ) : 0;
 
+	// Marks a finished run (the failures above throw before this line). On a
+	// store without customers the table stays empty either way, so the page
+	// header reads this to tell "ran, nobody yet" from "never ran"
+	// (Brikpanel_Customer_Analytics::compute_metrics_meta()). Internal, not
+	// autoloaded: only the Customer Analytics page reads it.
+	update_option( 'brikpanel_ca_last_run', time(), false );
+
 	// Invalidate the read-side caches so the Customer Analytics page and the
 	// Dashboard's LTV/RFM panels both reflect fresh metrics on the next render.
 	if ( method_exists( 'Brikpanel_Customer_Analytics', 'bust_cache' ) ) {
@@ -227,11 +234,12 @@ function brikpanel_ca_assign_rfm_scores() {
 	global $wpdb;
 	$tbl = $wpdb->prefix . 'brikpanel_customer_metrics';
 
-	// MySQL 8.0+ supports NTILE() and UPDATE … JOIN on a derived table.
-	// Stores running pre-8.0 won't get RFM until they upgrade — we degrade
-	// gracefully by zeroing scores rather than fataling.
-	$server_version = $wpdb->db_version();
-	if ( version_compare( $server_version, '8.0', '<' ) ) {
+	// NTILE() needs window functions: MySQL 8.0+ or MariaDB 10.2+ (see
+	// brikpanel_db_supports_window_functions(), which also reads MariaDB
+	// behind the "5.5.5-" prefix). Older servers get no RFM until they
+	// upgrade; we degrade gracefully by zeroing scores rather than fataling.
+	// ajax_rfm_summary() uses the same helper, so its message agrees.
+	if ( ! brikpanel_db_supports_window_functions() ) {
 		$wpdb->query( "UPDATE {$tbl} SET r_score=0, f_score=0, m_score=0, rfm_segment=NULL" ); // phpcs:ignore
 		return 0;
 	}

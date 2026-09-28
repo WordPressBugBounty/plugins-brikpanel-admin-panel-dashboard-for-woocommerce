@@ -853,12 +853,66 @@ function brikpanel_topbar_create_hidden_items() {
  *               only while the feature is switched on and its class loaded.
  *  - post:      post-new.php needs the post type's edit_posts and create_posts.
  *
+ * With "Block pages hidden from the menu" on, an entry whose screen the
+ * Navigation rules close for this user is not available either: it would only
+ * open the "not available" card (front-end/navigation/brikpanel-nav-page-access.php).
+ *
  * Unknown keys stay available, as the entry list promises.
  *
  * @param string $key
  * @return bool
  */
 function brikpanel_topbar_create_item_available( $key ) {
+    if ( ! brikpanel_topbar_create_item_capable( $key ) ) {
+        return false;
+    }
+    if ( function_exists( 'brikpanel_nav_url_blocked_for_current_user' ) ) {
+        $url = brikpanel_topbar_create_item_url( $key );
+        if ( '' !== $url && brikpanel_nav_url_blocked_for_current_user( $url ) ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Where a quick-create entry leads. The top bar's link and the check above
+ * read the same address, so the two cannot drift apart.
+ *
+ * @param string $key
+ * @return string Absolute admin URL, '' for unknown keys.
+ */
+function brikpanel_topbar_create_item_url( $key ) {
+    switch ( $key ) {
+        case 'product':
+            return admin_url( 'admin.php?page=brikpanel-product-editor' );
+
+        case 'order':
+            return admin_url( 'post-new.php?post_type=shop_order' );
+
+        case 'coupon':
+            return function_exists( 'brikpanel_module_url' )
+                ? brikpanel_module_url( 'brikpanel-coupons', [ 'action' => 'new' ], admin_url( 'post-new.php?post_type=shop_coupon' ) )
+                : admin_url( 'admin.php?page=brikpanel-coupons&action=new' );
+
+        case 'cart_link':
+            return admin_url( 'admin.php?page=brikpanel-cart-share' );
+
+        case 'post':
+            return admin_url( 'post-new.php' );
+    }
+
+    return '';
+}
+
+/**
+ * Whether the current user passes the capabilities of a quick-create entry's
+ * screen (see brikpanel_topbar_create_item_available()).
+ *
+ * @param string $key
+ * @return bool
+ */
+function brikpanel_topbar_create_item_capable( $key ) {
     switch ( $key ) {
         case 'product':
             return current_user_can( 'edit_products' );
@@ -1236,7 +1290,7 @@ function brikpanel_render_topbar_items_field( $field ) {
                     margin: 0 0 .5rem;
                     font-size: .75rem;
                     line-height: 1.5;
-                    color: #8a8a8a;
+                    color: #616161;
                 }
                 .brikpanel-topbar-subitems {
                     margin: 0;

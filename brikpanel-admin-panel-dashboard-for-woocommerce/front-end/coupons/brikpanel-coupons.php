@@ -113,7 +113,7 @@ class Brikpanel_Coupons {
         $trash   = isset($counts->trash) ? (int) $counts->trash : 0;
         $all     = $publish + $draft;
         ?>
-        <div class="wrap">
+        <div class="wrap brikpanel-shell__page">
         <div class="brikpanel-cp" id="brikpanel-coupons-list">
 
             <?php
@@ -154,7 +154,7 @@ class Brikpanel_Coupons {
                 </div>
                 <div class="brikpanel-cp-search-wrap">
                     <svg class="brikpanel-cp-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                    <input type="text" id="bpc-search" class="brikpanel-cp-search" placeholder="<?php esc_attr_e('Search coupons...', 'brikpanel'); ?>" aria-label="<?php esc_attr_e('Search coupons...', 'brikpanel'); ?>">
+                    <input type="text" id="bpc-search" class="brikpanel-cp-search brikpanel-control brikpanel-control--quiet" placeholder="<?php esc_attr_e('Search coupons...', 'brikpanel'); ?>" aria-label="<?php esc_attr_e('Search coupons...', 'brikpanel'); ?>">
                 </div>
             </div>
             <?php brikpanel_header_end(); ?>
@@ -182,7 +182,7 @@ class Brikpanel_Coupons {
                     <?php endif; ?>
                 </div>
                 <div class="brikpanel-cp-filter-group">
-                    <select id="bpc-sort" class="brikpanel-cp-select">
+                    <select id="bpc-sort" class="brikpanel-cp-select brikpanel-control brikpanel-control--quiet">
                         <option value="date-desc"><?php esc_html_e('Newest first', 'brikpanel'); ?></option>
                         <option value="date-asc"><?php esc_html_e('Oldest first', 'brikpanel'); ?></option>
                         <option value="title-asc"><?php esc_html_e('Code A-Z', 'brikpanel'); ?></option>
@@ -218,7 +218,7 @@ class Brikpanel_Coupons {
                                 <th class="brikpanel-cp-th-type"><?php esc_html_e('Type', 'brikpanel'); ?></th>
                                 <th class="brikpanel-cp-th-amount"><?php esc_html_e('Amount', 'brikpanel'); ?></th>
                                 <th class="brikpanel-cp-th-desc"><?php esc_html_e('Description', 'brikpanel'); ?></th>
-                                <th class="brikpanel-cp-th-usage"><?php esc_html_e('Usage / Limit', 'brikpanel'); ?></th>
+                                <th class="brikpanel-cp-th-usage"><?php esc_html_e('Usage / limit', 'brikpanel'); ?></th>
                                 <th class="brikpanel-cp-th-revenue"><?php esc_html_e('Revenue', 'brikpanel'); ?></th>
                                 <th class="brikpanel-cp-th-expiry"><?php esc_html_e('Expiry date', 'brikpanel'); ?></th>
                                 <th class="brikpanel-cp-th-status"><?php esc_html_e('Status', 'brikpanel'); ?></th>
@@ -276,7 +276,7 @@ class Brikpanel_Coupons {
                         <div class="brikpanel-cp-qe-row">
                             <div class="brikpanel-cp-qe-field">
                                 <label for="bpc-discount-type"><?php esc_html_e('Discount type', 'brikpanel'); ?></label>
-                                <select id="bpc-discount-type" class="brikpanel-cp-select full">
+                                <select id="bpc-discount-type" class="brikpanel-cp-select full brikpanel-control">
                                     <option value="percent"><?php esc_html_e('Percentage discount', 'brikpanel'); ?></option>
                                     <option value="fixed_cart"><?php esc_html_e('Fixed cart discount', 'brikpanel'); ?></option>
                                     <option value="fixed_product"><?php esc_html_e('Fixed product discount', 'brikpanel'); ?></option>

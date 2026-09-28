@@ -1,5 +1,11 @@
 var _ordersI18n = (window.brikpanelOrdersOverview && window.brikpanelOrdersOverview.i18n) || {};
 
+// Counts with the store's separators (front-end/shared/brikpanel-format.js),
+// not the browser's language (field test E2).
+function brikpanelOrdersNumber(n) {
+	return window.brikpanelFormat ? window.brikpanelFormat.number(n || 0) : String(Number(n) || 0);
+}
+
 function makeElement(tagName, attributes = {}, properties = {}, listeners = []) {
 	const $element = document.createElement(tagName);
 	Object.entries(attributes).forEach(([key, value]) => {
@@ -243,7 +249,7 @@ function brikpanelOrdersOverviewSection() {
 		$m.innerHTML = `<span class="brikpanel-metric-label">${m.label}</span>`
 			+ `<div class="brikpanel-metric-body">`
 			+ `<span class="brikpanel-metric-value">—</span>`
-			+ `<span class="brikpanel-metric-spark">${brikpanelSparklineSvg([0, 0], m.key + idx)}</span>`
+			+ `<span class="brikpanel-metric-spark is-flat">${brikpanelSparklineSvg([0, 0], m.key + idx)}</span>`
 			+ `</div>`;
 		metricEls[m.key] = {
 			value: $m.querySelector('.brikpanel-metric-value'),
@@ -311,8 +317,12 @@ function brikpanelOrdersOverviewSection() {
 			if (!el) return;
 			el.value.textContent = m.revenue
 				? summary.revenue_formatted
-				: Number(summary[m.key] || 0).toLocaleString();
-			el.spark.innerHTML = brikpanelSparklineSvg(series[m.key] || [0, 0], m.key + idx);
+				: brikpanelOrdersNumber(summary[m.key]);
+			const values = Array.isArray(series[m.key]) ? series[m.key] : [];
+			// An all-zero series only draws a flat line next to the number:
+			// hide it, the box keeps its size so nothing jumps.
+			el.spark.classList.toggle('is-flat', !values.some(v => (parseFloat(v) || 0) !== 0));
+			el.spark.innerHTML = brikpanelSparklineSvg(values.length ? values : [0, 0], m.key + idx);
 		});
 	}
 
@@ -371,8 +381,8 @@ function brikpanelOrdersOverviewSection() {
 				if (label) $stat.append(document.createTextNode(' ' + label));
 				$stats.append($stat);
 			};
-			addStat(Number(mp.products || 0).toLocaleString(), i18n.products || '');
-			addStat(Number(mp.orders || 0).toLocaleString(), i18n.orders_low || '');
+			addStat(brikpanelOrdersNumber(mp.products), i18n.products || '');
+			addStat(brikpanelOrdersNumber(mp.orders), i18n.orders_low || '');
 			addStat(String(mp.revenue || ''), '', 'revenue');
 
 			$row.append($name, $stats);
@@ -1391,6 +1401,24 @@ function brikpanelCompactRows() {
 	};
 	applyPlacement();
 	phoneQuery.addEventListener?.('change', applyPlacement);
+
+	// New content for one of a row's extra columns, handed over by another
+	// script (the tracking window in brikpanel-order-tracking.js). The content
+	// sits in its cell or in the panel depending on where the column is shown,
+	// and only this code knows which, so it swaps both and places the result:
+	// the old copy never stays next to the new one, and an item hidden as empty
+	// comes back. preventDefault() tells the sender the swap is done.
+	document.addEventListener('brikpanel:order-cell-replace', event => {
+		const { row: $row, key, fragment } = event.detail || {};
+		const move = (movesByRow.get($row) || []).find(entry => entry.key === key);
+		if (!move || !(fragment instanceof DocumentFragment)) return;
+		event.preventDefault();
+		move.$source.replaceChildren(fragment);
+		move.$value?.replaceChildren();
+		placeRow($row);
+		const $extras = document.getElementById(`bp-order-detail-${($row.id || '').replace(/^(order|post)-/, '')}`)?.querySelector('.bp-od-extras');
+		if ($extras) syncExtras($extras);
+	});
 
 	// Screen Options "Show in the row" boxes: apply at once, then save for the user.
 	const $rowPrefs = document.querySelector('#screen-options-wrap .bp-row-columns');

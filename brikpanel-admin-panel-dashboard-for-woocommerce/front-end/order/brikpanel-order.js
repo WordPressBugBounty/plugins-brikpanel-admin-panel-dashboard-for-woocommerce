@@ -132,8 +132,31 @@
 		saveBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' +
 			escHtml((isNew ? cfg.i18n.create : cfg.i18n.save) || '');
 		saveBtn.addEventListener('click', function () {
+			// WooCommerce's Update / Create button (kept in the page, hidden, see
+			// bp-order-save-in-header below) does the real save.
 			var origSave = document.querySelector('.save_order.button-primary');
-			if (origSave) origSave.click();
+			if (origSave) {
+				origSave.click();
+				return;
+			}
+			// Another plugin removed WooCommerce's order actions box: this button
+			// used to do nothing then. Submit the order form (HPOS: #order, the
+			// older screen: #post) with the field that button would have sent.
+			var form = document.getElementById('order') || document.getElementById('post');
+			if (!form) return;
+			var flag = form.querySelector('input[type="hidden"][name="save"]');
+			if (!flag) {
+				flag = document.createElement('input');
+				flag.type = 'hidden';
+				flag.name = 'save';
+				form.appendChild(flag);
+			}
+			flag.value = (isNew ? cfg.i18n.create : cfg.i18n.save) || '';
+			if (typeof form.requestSubmit === 'function') {
+				form.requestSubmit();
+			} else {
+				form.submit();
+			}
 		});
 
 		right.appendChild(statusWrap);
@@ -143,6 +166,10 @@
 		header.appendChild(right);
 
 		wrap.insertBefore(header, wrap.firstChild);
+		// The header's Save is now the order's one save button: the CSS hides
+		// WooCommerce's second, identical one in the order actions box (field
+		// test D16). Without this script both stay, as before.
+		document.body.classList.add('bp-order-save-in-header');
 
 		// Pull WordPress's "Screen Options" / "Help" toggles up into this header.
 		// WP floats #screen-meta-links at the very top of the content — exactly
@@ -618,7 +645,7 @@
 			if (f.remaining === null || typeof f.remaining === 'undefined') {
 				parts.push(cfg.i18n.unlimited);
 			} else {
-				parts.push(cfg.i18n.remaining.replace('%s', String(f.remaining)));
+				parts.push(countText(cfg.i18n.remaining, f.remaining | 0));
 			}
 
 			if (f.expires) {
@@ -636,8 +663,13 @@
 	}
 
 	function formatCount(n) {
-		var tmpl = n === 1 ? cfg.i18n.download_one : cfg.i18n.download_many;
-		return tmpl.replace('%d', String(n));
+		return countText(cfg.i18n.download_count, n);
+	}
+
+	// A count made here, in the plural form the language needs (the message
+	// carries every form: brikpanel_js_plural() in PHP).
+	function countText(msg, n) {
+		return window.brikpanelFormat ? window.brikpanelFormat.count(msg, n) : String(n);
 	}
 
 	/* ============================================================
