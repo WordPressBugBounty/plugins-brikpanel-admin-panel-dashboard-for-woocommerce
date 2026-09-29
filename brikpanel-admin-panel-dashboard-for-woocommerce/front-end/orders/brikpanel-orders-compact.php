@@ -734,9 +734,11 @@ function brikpanel_orders_compact_detail_html( $order ) {
 	$actions = '<a class="bp-od-btn bp-od-btn-primary bp-open-order" href="' . esc_url( $order->get_edit_order_url() ) . '">' . esc_html__( 'Open order', 'brikpanel' ) . '</a>';
 	$wa_url  = ( brikpanel_orders_compact_whatsapp_visible() && function_exists( 'brikpanel_order_whatsapp_url' ) ) ? brikpanel_order_whatsapp_url( $order ) : '';
 	if ( '' !== $wa_url ) {
-		$actions .= '<a class="bp-od-btn bp-od-btn-secondary bp-od-wa" href="' . brikpanel_whatsapp_esc_url( $wa_url ) . '" target="_blank" rel="noopener">'
+		// After the first press in a status with a follow-up, the button opens the follow-up (brikpanel-order-whatsapp.php).
+		$wa_followup = function_exists( 'brikpanel_whatsapp_order_is_followup' ) && brikpanel_whatsapp_order_is_followup( $order );
+		$actions    .= '<a class="bp-od-btn bp-od-btn-secondary bp-od-wa" href="' . brikpanel_whatsapp_esc_url( $wa_url ) . '" target="_blank" rel="noopener" data-bp-wa-order="' . absint( $order->get_id() ) . '"' . ( $wa_followup ? ' data-bp-wa-followup="1"' : '' ) . '>'
 			. ( function_exists( 'brikpanel_order_whatsapp_icon_svg' ) ? brikpanel_order_whatsapp_icon_svg( 16 ) : '' )
-			. esc_html__( 'WhatsApp', 'brikpanel' ) . '</a>';
+			. '<span class="bp-od-wa-label">' . ( $wa_followup ? esc_html__( 'Send follow-up', 'brikpanel' ) : esc_html__( 'WhatsApp', 'brikpanel' ) ) . '</span></a>';
 	}
 	// WooCommerce's quick preview, which the short row no longer shows. Its
 	// click handler is delegated on the document, so it works from here too.

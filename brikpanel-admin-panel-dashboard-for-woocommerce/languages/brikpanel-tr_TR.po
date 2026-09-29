@@ -15690,3 +15690,23 @@ msgstr "BrikPanel'in bir sipariş için hazırladığı WhatsApp mesajına kendi
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "WooCommerce > Ayarlar > BrikPanel > Siparişler sayfasında WhatsApp mesajlarının altında sunulan yer tutucular; yer tutucu => kısa açıklama biçiminde. Her biri, onu mesaja ekleyen bir düğmeye dönüşür ve İleti alanının altında listelenir. brikpanel_whatsapp_order_tokens ile doldurduğunuz yer tutucuları buraya ekleyin ki mesajları yazanlar onları bulabilsin. Anahtarlar {my_placeholder} biçiminde olmalıdır."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "Müşteriye WhatsApp'tan hatırlatma gönder"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "WhatsApp'tan hatırlatma gönder"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Hatırlatma gönder"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Hatırlatma mesajı"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "Bu durumdaki bir siparişte WhatsApp düğmesine ikinci basıştan itibaren açılır; böylece müşteriye ilk mesaj iki kez gitmez. Her seferinde yukarıdaki mesajın açılması için boş bırakın."

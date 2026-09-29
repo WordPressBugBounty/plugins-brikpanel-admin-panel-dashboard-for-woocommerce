@@ -15690,3 +15690,23 @@ msgstr "Ajoutez vos propres balises au message WhatsApp que BrikPanel prépare p
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "Les balises proposées sous les messages WhatsApp dans WooCommerce > Réglages > BrikPanel > Commandes, sous la forme balise => courte description. Chacune devient un bouton qui l'insère dans le message et figure dans la liste sous le champ Message. Ajoutez les balises que vous remplissez avec brikpanel_whatsapp_order_tokens, afin que les personnes qui rédigent les messages puissent les trouver. Les clés doivent avoir la forme {my_placeholder}."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "Envoyer une relance au client sur WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "Envoyer une relance sur WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Envoyer une relance"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Message de relance"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "S'ouvre à partir du deuxième clic sur un bouton WhatsApp d'une commande dans ce statut, pour que le client ne reçoive pas deux fois le premier message. Laissez le champ vide pour ouvrir chaque fois le message ci-dessus."

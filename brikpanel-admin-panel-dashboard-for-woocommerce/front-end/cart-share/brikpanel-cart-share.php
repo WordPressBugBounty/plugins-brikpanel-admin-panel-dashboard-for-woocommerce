@@ -541,10 +541,17 @@ class Brikpanel_Cart_Share {
             true
         );
 
+        // The button wears the same classes WooCommerce gives its own cart
+        // buttons ("Apply coupon", "Update cart"), so the theme paints it like
+        // them. A fixed look of our own read as a faint, unstyled button next
+        // to a theme's coloured ones (wp.org report, Astra + classic cart).
+        $element_class = function_exists( 'wc_wp_theme_get_element_class_name' ) ? wc_wp_theme_get_element_class_name( 'button' ) : '';
+
         wp_localize_script( 'brikpanel_cartshare_front', 'brikpanelCartShare', [
             'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
             'nonce'        => wp_create_nonce( 'brikpanel_cartshare_pub' ),
             'initialLink'  => self::build_link_from_cart(),
+            'buttonClass'  => trim( 'button ' . $element_class ),
             'whatsappBase' => 'https://wa.me/?text=',
             'i18n'         => [
                 'button'      => __( 'Share cart', 'brikpanel' ),

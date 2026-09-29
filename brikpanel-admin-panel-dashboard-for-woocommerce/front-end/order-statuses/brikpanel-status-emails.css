@@ -192,6 +192,14 @@
 	color: #8a8a8a;
 }
 
+/* A short note under a field. */
+.bp-cse-hint {
+	margin: 0;
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	color: #616161;
+}
+
 /* Recipients row */
 .bp-cse-checks {
 	display: flex;

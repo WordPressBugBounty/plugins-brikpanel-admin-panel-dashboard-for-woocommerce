@@ -15690,3 +15690,23 @@ msgstr "Aggiungi i tuoi segnaposto al messaggio WhatsApp che BrikPanel prepara p
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "I segnaposto proposti sotto i messaggi WhatsApp in WooCommerce > Impostazioni > BrikPanel > Ordini, come segnaposto => breve descrizione. Ognuno diventa un pulsante che lo inserisce nel messaggio ed è elencato sotto il campo Messaggio. Aggiungi i segnaposto che compili con brikpanel_whatsapp_order_tokens, così chi scrive i messaggi può trovarli. Le chiavi devono avere la forma {my_placeholder}."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "Invia un promemoria al cliente su WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "Invia promemoria su WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Invia promemoria"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Messaggio di promemoria"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "Si apre dal secondo clic su un pulsante WhatsApp di un ordine in questo stato, così il cliente non riceve due volte il primo messaggio. Lascialo vuoto per aprire ogni volta il messaggio qui sopra."

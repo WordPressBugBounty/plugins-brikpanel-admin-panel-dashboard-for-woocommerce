@@ -1291,8 +1291,12 @@
 				wa.href = data.whatsapp_url;
 				wa.target = '_blank';
 				wa.rel = 'noopener';
-				wa.title = i18n.whatsapp || '';
-				wa.setAttribute('aria-label', i18n.whatsapp || '');
+				// Once the first message went out in a status with a follow-up, the
+				// icon opens the follow-up (brikpanel-order-whatsapp.php).
+				var waLabel = (data.whatsapp_followup ? i18n.whatsapp_followup : i18n.whatsapp) || '';
+				wa.title = waLabel;
+				wa.setAttribute('aria-label', waLabel);
+				if (data.whatsapp_followup) wa.dataset.bpWaFollowup = '1';
 				customer.appendChild(wa);
 			}
 		} else {

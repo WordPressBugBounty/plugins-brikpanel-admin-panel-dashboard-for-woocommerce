@@ -1076,7 +1076,8 @@ function brikpanel_enqueue_woo_assets($hook) {
                     }
                 }
                 if ( function_exists( 'brikpanel_whatsapp_visible_for_user' ) && brikpanel_whatsapp_visible_for_user() && function_exists( 'brikpanel_order_whatsapp_url' ) ) {
-                    $summary['whatsapp_url'] = (string) brikpanel_order_whatsapp_url( $order );
+                    $summary['whatsapp_url']      = (string) brikpanel_order_whatsapp_url( $order );
+                    $summary['whatsapp_followup'] = function_exists( 'brikpanel_whatsapp_order_is_followup' ) && brikpanel_whatsapp_order_is_followup( $order );
                 }
             }
 
@@ -1140,6 +1141,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                     /* translators: %d: number of orders the customer has placed. */
                     'customer_orders'     => __( 'Orders: %d', 'brikpanel' ),
                     'whatsapp'            => __( 'Message the customer on WhatsApp', 'brikpanel' ),
+                    'whatsapp_followup'   => __( 'Send the customer a follow-up on WhatsApp', 'brikpanel' ),
                     'access_granted'      => __( 'Download access granted', 'brikpanel' ),
                     'access_revoked'      => __( 'Download access revoked', 'brikpanel' ),
                 ],

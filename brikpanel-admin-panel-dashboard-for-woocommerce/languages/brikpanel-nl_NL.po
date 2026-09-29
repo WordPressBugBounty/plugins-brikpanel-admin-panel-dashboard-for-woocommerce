@@ -15690,3 +15690,23 @@ msgstr "Voeg uw eigen plaatshouders toe aan het WhatsApp-bericht dat BrikPanel v
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "De plaatshouders die onder de WhatsApp-berichten in WooCommerce > Instellingen > BrikPanel > Bestellingen worden aangeboden, als plaatshouder => korte beschrijving. Elke plaatshouder wordt een knop die hem in het bericht invoegt en staat vermeld onder het veld Bericht. Voeg de plaatshouders toe die u met brikpanel_whatsapp_order_tokens invult, zodat de mensen die de berichten schrijven ze kunnen vinden. Sleutels moeten eruitzien als {my_placeholder}."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "De klant een herinnering sturen via WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "Herinnering sturen via WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Herinnering sturen"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Herinneringsbericht"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "Opent vanaf de tweede klik op een WhatsApp-knop bij een bestelling met deze status, zodat de klant het eerste bericht niet twee keer krijgt. Laat het leeg om elke keer het bericht hierboven te openen."

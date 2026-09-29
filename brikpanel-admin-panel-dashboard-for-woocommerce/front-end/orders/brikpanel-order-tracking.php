@@ -447,25 +447,21 @@ function brikpanel_order_tracking_refresh_payload( $order ) {
 
 	// Only the shape the WhatsApp module builds; a link a filter rewrote into
 	// something else is left out, and the page keeps the link it has.
-	$whatsapp = '';
-	if ( function_exists( 'brikpanel_whatsapp_visible_for_user' ) && function_exists( 'brikpanel_order_whatsapp_url' ) && brikpanel_whatsapp_visible_for_user() ) {
-		$url = (string) brikpanel_order_whatsapp_url( $order );
-		if ( preg_match( '#^https://wa\.me/\d+(\?text=[A-Za-z0-9\-_.~%]*)?$#', $url ) ) {
-			$whatsapp = $url;
-		}
-	}
+	$whatsapp = function_exists( 'brikpanel_whatsapp_order_state' ) ? brikpanel_whatsapp_order_state( $order ) : array();
 
 	$status = (string) $order->get_status();
 	return array(
-		'tracking' => array(
+		'tracking'          => array(
 			'has'     => (bool) $entries,
 			'number'  => $single,
 			'carrier' => $carrier,
 			'count'   => count( $numbers ),
 		),
-		'column'   => brikpanel_order_tracking_column_html( $order ),
-		'whatsapp' => $whatsapp,
-		'status'   => array(
+		'column'            => brikpanel_order_tracking_column_html( $order ),
+		'whatsapp'          => isset( $whatsapp['whatsapp'] ) ? $whatsapp['whatsapp'] : '',
+		// Trakoo can change the status, which drops a noted WhatsApp press.
+		'whatsapp_followup' => ! empty( $whatsapp['whatsapp_followup'] ),
+		'status'            => array(
 			'slug'  => sanitize_html_class( $status ),
 			'label' => function_exists( 'wc_get_order_status_name' ) ? wp_strip_all_tags( (string) wc_get_order_status_name( $status ) ) : $status,
 		),

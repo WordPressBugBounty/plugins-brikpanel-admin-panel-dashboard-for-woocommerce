@@ -47,6 +47,15 @@
 		const href = whatsAppUrl(url);
 		if (href) $links.forEach($link => $link.setAttribute('href', href));
 	};
+	// Trakoo can move the order to a new status, which drops a WhatsApp press
+	// noted in the old one: the buttons' words and follow-up state follow
+	// (brikpanel-order-whatsapp.js; the links above work without it).
+	const whatsAppState = (orderId, payload) => {
+		if (!whatsAppUrl(payload.whatsapp)) return;
+		document.dispatchEvent(new CustomEvent('brikpanel:order-whatsapp', {
+			detail: { orderId: String(orderId), url: payload.whatsapp, followup: !!payload.whatsapp_followup },
+		}));
+	};
 
 	// ── Single order screen ─────────────────────────────────────────────────
 	if (cfg.screen === 'edit') {
@@ -58,7 +67,9 @@
 			const answer = xhr && xhr.responseJSON;
 			if (answer && answer.status && answer.status !== 'success') return;
 			refresh(orderId).then(payload => {
-				if (payload) setWhatsApp(document.querySelectorAll('a.brikpanel-wa-btn, a.bp-osummary__wa'), payload.whatsapp); // i18n-ignore: CSS selector
+				if (!payload) return;
+				setWhatsApp(document.querySelectorAll('a.brikpanel-wa-btn, a.bp-osummary__wa'), payload.whatsapp); // i18n-ignore: CSS selector
+				whatsAppState(orderId, payload);
 			});
 		});
 		return;
@@ -315,6 +326,7 @@
 				...job.$row.querySelectorAll('a.brikpanel-wa-list-link'),
 				...($panel ? $panel.querySelectorAll('a.bp-od-wa') : []),
 			], payload.whatsapp);
+			whatsAppState(job.orderId, payload);
 		}
 
 		// Only when a new status was asked for: a change staged on the badge by

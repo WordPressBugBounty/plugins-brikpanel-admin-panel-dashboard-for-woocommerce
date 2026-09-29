@@ -3408,9 +3408,10 @@ add_action('wp_ajax_brikpanel_change_order_status', function () {
     $slug = substr($new_status_key, 3);
     $order->update_status($slug);
 
-    wp_send_json_success([
+    // The order's WhatsApp buttons take the new status's draft.
+    wp_send_json_success(array_merge([
         'status' => $slug,
         'label'  => $label,
-    ]);
+    ], function_exists('brikpanel_whatsapp_order_state') ? brikpanel_whatsapp_order_state($order) : []));
 });
 

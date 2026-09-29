@@ -406,6 +406,14 @@
 					if (el.hasAttribute('data-tip') && res.data && res.data.label) {
 						el.setAttribute('data-tip', res.data.label);
 					}
+					// The new status can have its own WhatsApp message, or the note of an
+					// earlier press is gone: the order's WhatsApp buttons take the new draft
+					// (brikpanel-order-whatsapp.js).
+					if (res.data && typeof res.data.whatsapp === 'string') {
+						document.dispatchEvent(new CustomEvent('brikpanel:order-whatsapp', {
+							detail: { orderId: orderId, url: res.data.whatsapp, followup: !!res.data.whatsapp_followup },
+						}));
+					}
 					hideBar();
 					activeContext = null;
 				} else {

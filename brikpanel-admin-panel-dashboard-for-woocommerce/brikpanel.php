@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.25
+ * Version: 3.3.26
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.25');
+define('BRIKPANEL_VERSION', '3.3.26');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -701,6 +701,10 @@ brikpanel_require('front-end/order-statuses/brikpanel-order-statuses.php');
 // order status can change (checkout, cron, REST); only its settings UI is
 // admin-gated. See front-end/order-statuses/brikpanel-status-emails.php.
 brikpanel_require('front-end/order-statuses/brikpanel-status-emails.php');
+
+// WhatsApp follow-ups: a status change drops an order's press note. Global for
+// the same reason: statuses change outside wp-admin too.
+brikpanel_require('front-end/orders/brikpanel-order-whatsapp-press.php');
 
 // The text domain is loaded above the WooCommerce dependency guard, near the
 // top of this file, so the guard's own notice is translated too.

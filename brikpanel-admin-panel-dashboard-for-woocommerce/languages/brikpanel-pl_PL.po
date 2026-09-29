@@ -15843,3 +15843,23 @@ msgstr "Dodaj własne znaczniki do wiadomości WhatsApp, którą BrikPanel przyg
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "Znaczniki proponowane pod wiadomościami WhatsApp w WooCommerce > Ustawienia > BrikPanel > Zamówienia, w postaci znacznik => krótki opis. Każdy staje się przyciskiem, który wstawia go do wiadomości, i jest wymieniony pod polem Wiadomość. Dodaj znaczniki, które wypełniasz za pomocą brikpanel_whatsapp_order_tokens, aby osoby piszące wiadomości mogły je znaleźć. Klucze muszą mieć postać {my_placeholder}."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "Wyślij klientowi przypomnienie na WhatsAppie"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "Wyślij przypomnienie na WhatsAppie"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Wyślij przypomnienie"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Wiadomość z przypomnieniem"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "Otwiera się od drugiego kliknięcia przycisku WhatsApp przy zamówieniu w tym statusie, żeby klient nie dostał dwa razy pierwszej wiadomości. Zostaw puste, aby za każdym razem otwierać wiadomość powyżej."

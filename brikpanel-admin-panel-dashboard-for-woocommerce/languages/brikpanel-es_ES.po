@@ -15690,3 +15690,23 @@ msgstr "Añade tus propios marcadores al mensaje de WhatsApp que BrikPanel prepa
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "Los marcadores que se ofrecen bajo los mensajes de WhatsApp en WooCommerce > Ajustes > BrikPanel > Pedidos, como marcador => descripción breve. Cada uno se convierte en un botón que lo inserta en el mensaje y aparece en la lista bajo el campo Mensaje. Añade los marcadores que rellenas con brikpanel_whatsapp_order_tokens, para que quienes escriben los mensajes puedan encontrarlos. Las claves deben tener la forma {my_placeholder}."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "Enviar un recordatorio al cliente por WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "Enviar recordatorio por WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Enviar recordatorio"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Mensaje de recordatorio"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "Se abre desde la segunda pulsación de un botón de WhatsApp en un pedido con este estado, para que el cliente no reciba dos veces el primer mensaje. Déjalo vacío para abrir siempre el mensaje de arriba."

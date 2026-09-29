@@ -2,6 +2,11 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.26 (2026-09-29) =
+* New: **WhatsApp follow-up message.** Setting: Orders → "Message per order status" → "Follow-up message", one per status, empty by default. The first WhatsApp press on an order opens the status message; later presses open the follow-up ("Send follow-up") until the order's status changes.
+* Fix: **WhatsApp buttons follow a status change right away.** After changing the status from the list badge or the tracking number window, they no longer open the old status's message until the page is reloaded.
+* Tweak: **The Share cart button looks like your theme's buttons.** It now takes the same style as the other cart buttons, such as "Apply coupon", in both the classic and the block cart.
+
 = 3.3.25 (2026-09-28) =
 * New: **Several ad accounts.** Ad Platforms → "Ad accounts" is now a list: tick up to 20 Meta or Google Ads accounts. Each account's history loads and updates on its own, and ROAS, Expenses and Net profit add them all up. Reconnecting fills the missing days instead of loading three years again.
 * New: **Trakoo tracking numbers in WhatsApp and the orders list.** With Trakoo (Orders Tracking for WooCommerce) active, WhatsApp messages can use {tracking_number}, {carrier_name} and {tracking_url}, and each order in the list gets an "Add tracking number" button. Trakoo saves it, so its emails and status changes work as usual.

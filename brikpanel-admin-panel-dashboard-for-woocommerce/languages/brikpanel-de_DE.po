@@ -15688,3 +15688,23 @@ msgstr "Fügen Sie der WhatsApp-Nachricht, die BrikPanel für eine Bestellung vo
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "Die Platzhalter, die unter den WhatsApp-Nachrichten in WooCommerce > Einstellungen > BrikPanel > Bestellungen angeboten werden, als Platzhalter => kurze Beschreibung. Jeder wird zu einer Schaltfläche, die ihn in die Nachricht einfügt, und wird unter dem Feld Nachricht aufgeführt. Fügen Sie die Platzhalter hinzu, die Sie mit brikpanel_whatsapp_order_tokens füllen, damit die Personen, die die Nachrichten schreiben, sie finden. Die Schlüssel müssen wie {my_placeholder} aussehen."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "Dem Kunden eine Erinnerung per WhatsApp senden"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "Erinnerung per WhatsApp senden"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Erinnerung senden"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Erinnerungsnachricht"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "Öffnet sich ab dem zweiten Klick auf eine WhatsApp-Schaltfläche bei einer Bestellung in diesem Status, damit der Kunde die erste Nachricht nicht zweimal erhält. Lassen Sie das Feld leer, um jedes Mal die Nachricht oben zu öffnen."

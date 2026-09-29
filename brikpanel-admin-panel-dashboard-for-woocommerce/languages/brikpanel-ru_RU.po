@@ -15843,3 +15843,23 @@ msgstr "Добавьте собственные подстановки в соо
 #: includes/brikpanel-hooks-api.php:298
 msgid "The placeholders offered under the WhatsApp messages in WooCommerce > Settings > BrikPanel > Orders, as placeholder => short description. Each one becomes a button that inserts it into the message and is listed under the Message field. Add the placeholders you fill with brikpanel_whatsapp_order_tokens, so the people writing the messages can find them. Keys must look like {my_placeholder}."
 msgstr "Подстановки, которые предлагаются под сообщениями WhatsApp в WooCommerce > Настройки > BrikPanel > Заказы, в виде подстановка => краткое описание. Каждая становится кнопкой, которая вставляет её в сообщение, и указывается в списке под полем «Сообщение». Добавьте подстановки, которые вы заполняете через brikpanel_whatsapp_order_tokens, чтобы те, кто пишет сообщения, могли их найти. Ключи должны выглядеть как {my_placeholder}."
+
+#: front-end/orders/brikpanel-order-whatsapp.php:817 front-end/orders/brikpanel-order-whatsapp.php:932 includes/brikpanel-enqueue.php:1144
+msgid "Send the customer a follow-up on WhatsApp"
+msgstr "Отправить клиенту напоминание в WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:854 front-end/orders/brikpanel-order-whatsapp.php:931
+msgid "Send follow-up on WhatsApp"
+msgstr "Отправить напоминание в WhatsApp"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:930 front-end/orders/brikpanel-orders-compact.php:741
+msgid "Send follow-up"
+msgstr "Отправить напоминание"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1235
+msgid "Follow-up message"
+msgstr "Сообщение-напоминание"
+
+#: front-end/orders/brikpanel-order-whatsapp.php:1237
+msgid "Opens from the second press of a WhatsApp button on an order in this status, so the customer does not get the first message twice. Leave it empty to open the message above every time."
+msgstr "Открывается со второго нажатия кнопки WhatsApp у заказа в этом статусе, чтобы клиент не получил первое сообщение дважды. Оставьте поле пустым, чтобы каждый раз открывалось сообщение выше."
