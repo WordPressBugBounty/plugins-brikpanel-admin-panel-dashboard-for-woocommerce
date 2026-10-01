@@ -569,7 +569,7 @@ class Brikpanel_Ads_Dashboard {
 				'status'    => 'failed',
 				'refetch'   => false,
 				'platforms' => $detail,
-			], 502 );
+			] );
 		}
 
 		if ( $failed ) {

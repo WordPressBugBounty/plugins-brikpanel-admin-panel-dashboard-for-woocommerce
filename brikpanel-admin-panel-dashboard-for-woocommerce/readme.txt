@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.26
+Stable tag: 3.3.27
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -76,7 +76,7 @@ BrikPanel replaces the cluttered default orders page with a clean **woocommerce 
 * **30-day overview bar**: total orders, completed, refunded, revenue
 * **Inline status change** without opening the edit page
 * HPOS (`wc_get_orders`) and legacy storage (`WP_Query`) both supported
-* Your own statuses, like **Return Draft** and **Change**
+* Create your own order statuses, like **Return Draft** or **Change**
 * Reskinned order edit page with copy-to-clipboard for billing/shipping
 * **Sold downloadable products** on the order edit page
 * Optional BrikMarket marketplace stats integration
@@ -101,15 +101,15 @@ A slide-in panel from any product row to edit name, SKU, regular/sale price, sto
 
 = Bulk Edit WooCommerce Products with the Variation Editor: Full Variation Support =
 
-This is where BrikPanel pulls ahead of every other free **woocommerce bulk editor**. Most free plugins only handle simple products and only "increase price by X%". BrikPanel does far more, on variable products too.
+This is where BrikPanel pulls ahead of almost every other free **woocommerce bulk editor**. Most free plugins only handle simple products and only "increase price by X%". BrikPanel does far more, on variable products too.
 
-* **WooCommerce bulk price update** (regular and sale): percentage, absolute value, or rounding, across the whole catalog or filtered by category
+* **WooCommerce bulk price update** (regular and sale): percentage, absolute value, or rounding, across the whole published catalog or filtered by category
 * **Bulk update WooCommerce products** stock quantities (set quantity, add/subtract)
-* **WooCommerce bulk price by category**: pick a category, set a rule, every product updates
+* **WooCommerce bulk price by category**: pick a category, set a rule, every published product updates
 * **WooCommerce bulk sale price** updates (fixed or % off)
 * Confirmation dialog on every bulk action
 
-Now the part nobody else does for free: **variation support**.
+Now the part almost nobody else does for free: **variation support**.
 
 * **WooCommerce variation editor**: open any variable product and edit every variation in one table (regular price, sale price, stock, SKU)
 * **Bulk edit variation prices WooCommerce**: set the same price for all variations of an attribute (every "Red" variation, every "L" size), or apply a percentage rule
@@ -184,7 +184,7 @@ A **Custom BrikPanel-styled top admin bar** replaces the default WordPress toolb
 
 BrikPanel ships a free **WooCommerce Google Sheets sync**, a fully native **WooCommerce to Google Sheets** integration that streams orders, customers and analytics into a Google Sheet you control. The free **GSheetConnector alternative** with no Zapier, no Make, no monthly fee.
 
-* **Real-time order sync**: every new WooCommerce order is appended within seconds, one row per order or line item so variations get their own columns. Free **woocommerce order sync to google sheets** with no external automation tool
+* **Real-time order sync**: every new WooCommerce order is appended within seconds, one row per order or line item so variations get their own rows. Free **woocommerce order sync to google sheets** with no external automation tool
 * **Scheduled WooCommerce Google Sheets export**: hourly, every 4h or daily catch-up; idempotent so re-runs never duplicate rows
 * **Analytics report snapshots**: Sales Summary, Daily KPIs, Top Products and Funnel tabs refreshed on an interval for pivots and dashboards in Sheets
 * **Customer + RFM snapshot**: chained to the nightly RFM recompute
@@ -201,7 +201,7 @@ When BrikMarket is active, marketplace orders are excluded from the storefront c
 
 = Subscription & Membership Plugin Compatibility =
 
-Subscription products and member orders sold through WooCommerce (WooCommerce Subscriptions, MemberPress, Paid Memberships Pro and more) show up in the same product list, order screens and customer analytics.
+Works alongside WooCommerce Subscriptions, MemberPress, Paid Memberships Pro and more: subscription products and member orders sold through WooCommerce show up in the same product list, order screens and customer analytics.
 
 = Developer Hooks & Filters =
 
@@ -222,14 +222,14 @@ Store owners pay monthly SaaS fees for parts of what BrikPanel does free:
 
 == Why BrikPanel and not the default WooCommerce admin? ==
 
-WooCommerce's built-in analytics are slow, refresh hourly, and have no live visitor tracking, conversion funnel, geographic data, customer LTV / RFM / cohort reports, Cmd+K order search, quick edit sidebar, variation bulk editor, custom login or coupon manager. BrikPanel fixes every one of those gaps inside a single **free WooCommerce admin plugin**.
+WooCommerce's built-in analytics are slow, refresh on a delay, and have no live visitor tracking, conversion funnel, geographic globe, customer LTV / RFM / cohort reports, Cmd+K order search, quick edit sidebar, variation bulk editor, custom login or modern coupon manager. BrikPanel fixes every one of those gaps inside a single **free WooCommerce admin plugin**.
 
 == WooCommerce HPOS Compatibility & Performance ==
 
 * **Light on your storefront**: admin screens load only inside wp-admin; shoppers only get the scripts of the storefront features you keep on
 * **Hardened performance for low-resource hosting**: heavy queries are batched, cached and run through Action Scheduler so the dashboard, customer analytics and bulk editor stay responsive on shared hosting
 * **HPOS (High-Performance Order Storage)** fully supported with dual code paths
-* WooCommerce 7.x, 8.x, and newer; works alongside Admin Menu Editor, Slider Revolution, Yoast SEO, RankMath, WPML, Polylang
+* WooCommerce 9.2 and newer; works alongside Admin Menu Editor, Slider Revolution, Yoast SEO, RankMath, WPML, Polylang
 * Translation-ready (`.pot` file included), with all JavaScript / jQuery strings routed through `wp_localize_script`
 * DB writes use prepared statements; visitor tracking IPs stored only as truncated salted SHA-256 hashes; admin activity excluded from analytics; front-end tracking can be disabled entirely from settings
 
@@ -346,7 +346,7 @@ Yes. The product list search matches the product title, the description and the 
 
 = How do I bulk edit WooCommerce products including variations? =
 
-Open **Products** and click the **Bulk update** button in the toolbar. You can update prices, sale prices, and stock for all products, by category, or for selected products. For variable products, click a product's price or stock in the list to edit it for every variation in one modal, or open the product and bulk update prices and stock across every variation from the bar above its variations table. This is the part most free **WooCommerce bulk editor** plugins do not handle, BrikPanel does.
+Open **Products** and click the **Bulk update** button in the toolbar. You can update prices, sale prices, and stock for all published products, by category, or for selected products. For variable products, click a product's price or stock in the list to edit it for every variation in one modal, or open the product and bulk update prices and stock across every variation from the bar above its variations table. This is the part most free **WooCommerce bulk editor** plugins do not handle, BrikPanel does.
 
 = Can I bulk edit variation prices in WooCommerce with the free version? =
 
@@ -403,7 +403,7 @@ Switch on the optional email popup and BrikPanel shows a clean, on-brand sign-up
 
 = How do I sync WooCommerce orders to Google Sheets for free? =
 
-Open **Google Sheets** in the admin sidebar, click "Connect Google Sheets", pick or create a target spreadsheet, and on the Orders tab toggle "Enable order sync" on ("Real-time append on new order" is on by default). Every new WooCommerce order is then appended to your Sheet within seconds, with one row per order, or one row per line item so variations land in their own columns. Status changes update the existing row in place. No Zapier, no Make, no monthly fee, a real **woocommerce google sheets sync** built into BrikPanel.
+Open **Google Sheets** in the admin sidebar, click "Connect Google Sheets", pick or create a target spreadsheet, and on the Orders tab toggle "Enable order sync" on ("Real-time append on new order" is on by default). Every new WooCommerce order is then appended to your Sheet within seconds, with one row per order, or one row per line item so variations land in their own rows. Status changes update the existing row in place. No Zapier, no Make, no monthly fee, a real **woocommerce google sheets sync** built into BrikPanel.
 
 = Does BrikPanel work as a free GSheetConnector or WPSyncSheets alternative? =
 
@@ -427,11 +427,11 @@ Yes. BrikPanel includes a complete **WooCommerce variation editor** in the free 
 
 = What makes BrikPanel different from the built-in WooCommerce analytics? =
 
-The built-in WooCommerce analytics are slow, refresh on a delay, only show historical data, and have no live visitor tracking, no conversion funnel, no geographic globe, no customer LTV / RFM / cohort reports, no Cmd+K order search, no quick edit sidebar, no variation bulk editor, no custom login page, and no coupon manager. BrikPanel adds every one of those features inside a single free plugin.
+The built-in WooCommerce analytics are slow, refresh on a delay, only show historical data, and have no live visitor tracking, no conversion funnel, no geographic globe, no customer LTV / RFM / cohort reports, no Cmd+K order search, no quick edit sidebar, no variation bulk editor, no custom login page, and no modern coupon manager. BrikPanel adds every one of those features inside a single free plugin.
 
 = Is BrikPanel just a CSS reskin of the WooCommerce admin? =
 
-No. BrikPanel is a real **woocommerce admin dashboard plugin** with custom database tables for visitor tracking, custom AJAX endpoints for every interaction, real conversion analytics, a working bulk editor, a real product editor, a real coupon manager, and a real custom login system. Other plugins (Dashify, UiPress) only restyle the admin. BrikPanel rebuilds the parts of WooCommerce that needed to be rebuilt.
+No. BrikPanel is a real **woocommerce admin dashboard plugin** with custom database tables for visitor tracking, custom AJAX endpoints for every interaction, real conversion analytics, a working bulk editor, a real product editor, a real coupon manager, and a real custom login system. Other plugins (Dashify, UiPress) mostly restyle the admin. BrikPanel rebuilds the parts of WooCommerce that needed to be rebuilt.
 
 = Can I use BrikPanel as a WordPress admin theme or admin skin for my store? =
 
@@ -443,7 +443,7 @@ Yes. BrikPanel does not interfere with frontend rendering, so it works with ever
 
 = Does BrikPanel work with WooCommerce Subscriptions and membership plugins? =
 
-Yes. BrikPanel is compatible with WooCommerce Subscriptions, Subscriptions for WooCommerce (WP Swings), MemberPress, Paid Memberships Pro, WooCommerce Memberships, YITH WooCommerce Subscription, SUMO Subscriptions, WebToffee Subscriptions for WooCommerce and Restrict Content Pro. Subscription products and member orders sold through WooCommerce show up in the same product list, order screens and customer analytics as the rest of your catalog.
+Yes. BrikPanel is compatible with WooCommerce Subscriptions, Subscriptions for WooCommerce (WP Swings), MemberPress, Paid Memberships Pro, WooCommerce Memberships, YITH WooCommerce Subscription, SUMO Subscriptions, WebToffee Subscriptions for WooCommerce and Restrict Content Pro. Subscription products and member orders sold through WooCommerce show up in the same product list, order screens and customer analytics as the rest of your catalog. Sales made in MemberPress, Paid Memberships Pro or Restrict Content Pro's own checkout are not WooCommerce orders, so BrikPanel does not count them.
 
 = Where does BrikPanel store data? =
 
@@ -495,6 +495,12 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.27 (2026-10-01) =
+* Fix: **Connect buttons explain what went wrong.** When Google Sheets, Google Ads or Meta cannot be connected because the site cannot reach brksoft.com, BrikPanel tries once more by itself, then shows the reason and what to do in a box that stays on screen, with technical details you can send to your host.
+* Fix: **A failed or cancelled Google or Meta sign-in is explained.** The message now appears on the right card in plain words, instead of a raw code like "access_denied" or no message at all.
+* Fix: **Error messages are no longer hidden by Cloudflare or nginx.** Google Sheets and Ad Platforms errors reach the screen as written, so you no longer see "click Sync now again" under Connect or "Unexpected token '<'".
+* Tweak: **The Google Sheets page opens fast before you connect.** It no longer asks brksoft.com for settings it does not need yet. On sites that cannot reach brksoft.com, the page took about 20 seconds to open.
 
 = 3.3.26 (2026-09-29) =
 * New: **WhatsApp follow-up message.** Setting: Orders → "Message per order status" → "Follow-up message", one per status, empty by default. The first WhatsApp press on an order opens the status message; later presses open the follow-up ("Send follow-up") until the order's status changes.
@@ -574,18 +580,3 @@ The full release history of every version is in changelog.txt, included with the
 * Tweak: **The products list draws the GTIN column with one database query instead of one per variation.** A variable product with twenty variations used to cost twenty separate product lookups on every page of the list, for a single column.
 * Change: **BrikPanel now states that it supports WooCommerce 9.2 and later, and says so on stores below that.** Nothing is switched off and nothing behaves differently below it. Everything above keeps working on older stores; administrators simply see a dismissible notice recommending a WooCommerce update.
 * Developer: `includes/brikpanel-wc-compat.php` is now the single place that wraps any WooCommerce API newer than the oldest supported store, and `tools/wc-floor-audit.php` fails the build when one is called anywhere else or without a guard. It also treats `catch ( \Exception )` as no guard at all, because a missing method raises `Error`, which is what made this class of bug reach production three separate times.
-
-= 3.3.19 (2026-09-22) =
-* Change: **The abandoned carts list opens a cart's contents in place, from a small arrow at the start of the row.** The "Details" button used to sit in the last column, which on a table this wide was usually past the right edge of the screen, so reaching it meant scrolling sideways first. The arrow takes one narrow column and hands the whole actions column back, which is enough to bring another column of data into view. Clicking it slides the cart's items open underneath the row, lined up with the first column, and more than one row can be open at a time.
-* Fix: **"Admins only" now really means administrators.** Hiding a top bar control (the hidden-notices bell, the order notifications bell, the search box, any of them) or a sidebar menu item from everyone but administrators had no effect on a store manager whose role had been given the "manage options" permission with a role editor, which is a common setup. Those staff accounts kept seeing everything the rule was meant to hide. BrikPanel now checks for the real administrator role, and on a network for a network administrator, exactly as the dashboard widget rules and the settings lock already did. Real administrators and network administrators are unaffected and can never hide a control from themselves. Reported on the support forum.
-* Tweak: **Abandoned Carts and Customer Analytics now use the full width of the screen.** Both pages were held to a narrow centred column, so the Abandoned Carts table never had room for its columns and customer names wrapped onto three and four lines. It was worse after turning BrikMentor on, which adds a Phone and a Follow-ups column to the same narrow space. Both pages now run edge to edge like the Orders, Products and Segments lists, and on a wide screen the table finally fits without scrolling sideways. The search box and the explanatory lines stop growing past a comfortable reading width; everything else lines up with the table so the page reads as one block. Nothing changes on phones or tablets. Reported on the support forum.
-* Fix: **Dates across BrikPanel now use your store's timezone.** They were showing UTC, so on a store set to Istanbul every time was three hours early and any order placed late in the evening was stamped with the previous day. Reported on the support forum for the Segments page, where it was most visible, but the same fault ran through Customer Analytics, the Store Summary report and the daily rows exported to Google Sheets. Segments now matches the WooCommerce orders screen to the minute.
-* Fix: **Date filters now mean your store's day.** Picking "10 August", or the Today / Last 7 / 30 / 90 day shortcuts, used to select a London day. On a store three hours ahead that quietly pulled in the last three hours of the previous day and dropped the last three hours of the one you asked for, so the count looked plausible while the rows were wrong. Expect the numbers on these screens to shift a little after updating: they were wrong before.
-* Fix: **The "Yesterday" row of Sales by Period covered 45 hours instead of 24.** It started at London midnight of the day before yesterday and ran to your midnight, so it overlapped the Today row and counted some orders twice. Yesterday's revenue will drop after this update, and both rows now add up without double counting.
-* Fix: **The conversion funnel and cart abandonment rate were measured on two different clocks.** Visitor and checkout counts are recorded on your store's day while orders are stored in UTC, and the two windows were not lined up, so the percentages themselves were off rather than just their labels.
-* Fix: **Best and worst sales times are now your hours, not London's.** The day of week table was silently shifted and the peak hour was labelled "(UTC)". Both now use the store clock, which is the one you would schedule staff or ads around.
-* Fix: **The Segments CSV export matches what is on screen.** Three of its four date columns carried a raw UTC timestamp and the fourth a formatted date, so a file downloaded after filtering for a given day could contain rows stamped with the day before. Every date column is now your store's time in `2026-09-19 14:56` form, which sorts correctly in Excel, and each heading names the timezone it is using.
-* Fix: **Monthly tables and customer cohorts are grouped by your months.** Orders placed in the first hours of a month were credited to the previous one. Cohort retention is rebuilt once after updating so old and new rows cannot be mixed.
-* Fix: **Adding an expense just after midnight no longer files it under yesterday.** The date box was pre-filled with the London day while expenses are saved against your own day. Existing expenses are untouched.
-* Fix: **A coupon set to expire on a date now expires at the end of that day in your timezone.** It used to survive a few hours into the next day, and the WooCommerce coupon screen showed the wrong expiry date as a result.
-* Fix: **Twelve month tables no longer skip a month when viewed on the 31st.** Stepping back a month from the 31st landed in the same month again, which produced a duplicate column and a missing one on any screen with a monthly axis.
