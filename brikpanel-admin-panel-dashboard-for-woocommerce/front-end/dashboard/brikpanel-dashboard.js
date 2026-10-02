@@ -85,6 +85,7 @@
     let deviceData = { visitors: null, orders: null }; // cached payloads for re-render on tab switch
     let sourceData = null;        // cached traffic-source channel breakdown
     let topReferrersData = null;  // cached top referrers list
+    let topCampaignsData = null;  // cached top campaigns list (Sources view)
     var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let datepickerInstance = null;
     let isLoading = false;
@@ -335,6 +336,7 @@
             // Charts
             renderSalesChart(d.sales_over_time);
             renderFunnelChart(d.funnel);
+            renderAbandonedCarts(d.abandoned_carts, d.abandoned_carts_on);
             renderRatesChart(d.order_rates);
 
             // Globe + Tables
@@ -355,6 +357,7 @@
             // Traffic sources live as a third tab in the same panel.
             sourceData       = d.sources;
             topReferrersData = d.top_referrers;
+            topCampaignsData = Array.isArray(d.top_campaigns) ? d.top_campaigns : [];
             applyDeviceView(deviceView);
             renderCustomerTypes(d.customer_types);
 
@@ -416,7 +419,13 @@
     function updateDelta(id, value) {
         var el = document.getElementById(id);
         if (!el) return;
+        setDelta(el, value, false);
+    }
 
+    // inverse: a rise is the bad direction (more abandoned carts), so it gets
+    // the error colour and a fall the success one; the arrow still shows the
+    // direction of the change.
+    function setDelta(el, value, inverse) {
         // No baseline (previous period was zero): server sends null. Label it
         // rather than inventing a "+100%" that reads like ordinary growth.
         if (value === null || value === undefined) {
@@ -433,8 +442,9 @@
         }
 
         var arrow = value > 0 ? '\u2191' : '\u2193';
+        var good  = inverse ? value < 0 : value > 0;
         el.textContent = arrow + ' ' + formatDeltaPct(Math.abs(value));
-        el.className = 'brikpanel-dash-card-delta ' + (value > 0 ? 'positive' : 'negative');
+        el.className = 'brikpanel-dash-card-delta ' + (good ? 'positive' : 'negative');
     }
 
     // A raw "+3704%" is technically right but unreadable. Past ~10\u00d7 growth,
@@ -1822,6 +1832,73 @@
     }
 
     // =========================================================================
+    // ABANDONED CARTS (one line under the funnel)
+    // =========================================================================
+
+    // "Abandoned carts 6 ↑20% · $36,799.80 · Recovered 1 (17%)": carts first
+    // left in the period, their value, how many were bought back since. The
+    // chart gives up the line's height so the row keeps its size. Shown only
+    // while carts are collected; a payload cached before these keys existed
+    // leaves the line hidden.
+    function renderAbandonedCarts(data, on) {
+        var line = document.getElementById('brikpanel-dash-cartab');
+        if (!line) return;
+        var canvas = document.getElementById('brikpanel-funnel-chart');
+        var chartWrap = canvas ? canvas.parentElement : null;
+        var show = !!on && !!data && typeof data === 'object';
+
+        line.querySelectorAll('.brikpanel-dash-cartab-item').forEach(function (node) { node.remove(); });
+        line.hidden = !show;
+        if (chartWrap && chartWrap.classList.contains('has-cartab') !== show) {
+            chartWrap.classList.toggle('has-cartab', show);
+            if (funnelChart) funnelChart.resize();
+        }
+        if (!show) return;
+
+        var count = Number(data.count) || 0;
+        if (!count) {
+            line.appendChild(cartabItem(i18n.cartab_none || '', ''));
+            return;
+        }
+
+        var countItem = cartabItem('', '');
+        var strong = document.createElement('strong');
+        strong.textContent = formatNumber(count);
+        countItem.appendChild(strong);
+        // No change shown without a previous period to compare with ("New"
+        // would read as good news here) or when nothing moved.
+        if (data.delta !== null && data.delta !== undefined && Number(data.delta) !== 0) {
+            var delta = document.createElement('span');
+            setDelta(delta, Number(data.delta), true);
+            countItem.appendChild(delta);
+        }
+        line.appendChild(countItem);
+
+        if (data.value) {
+            line.appendChild(cartabItem(String(data.value), 'brikpanel-dash-cartab-sep'));
+        }
+
+        var rate = data.rate === null || data.rate === undefined ? '' : fmtPct(Number(data.rate), 0);
+        var recovered = BF
+            ? BF.format(i18n.cartab_recovered || '', [formatNumber(Number(data.recovered) || 0), rate])
+            : String(data.recovered || 0);
+        line.appendChild(cartabItem(recovered, 'brikpanel-dash-cartab-sep'));
+    }
+
+    function cartabItem(text, extraClass) {
+        var item = document.createElement('span');
+        item.className = 'brikpanel-dash-cartab-item' + (extraClass ? ' ' + extraClass : '');
+        if (text) {
+            // <bdi>: a price or "Recovered 1 (17%)" keeps its own reading
+            // order on a right-to-left screen.
+            var bdi = document.createElement('bdi');
+            bdi.textContent = text;
+            item.appendChild(bdi);
+        }
+        return item;
+    }
+
+    // =========================================================================
     // ORDER RATES CHART (Doughnut)
     // =========================================================================
 
@@ -2268,6 +2345,34 @@
         });
         html += '</ul>';
         wrap.innerHTML = html;
+    }
+
+    // Top campaigns under Top referrers: name, "3 orders · 2.4%", revenue.
+    // Returns whether there was anything to list.
+    function renderTopCampaigns(list) {
+        var wrap = document.getElementById('brikpanel-top-campaigns');
+        if (!wrap) return false;
+        list = Array.isArray(list) ? list : [];
+        if (!list.length) {
+            wrap.innerHTML = '';
+            return false;
+        }
+        var html = '<ul class="brikpanel-campaign-list">';
+        list.forEach(function (c) {
+            var orders = BF ? BF.count(i18n.camp_orders, Number(c.orders) || 0) : String(Number(c.orders) || 0);
+            var meta = orders;
+            if (c.conversion !== null && c.conversion !== undefined && BF) {
+                meta = BF.format(i18n.camp_meta || '', [orders, fmtPct(Number(c.conversion), 1)]);
+            }
+            html += '<li class="brikpanel-campaign-row">'
+                + '<span class="brikpanel-campaign-name" dir="auto" title="' + escapeAttr(c.name || '') + '">' + escapeHtml(c.name || '') + '</span>'
+                + '<span class="brikpanel-campaign-meta"><bdi>' + escapeHtml(meta) + '</bdi></span>'
+                + '<span class="brikpanel-campaign-revenue"><bdi>' + escapeHtml(c.revenue_text || '\u2014') + '</bdi></span>'
+                + '</li>';
+        });
+        html += '</ul>';
+        wrap.innerHTML = html;
+        return true;
     }
 
     var rfmDonutChart = null;
@@ -2929,8 +3034,9 @@
     }
 
     function applyDeviceView(view) {
-        var title   = document.getElementById('brikpanel-device-title');
-        var refWrap = document.getElementById('brikpanel-source-referrers');
+        var title    = document.getElementById('brikpanel-device-title');
+        var refWrap  = document.getElementById('brikpanel-source-referrers');
+        var campWrap = document.getElementById('brikpanel-source-campaigns');
 
         if (view === 'sources') {
             if (title) { title.textContent = i18n.src_title || 'Traffic sources'; }
@@ -2939,8 +3045,13 @@
             var noVisits = renderSources(sourceData);
             renderTopReferrers(topReferrersData);
             if (refWrap) { refWrap.style.display = noVisits ? 'none' : ''; }
+            // Campaign orders come from WooCommerce, so they are listed even
+            // when no visit was counted.
+            if (campWrap) { campWrap.hidden = !renderTopCampaigns(topCampaignsData); }
             return;
         }
+
+        if (campWrap) { campWrap.hidden = true; }
 
         if (title) {
             title.textContent = view === 'orders'

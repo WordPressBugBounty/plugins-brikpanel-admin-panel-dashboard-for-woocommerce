@@ -409,6 +409,511 @@ function brikpanel_nav_inline_title( $title ) {
 }
 
 /**
+ * One row of a sidebar dropdown, the way the top-level loop prints it.
+ *
+ * Split out of brikpanel_get_navigation_items() so the same markup, link and
+ * "current page" rules serve two places: a top-level row's own dropdown, and
+ * the dropdown of a menu the nav customizer moved into "More" (whose rows are
+ * built against their real parent, e.g. tools.php, not against "More").
+ * Everything it reads arrives as an argument or is WordPress's own request
+ * state, so calling it never disturbs the caller's loop variables.
+ *
+ * @param array  $sub_item        $submenu row: [ title, cap, slug, page title, classes, ... ].
+ * @param string $item_slug       Slug of the row's real parent menu.
+ * @param bool   $admin_is_parent Whether the parent's own link is a plugin page.
+ * @param string $id              The parent's ` id="..."` attribute, or ''.
+ * @param array  $over            Optional: 'href' (link instead of the row's own),
+ *                                'current' (mark the row as the page being viewed).
+ * @return string
+ */
+function brikpanel_nav_render_child_row( $sub_item, $item_slug, $admin_is_parent, $id, $over = array() ) {
+
+	$html = '';
+	// Ensure all submenu item indices are strings (PHP 8.1+ null deprecation fix)
+	$sub_item[0] = $sub_item[0] ?? '';
+	$sub_item[2] = $sub_item[2] ?? '';
+	$sub_item[4] = $sub_item[4] ?? '';
+
+	$sub_item_slug = $sub_item[2];
+
+	// Customizer-injected custom link inside a submenu (e.g. when an
+	// admin promotes a custom URL into the "More" dropdown). Render
+	// it with our own URL/icon/target and skip the slug-based logic.
+	$brikpanel_sub_custom = function_exists( 'brikpanel_nav_customizer_extract_meta' )
+		? brikpanel_nav_customizer_extract_meta( $sub_item )
+		: null;
+	if ( $brikpanel_sub_custom ) {
+		$sub_url    = isset( $brikpanel_sub_custom['url'] ) ? (string) $brikpanel_sub_custom['url'] : '#';
+		$sub_icon   = isset( $brikpanel_sub_custom['icon'] ) ? (string) $brikpanel_sub_custom['icon'] : 'default';
+		$sub_svg    = isset( $brikpanel_sub_custom['icon_svg'] ) ? (string) $brikpanel_sub_custom['icon_svg'] : '';
+		$sub_target = ! empty( $brikpanel_sub_custom['new_tab'] ) ? ' target="_blank" rel="noopener"' : '';
+		$sub_title  = wptexturize( $sub_item[0] ?? '' );
+		if ( $sub_svg !== '' ) {
+			$sub_icon_html = '<img src="' . esc_url( $sub_svg, array( 'data', 'http', 'https' ) ) . '" width="12">';
+		} else {
+			$sub_icon_html = '<img src="' . esc_url( brikpanel_nav_icon_src( $sub_icon ) ) . '" width="12">';
+		}
+		$html .= "
+			<li class='brikpanel-more-custom-item'>
+				<div class='brikpanel-menu-icon-title-container'>
+					$sub_icon_html
+					<a href='" . esc_url( $sub_url ) . "'" . $sub_target . " class='brikpanel-custom-nav-link'>
+						" . esc_html( $sub_title ) . "
+					</a>
+				</div>
+			</li>
+		";
+		return $html;
+	}
+
+	list( $class, $aria_attributes ) = brikpanel_nav_child_state( $sub_item_slug, $item_slug );
+
+	// A caller that knows the row's page better than the row's own slug (a
+	// menu moved into "More", see brikpanel_nav_more_plan()) marks it current.
+	if ( ! empty( $over['current'] ) && ! in_array( 'brikpanel-current', $class, true ) ) {
+		$class[]          = 'brikpanel-current';
+		$aria_attributes .= ' aria-current="page"';
+	}
+
+	// Submenu için ek class'lar
+	if ( ! empty( $sub_item[4] ) ) {
+		$class[] = esc_attr( $sub_item[4] );
+	}
+
+	$class = $class ? ' class="' . implode( ' ', $class ) . '"' : '';
+
+	$title = wptexturize( brikpanel_nav_inline_title( $sub_item[0] ?? '' ) );
+
+	// WooCommerce alt menülerine özel ikonlar.
+	$woocommerce_submenu_has_custom_icon = array(
+		'wc-admin'                             => array( 'icon_file' => 'home' ),
+		'wc-orders'                            => array( 'icon_file' => 'orders' ),
+		'edit.php?post_type=shop_order'        => array( 'icon_file' => 'orders' ), // Non-HPOS
+		'wc-orders--shop_subscription'         => array( 'icon_file' => 'subscriptions' ),
+		'edit.php?post_type=shop_subscription' => array( 'icon_file' => 'subscriptions' ), // Non-HPOS
+		'wc-admin&path=/customers'             => array( 'icon_file' => 'customers' ),
+		// Eklentilerde eklenen WooCommerce alt menüleri:
+		'wpo_wcpdf_options_page'               => array(
+			'icon_file' => 'invoice',
+			'width'     => 12,
+			'css'       => 'margin-right: 3px;',
+		),
+		'wc-stripe-main'                       => array(
+			'icon_file' => 'stripe',
+			'width'     => 12,
+			'css'       => 'margin-right: 3px;',
+		),
+		'wc-pw-gift-cards'                     => array(
+			'icon_file' => 'credit-card',
+			'width'     => 14,
+			'css'       => 'margin-right: 1px;',
+		),
+		'dgwt_wcas_settings'                   => array(
+			'icon_file' => 'fibosearch',
+			'width'     => 14,
+			'css'       => 'margin-right: 1px;',
+		),
+	);
+	$icon = '<img src="' . brikpanel_nav_icon_src( 'default' ) . '" width="12">';
+
+	foreach ( $woocommerce_submenu_has_custom_icon as $slug => $properties ) {
+		if ( $sub_item_slug === $slug ) {
+			$width = isset( $properties['width'] ) ? $properties['width'] : 15;
+			$css   = isset( $properties['css'] ) ? $properties['css'] : '';
+			$icon  = '<img
+				src="' . brikpanel_nav_icon_src( $properties['icon_file'] ) . '"
+				width="' . $width . '"
+				style="' . $css . '"
+			>';
+			break;
+		}
+	}
+	if ( brikpanel_nav_ame_active() ) {
+		$icon = '';
+	}
+
+	if ( isset( $over['href'] ) && '' !== (string) $over['href'] ) {
+		$sub_item_url = esc_url( (string) $over['href'] );
+		$html .= "
+			<li$class>
+				<div class='brikpanel-menu-icon-title-container'>
+					$icon
+					<a href='$sub_item_url' $class $aria_attributes>
+						$title
+					</a>
+				</div>
+			</li>
+		";
+		return $html;
+	}
+
+	list( $sub_item_url, $is_plugin_page ) = brikpanel_nav_child_href( $sub_item_slug, $item_slug, $admin_is_parent );
+	if ( $is_plugin_page ) {
+		$sub_item_url = esc_url( $sub_item_url );
+
+		$html .= "
+			<li$class>
+				<div class='brikpanel-menu-icon-title-container'>
+					$icon
+					<a href='$sub_item_url' $class $aria_attributes $id>
+						$title
+					</a>
+				</div>
+			</li>
+		";
+	} else {
+		$html .= "
+			<li$class>
+				<div class='brikpanel-menu-icon-title-container'>
+					$icon
+					<a href='{$sub_item_slug}' $class $aria_attributes>
+						$title
+					</a>
+				</div>
+			</li>
+		";
+	}
+
+	return $html;
+}
+
+/**
+ * The classes and aria-current a dropdown row gets for the screen being
+ * viewed: WordPress core's "current submenu" rule plus the WooCommerce app
+ * pages, whose rows differ only in their path argument.
+ *
+ * @param string $sub_item_slug The row's slug ($submenu row index 2).
+ * @param string $item_slug     Slug of the row's real parent menu.
+ * @return array{0: string[], 1: string} [ classes, aria attributes ]
+ */
+function brikpanel_nav_child_state( $sub_item_slug, $item_slug ) {
+	global $self, $submenu_file, $plugin_page, $typenow;
+
+	$class           = array();
+	$aria_attributes = '';
+
+	$menu_file = $item_slug;
+	$pos       = strpos( $menu_file, '?' );
+	if ( false !== $pos ) {
+		$menu_file = substr( $menu_file, 0, $pos );
+	}
+
+                // Güvenli hale getirilen GET değişkenleri
+$path = isset($_GET['path']) ? sanitize_text_field(wp_unslash($_GET['path'])) : '';
+$page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
+
+// Alt menüde hangi sayfa açıksa aktif göstermek için kontroller
+if (isset($submenu_file)) {
+    if ($submenu_file === $sub_item_slug) {
+        $class[] = 'brikpanel-current';
+        $aria_attributes .= ' aria-current="page"';
+    }
+} elseif (
+    (!isset($plugin_page) && $self === $sub_item_slug)
+    || (
+        isset($plugin_page) && $plugin_page === $sub_item_slug
+        && ($item_slug === (!empty($typenow) ? $self . '?post_type=' . $typenow : 'nothing')
+            || $item_slug === $self
+            || !file_exists($menu_file))
+    )
+) {
+    if (
+        empty($path)
+        || (
+            strpos($path, '/customers') === false
+            && strpos($path, '/add-product') === false
+            && strpos($path, '/extensions') === false
+            && strpos($path, '/wc-pay') === false
+            && strpos($path, '/payments') === false
+            && strpos($path, '/analytics') === false
+            && strpos($path, '/marketing') === false
+        )
+    ) {
+        $class[] = 'brikpanel-current';
+        $aria_attributes .= ' aria-current="page"';
+    }
+}
+
+// Belirli sayfalarda menüyü aktif göster
+if ($sub_item_slug === 'wc-admin&path=/customers' && $path === '/customers') {
+    $class[] = 'brikpanel-current';
+}
+if ($sub_item_slug === 'admin.php?page=wc-admin&path=/add-product' && $path === '/add-product') {
+    $class[] = 'brikpanel-current';
+}
+if ($sub_item_slug === 'wc-admin&path=/extensions' && $path === '/extensions') {
+    $class[] = 'brikpanel-current';
+}
+
+// WooCommerce raporlar ve durum sayfaları
+if (strpos($sub_item_slug, 'wc-reports') !== false && $page === 'wc-reports') {
+    $class[] = 'brikpanel-current';
+}
+if (strpos($sub_item_slug, 'wc-status') !== false && $page === 'wc-status') {
+    $class[] = 'brikpanel-current';
+}
+// Extensions before WooCommerce moved it into wc-admin (its relocated slug,
+// matched exactly: Appearance > Customize carries the current page in its
+// return= argument and would match a substring test).
+if ($sub_item_slug === 'admin.php?page=wc-addons' && $page === 'wc-addons') {
+    $class[] = 'brikpanel-current';
+}
+if (strpos($sub_item_slug, '/extensions') !== false && $path === '/extensions') {
+    $class[] = 'brikpanel-current';
+}
+
+// WooCommerce Analytics bölümü
+$analytics_base = 'wc-admin&path=/analytics/';
+$analytics_sections = array(
+    'overview',
+    'products',
+    'revenue',
+    'orders',
+    'variations',
+    'categories',
+    'coupons',
+    'taxes',
+    'downloads',
+    'stock',
+    'settings',
+);
+
+$analytics_slugs = array();
+foreach ($analytics_sections as $section) {
+    $analytics_slugs[$analytics_base . $section] = '/analytics/' . $section;
+}
+
+if (isset($analytics_slugs[$sub_item_slug]) && $path === $analytics_slugs[$sub_item_slug]) {
+    $class[] = 'brikpanel-current';
+}
+
+// WooCommerce Marketing sayfası
+if ($sub_item_slug === 'admin.php?page=wc-admin&path=/marketing' && $path === '/marketing') {
+    $class[] = 'brikpanel-current';
+    $class[] = 'brikpanel-has-open-submenu';
+}
+
+	return array( $class, $aria_attributes );
+}
+
+/**
+ * Where a dropdown row links, by WordPress core's rule in _wp_menu_output():
+ * a plugin page opens on its parent's file (tools.php?page=x) when the parent
+ * is a real admin file, otherwise on admin.php?page=x; any other row is its
+ * own file.
+ *
+ * @param string $sub_item_slug   The row's slug.
+ * @param string $item_slug       Slug of the row's real parent menu.
+ * @param bool   $admin_is_parent Whether the parent's own link is a plugin page.
+ * @return array{0: string, 1: bool} [ URL, not escaped; whether it is a plugin page ]
+ */
+function brikpanel_nav_child_href( $sub_item_slug, $item_slug, $admin_is_parent ) {
+	$menu_file = $item_slug;
+	$pos       = strpos( $menu_file, '?' );
+	if ( false !== $pos ) {
+		$menu_file = substr( $menu_file, 0, $pos );
+	}
+
+	$menu_hook = get_plugin_page_hook( $sub_item_slug, $item_slug );
+	$sub_file  = $sub_item_slug;
+	$pos       = strpos( $sub_file, '?' );
+	if ( false !== $pos ) {
+		$sub_file = substr( $sub_file, 0, $pos );
+	}
+
+	if (
+		! empty( $menu_hook )
+		|| (
+			( 'index.php' !== $sub_item_slug )
+			&& file_exists( WP_PLUGIN_DIR . "/$sub_file" )
+			&& ! file_exists( ABSPATH . "/wp-admin/$sub_file" )
+		)
+	) {
+		if (
+			( ! $admin_is_parent && file_exists( WP_PLUGIN_DIR . "/$menu_file" ) && ! is_dir( WP_PLUGIN_DIR . "/{$item_slug}" ) )
+			|| file_exists( $menu_file )
+		) {
+			return array( add_query_arg( array( 'page' => $sub_item_slug ), $item_slug ), true );
+		}
+		return array( add_query_arg( array( 'page' => $sub_item_slug ), 'admin.php' ), true );
+	}
+
+	return array( $sub_item_slug, false );
+}
+
+/**
+ * Whether a menu's first openable page is a plugin page (`admin.php?page=x`),
+ * which is how WordPress decides the menu's own link and its pages' links.
+ *
+ * @param string $header_slug Slug of the menu's first openable page.
+ * @param string $parent_slug Slug of the menu.
+ * @return bool
+ */
+function brikpanel_nav_header_is_plugin_page( $header_slug, $parent_slug ) {
+	$header_slug = (string) $header_slug;
+	$menu_file   = $header_slug;
+	$pos         = strpos( $menu_file, '?' );
+	if ( false !== $pos ) {
+		$menu_file = substr( $menu_file, 0, $pos );
+	}
+
+	return ! empty( get_plugin_page_hook( $header_slug, (string) $parent_slug ) )
+		|| (
+			'index.php' !== $header_slug
+			&& file_exists( WP_PLUGIN_DIR . "/$menu_file" )
+			&& ! file_exists( ABSPATH . "/wp-admin/$menu_file" )
+		);
+}
+
+/**
+ * What "More" draws for the menus the nav customizer moved into it.
+ *
+ * A whole menu (Tools, Settings, a plugin's menu) moved into "More" used to be
+ * a single link, and its own pages (Import, Export, Site Health, Permalinks)
+ * were drawn nowhere: they stayed open, but nothing in the sidebar led to them
+ * (wp.org support, 2026-10-02). Each such row now carries its pages as a
+ * dropdown of its own, built against the real menu (tools.php, not "More"),
+ * so its links and its "current page" rules are the ones the menu has in its
+ * own place.
+ *
+ * Per moved row:
+ *  - href: the first of its pages this user may open, WordPress's own rule for
+ *    a menu's link. Without one, the row's own target when the user has the
+ *    menu's capability. Otherwise the row is not drawn: it would lead nowhere,
+ *    like WooCommerce's own menu, which has no page of its own.
+ *  - children: the pages its dropdown lists. None when the only one would
+ *    repeat the row's own link: the row is then a plain link.
+ *  - open: the page being viewed belongs to this menu.
+ * `active` tells the caller to open "More" itself.
+ *
+ * @param array $listed  "More"'s listed rows, from brikpanel_nav_resolve_submenu_rows().
+ * @param array $submenu The $submenu global after the nav customizer ran.
+ * @return array{rows: array<int, array>, active: bool}
+ */
+function brikpanel_nav_more_plan( array $listed, $submenu ) {
+	global $self, $parent_file, $typenow;
+
+	$rows   = array();
+	$active = false;
+	foreach ( $listed as $row ) {
+		$real = function_exists( 'brikpanel_nav_more_parent' ) ? brikpanel_nav_more_parent( $row ) : '';
+		if ( '' === $real ) {
+			$rows[] = array(
+				'row'    => $row,
+				'parent' => '',
+			);
+			continue;
+		}
+
+		list( $children, $header ) = brikpanel_nav_resolve_submenu_rows(
+			isset( $submenu[ $real ] ) && is_array( $submenu[ $real ] ) ? $submenu[ $real ] : array()
+		);
+		$admin_is_parent = null !== $header && brikpanel_nav_header_is_plugin_page( $header[2], $real );
+
+		$href = '';
+		if ( null !== $header ) {
+			list( $href ) = brikpanel_nav_child_href( (string) $header[2], $real, $admin_is_parent );
+		} else {
+			$top_cap = isset( $row[7]['top_cap'] ) && is_string( $row[7]['top_cap'] ) ? $row[7]['top_cap'] : '';
+			$dead_wc = 'woocommerce' === $real && ! get_plugin_page_hook( 'woocommerce', 'admin.php' );
+			if ( '' !== $top_cap && ! $dead_wc && current_user_can( $top_cap ) ) {
+				$href = (string) $row[2];
+			}
+		}
+		if ( '' === $href ) {
+			continue;
+		}
+
+		if ( 1 === count( $children ) ) {
+			list( $only_href ) = brikpanel_nav_child_href( (string) $children[0][2], $real, $admin_is_parent );
+			if ( $only_href === $href ) {
+				$children = array();
+			}
+		}
+
+		$open = ( $parent_file && $parent_file === $real ) || ( empty( $typenow ) && $self === $real );
+		if ( ! $open ) {
+			foreach ( $children as $child ) {
+				list( $child_classes ) = brikpanel_nav_child_state( (string) $child[2], $real );
+				if ( in_array( 'brikpanel-current', $child_classes, true ) ) {
+					$open = true;
+					break;
+				}
+			}
+		}
+		$active = $active || $open;
+
+		$rows[] = array(
+			'row'             => $row,
+			'parent'          => $real,
+			'href'            => $href,
+			'children'        => $children,
+			'admin_is_parent' => $admin_is_parent,
+			'open'            => $open,
+		);
+	}
+
+	return array(
+		'rows'   => $rows,
+		'active' => $active,
+	);
+}
+
+/**
+ * One row of "More" that stands for a whole menu moved there.
+ *
+ * With pages to list it is drawn like a top-level menu: its link, an arrow,
+ * and its own dropdown, open while one of its pages is being viewed. The
+ * arrow is the one the sidebar script already toggles (closest li). Without
+ * pages it is a plain row of the list, linked to the menu's first page.
+ *
+ * @param array $entry A row from brikpanel_nav_more_plan().
+ * @return string
+ */
+function brikpanel_nav_render_more_row( array $entry ) {
+	$row = $entry['row'];
+
+	if ( empty( $entry['children'] ) ) {
+		return brikpanel_nav_render_child_row(
+			$row,
+			'woocommerce-more',
+			false,
+			'',
+			array(
+				'href'    => $entry['href'],
+				'current' => $entry['open'],
+			)
+		);
+	}
+
+	$title = wptexturize( brikpanel_nav_inline_title( isset( $row[0] ) ? $row[0] : '' ) );
+	$state = $entry['open'] ? 'brikpanel-has-open-submenu' : 'wp-not-current-submenu';
+	$icon  = brikpanel_nav_ame_active() ? '' : '<img src="' . brikpanel_nav_icon_src( 'default' ) . '" width="12">';
+
+	$html = "
+		<li class='brikpanel-more-promoted brikpanel-more-nested wp-has-submenu $state'>
+			<div class='brikpanel-menu-icon-title-chevron-container'>
+				<div class='brikpanel-menu-icon-title-container'>
+					$icon
+					<a href='" . esc_url( $entry['href'] ) . "' class='brikpanel-more-promoted'>
+						$title
+					</a>
+				</div>
+				<img class=\"brikpanel-menu-chevron\" src=\"" . brikpanel_nav_icon_src( 'chevron-down' ) . "\" width=\"10\" height=\"10\">
+			</div>
+			<ul class='wp-submenu wp-submenu-wrap brikpanel-submenu'>";
+	foreach ( $entry['children'] as $child ) {
+		$html .= brikpanel_nav_render_child_row( $child, $entry['parent'], $entry['admin_is_parent'], '' );
+	}
+	$html .= '
+			</ul>
+		</li>
+	';
+
+	return $html;
+}
+
+/**
  * Function to render custom menu structure in admin panel.
  */
 function brikpanel_render_navigation() {
@@ -706,6 +1211,34 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 				);
 				$brikpanel_container_open = false;
 
+				// Menus the nav customizer moved into "More" keep their own pages as
+				// a dropdown under their row (brikpanel_nav_more_plan()). Decided
+				// here, before the row's shape and open state are: a moved menu
+				// with nothing this user may open leaves the list, and one of its
+				// pages being viewed opens "More".
+				$brikpanel_more_plan        = null;
+				$brikpanel_more_header_href = '';
+				if ( 'woocommerce-more' === $item_slug && ! empty( $submenu_items ) && function_exists( 'brikpanel_nav_more_parent' ) ) {
+					$brikpanel_more_plan = brikpanel_nav_more_plan( $submenu_items, $submenu );
+					$submenu_items       = array_column( $brikpanel_more_plan['rows'], 'row' );
+					// "More" links to its first page. When that row is a moved menu,
+					// its link is the menu's first page, not the menu's own slug.
+					if ( null !== $brikpanel_header_row && '' !== brikpanel_nav_more_parent( $brikpanel_header_row ) ) {
+						foreach ( $brikpanel_more_plan['rows'] as $brikpanel_more_entry ) {
+							if ( $brikpanel_more_entry['row'] === $brikpanel_header_row ) {
+								$brikpanel_more_header_href = $brikpanel_more_entry['href'];
+								break;
+							}
+						}
+						if ( '' === $brikpanel_more_header_href && ! empty( $brikpanel_more_plan['rows'] ) ) {
+							$brikpanel_more_entry       = $brikpanel_more_plan['rows'][0];
+							$brikpanel_more_header_href = '' !== $brikpanel_more_entry['parent']
+								? $brikpanel_more_entry['href']
+								: brikpanel_nav_child_href( (string) $brikpanel_more_entry['row'][2], 'woocommerce-more', false )[0];
+						}
+					}
+				}
+
 				if ( ! empty( $submenu_items ) ) {
 					$class[] = 'wp-has-submenu';
 				}
@@ -790,6 +1323,10 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 				strpos($page, 'wc-addons') !== false ||
 				strpos($path, '/extensions') !== false
 			);
+		// A page of a menu moved into "More" opens "More" too.
+		if ( $brikpanel_more_plan && $brikpanel_more_plan['active'] ) {
+			$viewing_more_page = true;
+		}
 
 		$viewing_dashboard_page = $item_slug === 'index.php' && $page === 'brikpanel-dashboard';
 
@@ -1115,6 +1652,9 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 			$first_child_href = ( $first_child_meta && ! empty( $first_child_meta['url'] ) )
 				? esc_url( (string) $first_child_meta['url'] )
 				: '';
+			if ( '' === $first_child_href && '' !== $brikpanel_more_header_href ) {
+				$first_child_href = esc_url( $brikpanel_more_header_href );
+			}
 
 			$menu_hook     = get_plugin_page_hook( $brikpanel_header_row[2], $item_slug );
 			$menu_file     = $brikpanel_header_row[2];
@@ -1241,253 +1781,11 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 			// it true after a list whose rows were all skipped, so the NEXT top-level
 			// row was wrongly marked `wp-first-item`.
 			foreach ( $submenu_items as $sub_key => $sub_item ) {
-				// Ensure all submenu item indices are strings (PHP 8.1+ null deprecation fix)
-				$sub_item[0] = $sub_item[0] ?? '';
-				$sub_item[2] = $sub_item[2] ?? '';
-				$sub_item[4] = $sub_item[4] ?? '';
-
-				$sub_item_slug = $sub_item[2];
-
-				// Customizer-injected custom link inside a submenu (e.g. when an
-				// admin promotes a custom URL into the "More" dropdown). Render
-				// it with our own URL/icon/target and skip the slug-based logic.
-				$brikpanel_sub_custom = function_exists( 'brikpanel_nav_customizer_extract_meta' )
-					? brikpanel_nav_customizer_extract_meta( $sub_item )
-					: null;
-				if ( $brikpanel_sub_custom ) {
-					$sub_url    = isset( $brikpanel_sub_custom['url'] ) ? (string) $brikpanel_sub_custom['url'] : '#';
-					$sub_icon   = isset( $brikpanel_sub_custom['icon'] ) ? (string) $brikpanel_sub_custom['icon'] : 'default';
-					$sub_svg    = isset( $brikpanel_sub_custom['icon_svg'] ) ? (string) $brikpanel_sub_custom['icon_svg'] : '';
-					$sub_target = ! empty( $brikpanel_sub_custom['new_tab'] ) ? ' target="_blank" rel="noopener"' : '';
-					$sub_title  = wptexturize( $sub_item[0] ?? '' );
-					if ( $sub_svg !== '' ) {
-						$sub_icon_html = '<img src="' . esc_url( $sub_svg, array( 'data', 'http', 'https' ) ) . '" width="12">';
-					} else {
-						$sub_icon_html = '<img src="' . esc_url( brikpanel_nav_icon_src( $sub_icon ) ) . '" width="12">';
-					}
-					$html .= "
-						<li class='brikpanel-more-custom-item'>
-							<div class='brikpanel-menu-icon-title-container'>
-								$sub_icon_html
-								<a href='" . esc_url( $sub_url ) . "'" . $sub_target . " class='brikpanel-custom-nav-link'>
-									" . esc_html( $sub_title ) . "
-								</a>
-							</div>
-						</li>
-					";
+				if ( $brikpanel_more_plan && isset( $brikpanel_more_plan['rows'][ $sub_key ] ) && '' !== $brikpanel_more_plan['rows'][ $sub_key ]['parent'] ) {
+					$html .= brikpanel_nav_render_more_row( $brikpanel_more_plan['rows'][ $sub_key ] );
 					continue;
 				}
-
-				$class           = array();
-				$aria_attributes = '';
-
-				$menu_file = $item_slug;
-				$pos       = strpos( $menu_file, '?' );
-				if ( false !== $pos ) {
-					$menu_file = substr( $menu_file, 0, $pos );
-				}
-
-                // Güvenli hale getirilen GET değişkenleri
-$path = isset($_GET['path']) ? sanitize_text_field(wp_unslash($_GET['path'])) : '';
-$page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '';
-
-// Alt menüde hangi sayfa açıksa aktif göstermek için kontroller
-if (isset($submenu_file)) {
-    if ($submenu_file === $sub_item_slug) {
-        $class[] = 'brikpanel-current';
-        $aria_attributes .= ' aria-current="page"';
-    }
-} elseif (
-    (!isset($plugin_page) && $self === $sub_item_slug)
-    || (
-        isset($plugin_page) && $plugin_page === $sub_item_slug
-        && ($item_slug === (!empty($typenow) ? $self . '?post_type=' . $typenow : 'nothing')
-            || $item_slug === $self
-            || !file_exists($menu_file))
-    )
-) {
-    if (
-        empty($path)
-        || (
-            strpos($path, '/customers') === false
-            && strpos($path, '/add-product') === false
-            && strpos($path, '/extensions') === false
-            && strpos($path, '/wc-pay') === false
-            && strpos($path, '/payments') === false
-            && strpos($path, '/analytics') === false
-            && strpos($path, '/marketing') === false
-        )
-    ) {
-        $class[] = 'brikpanel-current';
-        $aria_attributes .= ' aria-current="page"';
-    }
-}
-
-// Belirli sayfalarda menüyü aktif göster
-if ($sub_item_slug === 'wc-admin&path=/customers' && $path === '/customers') {
-    $class[] = 'brikpanel-current';
-}
-if ($sub_item_slug === 'admin.php?page=wc-admin&path=/add-product' && $path === '/add-product') {
-    $class[] = 'brikpanel-current';
-}
-if ($sub_item_slug === 'wc-admin&path=/extensions' && $path === '/extensions') {
-    $class[] = 'brikpanel-current';
-}
-
-// WooCommerce raporlar ve durum sayfaları
-if (strpos($sub_item_slug, 'wc-reports') !== false && $page === 'wc-reports') {
-    $class[] = 'brikpanel-current';
-}
-if (strpos($sub_item_slug, 'wc-status') !== false && $page === 'wc-status') {
-    $class[] = 'brikpanel-current';
-}
-// Extensions before WooCommerce moved it into wc-admin (its relocated slug,
-// matched exactly: Appearance > Customize carries the current page in its
-// return= argument and would match a substring test).
-if ($sub_item_slug === 'admin.php?page=wc-addons' && $page === 'wc-addons') {
-    $class[] = 'brikpanel-current';
-}
-if (strpos($sub_item_slug, '/extensions') !== false && $path === '/extensions') {
-    $class[] = 'brikpanel-current';
-}
-
-// WooCommerce Analytics bölümü
-$analytics_base = 'wc-admin&path=/analytics/';
-$analytics_sections = array(
-    'overview',
-    'products',
-    'revenue',
-    'orders',
-    'variations',
-    'categories',
-    'coupons',
-    'taxes',
-    'downloads',
-    'stock',
-    'settings',
-);
-
-$analytics_slugs = array();
-foreach ($analytics_sections as $section) {
-    $analytics_slugs[$analytics_base . $section] = '/analytics/' . $section;
-}
-
-if (isset($analytics_slugs[$sub_item_slug]) && $path === $analytics_slugs[$sub_item_slug]) {
-    $class[] = 'brikpanel-current';
-}
-
-// WooCommerce Marketing sayfası
-if ($sub_item_slug === 'admin.php?page=wc-admin&path=/marketing' && $path === '/marketing') {
-    $class[] = 'brikpanel-current';
-    $class[] = 'brikpanel-has-open-submenu';
-}
-
-// Submenu için ek class'lar
-if (!empty($sub_item[4])) {
-    $class[] = esc_attr($sub_item[4]);
-}
-
-
-				$class = $class ? ' class="' . implode( ' ', $class ) . '"' : '';
-
-				$menu_hook = get_plugin_page_hook( $sub_item_slug, $item_slug );
-				$sub_file  = $sub_item_slug;
-				$pos       = strpos( $sub_file, '?' );
-				if ( false !== $pos ) {
-					$sub_file = substr( $sub_file, 0, $pos );
-				}
-
-				$title = wptexturize( brikpanel_nav_inline_title( $sub_item[0] ?? '' ) );
-
-				// WooCommerce alt menülerine özel ikonlar.
-				$woocommerce_submenu_has_custom_icon = array(
-					'wc-admin'                             => array( 'icon_file' => 'home' ),
-					'wc-orders'                            => array( 'icon_file' => 'orders' ),
-					'edit.php?post_type=shop_order'        => array( 'icon_file' => 'orders' ), // Non-HPOS
-					'wc-orders--shop_subscription'         => array( 'icon_file' => 'subscriptions' ),
-					'edit.php?post_type=shop_subscription' => array( 'icon_file' => 'subscriptions' ), // Non-HPOS
-					'wc-admin&path=/customers'             => array( 'icon_file' => 'customers' ),
-					// Eklentilerde eklenen WooCommerce alt menüleri:
-					'wpo_wcpdf_options_page'               => array(
-						'icon_file' => 'invoice',
-						'width'     => 12,
-						'css'       => 'margin-right: 3px;',
-					),
-					'wc-stripe-main'                       => array(
-						'icon_file' => 'stripe',
-						'width'     => 12,
-						'css'       => 'margin-right: 3px;',
-					),
-					'wc-pw-gift-cards'                     => array(
-						'icon_file' => 'credit-card',
-						'width'     => 14,
-						'css'       => 'margin-right: 1px;',
-					),
-					'dgwt_wcas_settings'                   => array(
-						'icon_file' => 'fibosearch',
-						'width'     => 14,
-						'css'       => 'margin-right: 1px;',
-					),
-				);
-				$icon = '<img src="' . brikpanel_nav_icon_src( 'default' ) . '" width="12">';
-
-				foreach ( $woocommerce_submenu_has_custom_icon as $slug => $properties ) {
-					if ( $sub_item_slug === $slug ) {
-						$width = isset( $properties['width'] ) ? $properties['width'] : 15;
-						$css   = isset( $properties['css'] ) ? $properties['css'] : '';
-						$icon  = '<img
-							src="' . brikpanel_nav_icon_src( $properties['icon_file'] ) . '"
-							width="' . $width . '"
-							style="' . $css . '"
-						>';
-						break;
-					}
-				}
-				if ( brikpanel_nav_ame_active() ) {
-					$icon = '';
-				}
-
-				if (
-					! empty( $menu_hook )
-					|| (
-						( 'index.php' !== $sub_item_slug )
-						&& file_exists( WP_PLUGIN_DIR . "/$sub_file" )
-						&& ! file_exists( ABSPATH . "/wp-admin/$sub_file" )
-					)
-				) {
-					if (
-						( ! $admin_is_parent && file_exists( WP_PLUGIN_DIR . "/$menu_file" ) && ! is_dir( WP_PLUGIN_DIR . "/{$item_slug}" ) )
-						|| file_exists( $menu_file )
-					) {
-						$sub_item_url = add_query_arg( array( 'page' => $sub_item_slug ), $item_slug );
-					} else {
-						$sub_item_url = add_query_arg( array( 'page' => $sub_item_slug ), 'admin.php' );
-					}
-
-					$sub_item_url = esc_url( $sub_item_url );
-
-					$html .= "
-						<li$class>
-							<div class='brikpanel-menu-icon-title-container'>
-								$icon
-								<a href='$sub_item_url' $class $aria_attributes $id>
-									$title
-								</a>
-							</div>
-						</li>
-					";
-				} else {
-					$html .= "
-						<li$class>
-							<div class='brikpanel-menu-icon-title-container'>
-								$icon
-								<a href='{$sub_item_slug}' $class $aria_attributes>
-									$title
-								</a>
-							</div>
-						</li>
-					";
-				}
+				$html .= brikpanel_nav_render_child_row( $sub_item, $item_slug, $admin_is_parent, $id );
 			}
 			$html .= '</ul>';
 		}

@@ -15981,3 +15981,159 @@ msgstr "Пересчитать удержание по когортам"
 #: includes/cron/customer-analytics-jobs.php:539
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Строит матрицу удержания месячная когорта × период."
+
+#. translators: 1: number of orders, e.g. "3 orders"; 2: conversion rate, e.g.
+#. "2.4%".
+#: includes/brikpanel-enqueue.php:466
+#, php-format
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:588
+#, php-format
+msgid "A saved segment named “%s” already exists. Replace it?"
+msgstr "Сохранённый сегмент «%s» уже существует. Заменить его?"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1841
+msgid "About campaigns"
+msgstr "О кампаниях"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5630
+msgid "Campaigns"
+msgstr "Кампании"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5400
+msgid "Cart value"
+msgstr "Стоимость корзин"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1844
+msgid ""
+"Conversion rate is those orders divided by the visits that arrived from the "
+"campaign link in this period, counted once a day per visitor. Visits follow "
+"your visitor tracking and cookie consent settings, and a dash means none "
+"were counted."
+msgstr ""
+"Коэффициент конверсии: эти заказы, делённые на визиты, пришедшие по ссылке "
+"кампании за этот период (один визит в день на посетителя). Визиты "
+"учитываются согласно вашим настройкам отслеживания посетителей и согласия на"
+" cookie; прочерк означает, что визиты не учитывались."
+
+#: includes/brikpanel-enqueue.php:598
+msgid "Could not delete the segment. Please try again."
+msgstr "Не удалось удалить сегмент. Попробуйте снова."
+
+#: includes/brikpanel-enqueue.php:589
+msgid "Could not save the segment. Please try again."
+msgstr "Не удалось сохранить сегмент. Попробуйте снова."
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:595
+#, php-format
+msgid "Delete saved segment %s"
+msgstr "Удалить сохранённый сегмент %s"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:597
+#, php-format
+msgid ""
+"Delete the saved segment “%s”? It is removed for everyone who uses Segments."
+msgstr ""
+"Удалить сохранённый сегмент «%s»? Он исчезнет у всех, кто пользуется "
+"сегментами."
+
+#. translators: %d: product ID.
+#: front-end/segments/brikpanel-segments.php:1286
+#, php-format
+msgid "Deleted product #%d"
+msgstr "Удалённый товар #%d"
+
+#: includes/brikpanel-enqueue.php:586
+msgid "Enter a name for the segment."
+msgstr "Введите название сегмента."
+
+#: front-end/segments/views/page.php:170
+msgid "Leaves out customers who ever bought any of these products."
+msgstr ""
+"Исключает покупателей, которые когда-либо покупали любой из этих товаров."
+
+#: front-end/segments/views/page.php:169
+msgid "Leaves out orders that contain any of these products."
+msgstr "Исключает заказы, в которых есть любой из этих товаров."
+
+#: includes/brikpanel-consent.php:601
+msgid ""
+"Marks the campaign links this browser has already been counted for today."
+msgstr "Отмечает ссылки кампаний, по которым этот браузер уже учтён сегодня."
+
+#: includes/brikpanel-enqueue.php:468
+msgid "None in this period."
+msgstr "Нет за этот период."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1842
+msgid ""
+"Orders and revenue come from WooCommerce's order attribution: each order "
+"counts for the last campaign link its customer came through, even when that "
+"visit was before this period."
+msgstr ""
+"Заказы и выручка берутся из атрибуции заказов WooCommerce: каждый заказ "
+"засчитывается последней ссылке кампании, по которой пришёл покупатель, даже "
+"если этот визит был до этого периода."
+
+#. translators: 1: number of carts bought back after being left, e.g. 2; 2:
+#. their share of the carts left, e.g. "17%".
+#: includes/brikpanel-enqueue.php:470
+#, php-format
+msgid "Recovered %1$s (%2$s)"
+msgstr "Возвращено %1$s (%2$s)"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5401
+msgid "Recovered carts"
+msgstr "Возвращённые корзины"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5402
+msgid "Recovery rate (%)"
+msgstr "Доля возвращённых (%)"
+
+#: includes/brikpanel-enqueue.php:582
+msgid "Save as segment"
+msgstr "Сохранить как сегмент"
+
+#: includes/brikpanel-enqueue.php:593
+msgid "Segment deleted."
+msgstr "Сегмент удалён."
+
+#: includes/brikpanel-enqueue.php:583
+msgid "Segment name"
+msgstr "Название сегмента"
+
+#: includes/brikpanel-enqueue.php:592
+msgid "Segment saved."
+msgstr "Сегмент сохранён."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1838
+msgid "Top campaigns"
+msgstr "Лучшие кампании"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5411
+msgid "Visits"
+msgstr "Визиты"
+
+#. translators: %d: how many saved segments a tab can keep.
+#: includes/brikpanel-enqueue.php:591
+#, php-format
+msgid ""
+"You can keep up to %d saved segment on this tab. Delete one to save a new "
+"one."
+msgid_plural ""
+"You can keep up to %d saved segments on this tab. Delete one to save a new "
+"one."
+msgstr[0] ""
+"На этой вкладке можно хранить не более %d сохранённого сегмента. Удалите "
+"один, чтобы сохранить новый."
+msgstr[1] ""
+"На этой вкладке можно хранить не более %d сохранённых сегментов. Удалите "
+"один, чтобы сохранить новый."
+msgstr[2] ""
+"На этой вкладке можно хранить не более %d сохранённых сегментов. Удалите "
+"один, чтобы сохранить новый."

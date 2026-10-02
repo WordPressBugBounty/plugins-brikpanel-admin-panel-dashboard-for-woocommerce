@@ -15828,3 +15828,156 @@ msgstr "Cohortretentie opnieuw berekenen"
 #: includes/cron/customer-analytics-jobs.php:539
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Bouwt de maandelijkse cohort × periode-retentiematrix."
+
+#. translators: 1: number of orders, e.g. "3 orders"; 2: conversion rate, e.g.
+#. "2.4%".
+#: includes/brikpanel-enqueue.php:466
+#, php-format
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:588
+#, php-format
+msgid "A saved segment named “%s” already exists. Replace it?"
+msgstr ""
+"Er bestaat al een opgeslagen segment met de naam ‘%s’. Wilt u het vervangen?"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1841
+msgid "About campaigns"
+msgstr "Over campagnes"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5630
+msgid "Campaigns"
+msgstr "Campagnes"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5400
+msgid "Cart value"
+msgstr "Waarde van winkelwagens"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1844
+msgid ""
+"Conversion rate is those orders divided by the visits that arrived from the "
+"campaign link in this period, counted once a day per visitor. Visits follow "
+"your visitor tracking and cookie consent settings, and a dash means none "
+"were counted."
+msgstr ""
+"Het conversiepercentage is deze bestellingen gedeeld door de bezoeken die in"
+" deze periode via de campagnelink binnenkwamen, één keer per dag per "
+"bezoeker geteld. Bezoeken volgen uw instellingen voor bezoekersregistratie "
+"en cookietoestemming; een streepje betekent dat er geen zijn geteld."
+
+#: includes/brikpanel-enqueue.php:598
+msgid "Could not delete the segment. Please try again."
+msgstr "Het segment kon niet worden verwijderd. Probeer het opnieuw."
+
+#: includes/brikpanel-enqueue.php:589
+msgid "Could not save the segment. Please try again."
+msgstr "Het segment kon niet worden opgeslagen. Probeer het opnieuw."
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:595
+#, php-format
+msgid "Delete saved segment %s"
+msgstr "Opgeslagen segment %s verwijderen"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:597
+#, php-format
+msgid ""
+"Delete the saved segment “%s”? It is removed for everyone who uses Segments."
+msgstr ""
+"Het opgeslagen segment ‘%s’ verwijderen? Het wordt verwijderd voor iedereen "
+"die Segmenten gebruikt."
+
+#. translators: %d: product ID.
+#: front-end/segments/brikpanel-segments.php:1286
+#, php-format
+msgid "Deleted product #%d"
+msgstr "Verwijderd product #%d"
+
+#: includes/brikpanel-enqueue.php:586
+msgid "Enter a name for the segment."
+msgstr "Voer een naam voor het segment in."
+
+#: front-end/segments/views/page.php:170
+msgid "Leaves out customers who ever bought any of these products."
+msgstr "Laat klanten weg die ooit een van deze producten hebben gekocht."
+
+#: front-end/segments/views/page.php:169
+msgid "Leaves out orders that contain any of these products."
+msgstr "Laat bestellingen weg die een van deze producten bevatten."
+
+#: includes/brikpanel-consent.php:601
+msgid ""
+"Marks the campaign links this browser has already been counted for today."
+msgstr "Onthoudt voor welke campagnelinks deze browser vandaag al is geteld."
+
+#: includes/brikpanel-enqueue.php:468
+msgid "None in this period."
+msgstr "Geen in deze periode."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1842
+msgid ""
+"Orders and revenue come from WooCommerce's order attribution: each order "
+"counts for the last campaign link its customer came through, even when that "
+"visit was before this period."
+msgstr ""
+"Bestellingen en omzet komen uit de bestelattributie van WooCommerce: elke "
+"bestelling telt voor de laatste campagnelink waarlangs de klant binnenkwam, "
+"ook als dat bezoek vóór deze periode was."
+
+#. translators: 1: number of carts bought back after being left, e.g. 2; 2:
+#. their share of the carts left, e.g. "17%".
+#: includes/brikpanel-enqueue.php:470
+#, php-format
+msgid "Recovered %1$s (%2$s)"
+msgstr "Hersteld %1$s (%2$s)"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5401
+msgid "Recovered carts"
+msgstr "Herstelde winkelwagens"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5402
+msgid "Recovery rate (%)"
+msgstr "Herstelpercentage (%)"
+
+#: includes/brikpanel-enqueue.php:582
+msgid "Save as segment"
+msgstr "Opslaan als segment"
+
+#: includes/brikpanel-enqueue.php:593
+msgid "Segment deleted."
+msgstr "Segment verwijderd."
+
+#: includes/brikpanel-enqueue.php:583
+msgid "Segment name"
+msgstr "Segmentnaam"
+
+#: includes/brikpanel-enqueue.php:592
+msgid "Segment saved."
+msgstr "Segment opgeslagen."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1838
+msgid "Top campaigns"
+msgstr "Belangrijkste campagnes"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5411
+msgid "Visits"
+msgstr "Bezoeken"
+
+#. translators: %d: how many saved segments a tab can keep.
+#: includes/brikpanel-enqueue.php:591
+#, php-format
+msgid ""
+"You can keep up to %d saved segment on this tab. Delete one to save a new "
+"one."
+msgid_plural ""
+"You can keep up to %d saved segments on this tab. Delete one to save a new "
+"one."
+msgstr[0] ""
+"U kunt op dit tabblad maximaal %d opgeslagen segment bewaren. Verwijder er "
+"een om een nieuw op te slaan."
+msgstr[1] ""
+"U kunt op dit tabblad maximaal %d opgeslagen segmenten bewaren. Verwijder er"
+" een om een nieuw op te slaan."

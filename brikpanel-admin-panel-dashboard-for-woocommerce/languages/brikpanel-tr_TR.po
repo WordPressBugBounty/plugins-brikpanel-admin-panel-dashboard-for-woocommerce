@@ -15828,3 +15828,158 @@ msgstr "Kohort Elde Tutmayı Yeniden Hesapla"
 #: includes/cron/customer-analytics-jobs.php:539
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Aylık kohort × dönem elde tutma matrisini oluşturur."
+
+#. translators: 1: number of orders, e.g. "3 orders"; 2: conversion rate, e.g.
+#. "2.4%".
+#: includes/brikpanel-enqueue.php:466
+#, php-format
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:588
+#, php-format
+msgid "A saved segment named “%s” already exists. Replace it?"
+msgstr ""
+"“%s” adında kayıtlı bir segment zaten var. Değiştirmek istiyor musunuz?"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1841
+msgid "About campaigns"
+msgstr "Kampanyalar hakkında"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5630
+msgid "Campaigns"
+msgstr "Kampanyalar"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5400
+msgid "Cart value"
+msgstr "Sepet değeri"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1844
+msgid ""
+"Conversion rate is those orders divided by the visits that arrived from the "
+"campaign link in this period, counted once a day per visitor. Visits follow "
+"your visitor tracking and cookie consent settings, and a dash means none "
+"were counted."
+msgstr ""
+"Dönüşüm oranı, bu siparişlerin bu dönemde kampanya linkinden gelen "
+"ziyaretlere bölünmesidir; her ziyaretçi günde bir kez sayılır. Ziyaretler, "
+"ziyaretçi takibi ve çerez onayı ayarlarınıza uyar; çizgi, hiç ziyaret "
+"sayılmadığı anlamına gelir."
+
+#: includes/brikpanel-enqueue.php:598
+msgid "Could not delete the segment. Please try again."
+msgstr "Segment silinemedi. Lütfen tekrar deneyin."
+
+#: includes/brikpanel-enqueue.php:589
+msgid "Could not save the segment. Please try again."
+msgstr "Segment kaydedilemedi. Lütfen tekrar deneyin."
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:595
+#, php-format
+msgid "Delete saved segment %s"
+msgstr "Kayıtlı segmenti sil: %s"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:597
+#, php-format
+msgid ""
+"Delete the saved segment “%s”? It is removed for everyone who uses Segments."
+msgstr ""
+"“%s” kayıtlı segmenti silinsin mi? Segmentler’i kullanan herkes için "
+"kaldırılır."
+
+#. translators: %d: product ID.
+#: front-end/segments/brikpanel-segments.php:1286
+#, php-format
+msgid "Deleted product #%d"
+msgstr "Silinmiş ürün #%d"
+
+#: includes/brikpanel-enqueue.php:586
+msgid "Enter a name for the segment."
+msgstr "Segment için bir ad girin."
+
+#: front-end/segments/views/page.php:170
+msgid "Leaves out customers who ever bought any of these products."
+msgstr ""
+"Bu ürünlerden herhangi birini hiç satın almış müşterileri dışarıda bırakır."
+
+#: front-end/segments/views/page.php:169
+msgid "Leaves out orders that contain any of these products."
+msgstr "Bu ürünlerden herhangi birini içeren siparişleri dışarıda bırakır."
+
+#: includes/brikpanel-consent.php:601
+msgid ""
+"Marks the campaign links this browser has already been counted for today."
+msgstr ""
+"Bu tarayıcının bugün hangi kampanya linkleri için sayıldığını işaretler."
+
+#: includes/brikpanel-enqueue.php:468
+msgid "None in this period."
+msgstr "Bu dönemde yok."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1842
+msgid ""
+"Orders and revenue come from WooCommerce's order attribution: each order "
+"counts for the last campaign link its customer came through, even when that "
+"visit was before this period."
+msgstr ""
+"Siparişler ve gelir, WooCommerce'in sipariş kaynağı kaydından gelir: her "
+"sipariş, müşterinin geldiği son kampanya linkine sayılır, o ziyaret bu "
+"dönemden önce olsa bile."
+
+#. translators: 1: number of carts bought back after being left, e.g. 2; 2:
+#. their share of the carts left, e.g. "17%".
+#: includes/brikpanel-enqueue.php:470
+#, php-format
+msgid "Recovered %1$s (%2$s)"
+msgstr "Kurtarılan %1$s (%2$s)"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5401
+msgid "Recovered carts"
+msgstr "Kurtarılan sepetler"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5402
+msgid "Recovery rate (%)"
+msgstr "Kurtarma oranı (%)"
+
+#: includes/brikpanel-enqueue.php:582
+msgid "Save as segment"
+msgstr "Segment olarak kaydet"
+
+#: includes/brikpanel-enqueue.php:593
+msgid "Segment deleted."
+msgstr "Segment silindi."
+
+#: includes/brikpanel-enqueue.php:583
+msgid "Segment name"
+msgstr "Segment adı"
+
+#: includes/brikpanel-enqueue.php:592
+msgid "Segment saved."
+msgstr "Segment kaydedildi."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1838
+msgid "Top campaigns"
+msgstr "En iyi kampanyalar"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5411
+msgid "Visits"
+msgstr "Ziyaretler"
+
+#. translators: %d: how many saved segments a tab can keep.
+#: includes/brikpanel-enqueue.php:591
+#, php-format
+msgid ""
+"You can keep up to %d saved segment on this tab. Delete one to save a new "
+"one."
+msgid_plural ""
+"You can keep up to %d saved segments on this tab. Delete one to save a new "
+"one."
+msgstr[0] ""
+"Bu sekmede en fazla %d kayıtlı segment tutabilirsiniz. Yenisini kaydetmek "
+"için birini silin."
+msgstr[1] ""
+"Bu sekmede en fazla %d kayıtlı segment tutabilirsiniz. Yenisini kaydetmek "
+"için birini silin."

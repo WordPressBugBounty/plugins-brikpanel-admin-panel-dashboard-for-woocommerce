@@ -2,6 +2,14 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.28 (2026-10-02) =
+* New: **Top campaigns.** On the dashboard, Visitors by device → "Sources" lists the 5 campaigns that brought the most revenue, with their orders, conversion rate and revenue. The Excel export gets a "Campaigns" sheet. Campaign visits are counted from this version on and follow your visitor tracking and cookie consent settings.
+* New: **Abandoned carts in the Conversion funnel.** A line under the funnel shows the carts abandoned in the selected period, their value, how many were recovered and the change from the previous period. The Excel export has the same figures.
+* New: **Exclude products and saved segments.** Segments → More filters → "Exclude products" leaves out orders, or customers, that include those products. "+ Save as segment" keeps any filter under a name, as a button next to the presets.
+* Fix: **The Segments product filter finds new orders.** It now also finds orders WooCommerce has not yet processed for analytics, and a variable product covers all its variations. "Reset" no longer sends the old status choice.
+* Fix: **Menus moved into More keep their pages.** Tools, Settings or any other menu you move into the sidebar's More menu now opens its pages under it, and the page you are on stays highlighted.
+* Fix: **The dashboard header fits when BrikMarket is active.** The date buttons and "Copy everything" no longer shrink at every width; they stay in one line on wide screens, as they do without BrikMarket.
+
 = 3.3.27 (2026-10-01) =
 * Fix: **Connect buttons explain what went wrong.** When Google Sheets, Google Ads or Meta cannot be connected because the site cannot reach brksoft.com, BrikPanel tries once more by itself, then shows the reason and what to do in a box that stays on screen, with technical details you can send to your host.
 * Fix: **A failed or cancelled Google or Meta sign-in is explained.** The message now appears on the right card in plain words, instead of a raw code like "access_denied" or no message at all.

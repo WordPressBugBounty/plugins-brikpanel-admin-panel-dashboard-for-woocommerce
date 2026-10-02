@@ -346,6 +346,9 @@ body.rtl .brikpanel-dash-live-ip { margin-left: 0; margin-right: 0.375rem; }
 body.rtl .brikpanel-device-pct,
 body.rtl .brikpanel-device-count { text-align: left; }
 
+/* Campaign names line up with the page, whatever their own direction. */
+body.rtl .brikpanel-campaign-name { text-align: right; }
+
 body.rtl .brikpanel-subs-card--active,
 body.rtl .brikpanel-subs-card--hold,
 body.rtl .brikpanel-subs-card--cancelled,
@@ -857,6 +860,11 @@ body.rtl #brikpanel-navigation .wp-submenu.wp-submenu:where(
 ) li a {
     padding-left: 0;
     padding-right: 1.5rem;
+}
+/* The pages of a menu moved into "More" sit one step further in. */
+body.rtl #brikpanel-navigation .wp-submenu .wp-submenu.wp-submenu li a {
+    padding-left: 0;
+    padding-right: 2rem;
 }
 
 /* This used to mirror a 0.1rem margin on the icon box. That margin is gone in

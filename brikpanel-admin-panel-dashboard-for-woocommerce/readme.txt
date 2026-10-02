@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.27
+Stable tag: 3.3.28
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -496,6 +496,14 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.28 (2026-10-02) =
+* New: **Top campaigns.** On the dashboard, Visitors by device → "Sources" lists the 5 campaigns that brought the most revenue, with their orders, conversion rate and revenue. The Excel export gets a "Campaigns" sheet. Campaign visits are counted from this version on and follow your visitor tracking and cookie consent settings.
+* New: **Abandoned carts in the Conversion funnel.** A line under the funnel shows the carts abandoned in the selected period, their value, how many were recovered and the change from the previous period. The Excel export has the same figures.
+* New: **Exclude products and saved segments.** Segments → More filters → "Exclude products" leaves out orders, or customers, that include those products. "+ Save as segment" keeps any filter under a name, as a button next to the presets.
+* Fix: **The Segments product filter finds new orders.** It now also finds orders WooCommerce has not yet processed for analytics, and a variable product covers all its variations. "Reset" no longer sends the old status choice.
+* Fix: **Menus moved into More keep their pages.** Tools, Settings or any other menu you move into the sidebar's More menu now opens its pages under it, and the page you are on stays highlighted.
+* Fix: **The dashboard header fits when BrikMarket is active.** The date buttons and "Copy everything" no longer shrink at every width; they stay in one line on wide screens, as they do without BrikMarket.
+
 = 3.3.27 (2026-10-01) =
 * Fix: **Connect buttons explain what went wrong.** When Google Sheets, Google Ads or Meta cannot be connected because the site cannot reach brksoft.com, BrikPanel tries once more by itself, then shows the reason and what to do in a box that stays on screen, with technical details you can send to your host.
 * Fix: **A failed or cancelled Google or Meta sign-in is explained.** The message now appears on the right card in plain words, instead of a raw code like "access_denied" or no message at all.
@@ -572,11 +580,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **"Email" and "popup" no longer overlap in the Abandoned Carts header.** The row arrow shared a CSS class with the header switch, so its sizing hit the switch's label. Three similar clashes are fixed too: italic empty cells in the products list, the order screen's status menu taking styles from the orders list, and generic class names in styles loaded on every admin page, which could restyle other plugins and put a magnifier on BrikPanel's power switch in the toolbar.
 * Tweak: **Clearer wording.** The "Wait for cookie consent" setting now says it also covers signed-in customers, and the FAQ describes exactly which scripts load on the storefront, when, and where to switch each one off.
 * Developer: **The Abandoned Carts contact cells are filled through a filter.** The phone, WhatsApp and envelope cells now take their content from `brikpanel_cartab_outreach_rows`; BrikPanel itself only draws them. With BrikMentor 1.15.8 or later nothing changes on screen; an older BrikMentor shows a padlock asking to be updated.
-
-= 3.3.20 (2026-09-22) =
-* Fix: **The product editor, both product lists and the search box no longer break a store running an older WooCommerce.** The GTIN / barcode field uses a WooCommerce feature that arrived in WooCommerce 9.2. On anything older the call had nothing to answer it, and the page stopped dead with a critical error instead of simply leaving the field out. That hit the product editor, the WordPress products list, BrikPanel's own products list and any search that matched a product, which between them is most of a working day. The GTIN field now works on older WooCommerce as well, reading and writing the same place WooCommerce itself keeps it, so the barcodes entered there appear by themselves once the store updates WooCommerce, with nothing to move across.
-* Fix: **Coupons can be created and duplicated on an older WooCommerce again.** Saving a new coupon, or duplicating an existing one, called a WooCommerce feature added in WooCommerce 6.2. On an older store both buttons answered with a critical error and nothing was saved. A duplicated coupon is still created as a draft, so a copy never goes live on its own.
-* Fix: **The Google Sheets order sync no longer fails in the background on an older WooCommerce.** The part of the sync that keeps track of which orders are already in the sheet used a WooCommerce class added in WooCommerce 6.9. There was no visible error because the work runs in the background, the sync simply stopped.
-* Tweak: **The products list draws the GTIN column with one database query instead of one per variation.** A variable product with twenty variations used to cost twenty separate product lookups on every page of the list, for a single column.
-* Change: **BrikPanel now states that it supports WooCommerce 9.2 and later, and says so on stores below that.** Nothing is switched off and nothing behaves differently below it. Everything above keeps working on older stores; administrators simply see a dismissible notice recommending a WooCommerce update.
-* Developer: `includes/brikpanel-wc-compat.php` is now the single place that wraps any WooCommerce API newer than the oldest supported store, and `tools/wc-floor-audit.php` fails the build when one is called anywhere else or without a guard. It also treats `catch ( \Exception )` as no guard at all, because a missing method raises `Error`, which is what made this class of bug reach production three separate times.

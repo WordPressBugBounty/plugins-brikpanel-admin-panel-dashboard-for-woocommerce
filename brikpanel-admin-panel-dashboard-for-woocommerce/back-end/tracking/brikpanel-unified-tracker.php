@@ -46,6 +46,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   page_id                 — page-view counter for "Most visited pages".
  *   visitor=1, ref, url     — daily visitor + device + traffic-source count.
  *   product=1               — daily product-view counter.
+ *   campaign                : the landing address's campaign (utm_campaign),
+ *                             once per campaign a day: visits per campaign for
+ *                             the dashboard's "Top campaigns".
  *   consent=1               — the visitor has allowed analytics (only sent
  *                             while the "Wait for cookie consent" setting is
  *                             on, and only after the site's own consent code
@@ -159,6 +162,15 @@ function brikpanel_ajax_unified_track() {
         $done['product'] = true;
     }
 
+    // 5) A visit from a campaign link (the landing address's utm_campaign),
+    //    sent once per campaign a day. The flag in the reply arms that latch,
+    //    also when the server's own limits declined to count it, so the
+    //    browser does not send it again on every page.
+    if ( isset( $_POST['campaign'] ) && is_string( $_POST['campaign'] ) && function_exists( 'brikpanel_record_campaign_visit' ) ) {
+        brikpanel_record_campaign_visit( wp_unslash( $_POST['campaign'] ) );
+        $done['campaign'] = true;
+    }
+
     wp_send_json_success( $done );
 }
 add_action( 'wp_ajax_nopriv_brikpanel_unified_track', 'brikpanel_ajax_unified_track' );
@@ -245,6 +257,11 @@ function brikpanel_unified_tracker_js() {
         var pageId      = <?php echo (int) $page_id; ?>;
         var pageType    = "<?php echo esc_js( $page_type ); ?>";
         var LIVE_PAGE   = "<?php echo esc_js( $live_page ); ?>";
+
+        // Campaign visits for the dashboard's "Top campaigns": the store's day
+        // and one latch for every campaign counted on it (see campaignDue()).
+        var DAY          = "<?php echo esc_js( $day ); ?>";
+        var CAMPAIGN_KEY = 'brikpanel_campaign_viewed';
 
         // Where this visit came from, for the Live visitors list.
         var LIVE_SOURCE = <?php echo $live_source ? 'true' : 'false'; ?>;
@@ -380,6 +397,51 @@ function brikpanel_unified_tracker_js() {
             return false;
         }
 
+        // The campaign of this address, read the way WooCommerce's own order
+        // attribution reads it, so a visit and the order it leads to carry the
+        // same name: utm_campaign, else google_cpc for a Google Ads click id and
+        // yandex_cpc for a Yandex one; decoded once, a "+" kept as it is.
+        function landingCampaign() {
+            var q = window.location.search || '';
+            if (q.length < 2) return '';
+            var found = Object.create(null);
+            var pairs = q.slice(1).split('&');
+            for (var i = 0; i < pairs.length; i++) {
+                var eq = pairs[i].indexOf('=');
+                var key = eq === -1 ? pairs[i] : pairs[i].slice(0, eq);
+                if (key && !(key in found)) found[key] = eq === -1 ? '' : pairs[i].slice(eq + 1);
+            }
+            var raw = found.utm_campaign || '';
+            if (!raw && found.gclid) raw = 'google_cpc';
+            if (!raw && found.yclid) raw = 'yandex_cpc';
+            try { raw = decodeURIComponent(raw); } catch (e) {}
+            raw = String(raw).replace(/\s+/g, ' ').trim();
+            return raw === '(none)' ? '' : raw.slice(0, 100);
+        }
+
+        // Each campaign counts once a day per browser. One key holds today's
+        // list (at most 20 names), so yesterday's names go when the day turns
+        // instead of piling up a key each.
+        function campaignDue(name) {
+            if (!name) return false;
+            try {
+                var seen = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || 'null');
+                if (!seen || seen.d !== DAY || !Array.isArray(seen.c)) return true;
+                return seen.c.indexOf(name.toLowerCase()) === -1;
+            } catch (e) {
+                return true;
+            }
+        }
+
+        function campaignCounted(name) {
+            try {
+                var seen = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || 'null');
+                var list = seen && seen.d === DAY && Array.isArray(seen.c) ? seen.c : [];
+                list.push(name.toLowerCase());
+                localStorage.setItem(CAMPAIGN_KEY, JSON.stringify({ d: DAY, c: list.slice(-20) }));
+            } catch (e) {}
+        }
+
         // One combined request per page view: live ping + page view + the
         // once-per-day visitor / product signals when not yet latched.
         function sendCombined() {
@@ -403,6 +465,9 @@ function brikpanel_unified_tracker_js() {
                 } catch (e) {}
             }
             if (wantProduct) fd.append('product', '1');
+            var campaign = landingCampaign();
+            var wantCampaign = campaignDue(campaign);
+            if (wantCampaign) fd.append('campaign', campaign);
 
             fetch(endpoint, {
                 method: 'POST',
@@ -417,6 +482,7 @@ function brikpanel_unified_tracker_js() {
                     if (json.data.visitor) localStorage.setItem(VISITOR_KEY, '1');
                     if (json.data.product) localStorage.setItem(PRODUCT_KEY, '1');
                 } catch (e) {}
+                if (wantCampaign && json.data.campaign) campaignCounted(campaign);
             }).catch(function() {});
         }
 
@@ -453,7 +519,7 @@ function brikpanel_unified_tracker_js() {
             try {
                 for (var i = 0; i < localStorage.length; i++) {
                     var k = localStorage.key(i);
-                    if (k && /^brikpanel_(visitor|product)_viewed_/.test(k)) return true;
+                    if (k && /^brikpanel_(?:visitor_viewed_|product_viewed_|campaign_viewed$)/.test(k)) return true;
                 }
             } catch (e) {}
             try { if (sessionStorage.getItem(ENTRY_KEY)) return true; } catch (e) {}
@@ -467,7 +533,7 @@ function brikpanel_unified_tracker_js() {
                 var keys = [];
                 for (var i = 0; i < localStorage.length; i++) {
                     var k = localStorage.key(i);
-                    if (k && /^brikpanel_(visitor|product)_viewed_/.test(k)) keys.push(k);
+                    if (k && /^brikpanel_(?:visitor_viewed_|product_viewed_|campaign_viewed$)/.test(k)) keys.push(k);
                 }
                 for (var j = 0; j < keys.length; j++) localStorage.removeItem(keys[j]);
             } catch (e) {}

@@ -15828,3 +15828,157 @@ msgstr "Recalcular Retenção de Coortes"
 #: includes/cron/customer-analytics-jobs.php:539
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Constrói a matriz de retenção mensal coorte × período."
+
+#. translators: 1: number of orders, e.g. "3 orders"; 2: conversion rate, e.g.
+#. "2.4%".
+#: includes/brikpanel-enqueue.php:466
+#, php-format
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:588
+#, php-format
+msgid "A saved segment named “%s” already exists. Replace it?"
+msgstr "Já existe um segmento salvo chamado “%s”. Quer substituí-lo?"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1841
+msgid "About campaigns"
+msgstr "Sobre as campanhas"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5630
+msgid "Campaigns"
+msgstr "Campanhas"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5400
+msgid "Cart value"
+msgstr "Valor dos carrinhos"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1844
+msgid ""
+"Conversion rate is those orders divided by the visits that arrived from the "
+"campaign link in this period, counted once a day per visitor. Visits follow "
+"your visitor tracking and cookie consent settings, and a dash means none "
+"were counted."
+msgstr ""
+"A taxa de conversão é o número desses pedidos dividido pelas visitas que "
+"chegaram pelo link da campanha neste período, contadas uma vez por dia por "
+"visitante. As visitas seguem suas configurações de rastreamento de "
+"visitantes e de consentimento de cookies, e um traço significa que nenhuma "
+"foi contada."
+
+#: includes/brikpanel-enqueue.php:598
+msgid "Could not delete the segment. Please try again."
+msgstr "Não foi possível excluir o segmento. Tente novamente."
+
+#: includes/brikpanel-enqueue.php:589
+msgid "Could not save the segment. Please try again."
+msgstr "Não foi possível salvar o segmento. Tente novamente."
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:595
+#, php-format
+msgid "Delete saved segment %s"
+msgstr "Excluir o segmento salvo %s"
+
+#. translators: %s: name of a saved segment.
+#: includes/brikpanel-enqueue.php:597
+#, php-format
+msgid ""
+"Delete the saved segment “%s”? It is removed for everyone who uses Segments."
+msgstr ""
+"Excluir o segmento salvo “%s”? Ele será removido para todos que usam "
+"Segmentos."
+
+#. translators: %d: product ID.
+#: front-end/segments/brikpanel-segments.php:1286
+#, php-format
+msgid "Deleted product #%d"
+msgstr "Produto excluído #%d"
+
+#: includes/brikpanel-enqueue.php:586
+msgid "Enter a name for the segment."
+msgstr "Digite um nome para o segmento."
+
+#: front-end/segments/views/page.php:170
+msgid "Leaves out customers who ever bought any of these products."
+msgstr "Deixa de fora os clientes que já compraram algum destes produtos."
+
+#: front-end/segments/views/page.php:169
+msgid "Leaves out orders that contain any of these products."
+msgstr "Deixa de fora os pedidos que contêm algum destes produtos."
+
+#: includes/brikpanel-consent.php:601
+msgid ""
+"Marks the campaign links this browser has already been counted for today."
+msgstr ""
+"Marca os links de campanha pelos quais este navegador já foi contado hoje."
+
+#: includes/brikpanel-enqueue.php:468
+msgid "None in this period."
+msgstr "Nenhum neste período."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1842
+msgid ""
+"Orders and revenue come from WooCommerce's order attribution: each order "
+"counts for the last campaign link its customer came through, even when that "
+"visit was before this period."
+msgstr ""
+"Pedidos e receita vêm da atribuição de pedidos do WooCommerce: cada pedido "
+"conta para o último link de campanha pelo qual o cliente chegou, mesmo que "
+"essa visita tenha sido antes deste período."
+
+#. translators: 1: number of carts bought back after being left, e.g. 2; 2:
+#. their share of the carts left, e.g. "17%".
+#: includes/brikpanel-enqueue.php:470
+#, php-format
+msgid "Recovered %1$s (%2$s)"
+msgstr "Recuperados %1$s (%2$s)"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5401
+msgid "Recovered carts"
+msgstr "Carrinhos recuperados"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5402
+msgid "Recovery rate (%)"
+msgstr "Taxa de recuperação (%)"
+
+#: includes/brikpanel-enqueue.php:582
+msgid "Save as segment"
+msgstr "Salvar como segmento"
+
+#: includes/brikpanel-enqueue.php:593
+msgid "Segment deleted."
+msgstr "Segmento excluído."
+
+#: includes/brikpanel-enqueue.php:583
+msgid "Segment name"
+msgstr "Nome do segmento"
+
+#: includes/brikpanel-enqueue.php:592
+msgid "Segment saved."
+msgstr "Segmento salvo."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1838
+msgid "Top campaigns"
+msgstr "Principais campanhas"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5411
+msgid "Visits"
+msgstr "Visitas"
+
+#. translators: %d: how many saved segments a tab can keep.
+#: includes/brikpanel-enqueue.php:591
+#, php-format
+msgid ""
+"You can keep up to %d saved segment on this tab. Delete one to save a new "
+"one."
+msgid_plural ""
+"You can keep up to %d saved segments on this tab. Delete one to save a new "
+"one."
+msgstr[0] ""
+"Você pode manter até %d segmento salvo nesta aba. Exclua um para salvar um "
+"novo."
+msgstr[1] ""
+"Você pode manter até %d segmentos salvos nesta aba. Exclua um para salvar um"
+" novo."

@@ -514,8 +514,13 @@ class Brikpanel_Dashboard {
             // the title; Copy everything's label goes to its icon last. On a
             // phone the buttons stacked at uneven widths and the date buttons
             // wrapped ragged (field test C6).
+            // Only the title's own text is checked for "one line": with
+            // BrikMarket on, "With marketplace" is a second line under it by
+            // design, and checking the whole <h1> counted that as a broken
+            // title, so every level failed and the header took its phone form
+            // at any width (3.3.24 to 3.3.27).
             $bp_dash_header_fit = [
-                'title'  => 'h1',
+                'title'  => 'h1 > .brikpanel-dash-title-text',
                 'lines'  => [ '' ],
                 'levels' => [
                     '',
@@ -535,7 +540,7 @@ class Brikpanel_Dashboard {
                 ?>
                 <div class="brikpanel-dash-header-main">
                     <h1>
-                        <?php esc_html_e( 'Dashboard', 'brikpanel' ); ?>
+                        <span class="brikpanel-dash-title-text"><?php esc_html_e( 'Dashboard', 'brikpanel' ); ?></span>
                         <?php if ( function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active() ) : ?>
                             <span class="brikpanel-dash-header-suffix"><?php esc_html_e( 'With marketplace', 'brikpanel' ); ?></span>
                         <?php endif; ?>
@@ -1699,6 +1704,14 @@ class Brikpanel_Dashboard {
                         <canvas id="brikpanel-funnel-chart"></canvas>
                     </div>
                     <p class="brikpanel-dash-empty brikpanel-dash-chart-empty" hidden></p>
+                    <?php
+                    // Carts left in this period, one line under the funnel (filled
+                    // by the script). After the empty message on purpose: the
+                    // chart finds that message as the element right after it.
+                    ?>
+                    <p class="brikpanel-dash-cartab" id="brikpanel-dash-cartab" hidden>
+                        <a class="brikpanel-dash-cartab-label" href="<?php echo esc_url( function_exists( 'brikpanel_module_url' ) ? brikpanel_module_url( 'brikpanel-abandoned-carts' ) : admin_url( 'admin.php?page=brikpanel-abandoned-carts' ) ); ?>"><?php esc_html_e( 'Abandoned carts', 'brikpanel' ); ?></a>
+                    </p>
                 </div>
                 <div class="brikpanel-dash-panel">
                     <div class="brikpanel-dash-panel-head">
@@ -1819,6 +1832,26 @@ class Brikpanel_Dashboard {
                 <div id="brikpanel-source-referrers" class="brikpanel-source-referrers" style="display:none;">
                     <h3 class="brikpanel-sources-subhead"><?php esc_html_e( 'Top referrers', 'brikpanel' ); ?></h3>
                     <div id="brikpanel-top-referrers"></div>
+                </div>
+                <?php
+                // Its own block, not inside Top referrers: those count visits
+                // and hide with them, while a campaign's orders and revenue come
+                // from WooCommerce and exist without any visit counted here.
+                ?>
+                <div id="brikpanel-source-campaigns" class="brikpanel-source-campaigns" hidden>
+                    <h3 class="brikpanel-sources-subhead">
+                        <?php esc_html_e( 'Top campaigns', 'brikpanel' ); ?>
+                        <?php
+                        $this->render_hint(
+                            __( 'About campaigns', 'brikpanel' ),
+                            __( 'Orders and revenue come from WooCommerce\'s order attribution: each order counts for the last campaign link its customer came through, even when that visit was before this period.', 'brikpanel' )
+                                . '<br><br>'
+                                . __( 'Conversion rate is those orders divided by the visits that arrived from the campaign link in this period, counted once a day per visitor. Visits follow your visitor tracking and cookie consent settings, and a dash means none were counted.', 'brikpanel' ),
+                            'end'
+                        );
+                        ?>
+                    </h3>
+                    <div id="brikpanel-top-campaigns"></div>
                 </div>
             </div>
             <div class="brikpanel-dash-panel">
@@ -3177,8 +3210,8 @@ class Brikpanel_Dashboard {
         // "f2": the payload carries the store state behind the empty cards and
         // a zero-filled sales series since field test F, and the store state
         // says whether a visit was ever counted since f2; an older copy lacks
-        // those.
-        $cache_key = 'bp_dash_f2_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_' . $locale_for_key;
+        // those. "f3": abandoned carts and top campaigns joined the payload.
+        $cache_key = 'bp_dash_f3_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_' . $locale_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $this->with_tracking_state( $cached ) );
@@ -3214,6 +3247,9 @@ class Brikpanel_Dashboard {
             'enabled' => function_exists( 'brikpanel_frontend_tracking_enabled' ) ? brikpanel_frontend_tracking_enabled() : true,
             'consent' => function_exists( 'brikpanel_consent_required' ) && brikpanel_consent_required(),
         ];
+        // The abandoned-carts line shows only while carts are collected. Read
+        // here, on every response: switching collection off busts nothing.
+        $payload['abandoned_carts_on'] = class_exists( 'Brikpanel_Cart_Abandonment' ) && Brikpanel_Cart_Abandonment::is_enabled();
         return $payload;
     }
 
@@ -3310,6 +3346,12 @@ class Brikpanel_Dashboard {
         // channel breakdown bars + top external referrers detail list.
         $sources       = $this->get_traffic_source_breakdown( $start_local, $end_local );
         $top_referrers = $this->get_top_referrers( $start_local, $end_local );
+        // Campaigns: orders and revenue from WooCommerce's order attribution,
+        // visits from BrikPanel's own campaign counter.
+        $top_campaigns = $this->get_campaigns( $start_gmt, $end_gmt, $start_local, $end_local, 5, $exclude_mp );
+
+        // Carts first left in this period, compared with the previous one.
+        $abandoned_carts = $this->get_abandoned_carts( $start_gmt, $end_gmt, $prev_start_gmt, $prev_end_gmt );
 
         // New vs repeat customer breakdown (uses WC analytics table, UTC dates)
         $customer_types = $this->get_customer_type_breakdown( $start_gmt, $end_gmt );
@@ -3454,6 +3496,8 @@ class Brikpanel_Dashboard {
             'order_devices'    => $order_devices,
             'sources'          => $sources,
             'top_referrers'    => $top_referrers,
+            'top_campaigns'    => $top_campaigns,
+            'abandoned_carts'  => $abandoned_carts,
             'customer_types'     => $customer_types,
             'subscription_stats' => $subscription_stats,
             'low_stock'          => $low_stock,
@@ -3689,6 +3733,212 @@ class Brikpanel_Dashboard {
     // =========================================================================
     // DELTA CALCULATION
     // =========================================================================
+
+    /**
+     * Carts first left in the period, for the line under the funnel: how many,
+     * their value, how many were bought back since, and the change in the
+     * count against the previous period (more carts left is the bad
+     * direction, which the screen colours accordingly).
+     *
+     * @return array|null Null without the abandoned-carts module or its table.
+     */
+    private function get_abandoned_carts( $start_gmt, $end_gmt, $prev_start_gmt, $prev_end_gmt ) {
+        if ( ! class_exists( 'Brikpanel_Cart_Abandonment' ) || ! method_exists( 'Brikpanel_Cart_Abandonment', 'period_stats' ) ) {
+            return null;
+        }
+        $current = Brikpanel_Cart_Abandonment::period_stats( $start_gmt, $end_gmt );
+        if ( null === $current ) {
+            return null;
+        }
+        $previous = Brikpanel_Cart_Abandonment::period_stats( $prev_start_gmt, $prev_end_gmt );
+        $prev_n   = $previous ? (int) $previous['count'] : 0;
+
+        return [
+            'count'      => (int) $current['count'],
+            'prev_count' => $prev_n,
+            'delta'      => $this->calc_delta( (int) $current['count'], $prev_n ),
+            'value'      => $this->cart_value_text( $current['totals'] ),
+            'recovered'  => (int) $current['recovered'],
+            'rate'       => $current['count'] > 0 ? round( $current['recovered'] / $current['count'] * 100, 1 ) : null,
+        ];
+    }
+
+    /**
+     * The value of a set of carts as one line of text. Carts keep the currency
+     * they were filled in: the store's currency and any with a manual exchange
+     * rate (Settings, Currency) are added up in the store's currency, any other
+     * follows as its own amount ("$1,200.00 + €80.00"), as on the Abandoned
+     * Carts page.
+     *
+     * @param array<string,float> $totals Amount per currency code ('' = the store's).
+     * @return string Plain text.
+     */
+    private function cart_value_text( array $totals ) {
+        $base     = function_exists( 'brikpanel_base_currency' ) ? strtoupper( (string) brikpanel_base_currency() ) : strtoupper( (string) get_option( 'woocommerce_currency' ) );
+        $in_base  = 0.0;
+        $has_base = false;
+        $others   = [];
+        foreach ( $totals as $currency => $amount ) {
+            $currency = strtoupper( (string) $currency );
+            if ( '' === $currency || $currency === $base ) {
+                $in_base += (float) $amount;
+                $has_base = true;
+                continue;
+            }
+            $factor = function_exists( 'brikpanel_manual_fx_factor' ) ? (float) brikpanel_manual_fx_factor( $currency ) : 0.0;
+            if ( $factor > 0 ) {
+                $in_base += (float) $amount * $factor;
+                $has_base = true;
+                continue;
+            }
+            $others[ $currency ] = (float) $amount;
+        }
+        $parts = [];
+        if ( $has_base || ! $others ) {
+            $parts[] = brikpanel_money_text( $in_base );
+        }
+        foreach ( $others as $currency => $amount ) {
+            $parts[] = brikpanel_money_text( $amount, [ 'currency' => $currency ] );
+        }
+        return implode( ' + ', $parts );
+    }
+
+    /**
+     * The order meta key WooCommerce keeps an order-attribution field under.
+     * WooCommerce lets the prefix be changed with a filter, so it is asked.
+     *
+     * @param string $field Field name, e.g. 'utm_campaign'.
+     * @return string
+     */
+    private function wc_attribution_meta_key( $field ) {
+        $prefix = (string) apply_filters( 'wc_order_attribution_tracking_field_prefix', 'wc_order_attribution_' );
+        $prefix = trim( $prefix, '_' );
+        $key    = '_' . ( '' !== $prefix ? $prefix . '_' : '' ) . $field;
+        return preg_match( '/^[A-Za-z0-9_\-]{1,255}$/', $key ) ? $key : '_wc_order_attribution_' . $field;
+    }
+
+    /**
+     * Campaigns of the period, the ones that brought most revenue first.
+     *
+     * Orders and revenue: paid orders WooCommerce credited to a campaign (its
+     * order attribution keeps the last campaign link the customer came
+     * through), on the same basis as the Orders card: admin-placed orders out,
+     * marketplace orders out while BrikMarket is on, totals in the store's
+     * currency. Visits: BrikPanel's own count of visits that landed on a
+     * campaign link. The two are matched by name, ignoring case.
+     *
+     * @param int $limit Rows to return (the dashboard shows 5, Excel all).
+     * @return array<int, array{name:string, orders:int, revenue:float, revenue_text:string, visits:int, conversion:float|null}>
+     */
+    private function get_campaigns( $start_gmt, $end_gmt, $start_local, $end_local, $limit = 5, $exclude_marketplace = false ) {
+        global $wpdb;
+
+        $statuses     = brikpanel_paid_order_statuses();
+        $placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
+        $meta_key     = $this->wc_attribution_meta_key( 'utm_campaign' );
+        $is_hpos      = $this->is_hpos();
+        $exclusion    = brikpanel_admin_order_exclusion_sql( $is_hpos, 'p.ID' );
+        $mp_excl      = $exclude_marketplace
+            ? brikpanel_marketplace_order_exclusion_sql( $is_hpos, $is_hpos ? 'o.id' : 'p.ID' )
+            : [ 'sql' => '', 'args' => [] ];
+        $args         = array_merge( $statuses, $exclusion['args'], $mp_excl['args'], [ $start_gmt, $end_gmt ] );
+
+        if ( $is_hpos ) {
+            $admin_sql = str_replace( 'customer_id', 'o.customer_id', $exclusion['sql'] );
+            $fx        = brikpanel_base_total_sql( true, 'o.id', 'o.total_amount', 'bpfxcmp' );
+            $sql       = "SELECT cm.meta_value AS campaign, COUNT(*) AS orders, COALESCE(SUM({$fx['expr']}), 0) AS revenue
+                 FROM {$wpdb->prefix}wc_orders o"
+                . brikpanel_sql_single_meta_join( 'order', 'cm', 'o.id', $meta_key, '', 'INNER' )
+                . "{$fx['join']}
+                 WHERE o.type = 'shop_order'
+                 AND o.status IN ({$placeholders}){$admin_sql}{$mp_excl['sql']}
+                 AND o.date_created_gmt >= %s AND o.date_created_gmt <= %s
+                 AND cm.meta_value <> '' AND cm.meta_value <> '(none)'
+                 GROUP BY cm.meta_value
+                 ORDER BY revenue DESC
+                 LIMIT 500";
+        } else {
+            $fx  = brikpanel_base_total_sql( false, 'p.ID', 'CAST(pm_total.meta_value AS DECIMAL(20,4))', 'bpfxcmp' );
+            $sql = "SELECT cm.meta_value AS campaign, COUNT(*) AS orders, COALESCE(SUM({$fx['expr']}), 0) AS revenue
+                 FROM {$wpdb->posts} p"
+                . brikpanel_sql_single_meta_join( 'post', 'cm', 'p.ID', $meta_key, '', 'INNER' )
+                . brikpanel_sql_single_meta_join( 'post', 'pm_total', 'p.ID', '_order_total' )
+                . "{$fx['join']}
+                 WHERE p.post_type = 'shop_order'
+                 AND p.post_status IN ({$placeholders}){$exclusion['sql']}{$mp_excl['sql']}
+                 AND p.post_date_gmt >= %s AND p.post_date_gmt <= %s
+                 AND cm.meta_value <> '' AND cm.meta_value <> '(none)'
+                 GROUP BY cm.meta_value
+                 ORDER BY revenue DESC
+                 LIMIT 500";
+        }
+        $order_rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+        $visit_rows = [];
+        $table      = $wpdb->prefix . 'brikpanel_campaign_visits';
+        if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) ) {
+            $visit_rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT campaign, SUM(hits) AS hits FROM {$table} WHERE date_column BETWEEN %s AND %s GROUP BY campaign ORDER BY hits DESC LIMIT 500", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $start_local,
+                $end_local
+            ) );
+        }
+
+        $normalize = function_exists( 'brikpanel_campaign_normalize' )
+            ? 'brikpanel_campaign_normalize'
+            : static function ( $raw ) { return trim( (string) $raw ); };
+        $lower     = function_exists( 'brikpanel_strtolower' ) ? 'brikpanel_strtolower' : 'strtolower';
+
+        $by_key = [];
+        foreach ( (array) $order_rows as $row ) {
+            $name = $normalize( $row->campaign );
+            if ( '' === $name ) {
+                continue;
+            }
+            $key = $lower( $name );
+            if ( ! isset( $by_key[ $key ] ) ) {
+                $by_key[ $key ] = [ 'name' => $name, 'orders' => 0, 'revenue' => 0.0, 'visits' => 0 ];
+            }
+            $by_key[ $key ]['orders']  += (int) $row->orders;
+            $by_key[ $key ]['revenue'] += (float) $row->revenue;
+        }
+        foreach ( (array) $visit_rows as $row ) {
+            $name = $normalize( $row->campaign );
+            if ( '' === $name ) {
+                continue;
+            }
+            $key = $lower( $name );
+            if ( ! isset( $by_key[ $key ] ) ) {
+                $by_key[ $key ] = [ 'name' => $name, 'orders' => 0, 'revenue' => 0.0, 'visits' => 0 ];
+            }
+            $by_key[ $key ]['visits'] += (int) $row->hits;
+        }
+
+        $rows = array_values( $by_key );
+        usort( $rows, static function ( $a, $b ) {
+            if ( $a['revenue'] !== $b['revenue'] ) {
+                return $b['revenue'] <=> $a['revenue'];
+            }
+            if ( $a['orders'] !== $b['orders'] ) {
+                return $b['orders'] <=> $a['orders'];
+            }
+            return $b['visits'] <=> $a['visits'];
+        } );
+        if ( $limit > 0 ) {
+            $rows = array_slice( $rows, 0, $limit );
+        }
+
+        foreach ( $rows as &$row ) {
+            $row['revenue']      = round( $row['revenue'], 2 );
+            $row['revenue_text'] = $row['orders'] > 0 ? brikpanel_money_text( $row['revenue'] ) : '';
+            // Capped at 100%: an order can be credited to a campaign visit made
+            // before the period, so a period can hold more orders than visits.
+            $row['conversion']   = $row['visits'] > 0 ? min( 100, round( $row['orders'] / $row['visits'] * 100, 1 ) ) : null;
+        }
+        unset( $row );
+
+        return $rows;
+    }
 
     private function calc_delta( $current, $previous ) {
         if ( $previous == 0 && $current == 0 ) {
@@ -5143,6 +5393,40 @@ class Brikpanel_Dashboard {
             [ __( 'Orders', 'brikpanel' ), (int) $funnel['orders'], $fpct( $funnel['orders'] ) ],
         ];
 
+        // Carts first left in this period: the line under the funnel on screen.
+        // The bidi marks that keep a price whole on a right-to-left screen are
+        // left out of the cell.
+        if ( ! empty( $d['abandoned_carts'] ) && class_exists( 'Brikpanel_Cart_Abandonment' ) && Brikpanel_Cart_Abandonment::is_enabled() ) {
+            $ac             = $d['abandoned_carts'];
+            $funnel_sheet[] = [];
+            $funnel_sheet[] = [ [ __( 'Abandoned carts', 'brikpanel' ), $T ] ];
+            $funnel_sheet[] = [ [ __( 'Metric', 'brikpanel' ), $H ], [ __( 'Value', 'brikpanel' ), $H ], [ __( 'Change vs previous period', 'brikpanel' ), $H ] ];
+            $funnel_sheet[] = [ __( 'Abandoned carts', 'brikpanel' ), (int) $ac['count'], $delta( $ac['delta'] ) ];
+            $funnel_sheet[] = [ __( 'Cart value', 'brikpanel' ), trim( (string) preg_replace( '/[\x{200E}\x{200F}\x{2066}-\x{2069}]/u', '', (string) $ac['value'] ) ) ];
+            $funnel_sheet[] = [ __( 'Recovered carts', 'brikpanel' ), (int) $ac['recovered'] ];
+            $funnel_sheet[] = [ __( 'Recovery rate (%)', 'brikpanel' ), null === $ac['rate'] ? '' : (float) $ac['rate'] ];
+        }
+
+        // ---------- Campaigns: every campaign of the period ----------
+        // The dashboard lists the top five; the workbook lists them all.
+        $cmp_dates       = $this->calculate_dates( $range, $custom_start, $custom_end );
+        $cmp_rows        = $this->get_campaigns( $cmp_dates['start_gmt'], $cmp_dates['end_gmt'], $cmp_dates['start_local'], $cmp_dates['end_local'], 0, function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active() );
+        $campaigns_sheet = [ [
+            [ __( 'Campaign', 'brikpanel' ), $H ],
+            [ __( 'Visits', 'brikpanel' ), $H ],
+            [ __( 'Orders', 'brikpanel' ), $H ],
+            [ __( 'Conversion rate (%)', 'brikpanel' ), $H ],
+            /* translators: %s: store currency code, e.g. USD. */
+            [ sprintf( __( 'Revenue (%s)', 'brikpanel' ), $currency ), $H ],
+        ] ];
+        if ( empty( $cmp_rows ) ) {
+            $campaigns_sheet[] = [ __( 'No data for this period', 'brikpanel' ), '' ];
+        } else {
+            foreach ( $cmp_rows as $cmp ) {
+                $campaigns_sheet[] = [ $cmp['name'], (int) $cmp['visits'], (int) $cmp['orders'], null === $cmp['conversion'] ? '' : (float) $cmp['conversion'], $money( $cmp['revenue'] ) ];
+            }
+        }
+
         // ---------- Sheet 3: Order Status ----------
         $status = [
             [ [ __( 'Status', 'brikpanel' ), $H ], [ __( 'Share (%)', 'brikpanel' ), $H ] ],
@@ -5348,6 +5632,7 @@ class Brikpanel_Dashboard {
         $writer->add_sheet( __( 'Funnel', 'brikpanel' ), $funnel_sheet, [ 1 => 18, 2 => 14, 3 => 16 ] );
         $writer->add_sheet( __( 'Order status', 'brikpanel' ), $status, [ 1 => 22, 2 => 12 ] );
         $writer->add_sheet( __( 'Devices', 'brikpanel' ), $devices_sheet, [ 1 => 16, 2 => 14, 3 => 14 ] );
+        $writer->add_sheet( __( 'Campaigns', 'brikpanel' ), $campaigns_sheet, [ 1 => 32, 2 => 10, 3 => 10, 4 => 18, 5 => 16 ] );
         $writer->add_sheet( __( 'Customer segments', 'brikpanel' ), $segments_sheet, [ 1 => 28, 2 => 14, 3 => 14 ] );
         $writer->add_sheet( __( 'Top products', 'brikpanel' ), $products, [ 1 => 40, 2 => 12 ] );
         $writer->add_sheet( __( 'Most viewed', 'brikpanel' ), $viewed, [ 1 => 40, 2 => 12 ] );

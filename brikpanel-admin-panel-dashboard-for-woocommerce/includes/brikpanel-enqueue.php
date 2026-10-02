@@ -460,6 +460,14 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'src_email'        => __('Email', 'brikpanel'),
             'src_empty'        => __('No visits with a known source yet for this period.', 'brikpanel'),
             'src_no_referrers' => __('No external referrers yet for this period.', 'brikpanel'),
+            /* translators: %s: number of orders, already formatted (e.g. 3). */
+            'camp_orders'      => brikpanel_js_plural(_n_noop('%s order', '%s orders', 'brikpanel')),
+            /* translators: 1: number of orders, e.g. "3 orders"; 2: conversion rate, e.g. "2.4%". */
+            'camp_meta'        => __('%1$s · %2$s', 'brikpanel'),
+            // The line of abandoned carts under the conversion funnel.
+            'cartab_none'      => __('None in this period.', 'brikpanel'),
+            /* translators: 1: number of carts bought back after being left, e.g. 2; 2: their share of the carts left, e.g. "17%". */
+            'cartab_recovered' => __('Recovered %1$s (%2$s)', 'brikpanel'),
             'ctype_new'        => __('New customers', 'brikpanel'),
             'ctype_repeat'     => __('Repeat customers', 'brikpanel'),
             'return_rate'      => __('return & refund rate', 'brikpanel'),
@@ -564,10 +572,30 @@ function brikpanel_enqueue_segments_assets($hook) {
     );
 
     wp_localize_script('brikpanel_segments_scripts', 'brikpanelSegments', [
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'nonce'    => wp_create_nonce('brikpanel_segments_nonce'),
-        'currency' => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$',
-        'i18n'     => [
+        'ajax_url'  => admin_url('admin-ajax.php'),
+        'nonce'     => wp_create_nonce('brikpanel_segments_nonce'),
+        'currency'  => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$',
+        // Saved segments are shared by everyone who opens Segments.
+        'saved'     => class_exists('Brikpanel_Segments') ? Brikpanel_Segments::saved_for_js() : [],
+        'saved_max' => class_exists('Brikpanel_Segments') ? Brikpanel_Segments::SAVED_MAX : 30,
+        'i18n'      => [
+            'save_segment'         => __('Save as segment', 'brikpanel'),
+            'save_name'            => __('Segment name', 'brikpanel'),
+            'save'                 => __('Save', 'brikpanel'),
+            'cancel'               => __('Cancel', 'brikpanel'),
+            'save_name_required'   => __('Enter a name for the segment.', 'brikpanel'),
+            /* translators: %s: name of a saved segment. */
+            'save_replace_confirm' => __('A saved segment named “%s” already exists. Replace it?', 'brikpanel'),
+            'save_error'           => __('Could not save the segment. Please try again.', 'brikpanel'),
+            /* translators: %d: how many saved segments a tab can keep. */
+            'save_limit'           => brikpanel_js_plural(_n_noop('You can keep up to %d saved segment on this tab. Delete one to save a new one.', 'You can keep up to %d saved segments on this tab. Delete one to save a new one.', 'brikpanel')),
+            'saved_done'           => __('Segment saved.', 'brikpanel'),
+            'saved_deleted'        => __('Segment deleted.', 'brikpanel'),
+            /* translators: %s: name of a saved segment. */
+            'saved_delete_label'   => __('Delete saved segment %s', 'brikpanel'),
+            /* translators: %s: name of a saved segment. */
+            'saved_delete_confirm' => __('Delete the saved segment “%s”? It is removed for everyone who uses Segments.', 'brikpanel'),
+            'delete_error'         => __('Could not delete the segment. Please try again.', 'brikpanel'),
             'error'              => __('Something went wrong.', 'brikpanel'),
             'no_results'         => __('No orders match these filters.', 'brikpanel'),
             'no_customers'       => __('No customers match these filters.', 'brikpanel'),

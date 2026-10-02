@@ -1182,6 +1182,67 @@ body.brikpanel-exp-modal-open { overflow: hidden; }
     height: 240px;
 }
 
+/* Abandoned carts: one line under the funnel chart. While two panels share
+   the row, the chart gives up the line's height, so the funnel panel stays as
+   tall as Order rates beside it. The dot before an item sits in the column
+   gap; on a wrapped line that gap is outside the box and the dot is clipped
+   instead of opening the line. */
+.brikpanel-dash-cartab {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.75rem;
+    row-gap: 0.125rem;
+    min-width: 0;
+    margin: 0.5rem 0 0;
+    overflow: hidden;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    color: var(--bp-text-secondary, #616161);
+}
+
+.brikpanel-dash-cartab[hidden] {
+    display: none;
+}
+
+.brikpanel-dash-cartab-label {
+    color: var(--bp-text, #303030);
+    font-weight: 550;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.brikpanel-dash-cartab-item {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    min-width: 0;
+}
+
+.brikpanel-dash-cartab-item strong {
+    color: var(--bp-text, #303030);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.brikpanel-dash-cartab-sep::before {
+    content: "\00B7";
+    position: absolute;
+    inset-inline-start: -0.5rem;
+    font-weight: 700;
+}
+
+.brikpanel-dash-cartab .brikpanel-dash-card-delta {
+    min-height: 0;
+}
+
+@media (min-width: 961px) {
+    .brikpanel-dash-chart-short.has-cartab {
+        height: calc(240px - 1.75rem);
+    }
+}
+
 /* ===== Live Visitors ===== */
 .brikpanel-dash-live {
     display: flex;
@@ -2058,6 +2119,68 @@ button.brikpanel-dash-guide__item:focus-visible {
     font-weight: 600;
     text-align: right;
     min-width: 2.5rem;
+}
+
+/* Top campaigns: a block of its own under Top referrers (shown even when no
+   visit was counted, since a campaign's orders come from WooCommerce). Each
+   row: the name (cut with "…"), "3 orders · 2.4%", the revenue. */
+.brikpanel-source-campaigns {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--bp-border, #e3e3e3);
+}
+
+.brikpanel-source-campaigns .brikpanel-sources-subhead {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.brikpanel-campaign-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.brikpanel-campaign-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--bp-border, #e3e3e3);
+}
+
+.brikpanel-campaign-row:last-child {
+    border-bottom: none;
+}
+
+/* The name keeps its own direction (dir="auto", so a long one is cut at its
+   own end) but lines up with the page: left here, right in brikpanel-rtl.css.
+   "start" would follow the name, and an Arabic name would sit apart from the
+   English ones. */
+.brikpanel-campaign-name {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--bp-text);
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.brikpanel-campaign-meta {
+    font-size: 0.75rem;
+    color: var(--bp-text-secondary, #616161);
+    white-space: nowrap;
+}
+
+.brikpanel-campaign-revenue {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-align: end;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 /* ===== Returns & Refunds widget ===== */

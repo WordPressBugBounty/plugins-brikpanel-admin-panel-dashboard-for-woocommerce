@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.27
+ * Version: 3.3.28
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.27');
+define('BRIKPANEL_VERSION', '3.3.28');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -304,6 +304,7 @@ function brikpanel_drop_subsite_tables($tables, $blog_id) {
         'brikpanel_cart_tracking',
         'brikpanel_visited_pages',
         'brikpanel_referrers',
+        'brikpanel_campaign_visits',
         'brikpanel_expenses',
         'brikpanel_expense_skips',
         'brikpanel_cohort_retention',
@@ -1498,6 +1499,20 @@ function brikpanel_create_table() {
         KEY idx_channel_date (channel, date_column)
     ) $charset_collate;";
 
+    // Daily visits per campaign (the utm_campaign of the address a visitor
+    // landed on): one row per (day, campaign), counted once per visitor and
+    // campaign a day. It is what the dashboard's "Top campaigns" divides
+    // orders by for a conversion rate; the orders and revenue come from
+    // WooCommerce's own order attribution. date_column is the store's day.
+    $campaign_visits_table = $wpdb->prefix . "brikpanel_campaign_visits";
+    $sql_campaign_visits = "CREATE TABLE $campaign_visits_table (
+        id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        date_column DATE NOT NULL,
+        campaign VARCHAR(190) NOT NULL DEFAULT '',
+        hits INT UNSIGNED NOT NULL DEFAULT 0,
+        UNIQUE KEY uniq_day_campaign (date_column, campaign)
+    ) $charset_collate;";
+
     $expenses_table = $wpdb->prefix . "brikpanel_expenses";
     // recurring_parent links an auto-generated occurrence back to its recurring
     // template (0 = a standalone entry or the template itself). The materialiser
@@ -1689,6 +1704,7 @@ function brikpanel_create_table() {
     // cart. See front-end/cart-abandonment/.
     // idx_cart_total backs the "highest / lowest cart value" sort on the list
     // screen, so hunting the big abandoned carts does not filesort the table.
+    // idx_abandoned backs the dashboard's "carts left in this period" line.
     $abandoned_carts_table = $wpdb->prefix . "brikpanel_abandoned_carts";
     $sql_abandoned_carts = "CREATE TABLE $abandoned_carts_table (
         id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -1716,7 +1732,8 @@ function brikpanel_create_table() {
         KEY idx_email (email),
         KEY idx_status_updated (status, updated_at),
         KEY idx_created (created_at),
-        KEY idx_cart_total (cart_total)
+        KEY idx_cart_total (cart_total),
+        KEY idx_abandoned (abandoned_at)
     ) $charset_collate;";
 
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -1724,6 +1741,7 @@ function brikpanel_create_table() {
     dbDelta($sql_cart_tracking);
     dbDelta($sql_visited_pages);
     dbDelta($sql_referrers);
+    dbDelta($sql_campaign_visits);
     dbDelta($sql_expenses);
     dbDelta($sql_expense_skips);
     dbDelta($sql_customer_metrics);

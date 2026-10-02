@@ -739,6 +739,60 @@ class Brikpanel_Cart_Abandonment {
 		return '';
 	}
 
+	/**
+	 * Carts first left in a window, for the dashboard: how many, what they
+	 * held per currency and how many were bought back since.
+	 *
+	 * A cart counts once, in the period it was first left in (abandoned_at keeps
+	 * the first time), whatever happened to it afterwards, so a period's figures
+	 * do not change shape as old carts are recovered later. "Recovered" is the
+	 * list page's own definition (display_status_where()). Read-only: idle carts
+	 * are not swept to abandoned here, since that fires the abandoned hook and
+	 * the mails behind it; the scheduled sweep runs every ten minutes.
+	 *
+	 * @param string $start_gmt UTC 'Y-m-d H:i:s', inclusive.
+	 * @param string $end_gmt   UTC 'Y-m-d H:i:s', inclusive.
+	 * @return array{count:int, recovered:int, totals:array<string,float>}|null Null when the table is missing.
+	 */
+	public static function period_stats( $start_gmt, $end_gmt ) {
+		global $wpdb;
+		$table = $wpdb->prefix . self::TABLE;
+
+		static $exists = null;
+		if ( null === $exists ) {
+			$exists = (bool) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) );
+		}
+		if ( ! $exists ) {
+			return null;
+		}
+
+		$recovered = self::display_status_where( 'recovered' );
+		$rows      = $wpdb->get_results( $wpdb->prepare(
+			"SELECT currency,
+			        COUNT(*) AS carts,
+			        COALESCE(SUM(cart_total), 0) AS amount,
+			        SUM(CASE WHEN ( {$recovered} ) THEN 1 ELSE 0 END) AS recovered
+			 FROM {$table}
+			 WHERE abandoned_at >= %s AND abandoned_at <= %s AND item_count > 0
+			 GROUP BY currency", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$start_gmt,
+			$end_gmt
+		) );
+
+		$out = [
+			'count'     => 0,
+			'recovered' => 0,
+			'totals'    => [],
+		];
+		foreach ( (array) $rows as $row ) {
+			$out['count']     += (int) $row->carts;
+			$out['recovered'] += (int) $row->recovered;
+			$currency          = strtoupper( (string) $row->currency );
+			$out['totals'][ $currency ] = ( isset( $out['totals'][ $currency ] ) ? $out['totals'][ $currency ] : 0.0 ) + (float) $row->amount;
+		}
+		return $out;
+	}
+
 	// =========================================================================
 	// List columns (per-user visibility + order) and row sorting
 	// =========================================================================

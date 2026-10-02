@@ -363,8 +363,8 @@ function brikpanel_nav_target_identity( array $target ) {
  *  - hidden_rule: a Navigation rule hides it from this user (with its
  *                 children, when it is a top-level row).
  *  - hidden_new:  "Hide new menu items by default" keeps it out.
- * Children of an item moved into "More" are drawn nowhere but hidden by no
- * rule, so they are in no list and stay open.
+ * The pages of a menu moved into "More" are drawn as that row's own dropdown,
+ * so they count as visible under their real menu (tools.php, not "More").
  *
  * The first call after admin_init is kept for the rest of the request: the
  * sidebar renderer rewrites the globals at admin_footer, after which hidden
@@ -472,6 +472,20 @@ function brikpanel_nav_page_rows( $refresh = false ) {
 					? $custom_url( $child )
 					: brikpanel_nav_row_target( (string) $child[2], $slug );
 				$add( $target, 'visible' );
+
+				// A whole menu moved into "More" lists its own pages under its
+				// row, so they are drawn too: the same rows the renderer prints
+				// (brikpanel_nav_more_plan()), against the menu they belong to.
+				$more_parent = function_exists( 'brikpanel_nav_more_parent' ) ? brikpanel_nav_more_parent( $child ) : '';
+				if ( '' !== $more_parent ) {
+					list( $grand, $grand_header ) = brikpanel_nav_resolve_submenu_rows( isset( $s[ $more_parent ] ) ? $s[ $more_parent ] : [] );
+					if ( is_array( $grand_header ) ) {
+						$grand[] = $grand_header;
+					}
+					foreach ( $grand as $grand_row ) {
+						$add( brikpanel_nav_row_target( (string) $grand_row[2], $more_parent ), 'visible' );
+					}
+				}
 			}
 			continue;
 		}

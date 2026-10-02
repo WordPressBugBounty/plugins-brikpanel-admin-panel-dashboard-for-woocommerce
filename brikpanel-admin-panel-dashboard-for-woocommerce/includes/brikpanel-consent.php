@@ -593,6 +593,17 @@ function brikpanel_consent_api_register() {
         false,
         'LOCALSTORAGE'
     );
+    wp_add_cookie_info(
+        'brikpanel_campaign_viewed',
+        'BrikPanel',
+        $category,
+        __( 'Until cleared', 'brikpanel' ),
+        __( 'Marks the campaign links this browser has already been counted for today.', 'brikpanel' ),
+        '',
+        false,
+        false,
+        'LOCALSTORAGE'
+    );
     // Session storage, not local: gone when the tab is closed. The Consent API
     // has no separate type for it, so it is declared with the local one.
     if ( function_exists( 'brikpanel_live_traffic_source_enabled' ) && brikpanel_live_traffic_source_enabled() ) {
