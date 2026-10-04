@@ -4422,10 +4422,6 @@ msgstr "Verkopen in de tijd"
 msgid "Live visitors"
 msgstr "Live bezoekers"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1685 includes/brikpanel-enqueue.php:410
-msgid "No active visitors"
-msgstr "Geen actieve bezoekers"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1697 includes/brikpanel-store-summary.php:1659
 msgid "Conversion funnel"
 msgstr "Conversiefunnel"
@@ -4466,10 +4462,6 @@ msgstr "Topproducten"
 msgid "Recent orders"
 msgstr "Recente bestellingen"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1783
-msgid "Most viewed pages"
-msgstr "Meest bekeken pagina's"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1789 front-end/dashboard/brikpanel-dashboard.php:5354
 msgid "Most added to cart"
 msgstr "Meest toegevoegd aan winkelwagen"
@@ -4478,10 +4470,6 @@ msgstr "Meest toegevoegd aan winkelwagen"
 msgid "Visitors by device"
 msgstr "Bezoekers per apparaat"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1804
-msgid "Device breakdown view"
-msgstr "Apparaatoverzichtweergave"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1812
 msgid "Sources"
 msgstr "Bronnen"
@@ -4489,14 +4477,6 @@ msgstr "Bronnen"
 #: front-end/dashboard/brikpanel-dashboard.php:1820
 msgid "Top referrers"
 msgstr "Belangrijkste verwijzers"
-
-#: front-end/dashboard/brikpanel-dashboard.php:1825
-msgid "Customer types"
-msgstr "Klanttypes"
-
-#: front-end/dashboard/brikpanel-dashboard.php:1841 front-end/dashboard/brikpanel-dashboard.php:2113
-msgid "View details →"
-msgstr "Details bekijken →"
 
 #. translators: %s: number of published products
 #: front-end/dashboard/brikpanel-dashboard.php:2074
@@ -11320,237 +11300,9 @@ msgctxt "sub-label under \"open purchase orders\" stat: total monetary value of 
 msgid "open value"
 msgstr "in openstaande PO's"
 
-#: front-end/welcome/brikpanel-welcome.php:91
-msgid "Get started"
-msgstr "Aan de slag"
-
 #: front-end/welcome/brikpanel-welcome.php:92 front-end/welcome/brikpanel-welcome.php:407
 msgid "Skip tour"
 msgstr "Tour overslaan"
-
-#: front-end/welcome/brikpanel-welcome.php:133
-msgid "Welcome"
-msgstr "Welkom"
-
-#: front-end/welcome/brikpanel-welcome.php:139 front-end/welcome/brikpanel-welcome.php:141
-msgid "Dashboard & insights"
-msgstr "Dashboard & inzichten"
-
-#: front-end/welcome/brikpanel-welcome.php:142
-msgid "A real-time, Shopify-style overview of everything happening in your store."
-msgstr "Een realtime overzicht in Shopify-stijl van alles wat er in uw winkel gebeurt."
-
-#: front-end/welcome/brikpanel-welcome.php:144
-msgid "Sales, orders, and conversion rate at a glance"
-msgstr "Verkopen, bestellingen en conversiepercentage in één oogopslag"
-
-#: front-end/welcome/brikpanel-welcome.php:145
-msgid "Net profit after cost of goods, ads, and expenses"
-msgstr "Nettowinst na kostprijs van goederen, advertenties en uitgaven"
-
-#: front-end/welcome/brikpanel-welcome.php:146
-msgid "Interactive sales chart with flexible date ranges"
-msgstr "Interactieve verkoopgrafiek met flexibele datumbereiken"
-
-#: front-end/welcome/brikpanel-welcome.php:147
-msgid "Live visitor counter updated in real time"
-msgstr "Live bezoekersteller die in realtime wordt bijgewerkt"
-
-#: front-end/welcome/brikpanel-welcome.php:148
-msgid "Your top products and best customers"
-msgstr "Uw topproducten en beste klanten"
-
-#: front-end/welcome/brikpanel-welcome.php:149
-msgid "An interactive globe of where customers are"
-msgstr "Een interactieve wereldbol van waar klanten zich bevinden"
-
-#: front-end/welcome/brikpanel-welcome.php:157
-msgid "Products, your way"
-msgstr "Producten, op uw manier"
-
-#: front-end/welcome/brikpanel-welcome.php:158
-msgid "Create and edit products in a clean, fast, distraction-free editor."
-msgstr "Maak en bewerk producten in een strakke, snelle, afleidingsvrije editor."
-
-#: front-end/welcome/brikpanel-welcome.php:160
-msgid "A simplified editor built for speed, not clutter"
-msgstr "Een vereenvoudigde editor gebouwd voor snelheid, niet voor rommel"
-
-#: front-end/welcome/brikpanel-welcome.php:161
-msgid "Modern list with inline price and stock editing"
-msgstr "Moderne lijst met inline bewerken van prijs en voorraad"
-
-#: front-end/welcome/brikpanel-welcome.php:162
-msgid "Drag & drop image gallery with reordering"
-msgstr "Sleep & laat afbeeldingsgalerij vallen met herordening"
-
-#: front-end/welcome/brikpanel-welcome.php:163
-msgid "Variation wizard with ready-made templates"
-msgstr "Variatiewizard met kant-en-klare sjablonen"
-
-#: front-end/welcome/brikpanel-welcome.php:164
-msgid "Quick-edit side drawer for one-off changes"
-msgstr "Zijlade voor snel bewerken voor eenmalige wijzigingen"
-
-#: front-end/welcome/brikpanel-welcome.php:165
-msgid "Duplicate, bulk-edit, and export in a click"
-msgstr "Dupliceren, bulkbewerken en exporteren met één klik"
-
-#: front-end/welcome/brikpanel-welcome.php:168
-msgid "Works with simple & variable products"
-msgstr "Werkt met eenvoudige & variabele producten"
-
-#: front-end/welcome/brikpanel-welcome.php:174 front-end/welcome/brikpanel-welcome.php:176
-msgid "Orders & coupons"
-msgstr "Bestellingen & coupons"
-
-#: front-end/welcome/brikpanel-welcome.php:177
-msgid "Process orders and run promotions without ever leaving the page."
-msgstr "Verwerk bestellingen en voer promoties uit zonder ooit de pagina te verlaten."
-
-#: front-end/welcome/brikpanel-welcome.php:179
-msgid "Change order status inline, right from the list"
-msgstr "Wijzig de orderstatus inline, direct vanuit de lijst"
-
-#: front-end/welcome/brikpanel-welcome.php:180
-msgid "Modern order edit page with a sticky action bar"
-msgstr "Moderne orderbewerkpagina met een vastgezette actiebalk"
-
-#: front-end/welcome/brikpanel-welcome.php:181
-msgid "One-click copy of the customer address"
-msgstr "Klantadres kopiëren met één klik"
-
-#: front-end/welcome/brikpanel-welcome.php:182
-msgid "Sound, popup, and confetti on every new order"
-msgstr "Geluid, pop-up en confetti bij elke nieuwe bestelling"
-
-#: front-end/welcome/brikpanel-welcome.php:183
-msgid "Create and edit coupons in a fast side drawer"
-msgstr "Maak en bewerk coupons in een snelle zijlade"
-
-#: front-end/welcome/brikpanel-welcome.php:184
-msgid "Percentage, fixed cart, and fixed product discounts"
-msgstr "Procentuele, vaste winkelwagen- en vaste productkortingen"
-
-#: front-end/welcome/brikpanel-welcome.php:192
-msgid "Know your customers"
-msgstr "Ken uw klanten"
-
-#: front-end/welcome/brikpanel-welcome.php:193
-msgid "Understand who your best customers are and how they behave over time."
-msgstr "Begrijp wie uw beste klanten zijn en hoe ze zich in de loop van de tijd gedragen."
-
-#: front-end/welcome/brikpanel-welcome.php:195
-msgid "Lifetime value (LTV) for every customer"
-msgstr "Lifetime value (LTV) voor elke klant"
-
-#: front-end/welcome/brikpanel-welcome.php:196
-msgid "RFM segments: VIP, at-risk, and dormant"
-msgstr "RFM-segmenten: VIP, risico en slapend"
-
-#: front-end/welcome/brikpanel-welcome.php:197
-msgid "Cohort retention shows who keeps coming back"
-msgstr "Cohortretentie toont wie blijft terugkomen"
-
-#: front-end/welcome/brikpanel-welcome.php:198
-msgid "Build custom segments with powerful filters"
-msgstr "Bouw aangepaste segmenten met krachtige filters"
-
-#: front-end/welcome/brikpanel-welcome.php:199
-msgid "Export any view to CSV in one click"
-msgstr "Exporteer elke weergave naar CSV met één klik"
-
-#: front-end/welcome/brikpanel-welcome.php:208
-msgid "Connect & grow"
-msgstr "Verbind & groei"
-
-#: front-end/welcome/brikpanel-welcome.php:209
-msgid "Plug BrikPanel into the tools you already use to grow your store."
-msgstr "Koppel BrikPanel aan de tools die u al gebruikt om uw winkel te laten groeien."
-
-#: front-end/welcome/brikpanel-welcome.php:211
-msgid "Sync orders, products, and customers to Google Sheets"
-msgstr "Synchroniseer bestellingen, producten en klanten naar Google Sheets"
-
-#: front-end/welcome/brikpanel-welcome.php:212
-msgid "Real-time and scheduled exports, fully automated"
-msgstr "Realtime en geplande exports, volledig geautomatiseerd"
-
-#: front-end/welcome/brikpanel-welcome.php:213
-msgid "Pull ad spend from Google Ads and Meta"
-msgstr "Haal advertentie-uitgaven op uit Google Ads en Meta"
-
-#: front-end/welcome/brikpanel-welcome.php:214
-msgid "See true ROAS and net profit on your dashboard"
-msgstr "Zie de echte ROAS en nettowinst op uw dashboard"
-
-#: front-end/welcome/brikpanel-welcome.php:215
-msgid "Secure connection you can disconnect anytime"
-msgstr "Veilige verbinding die u op elk moment kunt verbreken"
-
-#: front-end/welcome/brikpanel-welcome.php:226
-msgid "Operations"
-msgstr "Operatie"
-
-#: front-end/welcome/brikpanel-welcome.php:228
-msgid "Stock & operations"
-msgstr "Voorraad & operatie"
-
-#: front-end/welcome/brikpanel-welcome.php:229
-msgid "Keep stock, suppliers, and costs under control from one place."
-msgstr "Houd voorraad, leveranciers en kosten onder controle vanaf één plek."
-
-#: front-end/welcome/brikpanel-welcome.php:231
-msgid "Manage suppliers with full contact details"
-msgstr "Beheer leveranciers met volledige contactgegevens"
-
-#: front-end/welcome/brikpanel-welcome.php:232
-msgid "Create purchase orders and track received stock"
-msgstr "Maak inkooporders en volg ontvangen voorraad"
-
-#: front-end/welcome/brikpanel-welcome.php:233
-msgid "Assign a supplier per product and per variation"
-msgstr "Wijs een leverancier toe per product en per variatie"
-
-#: front-end/welcome/brikpanel-welcome.php:234
-msgid "Log operating expenses for accurate profit"
-msgstr "Registreer bedrijfskosten voor een nauwkeurige winst"
-
-#: front-end/welcome/brikpanel-welcome.php:235
-msgid "BrikControl health checks keep your store in shape"
-msgstr "BrikControl-gezondheidscontroles houden uw winkel in vorm"
-
-#: front-end/welcome/brikpanel-welcome.php:238
-msgid "Suppliers work per variation"
-msgstr "Leveranciers werken per variatie"
-
-#: front-end/welcome/brikpanel-welcome.php:244 front-end/welcome/brikpanel-welcome.php:246
-msgid "Make it yours"
-msgstr "Maak het van uzelf"
-
-#: front-end/welcome/brikpanel-welcome.php:247
-msgid "Search instantly, restyle the admin, and make BrikPanel feel like yours."
-msgstr "Zoek direct, restyle het beheer en laat BrikPanel als van uzelf aanvoelen."
-
-#: front-end/welcome/brikpanel-welcome.php:249
-msgid "Global search from anywhere"
-msgstr "Globaal zoeken vanaf elke plek"
-
-#: front-end/welcome/brikpanel-welcome.php:250
-msgid "Find orders, products, and customers instantly"
-msgstr "Vind bestellingen, producten en klanten direct"
-
-#: front-end/welcome/brikpanel-welcome.php:251
-msgid "Custom fonts, an accent color, and your own logo"
-msgstr "Aangepaste lettertypen, een accentkleur en uw eigen logo"
-
-#: front-end/welcome/brikpanel-welcome.php:252
-msgid "A modern, on-brand login page for your team"
-msgstr "Een moderne, merkeigen inlogpagina voor uw team"
-
-#: front-end/welcome/brikpanel-welcome.php:253
-msgid "Reorder the sidebar and import or export settings"
-msgstr "Herorden de zijbalk en importeer of exporteer instellingen"
 
 #: front-end/welcome/brikpanel-welcome.php:259 front-end/welcome/brikpanel-welcome.php:316
 msgid "You are all set"
@@ -11564,25 +11316,9 @@ msgstr "Welkom bij BrikPanel"
 msgid "Tour sections"
 msgstr "Rondleidingssecties"
 
-#: front-end/welcome/brikpanel-welcome.php:308
-msgid "A modern, Shopify-inspired admin experience for WooCommerce. Run your whole store from one clean, fast place."
-msgstr "Een moderne, door Shopify geïnspireerde beheerervaring voor WooCommerce. Beheer uw hele winkel vanaf één strakke, snelle plek."
-
-#: front-end/welcome/brikpanel-welcome.php:309
-msgid "Use the menu on the left to jump around, or click Next to take the quick tour."
-msgstr "Gebruik het menu links om te navigeren, of klik op Volgende voor de snelle rondleiding."
-
-#: front-end/welcome/brikpanel-welcome.php:317
-msgid "That is the tour. Everything is on by default, so you can dive straight in. Here are a couple of great places to start."
-msgstr "Dat was de rondleiding. Alles staat standaard aan, dus u kunt er meteen induiken. Hier zijn een paar goede plekken om te beginnen."
-
 #: front-end/welcome/brikpanel-welcome.php:320
 msgid "Open your dashboard"
 msgstr "Open uw dashboard"
-
-#: front-end/welcome/brikpanel-welcome.php:334
-msgid "Browse all settings"
-msgstr "Blader door alle instellingen"
 
 #: includes/brikpanel-access-control.php:715 includes/brikpanel-access-control.php:1278
 msgid "BrikPanel interface"
@@ -12103,17 +11839,9 @@ msgstr "Nieuwe functies van BrikPanel en BrikMentor, WooCommerce-tips en groei-i
 msgid "No orders"
 msgstr "Geen bestellingen"
 
-#: includes/brikpanel-enqueue.php:421
-msgid "Page"
-msgstr "Pagina"
-
 #: includes/brikpanel-enqueue.php:425
 msgid "Browsing"
 msgstr "Aan het browsen"
-
-#: includes/brikpanel-enqueue.php:426
-msgid "Added to cart"
-msgstr "Toegevoegd aan winkelwagen"
 
 #: includes/brikpanel-enqueue.php:427
 msgid "Order received"
@@ -12177,10 +11905,6 @@ msgstr "Geen categoriegegevens. Marketplace-artikelen moeten aan uw WooCommerce-
 msgid "Orders by device"
 msgstr "Bestellingen per apparaat"
 
-#: includes/brikpanel-enqueue.php:454
-msgid "Traffic sources"
-msgstr "Verkeersbronnen"
-
 #: includes/brikpanel-enqueue.php:456
 msgid "Organic Search"
 msgstr "Organisch zoeken"
@@ -12196,10 +11920,6 @@ msgstr "Nog geen bezoeken met een bekende bron in deze periode."
 #: includes/brikpanel-enqueue.php:462
 msgid "No external referrers yet for this period."
 msgstr "Nog geen externe verwijzers in deze periode."
-
-#: includes/brikpanel-enqueue.php:465
-msgid "return & refund rate"
-msgstr "retour- & terugbetalingspercentage"
 
 #: includes/brikpanel-enqueue.php:468
 msgid "Average customer LTV"
@@ -12256,10 +11976,6 @@ msgstr "niet meer in catalogus"
 #: includes/brikpanel-enqueue.php:499 includes/brikpanel-store-summary.php:3187
 msgid "Net revenue"
 msgstr "Netto-omzet"
-
-#: includes/brikpanel-enqueue.php:501
-msgid "Expense added"
-msgstr "Uitgave toegevoegd"
 
 #: includes/brikpanel-enqueue.php:503
 msgid "Enter an amount and a title."
@@ -15840,8 +15556,7 @@ msgstr "%1$s · %2$s"
 #: includes/brikpanel-enqueue.php:588
 #, php-format
 msgid "A saved segment named “%s” already exists. Replace it?"
-msgstr ""
-"Er bestaat al een opgeslagen segment met de naam ‘%s’. Wilt u het vervangen?"
+msgstr "Er bestaat al een opgeslagen segment met de naam ‘%s’. Wilt u het vervangen?"
 
 #: front-end/dashboard/brikpanel-dashboard.php:1841
 msgid "About campaigns"
@@ -15856,16 +15571,8 @@ msgid "Cart value"
 msgstr "Waarde van winkelwagens"
 
 #: front-end/dashboard/brikpanel-dashboard.php:1844
-msgid ""
-"Conversion rate is those orders divided by the visits that arrived from the "
-"campaign link in this period, counted once a day per visitor. Visits follow "
-"your visitor tracking and cookie consent settings, and a dash means none "
-"were counted."
-msgstr ""
-"Het conversiepercentage is deze bestellingen gedeeld door de bezoeken die in"
-" deze periode via de campagnelink binnenkwamen, één keer per dag per "
-"bezoeker geteld. Bezoeken volgen uw instellingen voor bezoekersregistratie "
-"en cookietoestemming; een streepje betekent dat er geen zijn geteld."
+msgid "Conversion rate is those orders divided by the visits that arrived from the campaign link in this period, counted once a day per visitor. Visits follow your visitor tracking and cookie consent settings, and a dash means none were counted."
+msgstr "Het conversiepercentage is deze bestellingen gedeeld door de bezoeken die in deze periode via de campagnelink binnenkwamen, één keer per dag per bezoeker geteld. Bezoeken volgen uw instellingen voor bezoekersregistratie en cookietoestemming; een streepje betekent dat er geen zijn geteld."
 
 #: includes/brikpanel-enqueue.php:598
 msgid "Could not delete the segment. Please try again."
@@ -15884,11 +15591,8 @@ msgstr "Opgeslagen segment %s verwijderen"
 #. translators: %s: name of a saved segment.
 #: includes/brikpanel-enqueue.php:597
 #, php-format
-msgid ""
-"Delete the saved segment “%s”? It is removed for everyone who uses Segments."
-msgstr ""
-"Het opgeslagen segment ‘%s’ verwijderen? Het wordt verwijderd voor iedereen "
-"die Segmenten gebruikt."
+msgid "Delete the saved segment “%s”? It is removed for everyone who uses Segments."
+msgstr "Het opgeslagen segment ‘%s’ verwijderen? Het wordt verwijderd voor iedereen die Segmenten gebruikt."
 
 #. translators: %d: product ID.
 #: front-end/segments/brikpanel-segments.php:1286
@@ -15909,8 +15613,7 @@ msgid "Leaves out orders that contain any of these products."
 msgstr "Laat bestellingen weg die een van deze producten bevatten."
 
 #: includes/brikpanel-consent.php:601
-msgid ""
-"Marks the campaign links this browser has already been counted for today."
+msgid "Marks the campaign links this browser has already been counted for today."
 msgstr "Onthoudt voor welke campagnelinks deze browser vandaag al is geteld."
 
 #: includes/brikpanel-enqueue.php:468
@@ -15918,14 +15621,8 @@ msgid "None in this period."
 msgstr "Geen in deze periode."
 
 #: front-end/dashboard/brikpanel-dashboard.php:1842
-msgid ""
-"Orders and revenue come from WooCommerce's order attribution: each order "
-"counts for the last campaign link its customer came through, even when that "
-"visit was before this period."
-msgstr ""
-"Bestellingen en omzet komen uit de bestelattributie van WooCommerce: elke "
-"bestelling telt voor de laatste campagnelink waarlangs de klant binnenkwam, "
-"ook als dat bezoek vóór deze periode was."
+msgid "Orders and revenue come from WooCommerce's order attribution: each order counts for the last campaign link its customer came through, even when that visit was before this period."
+msgstr "Bestellingen en omzet komen uit de bestelattributie van WooCommerce: elke bestelling telt voor de laatste campagnelink waarlangs de klant binnenkwam, ook als dat bezoek vóór deze periode was."
 
 #. translators: 1: number of carts bought back after being left, e.g. 2; 2:
 #. their share of the carts left, e.g. "17%".
@@ -15969,15 +15666,580 @@ msgstr "Bezoeken"
 #. translators: %d: how many saved segments a tab can keep.
 #: includes/brikpanel-enqueue.php:591
 #, php-format
-msgid ""
-"You can keep up to %d saved segment on this tab. Delete one to save a new "
-"one."
-msgid_plural ""
-"You can keep up to %d saved segments on this tab. Delete one to save a new "
-"one."
-msgstr[0] ""
-"U kunt op dit tabblad maximaal %d opgeslagen segment bewaren. Verwijder er "
-"een om een nieuw op te slaan."
-msgstr[1] ""
-"U kunt op dit tabblad maximaal %d opgeslagen segmenten bewaren. Verwijder er"
-" een om een nieuw op te slaan."
+msgid "You can keep up to %d saved segment on this tab. Delete one to save a new one."
+msgid_plural "You can keep up to %d saved segments on this tab. Delete one to save a new one."
+msgstr[0] "U kunt op dit tabblad maximaal %d opgeslagen segment bewaren. Verwijder er een om een nieuw op te slaan."
+msgstr[1] "U kunt op dit tabblad maximaal %d opgeslagen segmenten bewaren. Verwijder er een om een nieuw op te slaan."
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:57
+msgid "A sketch of the dashboard: three number cards, the net profit card circled, and a rising sales line"
+msgstr "Een schets van het dashboard: drie kaarten met cijfers, de kaart met de nettowinst omcirkeld en een stijgende verkooplijn"
+
+#. translators: Short handwritten note in a drawing of the dashboard, next to the circled net profit card. Two or three words.
+#: front-end/welcome/brikpanel-welcome-sketches.php:80
+msgctxt "welcome tour handwritten note"
+msgid "real profit!"
+msgstr "echte winst!"
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:84
+msgid "A sketch of the order list with a status menu open on one order, and a ringing bell"
+msgstr "Een schets van de bestellijst met een geopend statusmenu bij één bestelling en een rinkelende bel"
+
+#. translators: Short handwritten note in a drawing of the order list, pointing at a status menu opened inside the list. Two to four words.
+#: front-end/welcome/brikpanel-welcome-sketches.php:108
+msgctxt "welcome tour handwritten note"
+msgid "right in the list"
+msgstr "direct in de lijst"
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:112
+msgid "Three customers: a loyal one with a heart, a VIP with a star, and one fading away"
+msgstr "Drie klanten: een trouwe met een hart, een VIP met een ster en een die vervaagt"
+
+#. translators: Short handwritten label above the best customer in a drawing. Usually left as VIP.
+#: front-end/welcome/brikpanel-welcome-sketches.php:132
+msgctxt "welcome tour handwritten note"
+msgid "VIP"
+msgstr "VIP"
+
+#. translators: Short handwritten label under a returning customer in a drawing. One word.
+#: front-end/welcome/brikpanel-welcome-sketches.php:139
+msgctxt "welcome tour handwritten note"
+msgid "loyal"
+msgstr "trouw"
+
+#. translators: Short handwritten label under a customer who may not come back, in a drawing. One or two words with a question mark.
+#: front-end/welcome/brikpanel-welcome-sketches.php:146
+msgctxt "welcome tour handwritten note"
+msgid "at risk?"
+msgstr "risico?"
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:150
+msgid "Google Sheets, Google Ads and Meta flowing into BrikPanel"
+msgstr "Google Sheets, Google Ads en Meta die in BrikPanel samenkomen"
+
+#. translators: Short handwritten note under the BrikPanel logo in a drawing where Google Sheets, Google Ads and Meta flow into it. Three or four words.
+#: front-end/welcome/brikpanel-welcome-sketches.php:171
+msgctxt "welcome tour handwritten note"
+msgid "all in one place"
+msgstr "alles op één plek"
+
+#: front-end/welcome/brikpanel-welcome.php:98 front-end/welcome/brikpanel-welcome.php:322
+msgctxt "welcome tour button"
+msgid "Next"
+msgstr "Volgende"
+
+#: front-end/welcome/brikpanel-welcome.php:99
+msgctxt "welcome tour button"
+msgid "Finish"
+msgstr "Afronden"
+
+#: front-end/welcome/brikpanel-welcome.php:128
+msgctxt "welcome tour step name"
+msgid "Profit"
+msgstr "Winst"
+
+#: front-end/welcome/brikpanel-welcome.php:130
+msgid "Know what you really earn"
+msgstr "Weet wat u echt verdient"
+
+#: front-end/welcome/brikpanel-welcome.php:131
+msgid "Your dashboard takes cost of goods, ad spend and expenses off your sales, so net profit is always one glance away."
+msgstr "Uw dashboard trekt de kostprijs van goederen, advertentie-uitgaven en kosten af van uw verkopen, zodat u de nettowinst altijd in één oogopslag ziet."
+
+#: front-end/welcome/brikpanel-welcome.php:132
+msgid "Any date range"
+msgstr "Elke periode"
+
+#: front-end/welcome/brikpanel-welcome.php:136
+msgctxt "welcome tour step name"
+msgid "Orders"
+msgstr "Bestellingen"
+
+#: front-end/welcome/brikpanel-welcome.php:137
+msgid "Orders and products"
+msgstr "Bestellingen en producten"
+
+#: front-end/welcome/brikpanel-welcome.php:138
+msgid "Handle orders in seconds"
+msgstr "Handel bestellingen af in seconden"
+
+#: front-end/welcome/brikpanel-welcome.php:139
+msgid "Hear every new order, change its status right in the list, and edit price and stock without opening a single extra page."
+msgstr "Hoor elke nieuwe bestelling, wijzig de status direct in de lijst en bewerk prijs en voorraad zonder ook maar één extra pagina te openen."
+
+#: front-end/welcome/brikpanel-welcome.php:140
+msgid "Order alerts"
+msgstr "Bestelmeldingen"
+
+#: front-end/welcome/brikpanel-welcome.php:140
+msgid "Ctrl K search"
+msgstr "Zoeken met Ctrl K"
+
+#: front-end/welcome/brikpanel-welcome.php:144
+msgctxt "welcome tour step name"
+msgid "Customers"
+msgstr "Klanten"
+
+#: front-end/welcome/brikpanel-welcome.php:146
+msgid "Meet your best customers"
+msgstr "Leer uw beste klanten kennen"
+
+#: front-end/welcome/brikpanel-welcome.php:147
+msgid "See lifetime value for every customer, spot your VIPs and notice the ones who might not come back."
+msgstr "Zie de lifetime value van elke klant, herken uw VIP's en merk op wie misschien niet terugkomt."
+
+#: front-end/welcome/brikpanel-welcome.php:148
+msgid "VIP and at risk groups"
+msgstr "VIP- en risicogroepen"
+
+#: front-end/welcome/brikpanel-welcome.php:148
+msgid "Cohorts"
+msgstr "Cohorten"
+
+#: front-end/welcome/brikpanel-welcome.php:148
+msgid "CSV export"
+msgstr "CSV-export"
+
+#: front-end/welcome/brikpanel-welcome.php:152
+msgctxt "welcome tour step name"
+msgid "Connect"
+msgstr "Koppelingen"
+
+#: front-end/welcome/brikpanel-welcome.php:154
+msgid "Connect the tools you use"
+msgstr "Koppel de tools die u gebruikt"
+
+#: front-end/welcome/brikpanel-welcome.php:155
+msgid "Sync orders and customers to Google Sheets, and bring in Google Ads and Meta spend to see your true ROAS."
+msgstr "Synchroniseer bestellingen en klanten naar Google Sheets en haal de uitgaven van Google Ads en Meta op om uw echte ROAS te zien."
+
+#. translators: 1: step number, 2: number of steps, 3: area of the admin, for example "1 of 4 · Dashboard"
+#: front-end/welcome/brikpanel-welcome.php:165
+#, php-format
+msgid "%1$s of %2$s · %3$s"
+msgstr "%1$s van %2$s · %3$s"
+
+#: front-end/welcome/brikpanel-welcome.php:181
+msgid "Sales, net profit and live visitors"
+msgstr "Verkopen, nettowinst en live bezoekers"
+
+#: front-end/welcome/brikpanel-welcome.php:182 front-end/welcome/brikpanel-welcome.php:191 front-end/welcome/brikpanel-welcome.php:199 front-end/welcome/brikpanel-welcome.php:209
+msgctxt "welcome tour link"
+msgid "Open"
+msgstr "Openen"
+
+#: front-end/welcome/brikpanel-welcome.php:190
+msgid "New orders and quick status changes"
+msgstr "Nieuwe bestellingen en snelle statuswijzigingen"
+
+#: front-end/welcome/brikpanel-welcome.php:198
+msgid "Lifetime value and segments"
+msgstr "Lifetime value en segmenten"
+
+#: front-end/welcome/brikpanel-welcome.php:208
+msgid "Sync your store to a sheet"
+msgstr "Synchroniseer uw winkel met een spreadsheet"
+
+#: front-end/welcome/brikpanel-welcome.php:209
+msgctxt "welcome tour link"
+msgid "Connect"
+msgstr "Koppelen"
+
+#: front-end/welcome/brikpanel-welcome.php:239
+msgid "Four things BrikPanel does for your store. Each one lays a brick."
+msgstr "Vier dingen die BrikPanel voor uw winkel doet. Elk legt een steen."
+
+#: front-end/welcome/brikpanel-welcome.php:240
+msgid "Every brick is in place, and everything is already switched on."
+msgstr "Elke steen ligt op zijn plek en alles staat al aan."
+
+#: front-end/welcome/brikpanel-welcome.php:298
+msgid "All set"
+msgstr "Alles klaar"
+
+#: front-end/welcome/brikpanel-welcome.php:299
+msgid "You are ready to go"
+msgstr "U kunt aan de slag"
+
+#: front-end/welcome/brikpanel-welcome.php:300
+msgid "Everything is already switched on. Jump straight to the part you need."
+msgstr "Alles staat al aan. Ga direct naar het onderdeel dat u nodig hebt."
+
+#: front-end/welcome/brikpanel-welcome.php:321
+msgctxt "welcome tour button"
+msgid "Back"
+msgstr "Terug"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1821
+msgid "Website orders only"
+msgstr "Alleen bestellingen via de website"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1869
+msgid "Out of every 100 orders"
+msgstr "Van elke 100 bestellingen"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1933
+msgid "View all"
+msgstr "Alles bekijken"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1966
+msgid "Best sellers"
+msgstr "Bestsellers"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1990
+msgid "View all products"
+msgstr "Alle producten bekijken"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2038
+msgid "Channels"
+msgstr "Kanalen"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2044
+msgid "Orders from campaign links"
+msgstr "Bestellingen via campagnelinks"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2099
+msgid "New and returning"
+msgstr "Nieuw en terugkerend"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2106 front-end/dashboard/brikpanel-dashboard.php:2108
+msgid "Out of every 100 customers"
+msgstr "Van elke 100 klanten"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2385
+msgid "View details"
+msgstr "Details bekijken"
+
+#: includes/brikpanel-enqueue.php:550
+msgid "vs yesterday"
+msgstr "t.o.v. gisteren"
+
+#: includes/brikpanel-enqueue.php:551
+msgid "vs the day before"
+msgstr "t.o.v. de dag ervoor"
+
+#. translators: %s: number of days in the period being compared, e.g. 30.
+#: includes/brikpanel-enqueue.php:553
+#, php-format
+msgid "vs previous %s day"
+msgid_plural "vs previous %s days"
+msgstr[0] "t.o.v. de vorige %s dag"
+msgstr[1] "t.o.v. de vorige %s dagen"
+
+#: includes/brikpanel-enqueue.php:554
+msgid "Previous period"
+msgstr "Vorige periode"
+
+#. translators: %s: a day, e.g. "Mon, Oct 4". The day is not over yet.
+#: includes/brikpanel-enqueue.php:556
+#, php-format
+msgid "%s, so far"
+msgstr "%s, tot nu toe"
+
+#. translators: 1: a day, e.g. "Today"; 2: a time of day, e.g. "09:59".
+#: includes/brikpanel-enqueue.php:558
+#, php-format
+msgid "%1$s, until %2$s"
+msgstr "%1$s, tot %2$s"
+
+#: includes/brikpanel-enqueue.php:559
+msgid "Revenue so far"
+msgstr "Omzet tot nu toe"
+
+#: includes/brikpanel-enqueue.php:560
+msgid "Orders so far"
+msgstr "Bestellingen tot nu toe"
+
+#: includes/brikpanel-enqueue.php:561
+msgid "Avg. order value so far"
+msgstr "Gem. bestelwaarde tot nu toe"
+
+#. translators: %s: the matching day of the previous period, e.g. "Sep 4".
+#: includes/brikpanel-enqueue.php:563
+#, php-format
+msgid "Previous (%s)"
+msgstr "Vorige (%s)"
+
+#: includes/brikpanel-enqueue.php:564
+msgid "Not yet"
+msgstr "Nog niet"
+
+#. translators: %s: number of visitors on the store right now, already formatted.
+#: includes/brikpanel-enqueue.php:566
+#, php-format
+msgid "%s now"
+msgstr "%s nu"
+
+#: includes/brikpanel-enqueue.php:567
+msgid "No one is on the store right now."
+msgstr "Er is op dit moment niemand in de winkel."
+
+#. translators: %s: number of further visitors not listed, already formatted.
+#: includes/brikpanel-enqueue.php:569
+#, php-format
+msgid "%s more on the store"
+msgid_plural "%s more on the store"
+msgstr[0] "Nog %s in de winkel"
+msgstr[1] "Nog %s in de winkel"
+
+#. translators: %s: number of products in the visitor's cart, already formatted.
+#: includes/brikpanel-enqueue.php:572
+#, php-format
+msgid "%s in cart"
+msgid_plural "%s in cart"
+msgstr[0] "%s in winkelwagen"
+msgstr[1] "%s in winkelwagen"
+
+#: includes/brikpanel-enqueue.php:580
+msgid "Today so far"
+msgstr "Vandaag tot nu toe"
+
+#. translators: %s: a time of day, e.g. "09:40".
+#: includes/brikpanel-enqueue.php:582
+#, php-format
+msgid "until %s"
+msgstr "tot %s"
+
+#: includes/brikpanel-enqueue.php:583
+msgid "Sales"
+msgstr "Verkopen"
+
+#. translators: %s: number of visitors, already formatted.
+#: includes/brikpanel-enqueue.php:585
+#, php-format
+msgid "%s visitor"
+msgid_plural "%s visitors"
+msgstr[0] "%s bezoeker"
+msgstr[1] "%s bezoekers"
+
+#. translators: 1: order number, e.g. "#348"; 2: how long ago, e.g. "28 min ago".
+#: includes/brikpanel-enqueue.php:587
+#, php-format
+msgid "Last order %1$s, %2$s"
+msgstr "Laatste bestelling %1$s, %2$s"
+
+#: includes/brikpanel-enqueue.php:588
+msgid "Sales per hour today"
+msgstr "Verkopen per uur vandaag"
+
+#. translators: %s: conversion rate, e.g. "2.4%".
+#: includes/brikpanel-enqueue.php:590
+#, php-format
+msgid "%s converted"
+msgstr "%s geconverteerd"
+
+#: includes/brikpanel-enqueue.php:592
+msgid "Of visitors"
+msgstr "Van bezoekers"
+
+#: includes/brikpanel-enqueue.php:593
+msgid "Of previous step"
+msgstr "Van vorige stap"
+
+#: includes/brikpanel-enqueue.php:594
+msgid "Did not continue"
+msgstr "Niet verdergegaan"
+
+#: includes/brikpanel-enqueue.php:595
+msgid "More orders than checkouts: orders placed without a counted checkout, such as orders created by hand, are counted here too."
+msgstr "Meer bestellingen dan afrekeningen: bestellingen zonder getelde afrekening, zoals handmatig aangemaakte bestellingen, worden hier ook meegeteld."
+
+#: includes/brikpanel-enqueue.php:596
+msgid "sold"
+msgid_plural "sold"
+msgstr[0] "verkocht"
+msgstr[1] "verkocht"
+
+#: includes/brikpanel-enqueue.php:597
+msgid "view"
+msgid_plural "views"
+msgstr[0] "weergave"
+msgstr[1] "weergaven"
+
+#: includes/brikpanel-enqueue.php:598
+msgid "add"
+msgid_plural "adds"
+msgstr[0] "toevoeging"
+msgstr[1] "toevoegingen"
+
+#: includes/brikpanel-enqueue.php:599
+msgid "No orders from campaign links in this period."
+msgstr "Geen bestellingen via campagnelinks in deze periode."
+
+#. translators: %s: number of orders, already formatted.
+#: includes/brikpanel-enqueue.php:601
+#, php-format
+msgid "%s order in this period"
+msgid_plural "%s orders in this period"
+msgstr[0] "%s bestelling in deze periode"
+msgstr[1] "%s bestellingen in deze periode"
+
+#. translators: %s: number of customers, already formatted.
+#: includes/brikpanel-enqueue.php:603
+#, php-format
+msgid "%s customer in all"
+msgid_plural "%s customers in all"
+msgstr[0] "%s klant in totaal"
+msgstr[1] "%s klanten in totaal"
+
+#: includes/brikpanel-enqueue.php:604
+msgid "Loyal"
+msgstr "Loyaal"
+
+#: includes/brikpanel-enqueue.php:606
+msgid "At risk"
+msgstr "Risico"
+
+#: includes/brikpanel-exit-survey.php:53
+msgid "I only needed one feature, but my whole admin changed"
+msgstr "Ik had maar één functie nodig, maar mijn hele beheeromgeving is veranderd"
+
+#: includes/brikpanel-exit-survey.php:54
+msgid "What did you run into? (optional)"
+msgstr "Waar liep u tegenaan? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:57
+msgid "I am only deactivating it for a short while"
+msgstr "Ik deactiveer het maar even"
+
+#: includes/brikpanel-exit-survey.php:58
+msgid "Anything you would like to tell us? (optional)"
+msgstr "Wilt u ons iets laten weten? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:61
+msgid "It conflicted with another plugin or my theme"
+msgstr "Het botste met een andere plugin of mijn thema"
+
+#: includes/brikpanel-exit-survey.php:62
+msgid "Which plugin or theme? (optional)"
+msgstr "Welke plugin of welk thema? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:65
+msgid "Something did not work"
+msgstr "Iets werkte niet"
+
+#: includes/brikpanel-exit-survey.php:66
+msgid "What did not work? (optional)"
+msgstr "Wat werkte er niet? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:69
+msgid "It slowed down my site"
+msgstr "Het maakte mijn site trager"
+
+#: includes/brikpanel-exit-survey.php:70
+msgid "Which page felt slow? (optional)"
+msgstr "Welke pagina voelde traag aan? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:73
+msgid "A feature I need is missing"
+msgstr "Er ontbreekt een functie die ik nodig heb"
+
+#: includes/brikpanel-exit-survey.php:74
+msgid "What were you looking for? (optional)"
+msgstr "Waar was u naar op zoek? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:77
+msgid "I prefer the default WooCommerce screens"
+msgstr "Ik geef de voorkeur aan de standaardschermen van WooCommerce"
+
+#: includes/brikpanel-exit-survey.php:78
+msgid "What did you miss from them? (optional)"
+msgstr "Wat miste u? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:81
+msgid "I found a better plugin"
+msgstr "Ik heb een betere plugin gevonden"
+
+#: includes/brikpanel-exit-survey.php:82
+msgid "Which one? (optional)"
+msgstr "Welke? (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:85
+msgctxt "deactivation survey reason"
+msgid "Other"
+msgstr "Andere reden"
+
+#: includes/brikpanel-exit-survey.php:86
+msgid "Please tell us more (optional)"
+msgstr "Vertel ons meer (optioneel)"
+
+#: includes/brikpanel-exit-survey.php:98
+msgid "Abandoned cart recovery"
+msgstr "Herstel van verlaten winkelwagens"
+
+#: includes/brikpanel-exit-survey.php:99
+msgid "Dashboard and reports"
+msgstr "Dashboard en rapporten"
+
+#: includes/brikpanel-exit-survey.php:100
+msgid "Product list and bulk editing"
+msgstr "Productlijst en bulkbewerking"
+
+#: includes/brikpanel-exit-survey.php:102
+msgid "Google Sheets sync"
+msgstr "Synchronisatie met Google Sheets"
+
+#: includes/brikpanel-exit-survey.php:103
+msgid "Ad spend and profit"
+msgstr "Advertentie-uitgaven en winst"
+
+#: includes/brikpanel-exit-survey.php:104
+msgid "Stock and suppliers"
+msgstr "Voorraad en leveranciers"
+
+#: includes/brikpanel-exit-survey.php:107
+msgctxt "deactivation survey: what BrikPanel was installed for"
+msgid "Something else"
+msgstr "Iets anders"
+
+#: includes/brikpanel-exit-survey.php:184
+msgid "Sending…"
+msgstr "Bezig met verzenden…"
+
+#: includes/brikpanel-exit-survey.php:225
+msgid "Before you go: why are you deactivating BrikPanel?"
+msgstr "Voordat u gaat: waarom deactiveert u BrikPanel?"
+
+#: includes/brikpanel-exit-survey.php:226
+msgid "Your answer helps us fix what made you leave. Answering is optional."
+msgstr "Uw antwoord helpt ons op te lossen waardoor u vertrekt. Antwoorden is optioneel."
+
+#: includes/brikpanel-exit-survey.php:228
+msgid "Close and keep BrikPanel active"
+msgstr "Sluiten en BrikPanel actief houden"
+
+#: includes/brikpanel-exit-survey.php:233
+msgid "Choose a reason"
+msgstr "Kies een reden"
+
+#: includes/brikpanel-exit-survey.php:246
+msgid "What did you install BrikPanel for?"
+msgstr "Waarvoor heeft u BrikPanel geïnstalleerd?"
+
+#: includes/brikpanel-exit-survey.php:248
+msgid "Choose one"
+msgstr "Kies er een"
+
+#: includes/brikpanel-exit-survey.php:264
+msgid "Pressing Send shares only your answer, how many days BrikPanel was in use, your BrikPanel, WordPress, WooCommerce and PHP versions and your admin language with brksoft.com. Your site address, email and store data are not sent."
+msgstr "Met Verzenden deelt u alleen uw antwoord, hoeveel dagen BrikPanel in gebruik was, uw versies van BrikPanel, WordPress, WooCommerce en PHP en de taal van uw beheeromgeving met brksoft.com. Uw siteadres, e-mail en winkelgegevens worden niet verzonden."
+
+#: includes/brikpanel-exit-survey.php:265
+msgid "Privacy policy"
+msgstr "Privacybeleid"
+
+#: includes/brikpanel-exit-survey.php:268
+msgid "Skip and deactivate"
+msgstr "Overslaan en deactiveren"
+
+#: includes/brikpanel-exit-survey.php:269
+msgid "Send and deactivate"
+msgstr "Verzenden en deactiveren"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1972
+msgid "Most viewed pages"
+msgstr "Meest bekeken pagina's"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1978
+msgid "Products and pages"
+msgstr "Producten en pagina's"

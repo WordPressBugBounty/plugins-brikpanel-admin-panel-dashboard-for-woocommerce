@@ -323,12 +323,27 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
         true
     );
 
-    // Chart.js
-    wp_enqueue_script(
-        'chart-js',
-        BRIKPANEL_URL . 'assets/js/chart.js',
-        [],
-        BRIKPANEL_VERSION,
+    // Chart.js: only the BrikMarket marketplace share ring still uses it. The
+    // other charts are drawn as SVG by brikpanel-dashboard-viz.js.
+    $bp_dash_chartjs = function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active();
+    if ( $bp_dash_chartjs ) {
+        wp_enqueue_script(
+            'chart-js',
+            BRIKPANEL_URL . 'assets/js/chart.js',
+            [],
+            BRIKPANEL_VERSION,
+            true
+        );
+    }
+
+    // The dashboard's own charts (sales line, funnel ribbon, order-rate
+    // squares, dot strips, hourly bars, the store cards' small lines).
+    $dash_viz_ver = @filemtime( BRIKPANEL_PATH . 'front-end/dashboard/brikpanel-dashboard-viz.js' ) ?: BRIKPANEL_VERSION;
+    wp_register_script(
+        'brikpanel_dashboard_viz',
+        BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard-viz.js',
+        brikpanel_narrow_deps( [ 'format', 'tip' ] ),
+        $dash_viz_ver,
         true
     );
 
@@ -347,7 +362,7 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
     wp_enqueue_style(
         'brikpanel_dashboard_styles',
         BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard.css',
-        array_merge( brikpanel_fit_table_dep( 'style' ), brikpanel_narrow_deps( [ 'overflow', 'tip', 'ui' ], 'style' ) ),
+        array_merge( brikpanel_fit_table_dep( 'style' ), brikpanel_narrow_deps( [ 'overflow', 'tip', 'ui', 'tiles', 'scroll_strip' ], 'style' ) ),
         $dash_css_ver
     );
 
@@ -355,7 +370,13 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
     wp_enqueue_script(
         'brikpanel_dashboard_scripts',
         BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard.js',
-        array_merge( [ 'flatpickr-js', 'chart-js', 'cobe-globe' ], brikpanel_fit_table_dep(), brikpanel_fit_row_dep(), brikpanel_narrow_deps( [ 'overflow', 'tip', 'format' ] ) ),
+        array_merge(
+            [ 'flatpickr-js', 'cobe-globe', 'brikpanel_dashboard_viz' ],
+            $bp_dash_chartjs ? [ 'chart-js' ] : [],
+            brikpanel_fit_table_dep(),
+            brikpanel_fit_row_dep(),
+            brikpanel_narrow_deps( [ 'overflow', 'tip', 'format', 'tiles', 'scroll_strip' ] )
+        ),
         $dash_js_ver,
         true
     );
@@ -407,23 +428,12 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'cancelled'     => __('Cancelled', 'brikpanel'),
             'no_orders'     => __('No orders', 'brikpanel'),
             'no_data'       => __('No data for this period', 'brikpanel'),
-            'no_visitors'   => __('No active visitors', 'brikpanel'),
             'product'       => __('Product', 'brikpanel'),
             'qty_sold'      => __('Qty sold', 'brikpanel'),
-            'order'         => __('Order', 'brikpanel'),
-            'customer'      => __('Customer', 'brikpanel'),
             'source'        => __('Source', 'brikpanel'),
-            'status'        => __('Status', 'brikpanel'),
             'status_labels' => $bp_order_statuses,
-            'total'         => __('Total', 'brikpanel'),
-            'country'       => __('Country', 'brikpanel'),
             'city'          => __('City', 'brikpanel'),
-            'page'          => __('Page', 'brikpanel'),
-            'views'         => __('Views', 'brikpanel'),
-            'cart_count'    => __('Cart adds', 'brikpanel'),
-            'has_cart'       => __('Cart', 'brikpanel'),
             'browsing'       => __('Browsing', 'brikpanel'),
-            'added_to_cart'  => __('Added to cart', 'brikpanel'),
             'order_received' => __('Order received', 'brikpanel'),
             // Live visitors hover card: where the visitor came from. %s is the
             // value taken from their referrer or campaign link.
@@ -449,9 +459,6 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'device_desktop'   => __('Desktop', 'brikpanel'),
             'device_mobile'    => __('Mobile', 'brikpanel'),
             'device_tablet'    => __('Tablet', 'brikpanel'),
-            'device_title_visitors' => __('Visitors by device', 'brikpanel'),
-            'device_title_orders'   => __('Orders by device', 'brikpanel'),
-            'src_title'        => __('Traffic sources', 'brikpanel'),
             'src_direct'       => __('Direct', 'brikpanel'),
             'src_search'       => __('Organic Search', 'brikpanel'),
             'src_social'       => __('Social', 'brikpanel'),
@@ -470,9 +477,6 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'cartab_recovered' => __('Recovered %1$s (%2$s)', 'brikpanel'),
             'ctype_new'        => __('New customers', 'brikpanel'),
             'ctype_repeat'     => __('Repeat customers', 'brikpanel'),
-            'return_rate'      => __('return & refund rate', 'brikpanel'),
-            'returns_refunds'  => __('Returns & refunds', 'brikpanel'),
-            'total_orders'     => __('Total orders', 'brikpanel'),
             'average_ltv'      => __('Average customer LTV', 'brikpanel'),
             'total_customers'  => __('Total customers', 'brikpanel'),
             'repeat_customers' => __('Repeat customers', 'brikpanel'),
@@ -506,7 +510,6 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'profit_revenue_net_tax_note' => __('Net of returns and tax', 'brikpanel'),
             'profit_net_revenue'    => __('Net revenue', 'brikpanel'),
             'exp_saving'            => __('Saving…', 'brikpanel'),
-            'exp_saved'             => __('Expense added', 'brikpanel'),
             'exp_error'             => __('Could not save. Please try again.', 'brikpanel'),
             'exp_required'          => __('Enter an amount and a title.', 'brikpanel'),
             /* translators: %s: name of the expense line being removed. */
@@ -538,6 +541,70 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'empty_rfm_new'          => __('Customer segments appear after your first customers.', 'brikpanel'),
             'empty_ltv_new'          => __('Lifetime value appears after your first orders.', 'brikpanel'),
             'empty_no_subscriptions' => __('No subscriptions yet.', 'brikpanel'),
+
+            // Redesigned cards (October 2026): sales chart, live visitors,
+            // funnel, order rates, products, visitors and customers.
+            'today'              => __('Today', 'brikpanel'),
+            'yesterday'          => __('Yesterday', 'brikpanel'),
+            'aov_label'          => __('Avg. order value', 'brikpanel'),
+            'sales_vs_yesterday' => __('vs yesterday', 'brikpanel'),
+            'sales_vs_day_before' => __('vs the day before', 'brikpanel'),
+            /* translators: %s: number of days in the period being compared, e.g. 30. */
+            'sales_vs_days'      => brikpanel_js_plural(_n_noop('vs previous %s day', 'vs previous %s days', 'brikpanel')),
+            'sales_prev_period'  => __('Previous period', 'brikpanel'),
+            /* translators: %s: a day, e.g. "Mon, Oct 4". The day is not over yet. */
+            'sales_so_far'       => __('%s, so far', 'brikpanel'),
+            /* translators: 1: a day, e.g. "Today"; 2: a time of day, e.g. "09:59". */
+            'sales_until'        => __('%1$s, until %2$s', 'brikpanel'),
+            'sales_r_so_far'     => __('Revenue so far', 'brikpanel'),
+            'sales_o_so_far'     => __('Orders so far', 'brikpanel'),
+            'sales_aov_so_far'   => __('Avg. order value so far', 'brikpanel'),
+            /* translators: %s: the matching day of the previous period, e.g. "Sep 4". */
+            'sales_prev_of'      => __('Previous (%s)', 'brikpanel'),
+            'sales_not_yet'      => __('Not yet', 'brikpanel'),
+            /* translators: %s: number of visitors on the store right now, already formatted. */
+            'live_now'           => __('%s now', 'brikpanel'),
+            'live_none'          => __('No one is on the store right now.', 'brikpanel'),
+            /* translators: %s: number of further visitors not listed, already formatted. */
+            'live_more'          => brikpanel_js_plural(_n_noop('%s more on the store', '%s more on the store', 'brikpanel')),
+            'live_less'          => __('Show less', 'brikpanel'),
+            /* translators: %s: number of products in the visitor's cart, already formatted. */
+            'live_in_cart'       => brikpanel_js_plural(_n_noop('%s in cart', '%s in cart', 'brikpanel')),
+            'just_now'           => __('just now', 'brikpanel'),
+            // The same plural strings as Store Health's "last scanned" times.
+            /* translators: %s: minutes */
+            'min_ago'            => brikpanel_js_plural(_n_noop('%s min ago', '%s min ago', 'brikpanel')),
+            /* translators: %s: hours */
+            'h_ago'              => brikpanel_js_plural(_n_noop('%s h ago', '%s h ago', 'brikpanel')),
+            /* translators: %s: days */
+            'd_ago'              => brikpanel_js_plural(_n_noop('%s d ago', '%s d ago', 'brikpanel')),
+            'today_so_far'       => __('Today so far', 'brikpanel'),
+            /* translators: %s: a time of day, e.g. "09:40". */
+            'today_until'        => __('until %s', 'brikpanel'),
+            'sales'              => __('Sales', 'brikpanel'),
+            /* translators: %s: number of visitors, already formatted. */
+            'n_visitors'         => brikpanel_js_plural(_n_noop('%s visitor', '%s visitors', 'brikpanel')),
+            /* translators: 1: order number, e.g. "#348"; 2: how long ago, e.g. "28 min ago". */
+            'last_order'         => __('Last order %1$s, %2$s', 'brikpanel'),
+            'hours_aria'         => __('Sales per hour today', 'brikpanel'),
+            /* translators: %s: conversion rate, e.g. "2.4%". */
+            'funnel_converted'   => __('%s converted', 'brikpanel'),
+            'people'             => __('People', 'brikpanel'),
+            'of_visitors'        => __('Of visitors', 'brikpanel'),
+            'of_prev_step'       => __('Of previous step', 'brikpanel'),
+            'did_not_continue'   => __('Did not continue', 'brikpanel'),
+            'funnel_more_orders' => __('More orders than checkouts: orders placed without a counted checkout, such as orders created by hand, are counted here too.', 'brikpanel'),
+            'unit_sold'          => brikpanel_js_plural(_n_noop('sold', 'sold', 'brikpanel')),
+            'unit_views'         => brikpanel_js_plural(_n_noop('view', 'views', 'brikpanel')),
+            'unit_adds'          => brikpanel_js_plural(_n_noop('add', 'adds', 'brikpanel')),
+            'camp_none'          => __('No orders from campaign links in this period.', 'brikpanel'),
+            /* translators: %s: number of orders, already formatted. */
+            'types_meta'         => brikpanel_js_plural(_n_noop('%s order in this period', '%s orders in this period', 'brikpanel')),
+            /* translators: %s: number of customers, already formatted. */
+            'seg_total'          => brikpanel_js_plural(_n_noop('%s customer in all', '%s customers in all', 'brikpanel')),
+            'seg_loyal'          => __('Loyal', 'brikpanel'),
+            'seg_attention'      => __('Needs attention', 'brikpanel'),
+            'seg_risk'           => __('At risk', 'brikpanel'),
         ],
     ]);
 }
@@ -1448,6 +1515,8 @@ function brikpanel_enqueue_woo_assets($hook) {
             'export_url'    => wp_nonce_url(admin_url('admin-post.php?action=brikpanel_export_selected_products'), 'brikpanel_export_selected'),
             'currency'      => get_woocommerce_currency_symbol(),
             'per_page'      => (int) $per_page,
+            // The sort this user picked last; the list opens in it when the URL names none.
+            'sort'          => class_exists('Brikpanel_Products_List') ? Brikpanel_Products_List::get_user_sort() : 'date-desc',
             'open_in_new_tab'    => get_option('brikpanel_open_edit_in_new_tab', 'yes') !== 'no',
             'show_featured_star' => function_exists('brikpanel_qe_is_field_visible') && brikpanel_qe_is_field_visible('featured'),
             'has_product_code'   => function_exists('brikpanel_pcfw_active') && brikpanel_pcfw_active(),

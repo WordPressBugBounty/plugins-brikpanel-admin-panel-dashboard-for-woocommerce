@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.28
+Stable tag: 3.3.29
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -15,7 +15,7 @@ Free WooCommerce dashboard & sales report: abandoned cart recovery, Google Sheet
 
 **Live demo (no install needed):** [Explore the full BrikPanel admin on a real WooCommerce store](https://code.brksoft.com/wp-admin/)
 
-https://www.youtube.com/watch?v=pmtmVQifZME&t
+https://www.youtube.com/watch?v=PltNieszslw
 
 **BrikPanel turns the default WooCommerce admin panel into a clean, fast, all-in-one cockpit**: a modern WooCommerce dashboard, a real-time WooCommerce sales report, a powerful WooCommerce bulk editor, an inventory management workspace, an order management center, a coupon manager, a custom WP login page, and a real-time conversion tracking suite. Everything is free. Forever. No premium tier, no feature locks, no monthly subscriptions. A self-hosted **Shopify alternative for WooCommerce**: own your data, your products, and your customer list, with no monthly platform fee and no transaction fee.
 
@@ -453,12 +453,13 @@ Everything stays in your WordPress database. Visitor tracking writes to `wp_brik
 
 By default, nothing. BrikPanel only contacts an external service for features you explicitly opt into:
 
-* **Newsletter (optional).** From a dismissible card on the dashboard, or from the Newsletter row in WooCommerce > Settings > BrikPanel, BrikPanel offers to email you occasionally about new features, WooCommerce tips and ideas for growing your store. Only if you type your email address and tick the consent box is that address sent to our server at brksoft.com, together with your site address, site language and BrikPanel version, so we can add you to the list. Nothing is sent unless you fill in the form and consent, and you can unsubscribe from any email we send. Privacy policy: https://brksoft.com/privacy-policy/ . Terms: https://brksoft.com/terms-and-conditions/
+* **Newsletter (optional).** A dismissible dashboard card, or the Newsletter row in WooCommerce > Settings > BrikPanel, offers occasional emails about new features, WooCommerce tips and ideas for growing your store. Only if you type your email address and tick the consent box are that address, your site address, site language and BrikPanel version sent to our server at brksoft.com. You can unsubscribe from any email we send. Privacy policy: https://brksoft.com/privacy-policy/ . Terms: https://brksoft.com/terms-and-conditions/
 * **Google Sheets sync and Google / Meta Ads (optional).** If you connect these, BrikPanel exchanges data with Google, Meta and our helper at brksoft.com to run the sync and read your ad spend: Google Sheets uses it only for authentication, while every Google Ads and Meta Ads request (ad account ID and token, site address, date range) passes through it. They only run after you connect the relevant account.
+* **Deactivation survey (optional).** Deactivating BrikPanel from the Plugins screen opens a short window asking why. "Skip and deactivate" sends nothing. Only "Send and deactivate" sends your answer, the days BrikPanel was in use, your BrikPanel, WordPress, WooCommerce and PHP versions and your admin language to our server at brksoft.com. Your site address, email and store data are never sent; the request's IP address is used only against floods and is not stored. Privacy policy: https://brksoft.com/privacy-policy/
 
 = Does deleting BrikPanel delete my data? =
 
-No. Deactivating or deleting BrikPanel keeps your expenses, suppliers, purchase orders, visitor history and settings, so a reinstall picks up where you left off. When you deactivate it, its scheduled background jobs stop. Regular jobs, such as syncs, nightly calculations and scans, start again on their own when you activate it. An import or export that was running at the moment you deactivated it, for example a Google Ads history import or a Google Sheets rebuild, does not resume, so start it again after you activate BrikPanel.
+No. Deactivating or deleting BrikPanel keeps your expenses, suppliers, purchase orders, visitor history and settings, so a reinstall picks up where you left off. Deactivating stops its background jobs. Regular ones, such as syncs and nightly scans, start again when you activate it; an import or export that was running, such as a Google Ads history import, must be started again.
 
 = Will BrikPanel always be free? =
 
@@ -495,6 +496,17 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.29 (2026-10-04) =
+* New: **A new dashboard look.** The store cards fit in one row, each with a small trend line, and one sales chart switches between Revenue, Orders and Avg. order value, with the previous period dashed. The Excel export and "Copy everything" stay the same.
+* New: **Today's sales in Live visitors.** The card lists up to 5 visitors and "N more". When no one is on the store, it shows today's sales so far and sales per hour.
+* New: **Products and pages card.** Best sellers, Most viewed pages and Most added to cart in one card with tabs. Most viewed pages also counts pages that are not products, such as the shop and home page.
+* Tweak: **Recent orders, Visitors and Customers redrawn.** Recent orders looks like the orders list. Visitors has Devices, Sources and Top campaigns tabs, and Customers shows new and returning customers with the VIP, loyal and at risk groups. Low stock rows show a badge and the variation.
+* Tweak: **The dashboard loads less.** BrikPanel draws its own charts, so Chart.js is loaded only when BrikMarket is active.
+* New: **A new welcome tour.** New users get a 4-step window instead of the 9-step tour. Each step shows one thing BrikPanel does with a small sketch, and the last screen links to the Dashboard, Orders, Customers and Google Sheets. If you closed the old tour, it does not open again.
+* New: **Deactivation survey.** Deactivating BrikPanel from the Plugins screen opens a short, optional question about why. "Skip and deactivate" sends nothing; "Send and deactivate" shares only your answer, the days BrikPanel was in use, version numbers and your admin language with brksoft.com, never your site address or store data.
+* New: **The products list remembers your sort.** The sort you pick is saved for each user and used the next time the list opens. Filters and the "Sort" button's custom order are not kept.
+* Fix: **Sorting by price keeps products without a price.** They no longer drop out of the list, and variable products sort by their lowest price going up and their highest price going down.
 
 = 3.3.28 (2026-10-02) =
 * New: **Top campaigns.** On the dashboard, Visitors by device → "Sources" lists the 5 campaigns that brought the most revenue, with their orders, conversion rate and revenue. The Excel export gets a "Campaigns" sheet. Campaign visits are counted from this version on and follow your visitor tracking and cookie consent settings.
@@ -571,12 +583,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **No red "0" on the bell when nothing is waiting.** The same bug showed a "1 / 1" pager in Customer Analytics, a stuck "Counting…" box in Google Sheets, "Edit email" in the cart popup and a "Supplier SKU" row with no supplier. Zero counts like "Updates 0" are hidden in the side menu.
 * Fix: **The BrikMentor corner button no longer covers content.** It is now a labelled button, hidden on phones. Pages leave room for it, and the space beside its panel no longer blocks clicks.
 * Security: **Quote marks in variation SKUs, GTINs and names are now escaped in the product editor.**
-
-= 3.3.22 (2026-09-23) =
-* Fix: **BrikPanel no longer switches itself off when WooCommerce sits in a differently named folder.** WooCommerce is now recognised by its main file, the way WordPress itself loads it, so stores that keep it in a folder such as `wc-core/` get BrikPanel back. The same assumption also removed WooCommerce's own files from BrikPanel pages on such stores and hid Admin Menu Editor Pro; both are fixed.
-* Fix: **No more links to pages a user is not allowed to open.** Editors, authors and contributors no longer see an empty "More" row that led to a "not allowed" page. The same check now covers the WordPress toolbar, Cmd+K search, the top bar's Create menu, bell and logo, the product list's Import and Export buttons, the settings shortcuts, and users for whom a multisite network has switched BrikPanel off.
-* Fix: **The side menu no longer overlaps on older WooCommerce versions.** On stores whose Orders screen is the classic list (WooCommerce 4.0, and stores without HPOS), Orders and Customers could spill out beside the WooCommerce heading. The bell's links, the "back" links in order merge, the toolbar Analytics shortcut and the redirect after switching a module off were corrected for the same reason.
-* Fix: **The Navigation settings screen shows the menu in the same order as the sidebar.** It listed BrikMentor under "Site management", so saving without a change moved it there. Menus you already saved stay as they are.
-* Fix: **"Email" and "popup" no longer overlap in the Abandoned Carts header.** The row arrow shared a CSS class with the header switch, so its sizing hit the switch's label. Three similar clashes are fixed too: italic empty cells in the products list, the order screen's status menu taking styles from the orders list, and generic class names in styles loaded on every admin page, which could restyle other plugins and put a magnifier on BrikPanel's power switch in the toolbar.
-* Tweak: **Clearer wording.** The "Wait for cookie consent" setting now says it also covers signed-in customers, and the FAQ describes exactly which scripts load on the storefront, when, and where to switch each one off.
-* Developer: **The Abandoned Carts contact cells are filled through a filter.** The phone, WhatsApp and envelope cells now take their content from `brikpanel_cartab_outreach_rows`; BrikPanel itself only draws them. With BrikMentor 1.15.8 or later nothing changes on screen; an older BrikMentor shows a padlock asking to be updated.

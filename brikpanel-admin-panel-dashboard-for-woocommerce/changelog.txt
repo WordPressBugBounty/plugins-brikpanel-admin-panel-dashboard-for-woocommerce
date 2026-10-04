@@ -2,6 +2,17 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.29 (2026-10-04) =
+* New: **A new dashboard look.** The store cards fit in one row, each with a small trend line, and one sales chart switches between Revenue, Orders and Avg. order value, with the previous period dashed. The Excel export and "Copy everything" stay the same.
+* New: **Today's sales in Live visitors.** The card lists up to 5 visitors and "N more". When no one is on the store, it shows today's sales so far and sales per hour.
+* New: **Products and pages card.** Best sellers, Most viewed pages and Most added to cart in one card with tabs. Most viewed pages also counts pages that are not products, such as the shop and home page.
+* Tweak: **Recent orders, Visitors and Customers redrawn.** Recent orders looks like the orders list. Visitors has Devices, Sources and Top campaigns tabs, and Customers shows new and returning customers with the VIP, loyal and at risk groups. Low stock rows show a badge and the variation.
+* Tweak: **The dashboard loads less.** BrikPanel draws its own charts, so Chart.js is loaded only when BrikMarket is active.
+* New: **A new welcome tour.** New users get a 4-step window instead of the 9-step tour. Each step shows one thing BrikPanel does with a small sketch, and the last screen links to the Dashboard, Orders, Customers and Google Sheets. If you closed the old tour, it does not open again.
+* New: **Deactivation survey.** Deactivating BrikPanel from the Plugins screen opens a short, optional question about why. "Skip and deactivate" sends nothing; "Send and deactivate" shares only your answer, the days BrikPanel was in use, version numbers and your admin language with brksoft.com, never your site address or store data.
+* New: **The products list remembers your sort.** The sort you pick is saved for each user and used the next time the list opens. Filters and the "Sort" button's custom order are not kept.
+* Fix: **Sorting by price keeps products without a price.** They no longer drop out of the list, and variable products sort by their lowest price going up and their highest price going down.
+
 = 3.3.28 (2026-10-02) =
 * New: **Top campaigns.** On the dashboard, Visitors by device → "Sources" lists the 5 campaigns that brought the most revenue, with their orders, conversion rate and revenue. The Excel export gets a "Campaigns" sheet. Campaign visits are counted from this version on and follow your visitor tracking and cookie consent settings.
 * New: **Abandoned carts in the Conversion funnel.** A line under the funnel shows the carts abandoned in the selected period, their value, how many were recovered and the change from the previous period. The Excel export has the same figures.

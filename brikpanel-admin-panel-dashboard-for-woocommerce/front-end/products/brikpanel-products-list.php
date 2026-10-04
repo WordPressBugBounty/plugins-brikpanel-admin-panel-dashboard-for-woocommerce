@@ -43,6 +43,7 @@ class Brikpanel_Products_List {
         add_action('wp_ajax_brikpanel_bulk_job_process', [$this, 'ajax_bulk_job_process']);
         add_action('wp_ajax_brikpanel_bulk_job_cancel',  [$this, 'ajax_bulk_job_cancel']);
         add_action('wp_ajax_brikpanel_pl_save_columns',  [$this, 'ajax_save_columns']);
+        add_action('wp_ajax_brikpanel_pl_save_sort',     [$this, 'ajax_save_sort']);
         add_action('wp_ajax_brikpanel_save_product_order', [$this, 'ajax_save_product_order']);
 
         // Export selected products as CSV
@@ -249,6 +250,45 @@ class Brikpanel_Products_List {
         }
         update_user_meta(get_current_user_id(), self::USER_COLUMNS_META, $clean);
         wp_send_json_success(['columns' => self::get_user_columns()]);
+    }
+
+    // =========================================================================
+    // SORT ORDER (per-user preference)
+    // =========================================================================
+    // The list opens in the sort its user picked last, wherever it is opened
+    // from (the menu, a bookmark, another screen). A sort in the URL (a reload,
+    // the editor's back link) still wins for that view. Filters are not kept:
+    // they narrow one search, the sort is how someone likes to read the list.
+
+    const USER_SORT_META = 'brikpanel_products_sort';
+
+    // Every value the Sort dropdown offers, in its order.
+    const SORT_OPTIONS = ['date-desc', 'date-asc', 'title-asc', 'title-desc', 'price-asc', 'price-desc', 'menu-asc'];
+
+    /**
+     * The sort the list opens in for a user: the last one they picked in the
+     * Sort dropdown, or newest first.
+     *
+     * @param int $user_id User to resolve for; 0 means the current user.
+     * @return string One of SORT_OPTIONS.
+     */
+    public static function get_user_sort($user_id = 0) {
+        if (!$user_id) $user_id = get_current_user_id();
+        $saved = $user_id ? get_user_meta($user_id, self::USER_SORT_META, true) : '';
+        return in_array($saved, self::SORT_OPTIONS, true) ? $saved : 'date-desc';
+    }
+
+    public function ajax_save_sort() {
+        check_ajax_referer('brikpanel_products_list_nonce', 'security');
+        if (!current_user_can('edit_products')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')], 403);
+        }
+        $sort = isset($_POST['sort']) && is_string($_POST['sort']) ? sanitize_key(wp_unslash($_POST['sort'])) : '';
+        if (!in_array($sort, self::SORT_OPTIONS, true)) {
+            wp_send_json_error(null, 400);
+        }
+        update_user_meta(get_current_user_id(), self::USER_SORT_META, $sort);
+        wp_send_json_success(['sort' => $sort]);
     }
 
     // Conservative defaults sized for shared hosting (low memory_limit and
@@ -1541,6 +1581,10 @@ class Brikpanel_Products_List {
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only view state.
             $bpl_req[$bpl_key] = isset($_GET[$bpl_param]) ? sanitize_text_field(wp_unslash($_GET[$bpl_param])) : '';
         }
+        // No sort in the URL (the menu, a bookmark): the one this user picked last.
+        if (!in_array($bpl_req['sort'], self::SORT_OPTIONS, true)) {
+            $bpl_req['sort'] = self::get_user_sort();
+        }
         $bpl_filters_set = count($tax_filter_chips);
         foreach (['cat', 'brand', 'stock', 'type', 'featured'] as $bpl_key) {
             if ('' !== $bpl_req[$bpl_key]) {
@@ -2359,6 +2403,43 @@ class Brikpanel_Products_List {
     }
 
     /**
+     * Price order for the product list, from WooCommerce's price lookup table.
+     *
+     * The same path as WooCommerce's own storefront sort: one row per product,
+     * joined on its primary key, so every product stays in the list (one with
+     * no price sorts as 0, one WooCommerce never indexed goes last) and no
+     * GROUP BY is needed. Low to high uses a variable product's lowest price,
+     * high to low its highest. The ID breaks ties, so equal prices keep one
+     * order and no product repeats or goes missing between pages.
+     *
+     * Attached only around the list query (ajax_fetch_products()), and even
+     * then it only touches a query carrying `brikpanel_pl_price_sort`: a query
+     * a third-party callback runs while it is attached is left alone.
+     *
+     * @param array    $clauses  The query's SQL clauses.
+     * @param WP_Query $wp_query The query being filtered.
+     * @return array
+     */
+    public static function filter_price_sort_clauses($clauses, $wp_query) {
+        if (!is_array($clauses) || !($wp_query instanceof WP_Query)) {
+            return $clauses;
+        }
+        $dir = $wp_query->get('brikpanel_pl_price_sort');
+        if ($dir !== 'ASC' && $dir !== 'DESC') {
+            return $clauses;
+        }
+
+        global $wpdb;
+        $lookup = !empty($wpdb->wc_product_meta_lookup) ? $wpdb->wc_product_meta_lookup : $wpdb->prefix . 'wc_product_meta_lookup';
+        $price  = 'ASC' === $dir ? 'bpl_price_lookup.min_price' : 'bpl_price_lookup.max_price';
+
+        $clauses['join']    = (isset($clauses['join']) ? $clauses['join'] : '') . " LEFT JOIN {$lookup} AS bpl_price_lookup ON bpl_price_lookup.product_id = {$wpdb->posts}.ID";
+        $clauses['orderby'] = "{$price} IS NULL ASC, {$price} {$dir}, {$wpdb->posts}.ID {$dir}";
+
+        return $clauses;
+    }
+
+    /**
      * Make the current product query language-agnostic under WPML.
      *
      * BrikPanel's product list is a store-management view, not a translation
@@ -2403,7 +2484,10 @@ class Brikpanel_Products_List {
         $stock_filter = sanitize_key($_POST['stock_filter'] ?? '');
         $product_type = sanitize_key($_POST['product_type'] ?? '');
         $featured     = sanitize_key($_POST['featured'] ?? '');
-        $sort     = sanitize_text_field($_POST['sort'] ?? 'date-desc');
+        $sort     = sanitize_text_field(wp_unslash($_POST['sort'] ?? 'date-desc'));
+        if (!in_array($sort, self::SORT_OPTIONS, true)) {
+            $sort = 'date-desc';
+        }
 
         // Parse sort
         $sort_parts = explode('-', $sort);
@@ -2439,12 +2523,16 @@ class Brikpanel_Products_List {
             'post_status'    => $statuses,
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'orderby'        => $orderby === 'price' ? 'meta_value_num' : $orderby,
+            'orderby'        => $orderby,
             'order'          => $order,
         ];
 
         if ($orderby === 'price') {
-            $args['meta_key'] = '_price';
+            // Ordered by WooCommerce's price lookup table, as the storefront
+            // is (filter_price_sort_clauses()). The `_price` meta join used
+            // before dropped every product without a price row from the list.
+            $args['orderby'] = ['ID' => $order];
+            $args['brikpanel_pl_price_sort'] = $order;
         } elseif ($orderby === 'menu') {
             // Custom storefront order: products without an explicit
             // menu_order (defaults to 0) tie-break by title so the list is
@@ -2591,7 +2679,11 @@ class Brikpanel_Products_List {
         // posts_clauses callback can throw out of WP_Query, and an escaped
         // Throwable would leave our posts_search filter attached with a stale
         // term for the rest of the request, silently widening every other
-        // search query on the page.
+        // search query on the page. The price order filter is scoped the same way.
+        $price_sort = $orderby === 'price';
+        if ($price_sort) {
+            add_filter('posts_clauses', [__CLASS__, 'filter_price_sort_clauses'], 10, 2);
+        }
         try {
             $query = new WP_Query($args);
         } finally {
@@ -2599,6 +2691,9 @@ class Brikpanel_Products_List {
             if ($search) {
                 remove_filter('posts_search', [__CLASS__, 'filter_search_include_sku'], 10);
                 self::$sku_search_term = '';
+            }
+            if ($price_sort) {
+                remove_filter('posts_clauses', [__CLASS__, 'filter_price_sort_clauses'], 10);
             }
         }
 

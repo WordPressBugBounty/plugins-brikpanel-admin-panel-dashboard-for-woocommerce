@@ -68,9 +68,6 @@
     let currentRange = CFG.saved_range || 'today';
     let customStartDate = CFG.saved_start || '';
     let customEndDate = CFG.saved_end || '';
-    let salesChart = null;
-    let funnelChart = null;
-    let ratesChart = null;
     let mpShareChart = null;
     let liveInterval = null;
     let globeInstance = null;
@@ -81,11 +78,6 @@
     let globeVisible = false;
     let locView = 'orders';       // 'orders' | 'customers'
     let locationsData = null;     // cached locations payload for re-render on tab switch
-    let deviceView = 'visitors';  // 'visitors' | 'orders' | 'sources' — tab inside the device panel
-    let deviceData = { visitors: null, orders: null }; // cached payloads for re-render on tab switch
-    let sourceData = null;        // cached traffic-source channel breakdown
-    let topReferrersData = null;  // cached top referrers list
-    let topCampaignsData = null;  // cached top campaigns list (Sources view)
     var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let datepickerInstance = null;
     let isLoading = false;
@@ -98,6 +90,19 @@
     let emptyCtx = { store: null, tracking: null, period: null, paid: null, visitors: 0 };
     let liveListEmpty = false;         // the Live list last showed nobody
     let liveStale = false;             // the server refused the Live request; polling stopped
+
+    // The redesigned cards (brikpanel-dashboard-viz.js draws them).
+    var V = window.brikpanelDashViz || null;
+    var lastData = null;               // the payload last drawn, for redraws on resize and tab switches
+    var salesMetric = 'r';             // Sales over time shows revenue, orders ('o') or average order value ('aov')
+    var playNext = false;              // set by a range change: the cards in view animate
+    var firstData = true;              // the first payload: only cards below the first screen animate, when reached
+    var pendingPlay = typeof WeakMap === 'function' ? new WeakMap() : null;
+    var liveRows = null;               // the last Live list from the poll (null before the first answer)
+    var liveSig = '';                  // what that list showed, to redraw only on a change
+    var liveOpen = false;              // "N more on the store" opened
+    var LIVE_SHOW = 5;                 // rows shown before "N more on the store"
+    var todayInfo = null;              // { block: today's figures, serverNow, clientAt } for the live card
 
     // Numbers, percentages, money and dates in the store's format, the percent
     // sign where the viewer's language writes it (front-end/shared/
@@ -127,7 +132,8 @@
         initDatePresets();
         initDatepicker();
         initLocTabs();
-        initDeviceTabs();
+        initDvTabs();
+        initDvResize();
         initCopySummary();
         initExportButton();
         initRowLinks();
@@ -185,6 +191,7 @@
                     datepickerInstance.close();
                 }
                 currentRange = range;
+                playNext = true;
                 fetchDashboardData();
             });
         });
@@ -228,6 +235,7 @@
                 customEndDate = fmt(selectedDates[selectedDates.length - 1]);
 
                 currentRange = 'custom';
+                playNext = true;
                 fetchDashboardData();
             }
         };
@@ -308,76 +316,64 @@
                 document.dispatchEvent(new CustomEvent('brikpanel:dashboardData', { detail: d }));
             } catch (err) { /* IE / old WebView fallback: ignored */ }
 
+            lastData = d;
+            todayInfo = { block: d.today || null, serverNow: Number(d.now) || Math.floor(Date.now() / 1000), clientAt: Date.now() / 1000 };
+
             // Summary cards
-            updateCard('card-total-sales', d.total_sales);
-            updateCard('card-orders', d.order_count_display != null ? d.order_count_display : formatNumber(d.order_count));
-            updateCard('card-aov', d.aov);
-            updateCard('card-visitors', d.visitor_count_display != null ? d.visitor_count_display : formatNumber(d.visitor_count));
-            // The server sends the rate as a finished percentage (store
-            // separators, the viewer's sign position); a payload cached before
-            // that still carries the bare number.
-            updateCard('card-conversion', d.conversion_rate_pct != null ? d.conversion_rate_pct : fmtPct(d.conversion_rate, 2));
+            safe('cards', function () {
+                var deltas = d.deltas || {};
+                updateCard('card-total-sales', d.total_sales);
+                updateCard('card-orders', d.order_count_display != null ? d.order_count_display : formatNumber(d.order_count));
+                updateCard('card-aov', d.aov);
+                updateCard('card-visitors', d.visitor_count_display != null ? d.visitor_count_display : formatNumber(d.visitor_count));
+                // The server sends the rate as a finished percentage (store
+                // separators, the viewer's sign position); a payload cached
+                // before that still carries the bare number.
+                updateCard('card-conversion', d.conversion_rate_pct != null ? d.conversion_rate_pct : fmtPct(d.conversion_rate, 2));
+                updateDelta('delta-total-sales', deltas.sales);
+                updateDelta('delta-orders', deltas.orders);
+                updateDelta('delta-aov', deltas.aov);
+                updateDelta('delta-visitors', deltas.visitors);
+                updateDelta('delta-conversion', deltas.conversion);
+                // Units sold in the same paid orders: beside the Orders change
+                // and at the head of the Order rates card.
+                setItemsSold('card-items-sold', d.items_sold_label);
+                setItemsSold('rates-items-sold', d.items_sold_label);
+            });
 
-            // Deltas
-            updateDelta('delta-total-sales', d.deltas.sales);
-            updateDelta('delta-orders', d.deltas.orders);
-            updateDelta('delta-aov', d.deltas.aov);
-            updateDelta('delta-visitors', d.deltas.visitors);
-            updateDelta('delta-conversion', d.deltas.conversion);
+            // Profit (Revenue − Cost of goods − Expenses), the store cards'
+            // small lines and the figures counting up.
+            safe('profit', function () { renderProfit(d.profit); });
+            safe('sparks', function () { renderKpiSparks(d); });
+            safe('countUp', function () { playKpis(d); });
 
-            // Units sold in the same paid orders: beside the Orders change
-            // and at the head of the Order Rates card.
-            setItemsSold('card-items-sold', d.items_sold_label);
-            setItemsSold('rates-items-sold', d.items_sold_label);
-
-            // Profit (Revenue − Cost of goods − Expenses)
-            renderProfit(d.profit);
-
-            // Charts
-            renderSalesChart(d.sales_over_time);
-            renderFunnelChart(d.funnel);
-            renderAbandonedCarts(d.abandoned_carts, d.abandoned_carts_on);
-            renderRatesChart(d.order_rates);
+            safe('sales', function () { renderSales(d); });
+            safe('funnel', function () { renderFunnel(d); });
+            safe('cartab', function () { renderAbandonedCarts(d.abandoned_carts, d.abandoned_carts_on); });
+            safe('rates', function () { renderRates(d); });
 
             // Globe + Tables
-            locationsData = d.order_locations;
-            applyLocView(locView);
+            safe('locations', function () {
+                locationsData = d.order_locations;
+                applyLocView(locView);
+            });
 
-            // Tables
-            renderTopProducts(d.top_products);
-            renderRecentOrders(d.recent_orders);
-            renderMostViewed(d.most_viewed);
-            renderMostCart(d.most_cart);
-
-            // Device breakdown + customer types.
-            // Cache both payloads so tab switches re-render without an AJAX
-            // round-trip; render the active view.
-            deviceData.visitors = d.devices;
-            deviceData.orders   = d.order_devices;
-            // Traffic sources live as a third tab in the same panel.
-            sourceData       = d.sources;
-            topReferrersData = d.top_referrers;
-            topCampaignsData = Array.isArray(d.top_campaigns) ? d.top_campaigns : [];
-            applyDeviceView(deviceView);
-            renderCustomerTypes(d.customer_types);
-
-            // RFM segment distribution (precomputed nightly).
-            renderRfmSegments(d.rfm_distribution || []);
-
-            // Low stock + LTV summary panel (Returns & Refunds % is now
-            // surfaced in the Order Rates donut alongside cancelled/failed).
-            renderLowStock(d.low_stock, d.low_stock_empty);
-            renderLtvPanel(d.ltv_panel);
-
-            // Subscriptions.
-            renderSubscriptions(d.subscription_stats);
-
+            safe('products', function () { renderProducts(d); });
+            safe('orders', function () { renderOrders(d.recent_orders); });
+            safe('visitors', function () { renderVisitors(d); });
+            safe('customers', function () { renderCustomers(d); });
+            safe('stock', function () { renderLowStock(d.low_stock, d.low_stock_empty); });
+            safe('ltv', function () { renderLtvPanel(d.ltv_panel); });
+            safe('subscriptions', function () { renderSubscriptions(d.subscription_stats); });
             // Marketplace analytics (BrikMarket-only).
-            renderMarketplaceAnalytics(d.marketplace);
+            safe('marketplace', function () { renderMarketplaceAnalytics(d.marketplace); });
 
-            // An empty Live list drawn before this data arrived can now say
-            // whether tracking is off. A stopped list keeps its reload line.
-            if (liveListEmpty && !liveStale) renderLiveVisitors([]);
+            // The live card's "Today so far" (and whether tracking is off)
+            // came with this data.
+            safe('live', function () { renderLive(); });
+
+            firstData = false;
+            playNext = false;
         })
         .catch(function (err) {
             // An aborted request is expected (a newer selection took over); it
@@ -1612,252 +1608,501 @@
     }
 
     // =========================================================================
-    // SALES OVER TIME CHART
+    // REDESIGNED CARDS (October 2026)
+    //
+    // Sales over time, Conversion funnel, Order rates, Products, Recent
+    // orders, Visitors and Customers are drawn as SVG by
+    // brikpanel-dashboard-viz.js (window.brikpanelDashViz), which holds no
+    // text: every word and number below comes from the localized i18n bag and
+    // window.brikpanelFormat. Each card can appear more than once (Settings
+    // can split a merged card, plan_merged_cards() in PHP), so every renderer
+    // draws every card of its kind, found by [data-bp-dv].
     // =========================================================================
 
-    function renderSalesChart(data) {
-        var ctx = document.getElementById('brikpanel-sales-chart');
-        if (!ctx || typeof Chart === 'undefined') return;
-
-        // The server lists every day of the window, days without sales at 0.
-        // All zero is an empty window: the reason instead of a flat line on a
-        // bare 0 to 1 axis.
-        data = Array.isArray(data) ? data : [];
-        var hasSales = data.some(function (d) { return Number(d.revenue) !== 0 || Number(d.orders) !== 0; });
-        if (!hasSales) {
-            setChartEmpty(ctx, emptyReason('orders', 'site'));
-            return;
-        }
-        var wasHidden = setChartEmpty(ctx, null);
-
-        // Axis: short day and month in the viewer's language ("22 Eyl"), was
-        // the raw "2026-09-22". The tooltip title names the full date.
-        var days = data.map(function (d) { return d.date; });
-        var labels = days.map(function (day) { return BF ? BF.dayMonth(day) : day; });
-        var revenue = data.map(function (d) { return d.revenue; });
-        var orders = data.map(function (d) { return d.orders; });
-
-        // A one-day range is a single bucket, and Chart.js draws no line segment
-        // for one point — with the dotless style the Orders series would vanish
-        // entirely. Force a visible dot in that case. Revenue thins its dots out
-        // on long ranges where they would smear into the line.
-        var revRadius = data.length === 1 ? 4 : (data.length > 30 ? 0 : 3);
-        var ordRadius = data.length === 1 ? 4 : 0;
-
-        if (salesChart) {
-            salesChart.$bpDays = days;
-            salesChart.data.labels = labels;
-            salesChart.data.datasets[0].data = revenue;
-            salesChart.data.datasets[1].data = orders;
-            // Recompute with the new point count: switching from "Last 30 days"
-            // to "Today" otherwise kept the old radii and hid the single point.
-            salesChart.data.datasets[0].pointRadius = revRadius;
-            salesChart.data.datasets[1].pointRadius = ordRadius;
-            // Back from hidden: measure the box again before drawing.
-            if (wasHidden) salesChart.resize();
-            salesChart.update();
-            return;
-        }
-
-        salesChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: i18n.revenue || 'Revenue',
-                        data: revenue,
-                        borderColor: '#303030',
-                        backgroundColor: 'rgba(48, 48, 48, 0.05)',
-                        fill: true,
-                        tension: 0.3,
-                        borderWidth: 2,
-                        pointRadius: revRadius,
-                        pointHoverRadius: 5,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: i18n.orders || 'Orders',
-                        data: orders,
-                        borderColor: '#8a8a8a',
-                        backgroundColor: 'rgba(138, 138, 138, 0.1)',
-                        fill: false,
-                        tension: 0.3,
-                        borderWidth: 1.5,
-                        borderDash: [4, 4],
-                        pointRadius: ordRadius,
-                        pointHoverRadius: 4,
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { maxTicksLimit: 12, font: { size: 11 } }
-                    },
-                    y: {
-                        position: 'left',
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.04)' },
-                        ticks: {
-                            font: { size: 11 },
-                            callback: function (v) {
-                                return BF ? BF.compact(v) : v;
-                            }
-                        }
-                    },
-                    y1: {
-                        position: 'right',
-                        beginAtZero: true,
-                        grid: { display: false },
-                        ticks: {
-                            font: { size: 11 },
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        align: 'end',
-                        labels: { boxWidth: 12, padding: 16, font: { size: 11 } }
-                    },
-                    tooltip: {
-                        backgroundColor: '#303030',
-                        titleFont: { size: 12, weight: '600' },
-                        bodyFont: { size: 12 },
-                        cornerRadius: 6,
-                        padding: 10,
-                        callbacks: {
-                            title: function (items) {
-                                var day = items.length && salesChart && salesChart.$bpDays ? salesChart.$bpDays[items[0].dataIndex] : '';
-                                return day && BF ? BF.dateShort(day) : (items.length ? items[0].label : '');
-                            },
-                            label: function (ctx) {
-                                var v = ctx.parsed ? ctx.parsed.y : 0;
-                                var shown = !BF ? String(v) : (ctx.dataset.yAxisID === 'y' ? BF.money(v) : BF.number(v));
-                                return (ctx.dataset.label ? ctx.dataset.label + ': ' : '') + shown;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        salesChart.$bpDays = days;
+    function dvCards(kind) {
+        return Array.prototype.slice.call(document.querySelectorAll('[data-bp-dv="' + kind + '"]'));
     }
 
-    // =========================================================================
-    // CONVERSION FUNNEL CHART
-    // =========================================================================
+    function dvSlot(root, name) {
+        return root ? root.querySelector('[data-bp-dv-slot="' + name + '"]') : null;
+    }
 
-    function renderFunnelChart(funnel) {
-        var ctx = document.getElementById('brikpanel-funnel-chart');
-        if (!ctx || typeof Chart === 'undefined') return;
+    // A card animates once: right away after a range change when it is in
+    // view, otherwise the first time it comes into view. On the first load
+    // the cards already on screen simply stand finished.
+    function schedulePlay(card, run) {
+        if (!card || !V || V.reduced()) return;
+        if (pendingPlay) {
+            var prev = pendingPlay.get(card);
+            if (prev) {
+                prev.disconnect();
+                pendingPlay.delete(card);
+            }
+        }
+        var later = function () {
+            var io = V.onView(card, run, 0.3);
+            if (io && pendingPlay) pendingPlay.set(card, io);
+        };
+        if (firstData) {
+            if (card.getBoundingClientRect().top > (window.innerHeight || 0)) later();
+            return;
+        }
+        if (!playNext) return;
+        if (V.inView(card, 0.3)) run(); else later();
+    }
 
-        var labels = [
-            i18n.visitors || 'Visitors',
-            i18n.product_views || 'Product views',
-            i18n.add_to_cart || 'Add to cart',
-            i18n.checkout || 'Checkout',
-            i18n.orders || 'Orders'
+    function money(v, decimals) {
+        if (!BF) return String(Number(v) || 0);
+        return decimals == null ? BF.money(v) : BF.money(v, { decimals: decimals });
+    }
+
+    // "2.41% converted" with the figure in bold: the pattern's %s (or %1$s,
+    // %2$s ...) becomes the given values, which may be DOM nodes.
+    function fillNodes(el, pattern, values) {
+        el.textContent = '';
+        var vals = Array.isArray(values) ? values : [values];
+        var next = 0;
+        var re = /%(?:(\d+)\$)?([sd%])/g;
+        var str = String(pattern == null ? '' : pattern);
+        var last = 0;
+        var m;
+        while ((m = re.exec(str)) !== null) {
+            if (m.index > last) el.appendChild(document.createTextNode(str.slice(last, m.index)));
+            if (m[2] === '%') {
+                el.appendChild(document.createTextNode('%'));
+            } else {
+                var v = m[1] ? vals[parseInt(m[1], 10) - 1] : vals[next++];
+                if (v && typeof v === 'object' && v.nodeType) el.appendChild(v);
+                else el.appendChild(document.createTextNode(v == null ? '' : String(v)));
+            }
+            last = re.lastIndex;
+        }
+        if (last < str.length) el.appendChild(document.createTextNode(str.slice(last)));
+        return el;
+    }
+
+    function bold(text) {
+        var b = document.createElement('b');
+        var bdi = document.createElement('bdi');
+        bdi.textContent = text;
+        b.appendChild(bdi);
+        return b;
+    }
+
+    // Text that keeps its own reading order inside a right-to-left page
+    // ("99 orders" stays "99 orders" next to Arabic or Hebrew).
+    function setIsolated(el, text) {
+        if (!el) return;
+        el.textContent = '';
+        if (!text) return;
+        var bdi = document.createElement('bdi');
+        bdi.textContent = text;
+        el.appendChild(bdi);
+    }
+
+    // A count in a plural sentence with the number in bold: "84 visitors".
+    function countNodes(el, msg, n) {
+        return fillNodes(el, BF ? BF.plural(msg, n) : '%s', [bold(formatNumber(n))]);
+    }
+
+    function dvDelta(el, value, inverse) {
+        if (!el) return;
+        el.textContent = '';
+        el.className = el.className.replace(/\s*\bis-(up|down)\b/g, '');
+        if (value === null || value === undefined || !isFinite(value) || Number(value) === 0) {
+            el.hidden = true;
+            return;
+        }
+        var good = inverse ? value < 0 : value > 0;
+        el.textContent = (value > 0 ? '↑' : '↓') + ' ' + formatDeltaPct(Math.abs(value));
+        el.className += good ? ' is-up' : ' is-down';
+        el.hidden = false;
+    }
+
+    function calcDelta(cur, prev) {
+        if (!prev && !cur) return 0;
+        if (!prev) return null;
+        return Math.round((cur - prev) / Math.abs(prev) * 1000) / 10;
+    }
+
+    function timeFmt() {
+        return (BF && BF.l10n && BF.l10n.timeFormat) || 'H:i';
+    }
+
+    function dayMonthFmt() {
+        return (BF && BF.l10n && BF.l10n.dayMonth) || 'M j';
+    }
+
+    // "09:00" / "9:00 am" for an hour of the day in the store's time format.
+    function hourLabel(h, minutes) {
+        var hh = (h < 10 ? '0' : '') + h;
+        return BF ? BF.date('2000-01-01 ' + hh + ':' + (minutes || '00'), timeFmt()) : hh + ':' + (minutes || '00');
+    }
+
+    function agoText(seconds) {
+        var s = Math.max(0, Math.floor(Number(seconds) || 0));
+        if (s < 60) return i18n.just_now || '';
+        if (!BF) return '';
+        if (s < 3600) return BF.count(i18n.min_ago, Math.floor(s / 60));
+        if (s < 86400) return BF.count(i18n.h_ago, Math.floor(s / 3600));
+        return BF.count(i18n.d_ago, Math.floor(s / 86400));
+    }
+
+    // The language of the page for letter case ("i" becomes "İ" in Turkish).
+    function pageLang() {
+        var l = (BF && BF.locale) || document.documentElement.lang || '';
+        return String(l).replace('_', '-') || undefined;
+    }
+
+    function monogram(name) {
+        var words = String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
+        var out = words.map(function (w) { return Array.from ? Array.from(w)[0] : w.charAt(0); }).join('');
+        try {
+            return out.toLocaleUpperCase(pageLang());
+        } catch (e) {
+            return out.toUpperCase();
+        }
+    }
+
+    // ------------------------------------------------------------------ KPI rows
+
+    // The small line of the period in each store card. Today's point of a
+    // day range is left out (a morning dip is not a trend); within a single
+    // day the hours add up as they pass.
+    function renderKpiSparks(d) {
+        var slots = document.querySelectorAll('.bp-dv-spark[data-spark]');
+        if (!slots.length) return;
+        sizeKpis();
+        var ss = d && d.sales_series;
+        var cur = (ss && Array.isArray(ss.cur)) ? ss.cur : [];
+        var day = !!ss && ss.unit === 'day';
+        var pts = cur.slice();
+        if (day && ss.today !== null && ss.today === pts.length - 1) pts = pts.slice(0, -1);
+        var long = day && pts.length > 7;
+        var k1 = long ? 1 : 0;
+        var k2 = long ? 3 : 0;
+        var useAll = pts.some(function (x) { return x && x.ra !== undefined; });
+        var run = function (pick) {
+            if (day) return pts.map(function (x) { return x ? pick(x) : null; });
+            var cr = 0;
+            var co = 0;
+            return pts.map(function (x) {
+                if (!x) return null;
+                cr += Number(useAll && x.ra !== undefined ? x.ra : x.r) || 0;
+                co += Number(x.o) || 0;
+                return pick({ r: cr, o: co });
+            });
+        };
+        var series = {
+            r: V ? V.smooth(run(function (x) { return Number(useAll && x.ra !== undefined ? x.ra : x.r) || 0; }), k1) : [],
+            o: V ? V.smooth(run(function (x) { return Number(x.o) || 0; }), k1) : [],
+            aov: V ? V.smooth(run(function (x) { return Number(x.o) ? (Number(x.r) || 0) / Number(x.o) : null; }), k2) : [],
+            v: day && V ? V.smooth(pts.map(function (x) { return x ? Number(x.v) || 0 : null; }), k1) : [],
+            conv: day && V ? V.smooth(pts.map(function (x) { return x && Number(x.v) ? (Number(x.o) || 0) / Number(x.v) : null; }), k2) : []
+        };
+        Array.prototype.forEach.call(slots, function (slot) {
+            var vals = series[slot.getAttribute('data-spark')] || [];
+            // A flat line at zero (nothing sold yet today) says nothing the
+            // figure does not.
+            var moves = vals.some(function (v) { return v !== null && v !== 0; });
+            // Measured while shown: a hidden slot has no width, and one left
+            // hidden here would never be measured again when its card widens.
+            slot.classList.remove('is-empty');
+            var w = slot.clientWidth;
+            var svg = (V && w > 0 && vals.length > 1 && moves) ? V.spark(vals, w, 30, V.isRtl(slot)) : '';
+            slot.innerHTML = svg;
+            slot.classList.toggle('is-empty', !svg);
+        });
+    }
+
+    // Count the store and money figures up after a range change. The finished
+    // server text (wc_price markup) is put back at the end.
+    function playKpis(d) {
+        if (!V || !BF) return;
+        var p = d.profit || {};
+        var figures = [
+            ['card-total-sales', d.total_sales_raw, 'm'],
+            ['card-orders', d.order_count, 'n'],
+            ['card-aov', d.aov_raw, 'm'],
+            ['card-visitors', d.visitor_count, 'n'],
+            ['card-conversion', d.conversion_rate, 'p'],
+            ['card-profit-revenue', p.revenue_raw, 'm'],
+            ['card-profit-cogs', p.cogs_raw, 'm'],
+            ['card-profit-expenses', p.expenses_raw, 'm'],
+            ['card-profit-net', p.net_raw, 'm']
         ];
-        funnel = funnel || {};
-        var values = [funnel.visitors, funnel.products, funnel.cart, funnel.checkout, funnel.orders];
-        var colors = ['#303030', '#4a4a4a', '#6a6a6a', '#8a8a8a', '#1a8917'];
-
-        // Nothing at any step: why, instead of empty bars on a 0 to 1 axis.
-        if (values.every(function (v) { return !Number(v); })) {
-            setChartEmpty(ctx, emptyReason('visits'));
-            return;
-        }
-        var wasHidden = setChartEmpty(ctx, null);
-
-        if (funnelChart) {
-            funnelChart.data.datasets[0].data = values;
-            if (wasHidden) funnelChart.resize();
-            funnelChart.update();
-            return;
-        }
-
-        funnelChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: values,
-                    backgroundColor: colors,
-                    borderRadius: 4,
-                    barThickness: 32
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(0,0,0,0.04)' },
-                        ticks: { font: { size: 11 } }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: { font: { size: 11, weight: '500' } }
-                    }
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#303030',
-                        cornerRadius: 6,
-                        padding: 10,
-                        callbacks: {
-                            label: function (ctx) {
-                                return BF ? BF.tooltipValue(ctx) : ctx.formattedValue;
-                            }
-                        }
-                    }
-                }
-            }
+        var fmts = {
+            m: function (v) { return money(v); },
+            n: function (v) { return formatNumber(Math.round(v)); },
+            p: function (v) { return fmtPct(v, 2); }
+        };
+        figures.forEach(function (f) {
+            var el = document.getElementById(f[0]);
+            var to = Number(f[1]);
+            if (!el || !isFinite(to)) return;
+            var card = el.closest('.brikpanel-dash-card') || el;
+            var html = el.innerHTML;
+            schedulePlay(card, function () {
+                V.countUp(el, to, fmts[f[2]], { done: function () { el.innerHTML = html; } });
+            });
         });
     }
 
-    // =========================================================================
-    // ABANDONED CARTS (one line under the funnel)
-    // =========================================================================
+    // ------------------------------------------------------------------ sales over time
+
+    function salesMetricValue(x, m) {
+        if (!x) return null;
+        if (m === 'aov') return Number(x.o) ? (Number(x.r) || 0) / Number(x.o) : null;
+        return Number(x[m]) || 0;
+    }
+
+    function renderSales(d, allowPlay) {
+        dvCards('sales').forEach(function (card) { drawSalesCard(card, d, allowPlay !== false); });
+    }
+
+    function drawSalesCard(card, d, allowPlay) {
+        var box = card.querySelector('.bp-dv-chart');
+        var empty = dvSlot(card, 'empty');
+        var ss = d && d.sales_series;
+        var p = (d && d.period) || {};
+        if (!box || !V) return;
+
+        var curPts = (ss && Array.isArray(ss.cur)) ? ss.cur : [];
+        var prevPts = (ss && Array.isArray(ss.prev)) ? ss.prev : [];
+        var hourly = !!ss && ss.unit === 'hour';
+        var isToday = hourly && ss.now_hour !== null && ss.now_hour !== undefined;
+        var m = salesMetric;
+
+        // Within a day the hours add up as they pass ("so far"): a quiet
+        // morning reads as a slow start, not as a line jumping between 0 and 1.
+        var series = function (arr) {
+            if (!hourly) return arr.map(function (x) { return salesMetricValue(x, m); });
+            var cr = 0;
+            var co = 0;
+            return arr.map(function (x) {
+                if (!x) return null;
+                cr += Number(x.r) || 0;
+                co += Number(x.o) || 0;
+                return m === 'r' ? cr : m === 'o' ? co : (co ? cr / co : null);
+            });
+        };
+        var sum = function (arr, k) {
+            var t = 0;
+            arr.forEach(function (x) { if (x) t += Number(x[k]) || 0; });
+            return t;
+        };
+        var cur = series(curPts);
+        var prev = series(prevPts);
+        var curR = sum(curPts, 'r');
+        var curO = sum(curPts, 'o');
+        var prevR = sum(prevPts, 'r');
+        var prevO = sum(prevPts, 'o');
+        var total = m === 'r' ? curR : m === 'o' ? curO : (curO ? curR / curO : 0);
+        var prevTotal = m === 'r' ? prevR : m === 'o' ? prevO : (prevO ? prevR / prevO : 0);
+        var fmt = function (v) { return m === 'o' ? formatNumber(Math.round(v)) : money(v); };
+
+        var figure = dvSlot(card, 'total');
+        if (figure) figure.textContent = fmt(total);
+        var hasPrev = prevPts.length > 0;
+        var change = hasPrev ? calcDelta(total, prevTotal) : null;
+        dvDelta(dvSlot(card, 'delta'), change, false);
+        // "vs previous 30 days" only beside a change it explains.
+        setIsolated(dvSlot(card, 'cmp'), (change === null || change === 0) ? '' : hourly
+            ? (isToday ? (i18n.sales_vs_yesterday || '') : (i18n.sales_vs_day_before || ''))
+            : (BF ? BF.count(i18n.sales_vs_days, Number(p.days) || curPts.length) : ''));
+
+        var curName = hourly
+            ? (isToday ? (i18n.today || '') : (p.range === 'yesterday' ? (i18n.yesterday || '') : (BF ? BF.dayMonth(p.from_iso) : '')))
+            : (p.label || '');
+        var prevName = hourly
+            ? (isToday ? (i18n.yesterday || '') : (prevPts[0] && BF ? BF.dayMonth(String(prevPts[0].t).slice(0, 10)) : ''))
+            : (i18n.sales_prev_period || '');
+        var curLabel = dvSlot(card, 'cur-label');
+        var prevLabel = dvSlot(card, 'prev-label');
+        if (curLabel) curLabel.textContent = curName;
+        if (prevLabel) {
+            prevLabel.textContent = prevName;
+            prevLabel.parentNode.hidden = !hasPrev;
+        }
+
+        var hasSales = curPts.some(function (x) { return x && (Number(x.r) !== 0 || Number(x.o) !== 0); });
+        // No lines, nothing for the key to name.
+        var legend = card.querySelector('.bp-dv-legend');
+        if (legend) legend.hidden = !hasSales;
+        if (!hasSales) {
+            box.hidden = true;
+            box.innerHTML = '';
+            if (empty) {
+                fillEmpty(empty, emptyReason('orders', 'site'));
+                empty.hidden = false;
+            }
+            V.tip.hide();
+            return;
+        }
+        if (empty) empty.hidden = true;
+        box.hidden = false;
+
+        var todayIdx = (!hourly && ss.today !== null && ss.today !== undefined) ? Number(ss.today) : null;
+        var metricName = hourly
+            ? (m === 'r' ? i18n.sales_r_so_far : m === 'o' ? i18n.sales_o_so_far : i18n.sales_aov_so_far)
+            : (m === 'r' ? i18n.revenue : m === 'o' ? i18n.orders : i18n.aov_label);
+        var dayOf = function (pt) { return pt && BF ? BF.dateShort(String(pt.t).slice(0, 10)) : ''; };
+
+        V.line(box, {
+            cur: cur,
+            prev: hasPrev ? prev : [],
+            partialFrom: todayIdx !== null && todayIdx === cur.length - 1 ? todayIdx : null,
+            hourly: hourly,
+            step: m === 'o' ? 'int' : '',
+            ariaLabel: (metricName || '') + ', ' + curName,
+            live: dvSlot(card, 'live'),
+            xLabel: function (i) {
+                return hourly ? hourLabel(i) : (BF ? BF.dayMonth(String(curPts[i].t).slice(0, 10)) : String(curPts[i].t));
+            },
+            yLabel: function (v) {
+                return m === 'o' ? formatNumber(v) : (BF && BF.compactMoney ? BF.compactMoney(v) : String(v));
+            },
+            tipAt: function (i) {
+                var title = hourly
+                    ? (BF ? BF.format(i18n.sales_until, [curName, hourLabel(i, '59')]) : '')
+                    : (i === todayIdx ? fillText(i18n.sales_so_far, dayOf(curPts[i])) : dayOf(curPts[i]));
+                var rows = [[metricName || '', cur[i] === null || cur[i] === undefined ? (i18n.sales_not_yet || '') : fmt(cur[i])]];
+                if (hasPrev && prev[i] !== null && prev[i] !== undefined) {
+                    rows.push([
+                        hourly ? (BF ? BF.format(i18n.sales_until, [prevName, hourLabel(i, '59')]) : '') : fillText(i18n.sales_prev_of, dayOf(prevPts[i])),
+                        fmt(prev[i])
+                    ]);
+                }
+                if (m === 'r' && !hourly && curPts[i]) {
+                    rows.push([i18n.orders || '', formatNumber(Number(curPts[i].o) || 0)]);
+                }
+                return { title: title, rows: rows };
+            }
+        });
+
+        if (allowPlay) {
+            schedulePlay(card, function () {
+                var svg = box.querySelector('svg');
+                if (!svg) return;
+                var ln = svg.querySelector('.bp-dv-ch-line');
+                if (ln && ln.getTotalLength) {
+                    var len = ln.getTotalLength();
+                    V.anim(ln, [{ strokeDasharray: len + ' ' + len, strokeDashoffset: len }, { strokeDasharray: len + ' ' + len, strokeDashoffset: 0 }], { duration: 1100, easing: 'cubic-bezier(.65, 0, .35, 1)' });
+                }
+                V.anim(svg.querySelector('.bp-dv-ch-area'), [{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: 500 });
+                V.anim(svg.querySelector('.bp-dv-ch-prev'), [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 200 });
+                var fig = dvSlot(card, 'total');
+                if (fig) {
+                    var text = fig.textContent;
+                    V.countUp(fig, total, fmt, { done: function () { fig.textContent = text; } });
+                }
+            });
+        }
+    }
+
+    // ------------------------------------------------------------------ funnel (B)
+
+    function rateText(r) {
+        if (r === null || r === undefined || !isFinite(r)) return '';
+        return r > 100 ? fmtPct(100, 0) + '+' : fmtPct(r, 1);
+    }
+
+    function renderFunnel(d, allowPlay) {
+        dvCards('funnel').forEach(function (card) { drawFunnelCard(card, d, allowPlay !== false); });
+    }
+
+    function drawFunnelCard(card, d, allowPlay) {
+        var box = dvSlot(card, 'flow');
+        var empty = dvSlot(card, 'empty');
+        var conv = dvSlot(card, 'conv');
+        if (!box || !V) return;
+        var f = (d && d.funnel) || {};
+        var vals = [f.visitors, f.products, f.cart, f.checkout, f.orders].map(function (v) { return Math.max(0, Number(v) || 0); });
+        var labels = [i18n.visitors, i18n.product_views, i18n.add_to_cart, i18n.checkout, i18n.orders];
+
+        if (conv) {
+            conv.textContent = '';
+            if (vals[0] > 0) {
+                fillNodes(conv, i18n.funnel_converted || '%s', [bold(fmtPct(Math.min(100, vals[4] / vals[0] * 100), 2))]);
+            }
+        }
+
+        if (vals.every(function (v) { return !v; })) {
+            box.hidden = true;
+            box.innerHTML = '';
+            box.style.height = '';
+            if (empty) {
+                fillEmpty(empty, emptyReason('visits'));
+                empty.hidden = false;
+            }
+            return;
+        }
+        if (empty) empty.hidden = true;
+        box.hidden = false;
+
+        var max = Math.max.apply(null, vals);
+        var steps = vals.map(function (val, i) {
+            var rate = i && vals[i - 1] ? val / vals[i - 1] * 100 : null;
+            return {
+                label: labels[i] || '',
+                value: formatNumber(val),
+                val: val,
+                rel: max ? val / max : 0,
+                rateRaw: rate,
+                rate: rate === null ? '' : rateText(rate),
+                share: vals[0] ? val / vals[0] * 100 : 0,
+                left: i ? Math.max(0, vals[i - 1] - val) : 0
+            };
+        });
+
+        V.flow(box, steps, {
+            ariaFor: function (i) { return steps[i].label + ' ' + steps[i].value; },
+            tipFor: function (i) {
+                var st = steps[i];
+                var rows = [[i18n.people || '', st.value]];
+                if (i) {
+                    rows.push([i18n.of_visitors || '', fmtPct(st.share, 1)]);
+                    if (st.rate) rows.push([i18n.of_prev_step || '', st.rate]);
+                    if (st.left > 0) rows.push([i18n.did_not_continue || '', formatNumber(st.left)]);
+                }
+                return { title: st.label, rows: rows, note: st.rateRaw !== null && st.rateRaw > 100 ? (i18n.funnel_more_orders || '') : '' };
+            }
+        });
+
+        if (allowPlay) {
+            schedulePlay(card, function () {
+                var rib = box.querySelector('.bp-dv-flow-rib');
+                var dur = 1250;
+                if (rib) V.anim(rib, [{ clipPath: box.getAttribute('data-reveal') }, { clipPath: 'inset(0 0 0 0)' }], { duration: dur, delay: 120, easing: 'cubic-bezier(.65, 0, .35, 1)' });
+                box.querySelectorAll('.bp-dv-flow-bead').forEach(function (b) {
+                    V.anim(b, [{ opacity: 0, transform: 'translate(-50%, -50%) scale(.6)' }, { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }], { duration: 420, delay: 120 + dur * (Number(b.getAttribute('data-x')) || 0) * 0.95, easing: 'cubic-bezier(.34, 1.4, .64, 1)' });
+                });
+            });
+        }
+    }
+
+    // ------------------------------------------------------------------ abandoned carts
 
     // "Abandoned carts 6 ↑20% · $36,799.80 · Recovered 1 (17%)": carts first
-    // left in the period, their value, how many were bought back since. The
-    // chart gives up the line's height so the row keeps its size. Shown only
-    // while carts are collected; a payload cached before these keys existed
-    // leaves the line hidden.
+    // left in the period, their value, how many were bought back since. Shown
+    // only while carts are collected; a payload cached before these keys
+    // existed leaves the line hidden.
     function renderAbandonedCarts(data, on) {
         var line = document.getElementById('brikpanel-dash-cartab');
         if (!line) return;
-        var canvas = document.getElementById('brikpanel-funnel-chart');
-        var chartWrap = canvas ? canvas.parentElement : null;
         var show = !!on && !!data && typeof data === 'object';
 
-        line.querySelectorAll('.brikpanel-dash-cartab-item').forEach(function (node) { node.remove(); });
+        line.querySelectorAll('.brikpanel-dash-cartab-item, .brikpanel-dash-cartab-vals').forEach(function (node) { node.remove(); });
         line.hidden = !show;
-        if (chartWrap && chartWrap.classList.contains('has-cartab') !== show) {
-            chartWrap.classList.toggle('has-cartab', show);
-            if (funnelChart) funnelChart.resize();
-        }
         if (!show) return;
+
+        var vals = document.createElement('span');
+        vals.className = 'brikpanel-dash-cartab-vals';
+        line.appendChild(vals);
 
         var count = Number(data.count) || 0;
         if (!count) {
-            line.appendChild(cartabItem(i18n.cartab_none || '', ''));
+            vals.appendChild(cartabItem(i18n.cartab_none || '', ''));
             return;
         }
 
@@ -1872,17 +2117,17 @@
             setDelta(delta, Number(data.delta), true);
             countItem.appendChild(delta);
         }
-        line.appendChild(countItem);
+        vals.appendChild(countItem);
 
         if (data.value) {
-            line.appendChild(cartabItem(String(data.value), 'brikpanel-dash-cartab-sep'));
+            vals.appendChild(cartabItem(String(data.value), 'brikpanel-dash-cartab-sep'));
         }
 
         var rate = data.rate === null || data.rate === undefined ? '' : fmtPct(Number(data.rate), 0);
         var recovered = BF
             ? BF.format(i18n.cartab_recovered || '', [formatNumber(Number(data.recovered) || 0), rate])
             : String(data.recovered || 0);
-        line.appendChild(cartabItem(recovered, 'brikpanel-dash-cartab-sep'));
+        vals.appendChild(cartabItem(recovered, 'brikpanel-dash-cartab-sep'));
     }
 
     function cartabItem(text, extraClass) {
@@ -1898,89 +2143,521 @@
         return item;
     }
 
-    // =========================================================================
-    // ORDER RATES CHART (Doughnut)
-    // =========================================================================
+    // ------------------------------------------------------------------ order rates (D)
 
-    function renderRatesChart(rates) {
-        var ctx = document.getElementById('brikpanel-rates-chart');
-        if (!ctx || typeof Chart === 'undefined') return;
+    var RATE_CATS = [
+        ['successful', 'successful'],
+        ['refunded', 'refunded'],
+        ['cancelled', 'cancelled'],
+        ['failed', 'failed']
+    ];
 
-        var labels = [
-            (i18n.successful || 'Successful') + ' (' + fmtPct(rates.successful) + ')',
-            (i18n.failed || 'Failed') + ' (' + fmtPct(rates.failed) + ')',
-            (i18n.refunded || 'Returns & refunds') + ' (' + fmtPct(rates.refunded) + ')',
-            (i18n.cancelled || 'Cancelled') + ' (' + fmtPct(rates.cancelled) + ')'
-        ];
-        var values = [rates.successful, rates.failed, rates.refunded, rates.cancelled];
-        var colors = ['#303030', '#d72c0d', '#8a8a8a', '#616161'];
+    // Order counts per group; a payload cached before the counts existed has
+    // only the shares, which are turned back into counts.
+    function rateCounts(rates) {
+        rates = rates || {};
+        var counts = rates.counts && typeof rates.counts === 'object' ? rates.counts : null;
+        var total = Number(rates.total) || 0;
+        var out = {};
+        RATE_CATS.forEach(function (c) {
+            out[c[0]] = counts ? Math.max(0, Number(counts[c[0]]) || 0) : Math.round((Number(rates[c[0]]) || 0) * total / 100);
+        });
+        return out;
+    }
 
-        // No orders in the window: the reason instead of a grey placeholder
-        // ring with a "No orders" legend.
-        if (values.every(function (v) { return !Number(v); })) {
-            setChartEmpty(ctx, emptyReason('orders', 'site'));
+    function renderRates(d, allowPlay) {
+        dvCards('rates').forEach(function (card) { drawRatesCard(card, d, allowPlay !== false); });
+    }
+
+    function drawRatesCard(card, d, allowPlay) {
+        var box = dvSlot(card, 'box');
+        var empty = dvSlot(card, 'empty');
+        var lead = dvSlot(card, 'lead');
+        var ordersEl = dvSlot(card, 'orders');
+        if (!box || !V) return;
+        var counts = rateCounts(d && d.order_rates);
+        var total = 0;
+        RATE_CATS.forEach(function (c) { total += counts[c[0]]; });
+        setIsolated(ordersEl, total && BF ? BF.count(i18n.camp_orders, total) : '');
+
+        if (!total) {
+            box.innerHTML = '';
+            box.hidden = true;
+            if (lead) lead.hidden = true;
+            if (empty) {
+                fillEmpty(empty, emptyReason('orders', 'site'));
+                empty.hidden = false;
+            }
             return;
         }
-        var wasHidden = setChartEmpty(ctx, null);
+        if (empty) empty.hidden = true;
+        if (lead) lead.hidden = false;
+        box.hidden = false;
 
-        if (ratesChart) {
-            ratesChart.data.labels = labels;
-            ratesChart.data.datasets[0].data = values;
-            ratesChart.data.datasets[0].backgroundColor = colors;
-            if (wasHidden) ratesChart.resize();
-            ratesChart.update();
-            return;
+        var cats = RATE_CATS.map(function (c) {
+            var n = counts[c[0]];
+            return { key: c[0], cls: 'is-' + c[0], label: i18n[c[1]] || '', n: n, pct: Math.round(n / total * 1000) / 10 };
+        });
+        var w = box.clientWidth || 300;
+        var wide = w >= 430;
+        var size = wide ? Math.min(196, Math.round(w * 0.42)) : Math.min(w, 176);
+        var aria = cats.map(function (c) { return c.label + ' ' + fmtPct(c.pct, 1); }).join(', ');
+
+        box.classList.toggle('is-narrow', !wide);
+        box.innerHTML = V.waffle(cats.map(function (c) { return { key: c.key, n: c.n, cls: c.cls }; }), size, aria, V.isRtl(box)) +
+            '<ul class="bp-dv-rates-leg"></ul>';
+        var list = box.querySelector('.bp-dv-rates-leg');
+        cats.forEach(function (c) {
+            var li = document.createElement('li');
+            li.className = 'bp-dv-rates-item' + (c.n ? '' : ' is-zero');
+            li.setAttribute('data-k', c.key);
+            li.setAttribute('tabindex', '0');
+            li.setAttribute('data-bp-tip', 'top');
+            var sw = document.createElement('i');
+            sw.className = 'bp-dv-sw ' + c.cls;
+            sw.setAttribute('aria-hidden', 'true');
+            var name = document.createElement('span');
+            name.className = 'bp-dv-lname';
+            name.appendChild(document.createTextNode(c.label));
+            var small = document.createElement('small');
+            setIsolated(small, BF ? BF.count(i18n.camp_orders, c.n) : String(c.n));
+            name.appendChild(small);
+            var pct = document.createElement('b');
+            pct.className = 'bp-dv-lpct';
+            pct.textContent = fmtPct(c.pct, 1);
+            var bubble = document.createElement('span');
+            bubble.className = 'brikpanel-tip bp-dv-tipbox';
+            bubble.setAttribute('role', 'tooltip');
+            V.tip.fill(bubble, { title: c.label, rows: [[i18n.orders || '', formatNumber(c.n)], [i18n.share || '', fmtPct(c.pct, 1)]] });
+            li.appendChild(sw);
+            li.appendChild(name);
+            li.appendChild(pct);
+            li.appendChild(bubble);
+            list.appendChild(li);
+        });
+        wireRatesHighlight(card, box, cats);
+
+        if (allowPlay) {
+            schedulePlay(card, function () {
+                box.querySelectorAll('.bp-dv-sq').forEach(function (s) {
+                    s.style.transformBox = 'fill-box';
+                    s.style.transformOrigin = '50% 50%';
+                    V.anim(s, [{ opacity: 0, transform: 'scale(.4)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 320, delay: 140 + (Number(s.getAttribute('data-n')) || 0) * 6, easing: V.EASE_OUT });
+                });
+                box.querySelectorAll('.bp-dv-rates-item').forEach(function (li, i) {
+                    V.anim(li, [{ opacity: 0 }, { opacity: 1 }], { duration: 360, delay: 420 + i * 90 });
+                });
+            });
         }
+    }
 
-        ratesChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: values,
-                    backgroundColor: colors,
-                    borderWidth: 0,
-                    spacing: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'right',
-                        labels: {
-                            boxWidth: 10,
-                            padding: 12,
-                            font: { size: 11 }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: '#303030',
-                        cornerRadius: 6,
-                        padding: 10,
-                        callbacks: {
-                            // The label already carries its percentage.
-                            label: function (ctx) { return ctx.label; }
-                        }
-                    }
-                }
+    // Pointing at a square or a legend row lights up its group; a square
+    // also shows its group in the chart tooltip.
+    function wireRatesHighlight(card, box, cats) {
+        var setHl = function (key) {
+            card.classList.toggle('is-hl', !!key);
+            box.querySelectorAll('[data-k]').forEach(function (n) {
+                var same = !!key && n.getAttribute('data-k') === key;
+                n.classList.toggle('is-on', same);
+                n.classList.toggle('is-dim', !!key && !same);
+            });
+        };
+        var tipFor = function (key) {
+            var c = cats.filter(function (x) { return x.key === key; })[0];
+            return c ? { title: c.label, rows: [[i18n.orders || '', formatNumber(c.n)], [i18n.share || '', fmtPct(c.pct, 1)]] } : null;
+        };
+        box.onpointerover = function (e) {
+            var sq = e.target.closest && e.target.closest('.bp-dv-sq');
+            var li = e.target.closest && e.target.closest('.bp-dv-rates-item');
+            if (sq) {
+                setHl(sq.getAttribute('data-k'));
+                var t = tipFor(sq.getAttribute('data-k'));
+                if (t) V.tip.show(t, sq.getBoundingClientRect());
+            } else if (li) {
+                setHl(li.getAttribute('data-k'));
+            }
+        };
+        box.onpointerleave = function () {
+            setHl(null);
+            V.tip.hide();
+        };
+        box.onfocusin = function (e) {
+            var li = e.target.closest && e.target.closest('.bp-dv-rates-item');
+            if (li) setHl(li.getAttribute('data-k'));
+        };
+        box.onfocusout = function () { setHl(null); };
+        box.onpointerout = function (e) {
+            var sq = e.target.closest && e.target.closest('.bp-dv-sq');
+            if (sq && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.bp-dv-sq'))) V.tip.hide();
+        };
+    }
+
+    // ------------------------------------------------------------------ products
+
+    function productViews(d) {
+        return {
+            sold: { rows: d.top_products, name: 'name', val: 'qty', unit: i18n.unit_sold, reason: function () { return emptyReason('orders', 'site'); } },
+            viewed: { rows: d.most_viewed, name: 'title', val: 'views', unit: i18n.unit_views, reason: function () { return emptyReason('visits'); } },
+            cart: { rows: d.most_cart, name: 'name', val: 'count', unit: i18n.unit_adds, reason: function () { return emptyReason('visits'); } }
+        };
+    }
+
+    function renderProducts(d, allowPlay) {
+        dvCards('products').forEach(function (card) {
+            var views = productViews(d || {});
+            card.querySelectorAll('[data-bp-dv-view]').forEach(function (panel) {
+                drawProductPanel(panel, views[panel.getAttribute('data-bp-dv-view')]);
+            });
+            if (allowPlay !== false) {
+                schedulePlay(card, function () { playProductBars(card); });
             }
         });
     }
 
-    // =========================================================================
-    // TABLES
-    // =========================================================================
+    function drawProductPanel(panel, view) {
+        if (!panel || !view) return;
+        var rows = Array.isArray(view.rows) ? view.rows : [];
+        if (!rows.length) {
+            showEmpty(panel, view.reason());
+            return;
+        }
+        var max = 1;
+        rows.forEach(function (r) { max = Math.max(max, Number(r[view.val]) || 0); });
+        var ul = document.createElement('ul');
+        ul.className = 'bp-dv-plist';
+        rows.forEach(function (r, i) {
+            var val = Number(r[view.val]) || 0;
+            var li = document.createElement('li');
+            li.className = 'bp-dv-prow';
+            if (r.url) {
+                li.className += ' brikpanel-dash-row-link';
+                li.setAttribute('data-href', r.url);
+                li.setAttribute('tabindex', '0');
+                li.setAttribute('role', 'link');
+            }
+            var name = String(r[view.name] || '');
+            li.innerHTML =
+                '<span class="bp-dv-rank">' + (i + 1) + '</span>' +
+                '<span class="bp-dv-ptile" aria-hidden="true">' + escapeHtml(monogram(name)) + '</span>' +
+                '<span class="bp-dv-pmain"><span class="bp-dv-pname" dir="auto">' + escapeHtml(name) + '</span>' +
+                '<span class="bp-dv-pbar"><i style="width:' + (val / max * 100).toFixed(1) + '%"></i></span></span>' +
+                '<span class="bp-dv-pval"><b>' + escapeHtml(formatNumber(val)) + '</b><span>' + escapeHtml(BF ? BF.plural(view.unit, val) : '') + '</span></span>';
+            ul.appendChild(li);
+        });
+        panel.textContent = '';
+        panel.appendChild(ul);
+    }
+
+    function playProductBars(card) {
+        if (!V) return;
+        var panel = Array.prototype.filter.call(card.querySelectorAll('[data-bp-dv-view]'), function (p) { return !p.hidden; })[0];
+        if (!panel) return;
+        panel.querySelectorAll('.bp-dv-pbar i').forEach(function (b, i) {
+            V.anim(b, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 600, delay: 60 + i * 60, easing: V.EASE_OUT });
+        });
+    }
+
+    // ------------------------------------------------------------------ recent orders
+
+    // WooCommerce's name for an order status (i18n.status_labels, keyed like
+    // $order->get_status()), or '' when it has none.
+    function statusLabelFor(slug) {
+        var labels = i18n.status_labels;
+        if (!labels || typeof labels !== 'object' || !Object.prototype.hasOwnProperty.call(labels, slug)) return '';
+        return typeof labels[slug] === 'string' ? labels[slug] : '';
+    }
+
+    function orderWhen(o) {
+        var ts = Number(o.ts) || 0;
+        if (!ts || !BF) return o.date || '';
+        var when = BF.parts(ts);
+        var now = BF.now();
+        return when && now && when.y === now.y ? BF.date(ts, dayMonthFmt() + ' ' + timeFmt()) : BF.dateShort(ts);
+    }
+
+    function renderOrders(orders) {
+        dvCards('orders').forEach(function (card) {
+            var list = dvSlot(card, 'list');
+            if (!list) return;
+            if (!Array.isArray(orders) || !orders.length) {
+                // All-time list: only the new-store reason applies; a store
+                // that has orders keeps its own sentence.
+                var st = emptyCtx.store;
+                showEmpty(list, (st && !st.has_any_order)
+                    ? emptyReason('orders', 'all')
+                    : { text: i18n.no_orders || '', note: '', preset: '' });
+                return;
+            }
+            var ul = document.createElement('ul');
+            ul.className = 'bp-dv-olist';
+            orders.forEach(function (o) {
+                var li = document.createElement('li');
+                li.className = 'bp-dv-orow';
+                if (o.edit_url) {
+                    li.className += ' brikpanel-dash-row-link';
+                    li.setAttribute('data-href', o.edit_url);
+                    li.setAttribute('tabindex', '0');
+                    li.setAttribute('role', 'link');
+                }
+                var status = String(o.status || '');
+                var statusLabel = statusLabelFor(status) || status;
+                var source = o.source && o.source.label
+                    ? '<span class="bp-dv-osrc" dir="auto">' + escapeHtml(o.source.label) + '</span>'
+                    : '';
+                // o.total and o.total_base are wc_price() markup from the server.
+                li.innerHTML =
+                    '<span class="bp-dv-ono"><b><bdi>#' + escapeHtml(String(o.number || o.id)) + '</bdi></b><span>' + escapeHtml(orderWhen(o)) + '</span></span>' +
+                    '<span class="bp-dv-ocust"><span class="bp-dv-oname" dir="auto">' + escapeHtml(o.customer || '') + '</span>' + source + '</span>' +
+                    '<span class="bp-dv-pill is-' + escapeAttr(status.replace(/[^a-z0-9_-]/gi, '')) + '">' + escapeHtml(statusLabel) + '</span>' +
+                    '<span class="bp-dv-otot"><b>' + (o.total || '') + '</b>' +
+                    (o.total_base ? '<span class="bp-dv-obase">≈ ' + o.total_base + '</span>' : '') +
+                    (o.items_label ? '<span><bdi>' + escapeHtml(o.items_label) + '</bdi></span>' : '') + '</span>';
+                ul.appendChild(li);
+            });
+            list.textContent = '';
+            list.appendChild(ul);
+        });
+    }
+
+    // ------------------------------------------------------------------ visitors
+
+    // Channel labels for the Sources tab.
+    function sourceChannelLabel(channel) {
+        var map = {
+            direct: i18n.src_direct,
+            search: i18n.src_search,
+            social: i18n.src_social,
+            referral: i18n.src_referral,
+            paid: i18n.src_paid,
+            email: i18n.src_email
+        };
+        return map[channel] || channel;
+    }
+
+    // Colour follows the device, never its rank: mobile, desktop, tablet.
+    var DEVICE_KEYS = [['mobile', 'device_mobile', 'is-k0'], ['desktop', 'device_desktop', 'is-k1'], ['tablet', 'device_tablet', 'is-k2']];
+
+    function legendHtml(groups) {
+        var t = 0;
+        groups.forEach(function (g) { t += g.n; });
+        return groups.map(function (g) {
+            return '<span class="bp-dv-dleg-item"><i class="bp-dv-dot-sw ' + escapeAttr(g.cls) + '" aria-hidden="true"></i><b>' + escapeHtml(g.name) + '</b><bdi>' + escapeHtml(fmtPct(t ? g.n / t * 100 : 0, 0)) + '</bdi><em><bdi>' + escapeHtml(formatNumber(g.n)) + '</bdi></em></span>';
+        }).join('');
+    }
+
+    // The strip sits beside its legend on a wide card, above it on a narrow one.
+    function stripRow(slot, groups, reason) {
+        if (!slot) return;
+        var total = 0;
+        groups.forEach(function (g) { total += g.n; });
+        if (!total) {
+            showEmpty(slot, reason);
+            return;
+        }
+        var bw = slot.clientWidth || 0;
+        if (!bw) {
+            slot.setAttribute('data-bp-dv-pending', '1');
+            return;
+        }
+        slot.removeAttribute('data-bp-dv-pending');
+        var side = bw >= 600;
+        var w = side ? Math.min(500, bw - 230) : Math.min(560, bw);
+        slot.innerHTML = '<div class="bp-dv-blk-row' + (side ? ' is-side' : '') + '"><div class="bp-dv-strip">' + V.dots(groups, w, V.isRtl(slot)) + '</div><div class="bp-dv-dleg">' + legendHtml(groups) + '</div></div>';
+    }
+
+    function playDots(root) {
+        if (!V || !root) return;
+        root.querySelectorAll('.bp-dv-dot').forEach(function (c) {
+            V.anim(c, [{ opacity: 0.12 }, { opacity: 1 }], { duration: 240, delay: 80 + (Number(c.getAttribute('data-n')) || 0) * 6, easing: 'linear' });
+        });
+    }
+
+    function renderVisitors(d, allowPlay) {
+        dvCards('visitors').forEach(function (card) {
+            card.querySelectorAll('[data-bp-dv-view]').forEach(function (panel) {
+                if (!panel.hidden) drawVisitorsPanel(panel, d);
+                else panel.setAttribute('data-bp-dv-stale', '1');
+            });
+            if (allowPlay !== false) {
+                schedulePlay(card, function () { playVisitorsPanel(card); });
+            }
+        });
+    }
+
+    function drawVisitorsPanel(panel, d) {
+        if (!panel || !d || !V) return;
+        panel.removeAttribute('data-bp-dv-stale');
+        var view = panel.getAttribute('data-bp-dv-view');
+        if (view === 'devices') {
+            var groups = function (data) {
+                return DEVICE_KEYS.map(function (k) {
+                    return { key: k[0], name: i18n[k[1]] || k[0], n: Math.max(0, Number(data && data[k[0]]) || 0), cls: k[2] };
+                });
+            };
+            stripRow(dvSlot(panel, 'dev-visitors'), groups(d.devices), emptyReason('visits'));
+            stripRow(dvSlot(panel, 'dev-orders'), groups(d.order_devices), emptyReason('orders', 'site'));
+        } else if (view === 'sources') {
+            drawSources(panel, d.sources, d.top_referrers);
+        } else if (view === 'campaigns') {
+            drawCampaigns(dvSlot(panel, 'campaigns'), d.top_campaigns);
+        }
+    }
+
+    function drawSources(panel, data, referrers) {
+        var chEl = dvSlot(panel, 'channels');
+        var refWrap = dvSlot(panel, 'referrers-wrap');
+        var refEl = dvSlot(panel, 'referrers');
+        var order = ['direct', 'search', 'social', 'referral', 'paid', 'email'];
+        var total = 0;
+        order.forEach(function (k) { total += Math.max(0, Number(data && data[k]) || 0); });
+        if (!total) {
+            // Visits counted but none with a known source keeps its own sentence.
+            showEmpty(chEl, emptyReason('visits', null, i18n.src_empty));
+            var t = emptyCtx.tracking;
+            if (refWrap) refWrap.hidden = !!t && (!t.enabled || emptyCtx.visitors <= 0);
+        } else {
+            var rows = order.map(function (k) { return { key: k, n: Math.max(0, Number(data[k]) || 0) }; })
+                .filter(function (r) { return r.n > 0; })
+                .sort(function (a, b) { return b.n - a.n; });
+            var max = rows[0].n;
+            chEl.innerHTML = '<ul class="bp-dv-srcs">' + rows.map(function (r) {
+                return '<li><span class="bp-dv-src-name">' + escapeHtml(sourceChannelLabel(r.key)) + '</span>' +
+                    '<span class="bp-dv-sbar"><i style="width:' + (r.n / max * 100).toFixed(1) + '%"></i></span>' +
+                    '<span class="bp-dv-spct"><bdi>' + escapeHtml(fmtPct(r.n / total * 100, 0)) + '</bdi></span></li>';
+            }).join('') + '</ul>';
+            if (refWrap) refWrap.hidden = false;
+        }
+        if (!refEl) return;
+        var list = Array.isArray(referrers) ? referrers.slice(0, 5) : [];
+        if (!list.length) {
+            showEmpty(refEl, { text: i18n.src_no_referrers || '', note: '', preset: '' });
+            return;
+        }
+        refEl.innerHTML = '<ul class="bp-dv-refs">' + list.map(function (r) {
+            return '<li><span dir="auto">' + escapeHtml(r.host || '') + '</span><b><bdi>' + escapeHtml(formatNumber(r.hits || 0)) + '</bdi></b></li>';
+        }).join('') + '</ul>';
+    }
+
+    function drawCampaigns(slot, list) {
+        if (!slot) return;
+        list = Array.isArray(list) ? list : [];
+        if (!list.length) {
+            showEmpty(slot, { text: i18n.camp_none || '', note: '', preset: '' });
+            return;
+        }
+        slot.innerHTML = '<ul class="bp-dv-camps">' + list.map(function (c) {
+            var orders = BF ? BF.count(i18n.camp_orders, Number(c.orders) || 0) : String(Number(c.orders) || 0);
+            var meta = orders;
+            if (c.conversion !== null && c.conversion !== undefined && BF) {
+                meta = BF.format(i18n.camp_meta || '', [orders, fmtPct(Number(c.conversion), 1)]);
+            }
+            return '<li><span class="bp-dv-camp" dir="auto" title="' + escapeAttr(c.name || '') + '">' + escapeHtml(c.name || '') + '</span>' +
+                '<span class="bp-dv-cmeta"><bdi>' + escapeHtml(meta) + '</bdi></span>' +
+                '<span class="bp-dv-crev"><bdi>' + escapeHtml(c.revenue_text || '—') + '</bdi></span></li>';
+        }).join('') + '</ul>';
+    }
+
+    function playVisitorsPanel(card) {
+        if (!V) return;
+        var panel = Array.prototype.filter.call(card.querySelectorAll('[data-bp-dv-view]'), function (p) { return !p.hidden; })[0];
+        if (!panel) return;
+        playDots(panel);
+        panel.querySelectorAll('.bp-dv-sbar i').forEach(function (b, i) {
+            V.anim(b, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 600, delay: 100 + i * 60, easing: V.EASE_OUT });
+        });
+        panel.querySelectorAll('.bp-dv-camps li, .bp-dv-refs li').forEach(function (li, i) {
+            V.anim(li, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 60 + i * 50 });
+        });
+    }
+
+    // ------------------------------------------------------------------ customers
+
+    var SEG_GROUPS = [['loyal', 'seg_loyal', 'is-loyal'], ['attention', 'seg_attention', 'is-attention'], ['risk', 'seg_risk', 'is-risk']];
+
+    function renderCustomers(d, allowPlay) {
+        dvCards('customers').forEach(function (card) {
+            drawCustomersCard(card, d);
+            if (allowPlay !== false) {
+                schedulePlay(card, function () { playDots(card); });
+            }
+        });
+    }
+
+    function drawCustomersCard(card, d) {
+        if (!card || !d || !V) return;
+        var typesSlot = dvSlot(card, 'types');
+        if (typesSlot) {
+            var ct = d.customer_types || {};
+            var groups = [
+                { key: 'new', name: i18n.ctype_new || '', n: Math.max(0, Number(ct['new']) || 0), cls: 'is-k0' },
+                { key: 'repeat', name: i18n.ctype_repeat || '', n: Math.max(0, Number(ct['repeat']) || 0), cls: 'is-k3' }
+            ];
+            var total = groups[0].n + groups[1].n;
+            var meta = dvSlot(card, 'types-meta');
+            setIsolated(meta, total && BF ? BF.count(i18n.types_meta, total) : '');
+            // Read from WooCommerce's analytics table, which can lag behind
+            // new orders: emptyReason() keeps the plain sentence while the
+            // window does have paid orders.
+            stripRow(typesSlot, groups, emptyReason('orders', 'all'));
+        }
+
+        var segSlot = dvSlot(card, 'segments');
+        if (segSlot) {
+            var segs = Array.isArray(d.rfm_distribution) ? d.rfm_distribution : [];
+            var totalSeg = 0;
+            segs.forEach(function (s) { totalSeg += Math.max(0, Number(s.customers) || 0); });
+            var segTotal = dvSlot(card, 'seg-total');
+            setIsolated(segTotal, totalSeg && BF ? BF.count(i18n.seg_total, totalSeg) : '');
+            // "Out of every 100 customers" only above a strip that is there.
+            var segMeta = card.querySelector('[data-block="segments"] .bp-dv-blk-meta');
+            if (segMeta) segMeta.hidden = !totalSeg;
+            if (!totalSeg) {
+                // The card covers all time: the lifetime value card's sentence.
+                var st = emptyCtx.store;
+                showEmpty(segSlot, {
+                    text: (st && !st.has_any_order ? i18n.empty_rfm_new : i18n.ltv_empty) || i18n.ltv_empty || '',
+                    note: '',
+                    preset: ''
+                });
+                return;
+            }
+            var sg = SEG_GROUPS.map(function (g) {
+                var members = segs.filter(function (s) { return (s.group || 'attention') === g[0]; });
+                var n = 0;
+                members.forEach(function (s) { n += Math.max(0, Number(s.customers) || 0); });
+                return { key: g[0], name: i18n[g[1]] || g[0], n: n, cls: g[2], members: members };
+            });
+            stripRow(segSlot, sg, { text: '', note: '', preset: '' });
+            var detail = document.createElement('div');
+            detail.className = 'bp-dv-seg-detail';
+            sg.forEach(function (g) {
+                var p = document.createElement('p');
+                g.members.forEach(function (s, i) {
+                    if (i) p.appendChild(document.createTextNode(' · '));
+                    // A name and its count break to the next line together.
+                    var item = document.createElement('span');
+                    item.className = 'bp-dv-seg-item';
+                    var name = document.createElement('span');
+                    name.setAttribute('dir', 'auto');
+                    name.textContent = s.label || s.key || '';
+                    item.appendChild(name);
+                    item.appendChild(document.createTextNode(' '));
+                    item.appendChild(bold(formatNumber(Number(s.customers) || 0)));
+                    p.appendChild(item);
+                });
+                detail.appendChild(p);
+            });
+            segSlot.appendChild(detail);
+        }
+    }
+
+    // ------------------------------------------------------------------ low stock + LTV
 
     // Tables turn into stacked cards when they cannot show every column in
     // their box (field test B6: on a phone the right-hand totals scrolled out
     // of sight). Each box is watched once; its table is re-rendered in place,
     // so the shared helper looks it up again on every measurement.
-    // floor: stack below this room even when the table would squeeze in
-    // (see renderRecentOrders).
+    // floor: stack below this room even when the table would squeeze in.
     function refitDashTable(wrap, floor) {
         if (!wrap || !window.brikpanelFitTable) return;
         var table = wrap.querySelector('table.brikpanel-dash-table');
@@ -1992,37 +2669,6 @@
     // A long SKU may break after a hyphen, never mid-word.
     function skuHtml(sku) {
         return escapeHtml(sku).replace(/-/g, '-<wbr>');
-    }
-
-    function renderTopProducts(products) {
-        var wrap = document.getElementById('top-products-table');
-        if (!wrap) return;
-
-        if (!products || products.length === 0) {
-            showEmpty(wrap, emptyReason('orders', 'site'));
-            return;
-        }
-
-        var html = '<table class="brikpanel-dash-table"><thead><tr>' +
-            '<th>#</th>' +
-            '<th>' + (i18n.product || 'Product') + '</th>' +
-            '<th>' + (i18n.qty_sold || 'Qty sold') + '</th>' +
-            '</tr></thead><tbody>';
-
-        products.forEach(function (p, i) {
-            var rowAttr = p.url
-                ? ' class="brikpanel-dash-row-link" data-href="' + escapeAttr(p.url) + '" tabindex="0" role="link"'
-                : '';
-            html += '<tr' + rowAttr + '>' +
-                '<td class="rank">' + (i + 1) + '</td>' +
-                '<td class="brikpanel-fit-lead">' + escapeHtml(p.name) + '</td>' +
-                '<td class="brikpanel-fit-headline">' + formatNumber(p.qty) + '</td>' +
-                '</tr>';
-        });
-
-        html += '</tbody></table>';
-        wrap.innerHTML = html;
-        refitDashTable(wrap);
     }
 
     function initRowLinks() {
@@ -2060,386 +2706,6 @@
         });
     }
 
-    // WooCommerce's name for an order status (i18n.status_labels, keyed like
-    // $order->get_status()), or '' when it has none.
-    function statusLabelFor(slug) {
-        var labels = i18n.status_labels;
-        if (!labels || typeof labels !== 'object' || !Object.prototype.hasOwnProperty.call(labels, slug)) return '';
-        return typeof labels[slug] === 'string' ? labels[slug] : '';
-    }
-
-    function renderRecentOrders(orders) {
-        var wrap = document.getElementById('recent-orders-table');
-        if (!wrap) return;
-
-        if (!orders || orders.length === 0) {
-            // All-time list: only the new-store reason applies; a store that
-            // has orders keeps its own sentence.
-            var st = emptyCtx.store;
-            showEmpty(wrap, (st && !st.has_any_order)
-                ? emptyReason('orders', 'all')
-                : { text: i18n.no_orders || '', note: '', preset: '' });
-            return;
-        }
-
-        var html = '<table class="brikpanel-dash-table"><thead><tr>' +
-            '<th>' + (i18n.order || 'Order') + '</th>' +
-            '<th>' + (i18n.customer || 'Customer') + '</th>' +
-            '<th>' + (i18n.source || 'Source') + '</th>' +
-            '<th>' + (i18n.status || 'Status') + '</th>' +
-            '<th>' + (i18n.total || 'Total') + '</th>' +
-            '</tr></thead><tbody>';
-
-        orders.forEach(function (o) {
-            var sourceHtml = '';
-            if (o.source && o.source.label) {
-                // title: a long source name can shorten with "…" in the two-line rows.
-                sourceHtml = '<span class="brikpanel-dash-source" style="background:' + escapeHtml(o.source.color) + ';" title="' + escapeAttr(o.source.label) + '">' + escapeHtml(o.source.label) + '</span>';
-            }
-
-            var rowAttr = o.edit_url
-                ? ' class="brikpanel-dash-row-link" data-href="' + escapeAttr(o.edit_url) + '" tabindex="0" role="link"'
-                : '';
-
-            // WooCommerce's own name for the status, in the admin's language;
-            // a status it does not list keeps its short name.
-            var statusLabel = statusLabelFor(o.status);
-            var dateHtml = o.date ? '<span class="brikpanel-dash-order-date">' + escapeHtml(o.date) + '</span>' : '';
-            // Units on the order, under its total: the row already has two
-            // lines (number + date), so this adds no height.
-            // <bdi>: "3 items" keeps its order on a right-to-left screen.
-            var itemsHtml = o.items_label ? '<span class="brikpanel-dash-order-items"><bdi>' + escapeHtml(o.items_label) + '</bdi></span>' : '';
-            // The same count beside the customer, shown only when the table
-            // turns into two-line rows (phone, half-width card): "Name · 3 items".
-            var whoItemsHtml = o.items_label ? '<span class="brikpanel-dash-order-who-items"><bdi>' + escapeHtml(o.items_label) + '</bdi></span>' : '';
-
-            html += '<tr' + rowAttr + '>' +
-                // <bdi>: an order number with letters ("#2026-INV-0001") keeps
-                // its order on a right-to-left screen. The space keeps number
-                // and date two words for screen readers.
-                '<td class="brikpanel-fit-lead"><bdi>#' + escapeHtml(String(o.number || o.id)) + '</bdi> ' + dateHtml + '</td>' +
-                '<td class="brikpanel-dash-order-who"><span class="brikpanel-dash-order-who-name">' + escapeHtml(o.customer) + '</span>' + whoItemsHtml + '</td>' +
-                '<td>' + sourceHtml + '</td>' +
-                '<td><span class="brikpanel-dash-status ' + escapeHtml(o.status) + (statusLabel ? '' : ' brikpanel-dash-status--slug') + '">' + escapeHtml(statusLabel || o.status) + '</span></td>' +
-                '<td class="brikpanel-fit-headline">' + o.total + (o.total_base ? '<div class="brikpanel-dash-total-base">≈ ' + o.total_base + '</div>' : '') + itemsHtml + '</td>' +
-                '</tr>';
-        });
-
-        html += '</tbody></table>';
-        wrap.innerHTML = html;
-        // Five columns squeezed under 340px only fit by breaking the date over
-        // three lines (short status names, as in Arabic); rows read better.
-        // Stacked, each order is two lines (brikpanel-dashboard.css).
-        refitDashTable(wrap, 340);
-    }
-
-    function renderMostViewed(pages) {
-        var wrap = document.getElementById('most-viewed-table');
-        if (!wrap) return;
-
-        if (!pages || pages.length === 0) {
-            showEmpty(wrap, emptyReason('visits'));
-            return;
-        }
-
-        var html = '<table class="brikpanel-dash-table"><thead><tr>' +
-            '<th>#</th>' +
-            '<th>' + (i18n.page || 'Page') + '</th>' +
-            '<th>' + (i18n.views || 'Views') + '</th>' +
-            '</tr></thead><tbody>';
-
-        pages.forEach(function (p, i) {
-            var rowAttr = p.url
-                ? ' class="brikpanel-dash-row-link" data-href="' + escapeAttr(p.url) + '" tabindex="0" role="link"'
-                : '';
-            html += '<tr' + rowAttr + '>' +
-                '<td class="rank">' + (i + 1) + '</td>' +
-                '<td>' + escapeHtml(p.title) + '</td>' +
-                '<td>' + formatNumber(p.views) + '</td>' +
-                '</tr>';
-        });
-
-        html += '</tbody></table>';
-        wrap.innerHTML = html;
-        refitDashTable(wrap);
-    }
-
-    function renderMostCart(products) {
-        var wrap = document.getElementById('most-cart-table');
-        if (!wrap) return;
-
-        if (!products || products.length === 0) {
-            showEmpty(wrap, emptyReason('visits'));
-            return;
-        }
-
-        var html = '<table class="brikpanel-dash-table"><thead><tr>' +
-            '<th>#</th>' +
-            '<th>' + (i18n.product || 'Product') + '</th>' +
-            '<th>' + (i18n.cart_count || 'Cart adds') + '</th>' +
-            '</tr></thead><tbody>';
-
-        products.forEach(function (p, i) {
-            var rowAttr = p.url
-                ? ' class="brikpanel-dash-row-link" data-href="' + escapeAttr(p.url) + '" tabindex="0" role="link"'
-                : '';
-            html += '<tr' + rowAttr + '>' +
-                '<td class="rank">' + (i + 1) + '</td>' +
-                '<td>' + escapeHtml(p.name) + '</td>' +
-                '<td>' + formatNumber(p.count) + '</td>' +
-                '</tr>';
-        });
-
-        html += '</tbody></table>';
-        wrap.innerHTML = html;
-        refitDashTable(wrap);
-    }
-
-    // view: 'visitors' (tracking) or 'orders' (the orders' own browser).
-    function renderDevices(data, view) {
-        var wrap = document.getElementById('brikpanel-device-breakdown');
-        if (!wrap) return;
-        var mobile  = data ? (data.mobile  || 0) : 0;
-        var tablet  = data ? (data.tablet  || 0) : 0;
-        var desktop = data ? (data.desktop || 0) : 0;
-        var total   = mobile + tablet + desktop;
-
-        if (total === 0) {
-            showEmpty(wrap, view === 'orders' ? emptyReason('orders', 'site') : emptyReason('visits'));
-            return;
-        }
-
-        var pct = function (n) { return total > 0 ? Math.round((n / total) * 100) : 0; };
-
-        var rows = [
-            { label: i18n.device_desktop || 'Desktop', icon: '🖥', count: desktop, p: pct(desktop) },
-            { label: i18n.device_mobile  || 'Mobile',  icon: '📱', count: mobile,  p: pct(mobile)  },
-            { label: i18n.device_tablet  || 'Tablet',  icon: '⬛', count: tablet,  p: pct(tablet)  },
-        ];
-
-        var html = '<div class="brikpanel-device-list">';
-        rows.forEach(function (r) {
-            html += '<div class="brikpanel-device-row">'
-                + '<span class="brikpanel-device-label">' + escapeHtml(r.label) + '</span>'
-                + '<div class="brikpanel-device-bar-wrap">'
-                +   '<div class="brikpanel-device-bar" style="width:' + r.p + '%"></div>'
-                + '</div>'
-                + '<span class="brikpanel-device-pct">' + escapeHtml(fmtPct(r.p, 0)) + '</span>'
-                + '<span class="brikpanel-device-count brikpanel-dash-muted">(' + formatNumber(r.count) + ')</span>'
-                + '</div>';
-        });
-        html += '</div>';
-        wrap.innerHTML = html;
-    }
-
-    function renderCustomerTypes(data) {
-        var wrap = document.getElementById('brikpanel-customer-types');
-        if (!wrap) return;
-        var newC    = data ? (data['new']    || 0) : 0;
-        var repeatC = data ? (data['repeat'] || 0) : 0;
-        var total   = newC + repeatC;
-
-        // Read from WooCommerce's analytics table, which can lag behind new
-        // orders: emptyReason() keeps the plain sentence while the window
-        // does have paid orders.
-        if (total === 0) {
-            showEmpty(wrap, emptyReason('orders', 'all'));
-            return;
-        }
-
-        var pct = function (n) { return total > 0 ? Math.round((n / total) * 100) : 0; };
-
-        var rows = [
-            { label: i18n.ctype_new    || 'New customers',    count: newC,    p: pct(newC)    },
-            { label: i18n.ctype_repeat || 'Repeat customers', count: repeatC, p: pct(repeatC) },
-        ];
-
-        var html = '<div class="brikpanel-device-list">';
-        rows.forEach(function (r) {
-            html += '<div class="brikpanel-device-row">'
-                + '<span class="brikpanel-device-label">' + escapeHtml(r.label) + '</span>'
-                + '<div class="brikpanel-device-bar-wrap">'
-                +   '<div class="brikpanel-device-bar" style="width:' + r.p + '%"></div>'
-                + '</div>'
-                + '<span class="brikpanel-device-pct">' + escapeHtml(fmtPct(r.p, 0)) + '</span>'
-                + '<span class="brikpanel-device-count brikpanel-dash-muted">(' + formatNumber(r.count) + ')</span>'
-                + '</div>';
-        });
-        html += '</div>';
-        wrap.innerHTML = html;
-    }
-
-    // Channel labels for the Traffic Sources card. Falls back to English so the
-    // bars never render blank if a key is missing from the localize payload.
-    function sourceChannelLabel(channel) {
-        var map = {
-            direct:   i18n.src_direct   || 'Direct',
-            search:   i18n.src_search   || 'Organic Search',
-            social:   i18n.src_social   || 'Social',
-            referral: i18n.src_referral || 'Referral',
-            paid:     i18n.src_paid     || 'Paid',
-            email:    i18n.src_email    || 'Email'
-        };
-        return map[channel] || channel;
-    }
-
-    // Returns true when it said no visits were counted at all, so the empty
-    // referrer list under it need not say so a second time.
-    function renderSources(data) {
-        // Shares the breakdown container with the device views (same panel, tabbed).
-        var wrap = document.getElementById('brikpanel-device-breakdown');
-        if (!wrap) return false;
-
-        // Fixed display order; hide empty channels so the card stays clean.
-        var order = ['direct', 'search', 'social', 'referral', 'paid', 'email'];
-        var total = 0;
-        if (data) {
-            order.forEach(function (k) { total += (data[k] || 0); });
-        }
-
-        if (total === 0) {
-            // Visits counted but none with a known source keeps its own sentence.
-            showEmpty(wrap, emptyReason('visits', null, i18n.src_empty));
-            var t = emptyCtx.tracking;
-            return !!t && (!t.enabled || emptyCtx.visitors <= 0);
-        }
-
-        var pct = function (n) { return total > 0 ? Math.round((n / total) * 100) : 0; };
-
-        var rows = order
-            .map(function (k) { return { label: sourceChannelLabel(k), count: data[k] || 0, p: pct(data[k] || 0) }; })
-            .filter(function (r) { return r.count > 0; })
-            .sort(function (a, b) { return b.count - a.count; });
-
-        var html = '<div class="brikpanel-device-list">';
-        rows.forEach(function (r) {
-            html += '<div class="brikpanel-device-row">'
-                + '<span class="brikpanel-device-label">' + escapeHtml(r.label) + '</span>'
-                + '<div class="brikpanel-device-bar-wrap">'
-                +   '<div class="brikpanel-device-bar" style="width:' + r.p + '%"></div>'
-                + '</div>'
-                + '<span class="brikpanel-device-pct">' + escapeHtml(fmtPct(r.p, 0)) + '</span>'
-                + '<span class="brikpanel-device-count brikpanel-dash-muted">(' + formatNumber(r.count) + ')</span>'
-                + '</div>';
-        });
-        html += '</div>';
-        wrap.innerHTML = html;
-        return false;
-    }
-
-    function renderTopReferrers(list) {
-        var wrap = document.getElementById('brikpanel-top-referrers');
-        if (!wrap) return;
-        if (!list || !list.length) {
-            showEmpty(wrap, { text: i18n.src_no_referrers || '', note: '', preset: '' });
-            return;
-        }
-
-        var html = '<ul class="brikpanel-referrer-list">';
-        list.forEach(function (r) {
-            html += '<li class="brikpanel-referrer-row">'
-                + '<span class="brikpanel-referrer-host">' + escapeHtml(r.host || '') + '</span>'
-                + '<span class="brikpanel-referrer-channel">' + escapeHtml(sourceChannelLabel(r.channel)) + '</span>'
-                + '<span class="brikpanel-referrer-hits brikpanel-dash-muted">' + formatNumber(r.hits || 0) + '</span>'
-                + '</li>';
-        });
-        html += '</ul>';
-        wrap.innerHTML = html;
-    }
-
-    // Top campaigns under Top referrers: name, "3 orders · 2.4%", revenue.
-    // Returns whether there was anything to list.
-    function renderTopCampaigns(list) {
-        var wrap = document.getElementById('brikpanel-top-campaigns');
-        if (!wrap) return false;
-        list = Array.isArray(list) ? list : [];
-        if (!list.length) {
-            wrap.innerHTML = '';
-            return false;
-        }
-        var html = '<ul class="brikpanel-campaign-list">';
-        list.forEach(function (c) {
-            var orders = BF ? BF.count(i18n.camp_orders, Number(c.orders) || 0) : String(Number(c.orders) || 0);
-            var meta = orders;
-            if (c.conversion !== null && c.conversion !== undefined && BF) {
-                meta = BF.format(i18n.camp_meta || '', [orders, fmtPct(Number(c.conversion), 1)]);
-            }
-            html += '<li class="brikpanel-campaign-row">'
-                + '<span class="brikpanel-campaign-name" dir="auto" title="' + escapeAttr(c.name || '') + '">' + escapeHtml(c.name || '') + '</span>'
-                + '<span class="brikpanel-campaign-meta"><bdi>' + escapeHtml(meta) + '</bdi></span>'
-                + '<span class="brikpanel-campaign-revenue"><bdi>' + escapeHtml(c.revenue_text || '\u2014') + '</bdi></span>'
-                + '</li>';
-        });
-        html += '</ul>';
-        wrap.innerHTML = html;
-        return true;
-    }
-
-    var rfmDonutChart = null;
-    function renderRfmSegments(segments) {
-        var wrap = document.getElementById('brikpanel-rfm-segments');
-        if (!wrap) return;
-        if (!segments || segments.length === 0) {
-            // The card covers all time, so not the "this period" sentence: the
-            // same one the lifetime value card shows (field test D7). A store
-            // with no order yet has no customers to wait for.
-            var st = emptyCtx.store;
-            showEmpty(wrap, {
-                text: (st && !st.has_any_order ? i18n.empty_rfm_new : i18n.ltv_empty) || i18n.ltv_empty || '',
-                note: '',
-                preset: ''
-            });
-            return;
-        }
-
-        var chartId = 'brikpanel-rfm-donut-canvas';
-        var legendHtml = '<div style="flex:1;min-width:200px;display:grid;grid-template-columns:1fr 1fr;gap:0.375rem 1rem;font-size:0.8125rem;">';
-        segments.forEach(function (s) {
-            legendHtml += '<div style="display:flex;align-items:center;gap:0.5rem;">'
-                + '<span style="width:8px;height:8px;border-radius:50%;background:' + s.color + ';flex-shrink:0"></span>'
-                + '<span style="flex:1;color:#303030;">' + escapeHtml(s.label) + '</span>'
-                + '<span style="color:#616161;font-variant-numeric:tabular-nums;">' + escapeHtml(formatNumber(s.customers) + ' (' + fmtPct(s.share) + ')') + '</span>'
-                + '</div>';
-        });
-        legendHtml += '</div>';
-
-        wrap.innerHTML = '<div style="width:180px;height:180px;flex-shrink:0;"><canvas id="' + chartId + '"></canvas></div>' + legendHtml;
-
-        var canvas = document.getElementById(chartId);
-        if (!canvas || typeof Chart === 'undefined') { return; }
-
-        if (rfmDonutChart) { rfmDonutChart.destroy(); }
-        rfmDonutChart = new Chart(canvas.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: segments.map(function (s) { return s.label; }),
-                datasets: [{
-                    data: segments.map(function (s) { return s.customers; }),
-                    backgroundColor: segments.map(function (s) { return s.color; }),
-                    borderWidth: 2,
-                    borderColor: '#ffffff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function (ctx) {
-                                var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
-                                var pct = total > 0 ? Math.round(ctx.parsed / total * 100) : 0;
-                                return ctx.label + ': ' + formatNumber(ctx.parsed) + ' (' + fmtPct(pct, 0) + ')';
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     function renderLowStock(products, empty) {
         var wrap = document.getElementById('low-stock-table');
         if (!wrap) return;
@@ -2463,20 +2729,24 @@
             return;
         }
 
-        var html = '<table class="brikpanel-dash-table"><thead><tr>' +
-            '<th>' + (i18n.product || 'Product') + '</th>' +
-            '<th>' + (i18n.sku || 'SKU') + '</th>' +
-            '<th>' + (i18n.stock || 'Remaining') + '</th>' +
+        // A variation reads as its product's name with the options on a
+        // quieter line under it; the stock as the Products page badge.
+        var html = '<table class="brikpanel-dash-table bp-dv-stock-table"><thead><tr>' +
+            '<th>' + escapeHtml(i18n.product || '') + '</th>' +
+            '<th>' + escapeHtml(i18n.sku || '') + '</th>' +
+            '<th>' + escapeHtml(i18n.stock || '') + '</th>' +
             '</tr></thead><tbody>';
 
         products.forEach(function (p) {
+            var title = p.title || p.name || '';
+            var label = '<span dir="auto">' + escapeHtml(title) + '</span>' + (p.variant ? '<small dir="auto">' + escapeHtml(p.variant) + '</small>' : '');
             var nameCell = p.edit_url
-                ? '<a href="' + escapeAttr(p.edit_url) + '" style="color:#303030;text-decoration:none;font-weight:500;">' + escapeHtml(p.name) + '</a>'
-                : escapeHtml(p.name);
+                ? '<a class="bp-dv-stock-name" href="' + escapeAttr(p.edit_url) + '">' + label + '</a>'
+                : '<span class="bp-dv-stock-name">' + label + '</span>';
             html += '<tr>' +
                 '<td class="brikpanel-fit-lead">' + nameCell + '</td>' +
-                '<td class="brikpanel-dash-muted">' + (p.sku ? skuHtml(p.sku) : '&mdash;') + '</td>' +
-                '<td><span class="brikpanel-dash-badge-warning">' + p.stock + '</span></td>' +
+                '<td class="brikpanel-dash-muted bp-dv-stock-sku">' + (p.sku ? skuHtml(p.sku) : '&mdash;') + '</td>' +
+                '<td class="brikpanel-fit-headline"><span class="bp-dv-stock-badge">' + escapeHtml(formatNumber(p.stock)) + '</span></td>' +
                 '</tr>';
         });
 
@@ -2499,20 +2769,167 @@
             return;
         }
 
-        var html = '<div class="brikpanel-dash-ltv">' +
-            '<div class="brikpanel-dash-ltv-headline">' +
-                '<span class="brikpanel-dash-ltv-value">' + data.avg_ltv + '</span>' +
-                '<span class="brikpanel-dash-ltv-label">' + (i18n.average_ltv || 'Average LTV') + '</span>' +
-            '</div>' +
-            '<table class="brikpanel-dash-table brikpanel-dash-returns-breakdown"><tbody>' +
-                '<tr><td>' + (i18n.total_customers || 'Total customers') + '</td><td><strong>' + formatNumber(data.total_customers) + '</strong></td></tr>' +
-                '<tr><td>' + (i18n.repeat_customers || 'Repeat customers') + '</td><td><strong>' + escapeHtml(formatNumber(data.repeat_customers) + ' (' + fmtPct(data.repeat_rate) + ')') + '</strong></td></tr>' +
-                '<tr><td>' + (i18n.total_lifetime_value || 'Total lifetime value') + '</td><td><strong>' + data.total_ltv + '</strong></td></tr>' +
-                '<tr><td>' + (i18n.top_customer_ltv || 'Top customer') + '</td><td><strong>' + data.max_ltv + '</strong></td></tr>' +
-            '</tbody></table>' +
-        '</div>';
+        // Amounts are wc_price() markup from the server.
+        var row = function (label, valueHtml) {
+            return '<div class="bp-dv-kv-row"><span>' + escapeHtml(label || '') + '</span><b>' + valueHtml + '</b></div>';
+        };
+        wrap.innerHTML =
+            '<div class="bp-dv-ltv-top"><b>' + data.avg_ltv + '</b><span>' + escapeHtml(i18n.average_ltv || '') + '</span></div>' +
+            '<div class="bp-dv-kv">' +
+                row(i18n.total_customers, escapeHtml(formatNumber(data.total_customers))) +
+                row(i18n.repeat_customers, '<bdi>' + escapeHtml(formatNumber(data.repeat_customers) + ' (' + fmtPct(data.repeat_rate) + ')') + '</bdi>') +
+                row(i18n.total_lifetime_value, data.total_ltv) +
+                row(i18n.top_customer_ltv, data.max_ltv) +
+            '</div>';
+    }
 
-        wrap.innerHTML = html;
+    // ------------------------------------------------------------------ tabs + resizing
+
+    function initDvTabs() {
+        if (!V) return;
+        dvCards('sales').forEach(function (card) {
+            V.tabs(card, function (key) {
+                salesMetric = key === 'o' || key === 'aov' ? key : 'r';
+                // Every sales card shows the same metric.
+                dvCards('sales').forEach(function (other) {
+                    other.querySelectorAll('[role="tab"]').forEach(function (b) {
+                        var on = b.getAttribute('data-bp-dv-tab') === salesMetric;
+                        b.setAttribute('aria-selected', on ? 'true' : 'false');
+                        b.tabIndex = on ? 0 : -1;
+                    });
+                });
+                if (!lastData) return;
+                var was = playNext;
+                playNext = true;
+                renderSales(lastData);
+                playNext = was;
+            });
+        });
+        dvCards('products').forEach(function (card) {
+            V.tabs(card, function () { playProductBars(card); });
+        });
+        dvCards('visitors').forEach(function (card) {
+            V.tabs(card, function () {
+                var panel = Array.prototype.filter.call(card.querySelectorAll('[data-bp-dv-view]'), function (p) { return !p.hidden; })[0];
+                if (panel && lastData) drawVisitorsPanel(panel, lastData);
+                playVisitorsPanel(card);
+            });
+        });
+    }
+
+    // Breakpoints by the space the dashboard and each card really have (the
+    // admin menu takes 160 to 220px of the window). Classes written by
+    // measurement, not container queries: in Chromium a size container holds
+    // position:fixed boxes, so help bubbles were cut by their card. The page
+    // prints the same root classes before its first paint (render_page()).
+    var ROOT_STEPS = [[1300, 'bp-dv-lt1300'], [1000, 'bp-dv-lt1000'], [920, 'bp-dv-lt920'], [800, 'bp-dv-lt800'], [560, 'bp-dv-lt560']];
+    var CARD_STEPS = [[560, 'is-w560'], [470, 'is-w470']];
+
+    function contentWidth(el) {
+        var cs = window.getComputedStyle(el);
+        return el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    }
+
+    function applySteps(el, steps) {
+        var w = contentWidth(el);
+        steps.forEach(function (st) { el.classList.toggle(st[1], w <= st[0]); });
+    }
+
+    // A store card too narrow for its small line hides it.
+    function sizeKpis() {
+        ['brikpanel-profit-cards', 'brikpanel-kpi-cards'].forEach(function (id) {
+            var grid = document.getElementById(id);
+            if (grid) fitKpiFigures(grid);
+        });
+        document.querySelectorAll('.bp-dv-kpi').forEach(function (card) {
+            card.classList.toggle('is-narrow', contentWidth(card) < 205);
+        });
+    }
+
+    // A long figure (a large sum in a currency with many digits) takes one
+    // size down when that is what keeps its row in one line. Measured
+    // against the row's full width, not against the columns the tiles helper
+    // picked: those follow from this.
+    function fitKpiFigures(grid) {
+        var cards = Array.prototype.filter.call(grid.children, function (c) {
+            return c.classList.contains('bp-dv-kpi') && !c.hidden && c.offsetParent !== null;
+        });
+        var was = grid.classList.contains('is-long');
+        var long = false;
+        var root = document.getElementById('brikpanel-dashboard');
+        // On a tablet the store cards take 3 + 3 whatever the figures are.
+        var fixedRows = grid.id === 'brikpanel-kpi-cards' && root && root.classList.contains('bp-dv-lt800');
+        if (cards.length > 1 && !fixedRows) {
+            var gap = parseFloat(window.getComputedStyle(grid).columnGap) || 0;
+            var room = (grid.clientWidth - gap * (cards.length - 1)) / cards.length - (cards[0].offsetWidth - contentWidth(cards[0]));
+            var widest = function () {
+                var w = 0;
+                cards.forEach(function (c) {
+                    var v = c.querySelector('.brikpanel-dash-card-value');
+                    if (v) w = Math.max(w, v.getBoundingClientRect().width);
+                });
+                return w;
+            };
+            grid.classList.remove('is-long');
+            if (widest() > room) {
+                grid.classList.add('is-long');
+                long = widest() <= room;
+            }
+        }
+        grid.classList.toggle('is-long', long);
+        // The tiles helper does not watch the row's own classes.
+        if (long !== was && window.brikpanelTiles && window.brikpanelTiles.refit) window.brikpanelTiles.refit();
+    }
+
+    // Charts measured in pixels are drawn again when their card changes width.
+    function initDvResize() {
+        var root = document.getElementById('brikpanel-dashboard');
+        if (root) applySteps(root, ROOT_STEPS);
+        document.querySelectorAll('.bp-dv-card').forEach(function (card) { applySteps(card, CARD_STEPS); });
+        sizeKpis();
+        if (!V) return;
+        if (root) V.watchWidth(root, function () { applySteps(root, ROOT_STEPS); });
+        var redraw = {
+            sales: function (card) { drawSalesCard(card, lastData, false); },
+            funnel: function (card) { drawFunnelCard(card, lastData, false); },
+            rates: function (card) { drawRatesCard(card, lastData, false); },
+            visitors: function (card) {
+                card.querySelectorAll('[data-bp-dv-view]').forEach(function (panel) {
+                    if (!panel.hidden) drawVisitorsPanel(panel, lastData);
+                });
+            },
+            customers: function (card) { drawCustomersCard(card, lastData); },
+            live: function (card) { drawLiveCard(card); }
+        };
+        document.querySelectorAll('.bp-dv-card').forEach(function (card) {
+            var kind = card.getAttribute('data-bp-dv');
+            V.watchWidth(card, function () {
+                applySteps(card, CARD_STEPS);
+                if (!redraw[kind] || (!lastData && kind !== 'live')) return;
+                V.tip.hide();
+                try { redraw[kind](card); } catch (err) { if (window.console) window.console.error(err); }
+            });
+        });
+        // The tiles helper changes the store row's columns without changing
+        // the row's width, so the small lines follow a card's width.
+        var kpiCard = document.querySelector('#brikpanel-kpi-cards > .bp-dv-kpi');
+        if (kpiCard) {
+            V.watchWidth(kpiCard, function () {
+                sizeKpis();
+                if (lastData) safe('sparks', function () { renderKpiSparks(lastData); });
+            });
+        }
+    }
+
+    // One failing card must never stop the others from drawing.
+    function safe(name, fn) {
+        try {
+            fn();
+        } catch (err) {
+            if (window.console && window.console.error) {
+                window.console.error('[BrikPanel] dashboard ' + name + ':', err); // i18n-ignore: developer console message
+            }
+        }
     }
 
     function renderSubscriptions(data) {
@@ -2983,8 +3400,42 @@
         resetGlobeBox(container, !wasHidden);
     }
 
+    // Flags are emoji, which Windows browsers draw as two plain letters
+    // ("TR"). Checked once by drawing one: without colour the list shows a
+    // small grey country-code badge instead.
+    var flagEmojiOk = null;
+    function canDrawFlags() {
+        if (flagEmojiOk !== null) return flagEmojiOk;
+        flagEmojiOk = true;
+        try {
+            var canvas = document.createElement('canvas');
+            canvas.width = 20;
+            canvas.height = 20;
+            var ctx = canvas.getContext('2d');
+            if (!ctx) return flagEmojiOk;
+            ctx.textBaseline = 'top';
+            ctx.font = '16px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; // i18n-ignore: font stack, not text
+            ctx.fillText(String.fromCodePoint(0x1F1F9, 0x1F1F7), 0, 0);
+            var px = ctx.getImageData(0, 0, 20, 20).data;
+            var colour = false;
+            for (var i = 0; i < px.length; i += 4) {
+                if (px[i + 3] > 32 && (Math.abs(px[i] - px[i + 1]) > 24 || Math.abs(px[i + 1] - px[i + 2]) > 24)) {
+                    colour = true;
+                    break;
+                }
+            }
+            flagEmojiOk = colour;
+        } catch (e) {
+            flagEmojiOk = true;
+        }
+        return flagEmojiOk;
+    }
+
     function countryFlag(code) {
-        if (!code || code.length !== 2) return '';
+        if (!code || !/^[A-Z]{2}$/.test(code)) return '';
+        if (!canDrawFlags()) {
+            return '<span class="bp-dv-flag-code">' + code + '</span>';
+        }
         var base = 0x1F1E6;
         return String.fromCodePoint(base + code.charCodeAt(0) - 65, base + code.charCodeAt(1) - 65);
     }
@@ -3011,55 +3462,6 @@
                 }
             });
         });
-    }
-
-    // =========================================================================
-    // DEVICE VIEW TOGGLE (visitors / orders inside the same panel)
-    // =========================================================================
-
-    function initDeviceTabs() {
-        var tabs = document.querySelectorAll('.brikpanel-device-tab');
-        tabs.forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var view = this.getAttribute('data-device-view');
-                if (view === deviceView) return;
-                deviceView = view;
-
-                tabs.forEach(function (t) { t.classList.remove('brikpanel-loc-tab--active'); });
-                this.classList.add('brikpanel-loc-tab--active');
-
-                applyDeviceView(view);
-            });
-        });
-    }
-
-    function applyDeviceView(view) {
-        var title    = document.getElementById('brikpanel-device-title');
-        var refWrap  = document.getElementById('brikpanel-source-referrers');
-        var campWrap = document.getElementById('brikpanel-source-campaigns');
-
-        if (view === 'sources') {
-            if (title) { title.textContent = i18n.src_title || 'Traffic sources'; }
-            // No visits at all: the sources line already says why, so the
-            // referrer list under it stays out of sight.
-            var noVisits = renderSources(sourceData);
-            renderTopReferrers(topReferrersData);
-            if (refWrap) { refWrap.style.display = noVisits ? 'none' : ''; }
-            // Campaign orders come from WooCommerce, so they are listed even
-            // when no visit was counted.
-            if (campWrap) { campWrap.hidden = !renderTopCampaigns(topCampaignsData); }
-            return;
-        }
-
-        if (campWrap) { campWrap.hidden = true; }
-
-        if (title) {
-            title.textContent = view === 'orders'
-                ? (i18n.device_title_orders   || 'Orders by device')
-                : (i18n.device_title_visitors || 'Visitors by device');
-        }
-        if (refWrap) { refWrap.style.display = 'none'; }
-        renderDevices(deviceData[view], view);
     }
 
     function applyLocView(view) {
@@ -3233,31 +3635,20 @@
                 // it were live. Stop, and say how to get it back.
                 liveStale = true;
                 stopLivePolling();
-                renderLiveStale();
+                renderLive();
                 return;
             }
-            renderLiveVisitors(res.data);
+            takeLiveRows(res.data);
         })
         .catch(function () {});
-    }
-
-    // The Live list after the server refused it: no count (it is no longer
-    // known) and a line asking for a reload, which brings a fresh nonce.
-    function renderLiveStale() {
-        var countEl = document.getElementById('live-count');
-        var listEl = document.getElementById('live-visitors-list');
-        liveListEmpty = false;
-        if (countEl) countEl.hidden = true;
-        if (listEl) showEmpty(listEl, { text: i18n.live_reload || '', note: '', preset: '' });
     }
 
     // Why the Live list is empty. It shows who is on the store right now, so
     // the selected window says nothing about it: only tracking being off is
     // a reason; otherwise nobody happens to be on the store.
-    function liveEmptyReason() {
+    function liveEmptyText() {
         var t = emptyCtx.tracking;
-        var text = (t && !t.enabled && i18n.empty_tracking_off) ? i18n.empty_tracking_off : (i18n.no_visitors || '');
-        return { text: text, note: '', preset: '' };
+        return (t && !t.enabled && i18n.empty_tracking_off) ? i18n.empty_tracking_off : (i18n.live_none || '');
     }
 
     // Device icon for a live visitor row.
@@ -3265,9 +3656,9 @@
     // The server stores a three-value keyword (mobile | tablet | desktop), but
     // it is still whitelisted here rather than interpolated: the markup is
     // built as a string, so an unexpected value must never reach innerHTML.
-    // Rows written before this feature shipped have no device at all (the
-    // transient lives for up to 120s), and rather than claim "desktop" we emit
-    // an empty span of the same width so the column stays aligned.
+    // Rows written before this feature shipped have no device at all, and
+    // rather than claim "desktop" we emit an empty span of the same width so
+    // the column stays aligned.
     var LIVE_DEVICE_PATHS = {
         mobile: '<rect x="7" y="2" width="10" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line>',
         tablet: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line>',
@@ -3275,9 +3666,9 @@
     };
 
     function liveDeviceLabel(device) {
-        if (device === 'mobile') return i18n.device_mobile || 'Mobile';
-        if (device === 'tablet') return i18n.device_tablet || 'Tablet';
-        if (device === 'desktop') return i18n.device_desktop || 'Desktop';
+        if (device === 'mobile') return i18n.device_mobile || '';
+        if (device === 'tablet') return i18n.device_tablet || '';
+        if (device === 'desktop') return i18n.device_desktop || '';
         return '';
     }
 
@@ -3288,127 +3679,13 @@
         if (!Object.prototype.hasOwnProperty.call(LIVE_DEVICE_PATHS, device)) {
             return '<span class="brikpanel-dash-live-device" aria-hidden="true"></span>';
         }
-
-        // Attribute context: the label comes from a translation file, which is
-        // exactly the kind of string that can carry an unexpected quote.
-        var label = escapeAttr(liveDeviceLabel(device));
-
-        // No title attribute on purpose: the row already carries the card's own
-        // tooltip, and a native one on top of it would show two tooltips at
-        // once. The device label is added to that tooltip instead.
-        return '<span class="brikpanel-dash-live-device" role="img" aria-label="' + label + '">' +
+        return '<span class="brikpanel-dash-live-device" aria-hidden="true">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
             LIVE_DEVICE_PATHS[device] +
             '</svg></span>';
     }
 
-    function renderLiveVisitors(visitors) {
-        var countEl = document.getElementById('live-count');
-        var listEl = document.getElementById('live-visitors-list');
-        if (!countEl || !listEl) return;
-
-        visitors = Array.isArray(visitors) ? visitors : [];
-        countEl.textContent = formatNumber(visitors.length);
-        countEl.hidden = false;
-        liveListEmpty = visitors.length === 0;
-
-        if (visitors.length === 0) {
-            showEmpty(listEl, liveEmptyReason());
-            return;
-        }
-
-        var html = '';
-        visitors.forEach(function (v) {
-            var pagePath = v.page_url;
-            try {
-                var urlObj = new URL(v.page_url);
-                pagePath = urlObj.pathname + (urlObj.search || '');
-            } catch (e) {}
-
-            // Status detection
-            var status = v.visitor_status || (v.has_cart_item === 'Yes' ? 'cart' : 'browsing');
-            var badgeClass, badgeText;
-
-            if (status === 'order_received') {
-                badgeClass = 'order-received';
-                badgeText = i18n.order_received || 'Order received';
-            } else if (status === 'cart') {
-                badgeClass = 'added-to-cart';
-                badgeText = i18n.added_to_cart || 'Added to cart';
-            } else {
-                badgeClass = 'browsing';
-                badgeText = i18n.browsing || 'Browsing';
-            }
-
-            // Display name: customer name or IP
-            var displayName = v.customer_name ? escapeHtml(v.customer_name) : (v.ip_address || '');
-            var ipLabel = v.ip_address ? '<span class="brikpanel-dash-live-ip">' + escapeHtml(v.ip_address) + '</span>' : '';
-
-            // The page's name (product, page, category) when the server could
-            // find one; the address otherwise (search results, older trackers).
-            var pageTitle = (typeof v.page_title === 'string') ? v.page_title : '';
-
-            // Where the visitor came from ("Traffic source in Live view"): the
-            // channel as a small pill, then the source, campaign and search
-            // term, cut with "…" when long.
-            //
-            // dir="auto" here and on the page name: the line takes the
-            // direction of its own text, so a long English name on a
-            // right-to-left screen is cut at its end, not at its start.
-            var src = (v.source && typeof v.source === 'object' && v.source.channel) ? v.source : null;
-            var srcChannel = src ? sourceChannelLabel(src.channel) : '';
-            var srcBits = src ? [src.name, src.campaign, src.term].filter(function (b) {
-                return typeof b === 'string' && b !== '';
-            }) : [];
-            var srcHtml = src
-                ? '<span class="brikpanel-dash-live-src">' +
-                    '<span class="brikpanel-dash-live-src-ch">' + escapeHtml(srcChannel) + '</span>' +
-                    (srcBits.length ? '<span class="brikpanel-dash-live-src-name" dir="auto">' + escapeHtml(srcBits.join(' · ')) + '</span>' : '') +
-                  '</span>'
-                : '';
-
-            // Tooltip data for hover
-            var tooltipParts = [];
-            var deviceLabel = liveDeviceLabel(v.device);
-            if (deviceLabel) tooltipParts.push(deviceLabel);
-            if (v.customer_email) tooltipParts.push(v.customer_email);
-            if (v.customer_phone) tooltipParts.push(v.customer_phone);
-            if (pageTitle) tooltipParts.push(pageTitle);
-            if (v.page_url) tooltipParts.push(v.page_url);
-            if (src) {
-                tooltipParts.push(liveSourceLine(i18n.live_src_source, srcChannel + (src.name ? ' · ' + src.name : '')));
-                if (src.medium) tooltipParts.push(liveSourceLine(i18n.live_src_medium, src.medium));
-                if (src.campaign) tooltipParts.push(liveSourceLine(i18n.live_src_campaign, src.campaign));
-                if (src.term) tooltipParts.push(liveSourceLine(i18n.live_src_term, src.term));
-                if (src.landing) tooltipParts.push(liveSourceLine(i18n.live_src_landing, src.landing));
-            }
-            var tooltipData = tooltipParts.length > 0 ? ' data-bp-tooltip="' + escapeAttr(tooltipParts.join('\n')) + '"' : '';
-
-            html += '<div class="brikpanel-dash-live-item"' + tooltipData + '>' +
-                liveDeviceIcon(v.device) +
-                '<div class="brikpanel-dash-live-info">' +
-                    '<span class="brikpanel-dash-live-name">' + displayName + '</span>' +
-                    (v.customer_name ? ipLabel : '') +
-                    // No title attribute: the row's own hover card already
-                    // carries the full name and address, and a native tooltip
-                    // would open on top of it.
-                    '<span class="brikpanel-dash-live-page" dir="auto">' + escapeHtml(pageTitle || pagePath) + '</span>' +
-                    srcHtml +
-                '</div>' +
-                '<span class="brikpanel-dash-live-badge ' + badgeClass + '">' + badgeText + '</span>' +
-                '</div>';
-        });
-
-        listEl.innerHTML = html;
-
-        // Attach tooltip handlers
-        listEl.querySelectorAll('[data-bp-tooltip]').forEach(function (el) {
-            el.addEventListener('mouseenter', showTooltip);
-            el.addEventListener('mouseleave', hideTooltip);
-        });
-    }
-
-    // One hover-card line for a live visitor's source ("Campaign: %s"). The
+    // One bubble line for a live visitor's source ("Campaign: %s"). The
     // template is translated server-side; without it the bare value still
     // reads fine, so no English is baked in here.
     // A function replacement, because the value comes from a link: a string
@@ -3420,36 +3697,293 @@
             : text;
     }
 
-    function showTooltip(e) {
-        hideTooltip();
-        var text = e.currentTarget.getAttribute('data-bp-tooltip');
-        if (!text) return;
+    function livePagePath(url) {
+        var path = url || '';
+        try {
+            var u = new URL(url);
+            path = u.pathname + (u.search || '');
+        } catch (e) {}
+        return path;
+    }
 
-        var tip = document.createElement('div');
-        tip.className = 'brikpanel-dash-tooltip';
-        tip.id = 'bp-live-tooltip';
+    // What changes between two polls in a way the list shows.
+    function liveSignature(rows) {
+        return (rows || []).map(function (v) {
+            return [v.id, v.page_url, v.page_title, v.visitor_status, v.cart_count, v.customer_name, Math.floor((Number(v.ago) || 0) / 60)].join('|');
+        }).join('~');
+    }
 
-        var lines = text.split('\n');
+    function renderLive() {
+        dvCards('live').forEach(drawLiveCard);
+    }
+
+    function drawLiveCard(card) {
+        var body = dvSlot(card, 'body');
+        var pill = card.querySelector('.bp-dv-live-pill');
+        var countEl = dvSlot(card, 'count');
+        if (!body) return;
+
+        if (liveStale) {
+            // The server refused the list (an expired nonce on a tab left open,
+            // or the session ended): no count, and how to get it back.
+            if (pill) pill.hidden = true;
+            showEmpty(body, { text: i18n.live_reload || '', note: '', preset: '' });
+            return;
+        }
+        if (liveRows === null) {
+            if (pill) pill.hidden = true;
+            return;
+        }
+
+        var rows = liveRows.slice().sort(function (a, b) { return (Number(a.ago) || 0) - (Number(b.ago) || 0); });
+        var n = rows.length;
+        if (pill) {
+            pill.hidden = false;
+            pill.classList.toggle('is-on', n > 0);
+        }
+        if (countEl) countEl.textContent = fillText(i18n.live_now, formatNumber(n));
+
+        // Keep the focus on the "more" button when it redraws itself.
+        var hadFocus = document.activeElement && body.contains(document.activeElement) && document.activeElement.classList.contains('bp-dv-live-more');
+        body.textContent = '';
+
+        if (n) {
+            var list = document.createElement('div');
+            list.className = 'bp-dv-live-list' + (liveOpen ? ' is-open' : '');
+            rows.slice(0, liveOpen ? 100 : LIVE_SHOW).forEach(function (v) { list.appendChild(liveRow(v)); });
+            body.appendChild(list);
+            if (n > LIVE_SHOW) {
+                var more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'bp-dv-live-more';
+                more.setAttribute('aria-expanded', liveOpen ? 'true' : 'false');
+                var moreText = document.createElement('span');
+                moreText.textContent = liveOpen ? (i18n.live_less || '') : (BF ? BF.count(i18n.live_more, n - LIVE_SHOW) : '');
+                more.appendChild(moreText);
+                more.insertAdjacentHTML('beforeend', '<svg class="bp-dv-chev' + (liveOpen ? ' is-up' : '') + '" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+                more.addEventListener('click', function () {
+                    liveOpen = !liveOpen;
+                    renderLive();
+                });
+                body.appendChild(more);
+                if (hadFocus) more.focus();
+            }
+            body.appendChild(todayLine());
+        } else {
+            liveOpen = false;
+            var none = document.createElement('div');
+            none.className = 'bp-dv-live-empty';
+            none.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            var noneText = document.createElement('span');
+            noneText.setAttribute('dir', 'auto');
+            noneText.textContent = liveEmptyText();
+            none.appendChild(noneText);
+            body.appendChild(none);
+            todayDetails(body, card);
+        }
+    }
+
+    function liveRow(v) {
+        var row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'bp-dv-live-row';
+        row.setAttribute('data-bp-tip', 'top');
+
+        var pageTitle = typeof v.page_title === 'string' ? v.page_title : '';
+        var pagePath = livePagePath(v.page_url);
+        var page = pageTitle || pagePath;
+        var src = (v.source && typeof v.source === 'object' && v.source.channel) ? v.source : null;
+        var srcChannel = src ? sourceChannelLabel(src.channel) : '';
+        var srcLine = src ? srcChannel + (src.name ? ' · ' + src.name : '') : '';
+        var name = typeof v.customer_name === 'string' ? v.customer_name : '';
+        var status = v.visitor_status || (v.has_cart_item === 'Yes' ? 'cart' : 'browsing');
+        var cartCount = Number(v.cart_count) || (v.has_cart_item === 'Yes' ? 1 : 0);
+
+        var who = name || page;
+        var what = name ? page : (srcLine || (i18n.browsing || ''));
+        var chip = status === 'order_received'
+            ? (i18n.order_received || '')
+            : (cartCount > 0 && BF ? BF.count(i18n.live_in_cart, cartCount) : '');
+        var ago = agoText(v.ago);
+
+        row.insertAdjacentHTML('beforeend', liveDeviceIcon(v.device));
+        var main = document.createElement('span');
+        main.className = 'bp-dv-live-main';
+        var whoEl = document.createElement('span');
+        whoEl.className = 'bp-dv-live-who';
+        whoEl.setAttribute('dir', 'auto');
+        whoEl.textContent = who;
+        var whatEl = document.createElement('span');
+        whatEl.className = 'bp-dv-live-what';
+        whatEl.setAttribute('dir', 'auto');
+        whatEl.textContent = what;
+        main.appendChild(whoEl);
+        main.appendChild(whatEl);
+        row.appendChild(main);
+
+        var side = document.createElement('span');
+        side.className = 'bp-dv-live-side';
+        if (chip) {
+            var chipEl = document.createElement('span');
+            chipEl.className = 'bp-dv-live-chip' + (status === 'order_received' ? ' is-order' : '');
+            chipEl.textContent = chip;
+            side.appendChild(chipEl);
+        }
+        var agoEl = document.createElement('span');
+        agoEl.className = 'bp-dv-live-ago';
+        agoEl.textContent = ago;
+        side.appendChild(agoEl);
+        row.appendChild(side);
+
+        // The details the row has no room for, in its own bubble.
+        var lines = [];
+        var deviceLabel = liveDeviceLabel(v.device);
+        if (deviceLabel) lines.push(deviceLabel);
+        if (v.customer_email) lines.push(v.customer_email);
+        if (v.customer_phone) lines.push(v.customer_phone);
+        if (pageTitle) lines.push(pageTitle);
+        if (v.page_url) lines.push(v.page_url);
+        if (src) {
+            lines.push(liveSourceLine(i18n.live_src_source, srcLine));
+            if (src.medium) lines.push(liveSourceLine(i18n.live_src_medium, src.medium));
+            if (src.campaign) lines.push(liveSourceLine(i18n.live_src_campaign, src.campaign));
+            if (src.term) lines.push(liveSourceLine(i18n.live_src_term, src.term));
+            if (src.landing) lines.push(liveSourceLine(i18n.live_src_landing, src.landing));
+        }
+        var bubble = document.createElement('span');
+        bubble.className = 'brikpanel-tip bp-dv-tipbox bp-dv-live-tip';
+        bubble.setAttribute('role', 'tooltip');
+        var title = document.createElement('span');
+        title.className = 'bp-dv-tip-t';
+        title.setAttribute('dir', 'auto');
+        title.textContent = who;
+        bubble.appendChild(title);
         lines.forEach(function (line) {
-            var p = document.createElement('div');
             // Each line takes the direction of its own text, so on a
             // right-to-left screen "Landing page: /" or an email address is
             // not reordered around its punctuation.
-            p.dir = 'auto';
-            p.textContent = line;
-            tip.appendChild(p);
+            var l = document.createElement('span');
+            l.className = 'bp-dv-tip-line';
+            l.setAttribute('dir', 'auto');
+            l.textContent = line;
+            bubble.appendChild(l);
         });
-
-        document.body.appendChild(tip);
-
-        var rect = e.currentTarget.getBoundingClientRect();
-        tip.style.top = (rect.bottom + window.scrollY + 6) + 'px';
-        tip.style.left = (rect.left + window.scrollX) + 'px';
+        row.appendChild(bubble);
+        row.setAttribute('aria-label', [who, what, chip, ago].filter(Boolean).join(', '));
+        return row;
     }
 
-    function hideTooltip() {
-        var existing = document.getElementById('bp-live-tooltip');
-        if (existing) existing.remove();
+    // While anyone is on the store, today's figures are one line at the bottom.
+    function todayLine() {
+        var t = todayInfo && todayInfo.block;
+        var p = document.createElement('p');
+        p.className = 'bp-dv-today-line';
+        var head = document.createElement('span');
+        head.className = 'bp-dv-today-line-h';
+        head.textContent = i18n.today_so_far || '';
+        p.appendChild(head);
+        if (!t) return p;
+        var add = function (node) { p.appendChild(node); };
+        add(countNodes(document.createElement('span'), i18n.n_visitors, Number(t.visitors) || 0));
+        add(countNodes(document.createElement('span'), i18n.camp_orders, Number(t.orders) || 0));
+        var sales = document.createElement('span');
+        sales.appendChild(bold(money(Number(t.revenue) || 0)));
+        add(sales);
+        return p;
+    }
+
+    // Nobody on the store: today so far, hour by hour, and the last order.
+    function todayDetails(body, card) {
+        var t = todayInfo && todayInfo.block;
+        if (!t || !Array.isArray(t.hours)) return;
+
+        var head = document.createElement('div');
+        head.className = 'bp-dv-today-h';
+        var h1 = document.createElement('span');
+        h1.textContent = i18n.today_so_far || '';
+        var h2 = document.createElement('span');
+        h2.textContent = t.built_at && BF ? fillText(i18n.today_until, BF.date(Number(t.built_at), timeFmt())) : '';
+        head.appendChild(h1);
+        head.appendChild(h2);
+        body.appendChild(head);
+
+        var figs = document.createElement('div');
+        figs.className = 'bp-dv-today-figs';
+        [[i18n.visitors, formatNumber(Number(t.visitors) || 0)], [i18n.orders, formatNumber(Number(t.orders) || 0)], [i18n.sales, money(Number(t.revenue) || 0)]].forEach(function (f) {
+            var cell = document.createElement('div');
+            var label = document.createElement('span');
+            label.textContent = f[0] || '';
+            cell.appendChild(label);
+            cell.appendChild(bold(f[1]));
+            figs.appendChild(cell);
+        });
+        body.appendChild(figs);
+
+        var hours = document.createElement('div');
+        hours.className = 'bp-dv-hours-box';
+        hours.setAttribute('tabindex', '0');
+        hours.setAttribute('role', 'group');
+        hours.setAttribute('aria-label', i18n.hours_aria || '');
+        body.appendChild(hours);
+        if (V) {
+            V.bars(hours, {
+                values: t.hours.map(function (x) { return x ? Number(x.r) || 0 : null; }),
+                now: t.now_hour,
+                ariaLabel: i18n.hours_aria || '',
+                live: dvSlot(card, 'hours-live'),
+                labelAt: function (h) { return hourLabel(h); },
+                tipAt: function (i) {
+                    var x = t.hours[i];
+                    var title = BF ? BF.range(hourLabel(i), hourLabel(i, '59')) : '';
+                    if (!x) return { title: title, rows: [[i18n.sales || '', i18n.sales_not_yet || '']] };
+                    return { title: title, rows: [[i18n.sales || '', money(Number(x.r) || 0)], [i18n.orders || '', formatNumber(Number(x.o) || 0)]] };
+                }
+            });
+        }
+
+        if (t.last_order && t.last_order.number) {
+            var line = document.createElement('p');
+            line.className = 'bp-dv-last-order';
+            fillLastOrder(line);
+            body.appendChild(line);
+        }
+    }
+
+    // "Last order #348, 28 min ago", the number linking to the order.
+    function fillLastOrder(line) {
+        var last = todayInfo && todayInfo.block ? todayInfo.block.last_order : null;
+        if (!line || !last || !last.number) return;
+        var link = document.createElement(last.edit_url ? 'a' : 'b');
+        if (last.edit_url) link.href = last.edit_url;
+        var bdi = document.createElement('bdi');
+        bdi.textContent = '#' + last.number;
+        link.appendChild(bdi);
+        // Seconds since the order on the server's clock, plus the time this
+        // page has been open since the data arrived.
+        var since = (Number(todayInfo.serverNow) || 0) - (Number(last.ts) || 0) + (Date.now() / 1000 - todayInfo.clientAt);
+        fillNodes(line, i18n.last_order || '%1$s, %2$s', [link, agoText(since)]);
+    }
+
+    // A fresh list from the poll: redrawn only when something the list shows
+    // changed, and never while one of its bubbles is open.
+    function takeLiveRows(rows) {
+        rows = Array.isArray(rows) ? rows : [];
+        var sig = liveSignature(rows);
+        var openTip = document.querySelector('.bp-dv-live .is-bp-tip-open');
+        var first = liveRows === null;
+        liveRows = rows;
+        liveListEmpty = rows.length === 0;
+        if (!first && sig === liveSig) {
+            // Nothing new: only the "Last order ... ago" line moves on.
+            if (liveListEmpty) document.querySelectorAll('.bp-dv-live .bp-dv-last-order').forEach(fillLastOrder);
+            return;
+        }
+        if (openTip) {
+            liveSig = '';
+            return;
+        }
+        liveSig = sig;
+        renderLive();
     }
 
     // =========================================================================

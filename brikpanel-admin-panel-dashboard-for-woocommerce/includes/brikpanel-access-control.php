@@ -1061,6 +1061,10 @@ unset( $brikpanel_access_opt );
  *
  * The Google Fonts handle for the appearance feature is matched separately
  * because its `src` points at fonts.googleapis.com, not the plugin folder.
+ *
+ * A part that must keep working with the interface off (the deactivation
+ * survey on the Plugins screen) names its handles through the
+ * `brikpanel_access_sweep_keep` filter, on that screen only.
  */
 function brikpanel_access_sweep_assets() {
 	if ( ! brikpanel_access_should_neutralize() ) {
@@ -1068,6 +1072,13 @@ function brikpanel_access_sweep_assets() {
 	}
 
 	$base = defined( 'BRIKPANEL_URL' ) ? BRIKPANEL_URL : '';
+
+	/**
+	 * Handles the sweep leaves registered and enqueued on this request.
+	 *
+	 * @param string[] $keep Handles (a style and a script may share one).
+	 */
+	$keep = array_flip( (array) apply_filters( 'brikpanel_access_sweep_keep', [] ) );
 
 	foreach ( [ wp_styles(), wp_scripts() ] as $assets ) {
 		if ( ! $assets instanceof WP_Dependencies ) {
@@ -1079,7 +1090,7 @@ function brikpanel_access_sweep_assets() {
 			$owned = ( $base !== '' && $src !== '' && strpos( $src, $base ) === 0 )
 				|| $handle === 'brikpanel-appearance-font'
 				|| strpos( (string) $handle, 'brikpanel' ) === 0;
-			if ( ! $owned ) {
+			if ( ! $owned || isset( $keep[ $handle ] ) ) {
 				continue;
 			}
 			if ( $is_styles ) {

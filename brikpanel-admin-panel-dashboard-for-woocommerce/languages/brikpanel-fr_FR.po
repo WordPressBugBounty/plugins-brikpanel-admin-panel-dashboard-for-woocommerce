@@ -4422,10 +4422,6 @@ msgstr "Ventes dans le temps"
 msgid "Live visitors"
 msgstr "Visiteurs en direct"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1685 includes/brikpanel-enqueue.php:410
-msgid "No active visitors"
-msgstr "Aucun visiteur actif"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1697 includes/brikpanel-store-summary.php:1659
 msgid "Conversion funnel"
 msgstr "Tunnel de conversion"
@@ -4466,10 +4462,6 @@ msgstr "Meilleurs produits"
 msgid "Recent orders"
 msgstr "Commandes récentes"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1783
-msgid "Most viewed pages"
-msgstr "Pages les plus vues"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1789 front-end/dashboard/brikpanel-dashboard.php:5354
 msgid "Most added to cart"
 msgstr "Plus ajoutés au panier"
@@ -4478,10 +4470,6 @@ msgstr "Plus ajoutés au panier"
 msgid "Visitors by device"
 msgstr "Visiteurs par appareil"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1804
-msgid "Device breakdown view"
-msgstr "Vue de répartition par appareil"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1812
 msgid "Sources"
 msgstr "Sources"
@@ -4489,14 +4477,6 @@ msgstr "Sources"
 #: front-end/dashboard/brikpanel-dashboard.php:1820
 msgid "Top referrers"
 msgstr "Principaux sites référents"
-
-#: front-end/dashboard/brikpanel-dashboard.php:1825
-msgid "Customer types"
-msgstr "Types de clients"
-
-#: front-end/dashboard/brikpanel-dashboard.php:1841 front-end/dashboard/brikpanel-dashboard.php:2113
-msgid "View details →"
-msgstr "Voir les détails →"
 
 #. translators: %s: number of published products
 #: front-end/dashboard/brikpanel-dashboard.php:2074
@@ -11320,237 +11300,9 @@ msgctxt "sub-label under \"open purchase orders\" stat: total monetary value of 
 msgid "open value"
 msgstr "en bons de commande ouverts"
 
-#: front-end/welcome/brikpanel-welcome.php:91
-msgid "Get started"
-msgstr "Commencer"
-
 #: front-end/welcome/brikpanel-welcome.php:92 front-end/welcome/brikpanel-welcome.php:407
 msgid "Skip tour"
 msgstr "Ignorer la visite"
-
-#: front-end/welcome/brikpanel-welcome.php:133
-msgid "Welcome"
-msgstr "Bienvenue"
-
-#: front-end/welcome/brikpanel-welcome.php:139 front-end/welcome/brikpanel-welcome.php:141
-msgid "Dashboard & insights"
-msgstr "Tableau de bord & analyses"
-
-#: front-end/welcome/brikpanel-welcome.php:142
-msgid "A real-time, Shopify-style overview of everything happening in your store."
-msgstr "Une vue d'ensemble en temps réel, à la Shopify, de tout ce qui se passe dans votre boutique."
-
-#: front-end/welcome/brikpanel-welcome.php:144
-msgid "Sales, orders, and conversion rate at a glance"
-msgstr "Ventes, commandes et taux de conversion en un coup d'œil"
-
-#: front-end/welcome/brikpanel-welcome.php:145
-msgid "Net profit after cost of goods, ads, and expenses"
-msgstr "Bénéfice net après coût des marchandises, publicités et dépenses"
-
-#: front-end/welcome/brikpanel-welcome.php:146
-msgid "Interactive sales chart with flexible date ranges"
-msgstr "Graphique des ventes interactif avec des plages de dates flexibles"
-
-#: front-end/welcome/brikpanel-welcome.php:147
-msgid "Live visitor counter updated in real time"
-msgstr "Compteur de visiteurs mis à jour en temps réel"
-
-#: front-end/welcome/brikpanel-welcome.php:148
-msgid "Your top products and best customers"
-msgstr "Vos meilleurs produits et meilleurs clients"
-
-#: front-end/welcome/brikpanel-welcome.php:149
-msgid "An interactive globe of where customers are"
-msgstr "Un globe interactif de la localisation de vos clients"
-
-#: front-end/welcome/brikpanel-welcome.php:157
-msgid "Products, your way"
-msgstr "Les produits, à votre façon"
-
-#: front-end/welcome/brikpanel-welcome.php:158
-msgid "Create and edit products in a clean, fast, distraction-free editor."
-msgstr "Créez et modifiez des produits dans un éditeur épuré, rapide et sans distraction."
-
-#: front-end/welcome/brikpanel-welcome.php:160
-msgid "A simplified editor built for speed, not clutter"
-msgstr "Un éditeur simplifié conçu pour la rapidité, pas l'encombrement"
-
-#: front-end/welcome/brikpanel-welcome.php:161
-msgid "Modern list with inline price and stock editing"
-msgstr "Liste moderne avec modification du prix et du stock en ligne"
-
-#: front-end/welcome/brikpanel-welcome.php:162
-msgid "Drag & drop image gallery with reordering"
-msgstr "Galerie d'images avec glisser-déposer et réorganisation"
-
-#: front-end/welcome/brikpanel-welcome.php:163
-msgid "Variation wizard with ready-made templates"
-msgstr "Assistant de variations avec modèles prêts à l'emploi"
-
-#: front-end/welcome/brikpanel-welcome.php:164
-msgid "Quick-edit side drawer for one-off changes"
-msgstr "Tiroir latéral de modification rapide pour les changements ponctuels"
-
-#: front-end/welcome/brikpanel-welcome.php:165
-msgid "Duplicate, bulk-edit, and export in a click"
-msgstr "Dupliquez, modifiez en lot et exportez en un clic"
-
-#: front-end/welcome/brikpanel-welcome.php:168
-msgid "Works with simple & variable products"
-msgstr "Fonctionne avec les produits simples & variables"
-
-#: front-end/welcome/brikpanel-welcome.php:174 front-end/welcome/brikpanel-welcome.php:176
-msgid "Orders & coupons"
-msgstr "Commandes & codes promo"
-
-#: front-end/welcome/brikpanel-welcome.php:177
-msgid "Process orders and run promotions without ever leaving the page."
-msgstr "Traitez les commandes et lancez des promotions sans jamais quitter la page."
-
-#: front-end/welcome/brikpanel-welcome.php:179
-msgid "Change order status inline, right from the list"
-msgstr "Changez le statut de commande en ligne, directement depuis la liste"
-
-#: front-end/welcome/brikpanel-welcome.php:180
-msgid "Modern order edit page with a sticky action bar"
-msgstr "Page de modification de commande moderne avec une barre d'action fixe"
-
-#: front-end/welcome/brikpanel-welcome.php:181
-msgid "One-click copy of the customer address"
-msgstr "Copie en un clic de l'adresse du client"
-
-#: front-end/welcome/brikpanel-welcome.php:182
-msgid "Sound, popup, and confetti on every new order"
-msgstr "Son, popup et confettis à chaque nouvelle commande"
-
-#: front-end/welcome/brikpanel-welcome.php:183
-msgid "Create and edit coupons in a fast side drawer"
-msgstr "Créez et modifiez des codes promo dans un tiroir latéral rapide"
-
-#: front-end/welcome/brikpanel-welcome.php:184
-msgid "Percentage, fixed cart, and fixed product discounts"
-msgstr "Remises en pourcentage, fixes sur le panier et fixes sur le produit"
-
-#: front-end/welcome/brikpanel-welcome.php:192
-msgid "Know your customers"
-msgstr "Connaissez vos clients"
-
-#: front-end/welcome/brikpanel-welcome.php:193
-msgid "Understand who your best customers are and how they behave over time."
-msgstr "Comprenez qui sont vos meilleurs clients et comment ils se comportent dans le temps."
-
-#: front-end/welcome/brikpanel-welcome.php:195
-msgid "Lifetime value (LTV) for every customer"
-msgstr "Valeur vie (LTV) pour chaque client"
-
-#: front-end/welcome/brikpanel-welcome.php:196
-msgid "RFM segments: VIP, at-risk, and dormant"
-msgstr "Segments RFM : VIP, à risque et dormants"
-
-#: front-end/welcome/brikpanel-welcome.php:197
-msgid "Cohort retention shows who keeps coming back"
-msgstr "La rétention par cohorte montre qui revient"
-
-#: front-end/welcome/brikpanel-welcome.php:198
-msgid "Build custom segments with powerful filters"
-msgstr "Créez des segments personnalisés avec des filtres puissants"
-
-#: front-end/welcome/brikpanel-welcome.php:199
-msgid "Export any view to CSV in one click"
-msgstr "Exportez n'importe quelle vue en CSV en un clic"
-
-#: front-end/welcome/brikpanel-welcome.php:208
-msgid "Connect & grow"
-msgstr "Connectez & développez"
-
-#: front-end/welcome/brikpanel-welcome.php:209
-msgid "Plug BrikPanel into the tools you already use to grow your store."
-msgstr "Branchez BrikPanel aux outils que vous utilisez déjà pour développer votre boutique."
-
-#: front-end/welcome/brikpanel-welcome.php:211
-msgid "Sync orders, products, and customers to Google Sheets"
-msgstr "Synchronisez commandes, produits et clients vers Google Sheets"
-
-#: front-end/welcome/brikpanel-welcome.php:212
-msgid "Real-time and scheduled exports, fully automated"
-msgstr "Exports en temps réel et planifiés, entièrement automatisés"
-
-#: front-end/welcome/brikpanel-welcome.php:213
-msgid "Pull ad spend from Google Ads and Meta"
-msgstr "Importez les dépenses publicitaires de Google Ads et Meta"
-
-#: front-end/welcome/brikpanel-welcome.php:214
-msgid "See true ROAS and net profit on your dashboard"
-msgstr "Voyez le vrai ROAS et le bénéfice net sur votre tableau de bord"
-
-#: front-end/welcome/brikpanel-welcome.php:215
-msgid "Secure connection you can disconnect anytime"
-msgstr "Connexion sécurisée que vous pouvez déconnecter à tout moment"
-
-#: front-end/welcome/brikpanel-welcome.php:226
-msgid "Operations"
-msgstr "Opérations"
-
-#: front-end/welcome/brikpanel-welcome.php:228
-msgid "Stock & operations"
-msgstr "Stock & opérations"
-
-#: front-end/welcome/brikpanel-welcome.php:229
-msgid "Keep stock, suppliers, and costs under control from one place."
-msgstr "Gardez le stock, les fournisseurs et les coûts sous contrôle depuis un seul endroit."
-
-#: front-end/welcome/brikpanel-welcome.php:231
-msgid "Manage suppliers with full contact details"
-msgstr "Gérez les fournisseurs avec toutes leurs coordonnées"
-
-#: front-end/welcome/brikpanel-welcome.php:232
-msgid "Create purchase orders and track received stock"
-msgstr "Créez des bons de commande et suivez le stock reçu"
-
-#: front-end/welcome/brikpanel-welcome.php:233
-msgid "Assign a supplier per product and per variation"
-msgstr "Attribuez un fournisseur par produit et par variation"
-
-#: front-end/welcome/brikpanel-welcome.php:234
-msgid "Log operating expenses for accurate profit"
-msgstr "Enregistrez les dépenses d'exploitation pour un bénéfice précis"
-
-#: front-end/welcome/brikpanel-welcome.php:235
-msgid "BrikControl health checks keep your store in shape"
-msgstr "Les contrôles de santé BrikControl gardent votre boutique en forme"
-
-#: front-end/welcome/brikpanel-welcome.php:238
-msgid "Suppliers work per variation"
-msgstr "Les fournisseurs fonctionnent par variation"
-
-#: front-end/welcome/brikpanel-welcome.php:244 front-end/welcome/brikpanel-welcome.php:246
-msgid "Make it yours"
-msgstr "Faites-le vôtre"
-
-#: front-end/welcome/brikpanel-welcome.php:247
-msgid "Search instantly, restyle the admin, and make BrikPanel feel like yours."
-msgstr "Recherchez instantanément, restylez l'administration et faites de BrikPanel le vôtre."
-
-#: front-end/welcome/brikpanel-welcome.php:249
-msgid "Global search from anywhere"
-msgstr "Recherche globale depuis n'importe où"
-
-#: front-end/welcome/brikpanel-welcome.php:250
-msgid "Find orders, products, and customers instantly"
-msgstr "Trouvez commandes, produits et clients instantanément"
-
-#: front-end/welcome/brikpanel-welcome.php:251
-msgid "Custom fonts, an accent color, and your own logo"
-msgstr "Polices personnalisées, une couleur d'accent et votre propre logo"
-
-#: front-end/welcome/brikpanel-welcome.php:252
-msgid "A modern, on-brand login page for your team"
-msgstr "Une page de connexion moderne et à votre image pour votre équipe"
-
-#: front-end/welcome/brikpanel-welcome.php:253
-msgid "Reorder the sidebar and import or export settings"
-msgstr "Réorganisez la barre latérale et importez ou exportez les réglages"
 
 #: front-end/welcome/brikpanel-welcome.php:259 front-end/welcome/brikpanel-welcome.php:316
 msgid "You are all set"
@@ -11564,25 +11316,9 @@ msgstr "Bienvenue dans BrikPanel"
 msgid "Tour sections"
 msgstr "Sections de la visite"
 
-#: front-end/welcome/brikpanel-welcome.php:308
-msgid "A modern, Shopify-inspired admin experience for WooCommerce. Run your whole store from one clean, fast place."
-msgstr "Une expérience d'administration moderne et inspirée de Shopify pour WooCommerce. Gérez toute votre boutique depuis un seul endroit épuré et rapide."
-
-#: front-end/welcome/brikpanel-welcome.php:309
-msgid "Use the menu on the left to jump around, or click Next to take the quick tour."
-msgstr "Utilisez le menu à gauche pour naviguer, ou cliquez sur Suivant pour faire la visite rapide."
-
-#: front-end/welcome/brikpanel-welcome.php:317
-msgid "That is the tour. Everything is on by default, so you can dive straight in. Here are a couple of great places to start."
-msgstr "Voilà pour la visite. Tout est activé par défaut, vous pouvez donc vous lancer directement. Voici quelques bons points de départ."
-
 #: front-end/welcome/brikpanel-welcome.php:320
 msgid "Open your dashboard"
 msgstr "Ouvrir votre tableau de bord"
-
-#: front-end/welcome/brikpanel-welcome.php:334
-msgid "Browse all settings"
-msgstr "Parcourir tous les réglages"
 
 #: includes/brikpanel-access-control.php:715 includes/brikpanel-access-control.php:1278
 msgid "BrikPanel interface"
@@ -12103,17 +11839,9 @@ msgstr "Les nouveautés BrikPanel et BrikMentor, des conseils WooCommerce et des
 msgid "No orders"
 msgstr "Aucune commande"
 
-#: includes/brikpanel-enqueue.php:421
-msgid "Page"
-msgstr "Page"
-
 #: includes/brikpanel-enqueue.php:425
 msgid "Browsing"
 msgstr "Navigation"
-
-#: includes/brikpanel-enqueue.php:426
-msgid "Added to cart"
-msgstr "Ajouté au panier"
 
 #: includes/brikpanel-enqueue.php:427
 msgid "Order received"
@@ -12177,10 +11905,6 @@ msgstr "Aucune donnée de catégorie. Les articles de la marketplace doivent êt
 msgid "Orders by device"
 msgstr "Commandes par appareil"
 
-#: includes/brikpanel-enqueue.php:454
-msgid "Traffic sources"
-msgstr "Sources de trafic"
-
 #: includes/brikpanel-enqueue.php:456
 msgid "Organic Search"
 msgstr "Recherche organique"
@@ -12196,10 +11920,6 @@ msgstr "Aucune visite avec une source connue pour cette période."
 #: includes/brikpanel-enqueue.php:462
 msgid "No external referrers yet for this period."
 msgstr "Aucun site référent externe pour cette période."
-
-#: includes/brikpanel-enqueue.php:465
-msgid "return & refund rate"
-msgstr "taux de retours & remboursements"
 
 #: includes/brikpanel-enqueue.php:468
 msgid "Average customer LTV"
@@ -12256,10 +11976,6 @@ msgstr "plus dans le catalogue"
 #: includes/brikpanel-enqueue.php:499 includes/brikpanel-store-summary.php:3187
 msgid "Net revenue"
 msgstr "Chiffre d'affaires net"
-
-#: includes/brikpanel-enqueue.php:501
-msgid "Expense added"
-msgstr "Dépense ajoutée"
 
 #: includes/brikpanel-enqueue.php:503
 msgid "Enter an amount and a title."
@@ -15840,8 +15556,7 @@ msgstr "%1$s · %2$s"
 #: includes/brikpanel-enqueue.php:588
 #, php-format
 msgid "A saved segment named “%s” already exists. Replace it?"
-msgstr ""
-"Un segment enregistré nommé « %s » existe déjà. Voulez-vous le remplacer ?"
+msgstr "Un segment enregistré nommé « %s » existe déjà. Voulez-vous le remplacer ?"
 
 #: front-end/dashboard/brikpanel-dashboard.php:1841
 msgid "About campaigns"
@@ -15856,17 +15571,8 @@ msgid "Cart value"
 msgstr "Valeur des paniers"
 
 #: front-end/dashboard/brikpanel-dashboard.php:1844
-msgid ""
-"Conversion rate is those orders divided by the visits that arrived from the "
-"campaign link in this period, counted once a day per visitor. Visits follow "
-"your visitor tracking and cookie consent settings, and a dash means none "
-"were counted."
-msgstr ""
-"Le taux de conversion correspond à ces commandes divisées par les visites "
-"arrivées par le lien de la campagne pendant cette période, comptées une fois"
-" par jour et par visiteur. Les visites suivent vos réglages de suivi des "
-"visiteurs et de consentement aux cookies ; un tiret signifie qu’aucune n’a "
-"été comptée."
+msgid "Conversion rate is those orders divided by the visits that arrived from the campaign link in this period, counted once a day per visitor. Visits follow your visitor tracking and cookie consent settings, and a dash means none were counted."
+msgstr "Le taux de conversion correspond à ces commandes divisées par les visites arrivées par le lien de la campagne pendant cette période, comptées une fois par jour et par visiteur. Les visites suivent vos réglages de suivi des visiteurs et de consentement aux cookies ; un tiret signifie qu’aucune n’a été comptée."
 
 #: includes/brikpanel-enqueue.php:598
 msgid "Could not delete the segment. Please try again."
@@ -15885,11 +15591,8 @@ msgstr "Supprimer le segment enregistré %s"
 #. translators: %s: name of a saved segment.
 #: includes/brikpanel-enqueue.php:597
 #, php-format
-msgid ""
-"Delete the saved segment “%s”? It is removed for everyone who uses Segments."
-msgstr ""
-"Supprimer le segment enregistré « %s » ? Il sera supprimé pour toutes les "
-"personnes qui utilisent les Segments."
+msgid "Delete the saved segment “%s”? It is removed for everyone who uses Segments."
+msgstr "Supprimer le segment enregistré « %s » ? Il sera supprimé pour toutes les personnes qui utilisent les Segments."
 
 #. translators: %d: product ID.
 #: front-end/segments/brikpanel-segments.php:1286
@@ -15910,26 +15613,16 @@ msgid "Leaves out orders that contain any of these products."
 msgstr "Exclut les commandes contenant l’un de ces produits."
 
 #: includes/brikpanel-consent.php:601
-msgid ""
-"Marks the campaign links this browser has already been counted for today."
-msgstr ""
-"Mémorise les liens de campagne pour lesquels ce navigateur a déjà été compté"
-" aujourd’hui."
+msgid "Marks the campaign links this browser has already been counted for today."
+msgstr "Mémorise les liens de campagne pour lesquels ce navigateur a déjà été compté aujourd’hui."
 
 #: includes/brikpanel-enqueue.php:468
 msgid "None in this period."
 msgstr "Aucun sur cette période."
 
 #: front-end/dashboard/brikpanel-dashboard.php:1842
-msgid ""
-"Orders and revenue come from WooCommerce's order attribution: each order "
-"counts for the last campaign link its customer came through, even when that "
-"visit was before this period."
-msgstr ""
-"Les commandes et le chiffre d’affaires proviennent de l’attribution des "
-"commandes de WooCommerce : chaque commande compte pour le dernier lien de "
-"campagne par lequel son client est arrivé, même si cette visite a eu lieu "
-"avant cette période."
+msgid "Orders and revenue come from WooCommerce's order attribution: each order counts for the last campaign link its customer came through, even when that visit was before this period."
+msgstr "Les commandes et le chiffre d’affaires proviennent de l’attribution des commandes de WooCommerce : chaque commande compte pour le dernier lien de campagne par lequel son client est arrivé, même si cette visite a eu lieu avant cette période."
 
 #. translators: 1: number of carts bought back after being left, e.g. 2; 2:
 #. their share of the carts left, e.g. "17%".
@@ -15973,15 +15666,580 @@ msgstr "Visites"
 #. translators: %d: how many saved segments a tab can keep.
 #: includes/brikpanel-enqueue.php:591
 #, php-format
-msgid ""
-"You can keep up to %d saved segment on this tab. Delete one to save a new "
-"one."
-msgid_plural ""
-"You can keep up to %d saved segments on this tab. Delete one to save a new "
-"one."
-msgstr[0] ""
-"Vous pouvez conserver jusqu’à %d segment enregistré dans cet onglet. "
-"Supprimez-en un pour en enregistrer un nouveau."
-msgstr[1] ""
-"Vous pouvez conserver jusqu’à %d segments enregistrés dans cet onglet. "
-"Supprimez-en un pour en enregistrer un nouveau."
+msgid "You can keep up to %d saved segment on this tab. Delete one to save a new one."
+msgid_plural "You can keep up to %d saved segments on this tab. Delete one to save a new one."
+msgstr[0] "Vous pouvez conserver jusqu’à %d segment enregistré dans cet onglet. Supprimez-en un pour en enregistrer un nouveau."
+msgstr[1] "Vous pouvez conserver jusqu’à %d segments enregistrés dans cet onglet. Supprimez-en un pour en enregistrer un nouveau."
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:57
+msgid "A sketch of the dashboard: three number cards, the net profit card circled, and a rising sales line"
+msgstr "Un croquis du tableau de bord : trois cartes de chiffres, la carte du bénéfice net entourée et une courbe des ventes qui monte"
+
+#. translators: Short handwritten note in a drawing of the dashboard, next to the circled net profit card. Two or three words.
+#: front-end/welcome/brikpanel-welcome-sketches.php:80
+msgctxt "welcome tour handwritten note"
+msgid "real profit!"
+msgstr "vrai bénéfice !"
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:84
+msgid "A sketch of the order list with a status menu open on one order, and a ringing bell"
+msgstr "Un croquis de la liste des commandes avec le menu de statut ouvert sur une commande et une cloche qui sonne"
+
+#. translators: Short handwritten note in a drawing of the order list, pointing at a status menu opened inside the list. Two to four words.
+#: front-end/welcome/brikpanel-welcome-sketches.php:108
+msgctxt "welcome tour handwritten note"
+msgid "right in the list"
+msgstr "directement dans la liste"
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:112
+msgid "Three customers: a loyal one with a heart, a VIP with a star, and one fading away"
+msgstr "Trois clients : un fidèle avec un cœur, un VIP avec une étoile et un qui s’efface"
+
+#. translators: Short handwritten label above the best customer in a drawing. Usually left as VIP.
+#: front-end/welcome/brikpanel-welcome-sketches.php:132
+msgctxt "welcome tour handwritten note"
+msgid "VIP"
+msgstr "VIP"
+
+#. translators: Short handwritten label under a returning customer in a drawing. One word.
+#: front-end/welcome/brikpanel-welcome-sketches.php:139
+msgctxt "welcome tour handwritten note"
+msgid "loyal"
+msgstr "fidèle"
+
+#. translators: Short handwritten label under a customer who may not come back, in a drawing. One or two words with a question mark.
+#: front-end/welcome/brikpanel-welcome-sketches.php:146
+msgctxt "welcome tour handwritten note"
+msgid "at risk?"
+msgstr "à risque ?"
+
+#: front-end/welcome/brikpanel-welcome-sketches.php:150
+msgid "Google Sheets, Google Ads and Meta flowing into BrikPanel"
+msgstr "Google Sheets, Google Ads et Meta qui convergent vers BrikPanel"
+
+#. translators: Short handwritten note under the BrikPanel logo in a drawing where Google Sheets, Google Ads and Meta flow into it. Three or four words.
+#: front-end/welcome/brikpanel-welcome-sketches.php:171
+msgctxt "welcome tour handwritten note"
+msgid "all in one place"
+msgstr "tout au même endroit"
+
+#: front-end/welcome/brikpanel-welcome.php:98 front-end/welcome/brikpanel-welcome.php:322
+msgctxt "welcome tour button"
+msgid "Next"
+msgstr "Suivant"
+
+#: front-end/welcome/brikpanel-welcome.php:99
+msgctxt "welcome tour button"
+msgid "Finish"
+msgstr "Terminer"
+
+#: front-end/welcome/brikpanel-welcome.php:128
+msgctxt "welcome tour step name"
+msgid "Profit"
+msgstr "Bénéfice"
+
+#: front-end/welcome/brikpanel-welcome.php:130
+msgid "Know what you really earn"
+msgstr "Sachez ce que vous gagnez vraiment"
+
+#: front-end/welcome/brikpanel-welcome.php:131
+msgid "Your dashboard takes cost of goods, ad spend and expenses off your sales, so net profit is always one glance away."
+msgstr "Votre tableau de bord déduit de vos ventes le coût des marchandises, les dépenses publicitaires et les frais, pour que le bénéfice net soit toujours visible d’un coup d’œil."
+
+#: front-end/welcome/brikpanel-welcome.php:132
+msgid "Any date range"
+msgstr "N’importe quelle période"
+
+#: front-end/welcome/brikpanel-welcome.php:136
+msgctxt "welcome tour step name"
+msgid "Orders"
+msgstr "Commandes"
+
+#: front-end/welcome/brikpanel-welcome.php:137
+msgid "Orders and products"
+msgstr "Commandes et produits"
+
+#: front-end/welcome/brikpanel-welcome.php:138
+msgid "Handle orders in seconds"
+msgstr "Traitez vos commandes en quelques secondes"
+
+#: front-end/welcome/brikpanel-welcome.php:139
+msgid "Hear every new order, change its status right in the list, and edit price and stock without opening a single extra page."
+msgstr "Entendez chaque nouvelle commande, changez son statut directement dans la liste et modifiez le prix et le stock sans ouvrir une seule page de plus."
+
+#: front-end/welcome/brikpanel-welcome.php:140
+msgid "Order alerts"
+msgstr "Alertes de commande"
+
+#: front-end/welcome/brikpanel-welcome.php:140
+msgid "Ctrl K search"
+msgstr "Recherche Ctrl K"
+
+#: front-end/welcome/brikpanel-welcome.php:144
+msgctxt "welcome tour step name"
+msgid "Customers"
+msgstr "Clients"
+
+#: front-end/welcome/brikpanel-welcome.php:146
+msgid "Meet your best customers"
+msgstr "Découvrez vos meilleurs clients"
+
+#: front-end/welcome/brikpanel-welcome.php:147
+msgid "See lifetime value for every customer, spot your VIPs and notice the ones who might not come back."
+msgstr "Voyez la valeur vie de chaque client, repérez vos VIP et remarquez ceux qui risquent de ne pas revenir."
+
+#: front-end/welcome/brikpanel-welcome.php:148
+msgid "VIP and at risk groups"
+msgstr "Groupes VIP et à risque"
+
+#: front-end/welcome/brikpanel-welcome.php:148
+msgid "Cohorts"
+msgstr "Cohortes"
+
+#: front-end/welcome/brikpanel-welcome.php:148
+msgid "CSV export"
+msgstr "Export CSV"
+
+#: front-end/welcome/brikpanel-welcome.php:152
+msgctxt "welcome tour step name"
+msgid "Connect"
+msgstr "Connexions"
+
+#: front-end/welcome/brikpanel-welcome.php:154
+msgid "Connect the tools you use"
+msgstr "Connectez les outils que vous utilisez"
+
+#: front-end/welcome/brikpanel-welcome.php:155
+msgid "Sync orders and customers to Google Sheets, and bring in Google Ads and Meta spend to see your true ROAS."
+msgstr "Synchronisez commandes et clients vers Google Sheets, et importez les dépenses Google Ads et Meta pour voir votre vrai ROAS."
+
+#. translators: 1: step number, 2: number of steps, 3: area of the admin, for example "1 of 4 · Dashboard"
+#: front-end/welcome/brikpanel-welcome.php:165
+#, php-format
+msgid "%1$s of %2$s · %3$s"
+msgstr "%1$s sur %2$s · %3$s"
+
+#: front-end/welcome/brikpanel-welcome.php:181
+msgid "Sales, net profit and live visitors"
+msgstr "Ventes, bénéfice net et visiteurs en direct"
+
+#: front-end/welcome/brikpanel-welcome.php:182 front-end/welcome/brikpanel-welcome.php:191 front-end/welcome/brikpanel-welcome.php:199 front-end/welcome/brikpanel-welcome.php:209
+msgctxt "welcome tour link"
+msgid "Open"
+msgstr "Ouvrir"
+
+#: front-end/welcome/brikpanel-welcome.php:190
+msgid "New orders and quick status changes"
+msgstr "Nouvelles commandes et changements de statut rapides"
+
+#: front-end/welcome/brikpanel-welcome.php:198
+msgid "Lifetime value and segments"
+msgstr "Valeur vie et segments"
+
+#: front-end/welcome/brikpanel-welcome.php:208
+msgid "Sync your store to a sheet"
+msgstr "Synchronisez votre boutique avec une feuille de calcul"
+
+#: front-end/welcome/brikpanel-welcome.php:209
+msgctxt "welcome tour link"
+msgid "Connect"
+msgstr "Connecter"
+
+#: front-end/welcome/brikpanel-welcome.php:239
+msgid "Four things BrikPanel does for your store. Each one lays a brick."
+msgstr "Quatre choses que BrikPanel fait pour votre boutique. Chacune pose une brique."
+
+#: front-end/welcome/brikpanel-welcome.php:240
+msgid "Every brick is in place, and everything is already switched on."
+msgstr "Chaque brique est en place, et tout est déjà activé."
+
+#: front-end/welcome/brikpanel-welcome.php:298
+msgid "All set"
+msgstr "Tout est prêt"
+
+#: front-end/welcome/brikpanel-welcome.php:299
+msgid "You are ready to go"
+msgstr "Vous pouvez commencer"
+
+#: front-end/welcome/brikpanel-welcome.php:300
+msgid "Everything is already switched on. Jump straight to the part you need."
+msgstr "Tout est déjà activé. Allez directement à la partie dont vous avez besoin."
+
+#: front-end/welcome/brikpanel-welcome.php:321
+msgctxt "welcome tour button"
+msgid "Back"
+msgstr "Retour"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1821
+msgid "Website orders only"
+msgstr "Commandes du site uniquement"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1869
+msgid "Out of every 100 orders"
+msgstr "Sur 100 commandes"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1933
+msgid "View all"
+msgstr "Tout voir"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1966
+msgid "Best sellers"
+msgstr "Meilleures ventes"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1990
+msgid "View all products"
+msgstr "Voir tous les produits"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2038
+msgid "Channels"
+msgstr "Canaux"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2044
+msgid "Orders from campaign links"
+msgstr "Commandes issues de liens de campagne"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2099
+msgid "New and returning"
+msgstr "Nouveaux et récurrents"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2106 front-end/dashboard/brikpanel-dashboard.php:2108
+msgid "Out of every 100 customers"
+msgstr "Sur 100 clients"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2385
+msgid "View details"
+msgstr "Voir les détails"
+
+#: includes/brikpanel-enqueue.php:550
+msgid "vs yesterday"
+msgstr "par rapport à hier"
+
+#: includes/brikpanel-enqueue.php:551
+msgid "vs the day before"
+msgstr "par rapport à la veille"
+
+#. translators: %s: number of days in the period being compared, e.g. 30.
+#: includes/brikpanel-enqueue.php:553
+#, php-format
+msgid "vs previous %s day"
+msgid_plural "vs previous %s days"
+msgstr[0] "par rapport au %s jour précédent"
+msgstr[1] "par rapport aux %s jours précédents"
+
+#: includes/brikpanel-enqueue.php:554
+msgid "Previous period"
+msgstr "Période précédente"
+
+#. translators: %s: a day, e.g. "Mon, Oct 4". The day is not over yet.
+#: includes/brikpanel-enqueue.php:556
+#, php-format
+msgid "%s, so far"
+msgstr "%s, jusqu'à présent"
+
+#. translators: 1: a day, e.g. "Today"; 2: a time of day, e.g. "09:59".
+#: includes/brikpanel-enqueue.php:558
+#, php-format
+msgid "%1$s, until %2$s"
+msgstr "%1$s, jusqu'à %2$s"
+
+#: includes/brikpanel-enqueue.php:559
+msgid "Revenue so far"
+msgstr "Chiffre d'affaires jusqu'ici"
+
+#: includes/brikpanel-enqueue.php:560
+msgid "Orders so far"
+msgstr "Commandes jusqu'ici"
+
+#: includes/brikpanel-enqueue.php:561
+msgid "Avg. order value so far"
+msgstr "Valeur moyenne de commande jusqu'ici"
+
+#. translators: %s: the matching day of the previous period, e.g. "Sep 4".
+#: includes/brikpanel-enqueue.php:563
+#, php-format
+msgid "Previous (%s)"
+msgstr "Précédent (%s)"
+
+#: includes/brikpanel-enqueue.php:564
+msgid "Not yet"
+msgstr "Pas encore"
+
+#. translators: %s: number of visitors on the store right now, already formatted.
+#: includes/brikpanel-enqueue.php:566
+#, php-format
+msgid "%s now"
+msgstr "%s en ce moment"
+
+#: includes/brikpanel-enqueue.php:567
+msgid "No one is on the store right now."
+msgstr "Personne n'est sur la boutique en ce moment."
+
+#. translators: %s: number of further visitors not listed, already formatted.
+#: includes/brikpanel-enqueue.php:569
+#, php-format
+msgid "%s more on the store"
+msgid_plural "%s more on the store"
+msgstr[0] "%s de plus sur la boutique"
+msgstr[1] "%s de plus sur la boutique"
+
+#. translators: %s: number of products in the visitor's cart, already formatted.
+#: includes/brikpanel-enqueue.php:572
+#, php-format
+msgid "%s in cart"
+msgid_plural "%s in cart"
+msgstr[0] "%s dans le panier"
+msgstr[1] "%s dans le panier"
+
+#: includes/brikpanel-enqueue.php:580
+msgid "Today so far"
+msgstr "Aujourd'hui jusqu'ici"
+
+#. translators: %s: a time of day, e.g. "09:40".
+#: includes/brikpanel-enqueue.php:582
+#, php-format
+msgid "until %s"
+msgstr "jusqu'à %s"
+
+#: includes/brikpanel-enqueue.php:583
+msgid "Sales"
+msgstr "Ventes"
+
+#. translators: %s: number of visitors, already formatted.
+#: includes/brikpanel-enqueue.php:585
+#, php-format
+msgid "%s visitor"
+msgid_plural "%s visitors"
+msgstr[0] "%s visiteur"
+msgstr[1] "%s visiteurs"
+
+#. translators: 1: order number, e.g. "#348"; 2: how long ago, e.g. "28 min ago".
+#: includes/brikpanel-enqueue.php:587
+#, php-format
+msgid "Last order %1$s, %2$s"
+msgstr "Dernière commande %1$s, %2$s"
+
+#: includes/brikpanel-enqueue.php:588
+msgid "Sales per hour today"
+msgstr "Ventes par heure aujourd'hui"
+
+#. translators: %s: conversion rate, e.g. "2.4%".
+#: includes/brikpanel-enqueue.php:590
+#, php-format
+msgid "%s converted"
+msgstr "%s convertis"
+
+#: includes/brikpanel-enqueue.php:592
+msgid "Of visitors"
+msgstr "Des visiteurs"
+
+#: includes/brikpanel-enqueue.php:593
+msgid "Of previous step"
+msgstr "De l'étape précédente"
+
+#: includes/brikpanel-enqueue.php:594
+msgid "Did not continue"
+msgstr "N'ont pas continué"
+
+#: includes/brikpanel-enqueue.php:595
+msgid "More orders than checkouts: orders placed without a counted checkout, such as orders created by hand, are counted here too."
+msgstr "Plus de commandes que de paiements : les commandes passées sans paiement comptabilisé, comme les commandes créées à la main, sont aussi comptées ici."
+
+#: includes/brikpanel-enqueue.php:596
+msgid "sold"
+msgid_plural "sold"
+msgstr[0] "vendu"
+msgstr[1] "vendus"
+
+#: includes/brikpanel-enqueue.php:597
+msgid "view"
+msgid_plural "views"
+msgstr[0] "vue"
+msgstr[1] "vues"
+
+#: includes/brikpanel-enqueue.php:598
+msgid "add"
+msgid_plural "adds"
+msgstr[0] "ajout"
+msgstr[1] "ajouts"
+
+#: includes/brikpanel-enqueue.php:599
+msgid "No orders from campaign links in this period."
+msgstr "Aucune commande issue de liens de campagne sur cette période."
+
+#. translators: %s: number of orders, already formatted.
+#: includes/brikpanel-enqueue.php:601
+#, php-format
+msgid "%s order in this period"
+msgid_plural "%s orders in this period"
+msgstr[0] "%s commande sur cette période"
+msgstr[1] "%s commandes sur cette période"
+
+#. translators: %s: number of customers, already formatted.
+#: includes/brikpanel-enqueue.php:603
+#, php-format
+msgid "%s customer in all"
+msgid_plural "%s customers in all"
+msgstr[0] "%s client au total"
+msgstr[1] "%s clients au total"
+
+#: includes/brikpanel-enqueue.php:604
+msgid "Loyal"
+msgstr "Fidèles"
+
+#: includes/brikpanel-enqueue.php:606
+msgid "At risk"
+msgstr "À risque"
+
+#: includes/brikpanel-exit-survey.php:53
+msgid "I only needed one feature, but my whole admin changed"
+msgstr "Je n'avais besoin que d'une fonctionnalité, mais toute mon administration a changé"
+
+#: includes/brikpanel-exit-survey.php:54
+msgid "What did you run into? (optional)"
+msgstr "Qu'avez-vous rencontré ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:57
+msgid "I am only deactivating it for a short while"
+msgstr "Je le désactive seulement pour un moment"
+
+#: includes/brikpanel-exit-survey.php:58
+msgid "Anything you would like to tell us? (optional)"
+msgstr "Souhaitez-vous nous dire quelque chose ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:61
+msgid "It conflicted with another plugin or my theme"
+msgstr "Il entrait en conflit avec une autre extension ou mon thème"
+
+#: includes/brikpanel-exit-survey.php:62
+msgid "Which plugin or theme? (optional)"
+msgstr "Quelle extension ou quel thème ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:65
+msgid "Something did not work"
+msgstr "Quelque chose ne fonctionnait pas"
+
+#: includes/brikpanel-exit-survey.php:66
+msgid "What did not work? (optional)"
+msgstr "Qu'est-ce qui ne fonctionnait pas ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:69
+msgid "It slowed down my site"
+msgstr "Il ralentissait mon site"
+
+#: includes/brikpanel-exit-survey.php:70
+msgid "Which page felt slow? (optional)"
+msgstr "Quelle page vous a semblé lente ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:73
+msgid "A feature I need is missing"
+msgstr "Il manque une fonctionnalité dont j'ai besoin"
+
+#: includes/brikpanel-exit-survey.php:74
+msgid "What were you looking for? (optional)"
+msgstr "Que cherchiez-vous ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:77
+msgid "I prefer the default WooCommerce screens"
+msgstr "Je préfère les écrans par défaut de WooCommerce"
+
+#: includes/brikpanel-exit-survey.php:78
+msgid "What did you miss from them? (optional)"
+msgstr "Qu'est-ce qui vous a manqué ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:81
+msgid "I found a better plugin"
+msgstr "J'ai trouvé une meilleure extension"
+
+#: includes/brikpanel-exit-survey.php:82
+msgid "Which one? (optional)"
+msgstr "Laquelle ? (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:85
+msgctxt "deactivation survey reason"
+msgid "Other"
+msgstr "Autre raison"
+
+#: includes/brikpanel-exit-survey.php:86
+msgid "Please tell us more (optional)"
+msgstr "Dites-nous-en plus (facultatif)"
+
+#: includes/brikpanel-exit-survey.php:98
+msgid "Abandoned cart recovery"
+msgstr "Récupération des paniers abandonnés"
+
+#: includes/brikpanel-exit-survey.php:99
+msgid "Dashboard and reports"
+msgstr "Tableau de bord et rapports"
+
+#: includes/brikpanel-exit-survey.php:100
+msgid "Product list and bulk editing"
+msgstr "Liste des produits et modification groupée"
+
+#: includes/brikpanel-exit-survey.php:102
+msgid "Google Sheets sync"
+msgstr "Synchronisation avec Google Sheets"
+
+#: includes/brikpanel-exit-survey.php:103
+msgid "Ad spend and profit"
+msgstr "Dépenses publicitaires et bénéfice"
+
+#: includes/brikpanel-exit-survey.php:104
+msgid "Stock and suppliers"
+msgstr "Stock et fournisseurs"
+
+#: includes/brikpanel-exit-survey.php:107
+msgctxt "deactivation survey: what BrikPanel was installed for"
+msgid "Something else"
+msgstr "Autre chose"
+
+#: includes/brikpanel-exit-survey.php:184
+msgid "Sending…"
+msgstr "Envoi en cours…"
+
+#: includes/brikpanel-exit-survey.php:225
+msgid "Before you go: why are you deactivating BrikPanel?"
+msgstr "Avant de partir : pourquoi désactivez-vous BrikPanel ?"
+
+#: includes/brikpanel-exit-survey.php:226
+msgid "Your answer helps us fix what made you leave. Answering is optional."
+msgstr "Votre réponse nous aide à corriger ce qui vous a fait partir. Répondre est facultatif."
+
+#: includes/brikpanel-exit-survey.php:228
+msgid "Close and keep BrikPanel active"
+msgstr "Fermer et garder BrikPanel actif"
+
+#: includes/brikpanel-exit-survey.php:233
+msgid "Choose a reason"
+msgstr "Choisissez une raison"
+
+#: includes/brikpanel-exit-survey.php:246
+msgid "What did you install BrikPanel for?"
+msgstr "Pourquoi avez-vous installé BrikPanel ?"
+
+#: includes/brikpanel-exit-survey.php:248
+msgid "Choose one"
+msgstr "Choisissez une option"
+
+#: includes/brikpanel-exit-survey.php:264
+msgid "Pressing Send shares only your answer, how many days BrikPanel was in use, your BrikPanel, WordPress, WooCommerce and PHP versions and your admin language with brksoft.com. Your site address, email and store data are not sent."
+msgstr "En appuyant sur Envoyer, vous partagez uniquement avec brksoft.com votre réponse, le nombre de jours d'utilisation de BrikPanel, vos versions de BrikPanel, WordPress, WooCommerce et PHP et la langue de votre administration. L'adresse de votre site, votre e-mail et les données de votre boutique ne sont pas envoyés."
+
+#: includes/brikpanel-exit-survey.php:265
+msgid "Privacy policy"
+msgstr "Politique de confidentialité"
+
+#: includes/brikpanel-exit-survey.php:268
+msgid "Skip and deactivate"
+msgstr "Ignorer et désactiver"
+
+#: includes/brikpanel-exit-survey.php:269
+msgid "Send and deactivate"
+msgstr "Envoyer et désactiver"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1972
+msgid "Most viewed pages"
+msgstr "Pages les plus vues"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1978
+msgid "Products and pages"
+msgstr "Produits et pages"

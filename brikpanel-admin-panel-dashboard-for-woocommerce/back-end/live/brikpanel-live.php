@@ -128,7 +128,7 @@ function brikpanel_live_visitor_source( $referrer, $landing_url ) {
     }
     $clip = static function ( $value, $max ) {
         $value = trim( sanitize_text_field( (string) $value ) );
-        return function_exists( 'mb_substr' ) ? mb_substr( $value, 0, $max ) : substr( $value, 0, $max );
+        return brikpanel_substr( $value, 0, $max );
     };
     $tag = static function ( $key ) use ( $params, $clip ) {
         return ( isset( $params[ $key ] ) && is_string( $params[ $key ] ) ) ? $clip( $params[ $key ], 80 ) : '';

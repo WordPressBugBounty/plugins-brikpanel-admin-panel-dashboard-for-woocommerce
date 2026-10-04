@@ -296,9 +296,11 @@
 	display: none;
 }
 
+/* The radius again: WordPress's a:focus (0,1,1) squares a link-button's corners to 2px. */
 .brikpanel-btn:focus {
 	outline: none;
 	box-shadow: none;
+	border-radius: var(--brikpanel-control-radius);
 }
 
 .brikpanel-btn:focus-visible {
@@ -424,7 +426,7 @@
 
 /* ── Badge ──────────────────────────────────────────────────────────────────── */
 /* One pill for short labels. `--new` is the dark "New" badge used by the
-   sidebar, the welcome tour, the menu editor and the settings menu. The 1rem
+   sidebar, the menu editor and the settings menu. The 1rem
    line keeps a sidebar row as tall as the count bubbles. */
 .brikpanel-badge {
 	display: inline-block;

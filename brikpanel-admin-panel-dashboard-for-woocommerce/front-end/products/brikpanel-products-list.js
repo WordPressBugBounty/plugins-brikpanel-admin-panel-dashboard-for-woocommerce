@@ -39,7 +39,9 @@
         // filters carried in from a taxonomy "product count" link. Surfaced
         // as removable chips; sent to the server as `tax_filters`.
         tax_filters: {},
-        sort: 'date-desc',
+        // The sort this user picked last (saved per user); a sort in the URL
+        // overrides it in readStateFromUrl().
+        sort: PL.sort || 'date-desc',
         selected: [],
         products: [],
         loading: false,
@@ -158,6 +160,11 @@
         } catch (e) {}
     }
 
+    function isSortOption(val) {
+        var select = document.getElementById('bpl-sort');
+        return !!select && Array.prototype.some.call(select.options, function (o) { return o.value === val; });
+    }
+
     // Read filter params from the current URL into state and reflect them in
     // the filter controls. Runs once on boot, before the first fetch.
     function readStateFromUrl() {
@@ -167,7 +174,9 @@
 
         Object.keys(URL_PARAM_MAP).forEach(function (key) {
             var val = params.get(URL_PARAM_MAP[key]);
-            if (val !== null) { state[key] = val; }
+            // A sort the dropdown does not offer (a hand-edited URL) is left
+            // out: the list keeps the saved sort instead of an empty dropdown.
+            if (val !== null && (key !== 'sort' || isSortOption(val))) { state[key] = val; }
         });
 
         var paged = parseInt(params.get('bpl_paged'), 10);
@@ -350,6 +359,30 @@
         return hasActiveFilters() ? window.location.href : '';
     }
 
+    // Save a sort picked in the dropdown as the one the list opens with next
+    // time, for this user. The Sort button's drag mode only borrows "Custom
+    // order" through .val(), which fires no change, so it is never saved.
+    // One save in flight at a time; a pick made meanwhile follows it, so the
+    // saves reach the server in the order they were made.
+    var sortPickSaving = false;
+    var sortPickQueued = null;
+    function rememberSort(sort) {
+        if (sortPickSaving) {
+            sortPickQueued = sort;
+            return;
+        }
+        sortPickSaving = true;
+        $.post(PL.ajax_url, { action: 'brikpanel_pl_save_sort', security: PL.nonce, sort: sort })
+            .always(function () {
+                sortPickSaving = false;
+                var next = sortPickQueued;
+                sortPickQueued = null;
+                if (next !== null && next !== sort) {
+                    rememberSort(next);
+                }
+            });
+    }
+
     // =========================================================================
     // INIT
     // =========================================================================
@@ -483,6 +516,7 @@
         $('#bpl-sort').on('change', function () {
             state.sort = $(this).val();
             state.page = 1;
+            rememberSort(state.sort);
             // Switching to "Custom order" from the dropdown also engages
             // sort mode so the drag handles appear immediately. Switching
             // away while sort mode is active gracefully exits it.
