@@ -2533,8 +2533,18 @@
             showEmpty(refEl, { text: i18n.src_no_referrers || '', note: '', preset: '' });
             return;
         }
+        // A site can send visits through two channels (google.com from ads and from
+        // search). Those rows name their channel, so the list never shows a site twice
+        // with nothing to tell the rows apart; a site listed once stays as it is.
+        var seen = {};
+        list.forEach(function (r) {
+            var h = String(r.host || '').toLowerCase();
+            seen[h] = (seen[h] || 0) + 1;
+        });
         refEl.innerHTML = '<ul class="bp-dv-refs">' + list.map(function (r) {
-            return '<li><span dir="auto">' + escapeHtml(r.host || '') + '</span><b><bdi>' + escapeHtml(formatNumber(r.hits || 0)) + '</bdi></b></li>';
+            var host = String(r.host || '');
+            var ch = seen[host.toLowerCase()] > 1 ? '<em class="bp-dv-ref-ch">' + escapeHtml(sourceChannelLabel(r.channel)) + '</em>' : '';
+            return '<li><span><bdi>' + escapeHtml(host) + '</bdi>' + ch + '</span><b><bdi>' + escapeHtml(formatNumber(r.hits || 0)) + '</bdi></b></li>';
         }).join('') + '</ul>';
     }
 

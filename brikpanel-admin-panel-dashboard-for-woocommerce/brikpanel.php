@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.29
+ * Version: 3.3.30
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.29');
+define('BRIKPANEL_VERSION', '3.3.30');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -1288,6 +1288,17 @@ if ( ! function_exists( 'brikpanel_frontend_tracking_allowed' ) ) {
 // hooks. Shared by every tracker so there is exactly one list to maintain.
 // =============================================================================
 brikpanel_require('includes/brikpanel-bot-filter.php');
+
+// =============================================================================
+// "THIS IS A PERSON" MARK FOR STOREFRONT ANALYTICS (3.3.30)
+//
+// Nothing a browser does is counted until it behaved like a person once and
+// the server checked where it came from (cloud provider addresses are left
+// out). Same early load as the bot filter: the add-to-cart and checkout
+// counters ask it on early hooks.
+// =============================================================================
+brikpanel_require('includes/brikpanel-datacenter.php');
+brikpanel_require('includes/brikpanel-human-proof.php');
 
 // =============================================================================
 // ACCESS CONTROL — per-user / per-role interface gate

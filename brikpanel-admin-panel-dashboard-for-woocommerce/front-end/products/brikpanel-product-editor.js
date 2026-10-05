@@ -551,6 +551,7 @@
         $('#bpe-add-variation').on('click', addVariationManually);
         $('#bpe-clear-vars').on('click', clearAllVariations);
         $('#bpe-apply-bulk').on('click', applyBulk);
+        $('#bpe-bulk-stock-inf').on('click', toggleBulkUnlimited);
         // The sort select is an action menu: picking a mode sorts immediately
         // and the select snaps back to its placeholder.
         $('#bpe-var-sort').on('change', applyVariationSort);
@@ -3828,10 +3829,12 @@
             if ($vfrom.length) v.sale_from = $vfrom.val() || '';
             var $vto = $scope.find('.var-sale-to');
             if ($vto.length) v.sale_to = $vto.val() || '';
-            v.manage_stock   = $row.find('.var-manage').is(':checked');
+            v.manage_stock   = varRowCounts($row);
             v.enabled        = $row.find('.var-enabled').is(':checked');
             v.stock_quantity = $row.find('.var-stock').val();
-            v.stock_status   = $row.find('.var-stock-status').val() || 'instock';
+            var $vstatus = $scope.find('.var-stock-status');
+            if ($vstatus.length) v.stock_status = $vstatus.val() || 'instock';
+            v.backorders     = readVarBackorders($scope, v, v.manage_stock);
             var $vsku = $scope.find('.var-sku');
             if ($vsku.length) v.sku = $vsku.val();
             var $vgtin = $scope.find('.var-gtin');
@@ -3856,10 +3859,6 @@
             }
             var $vendor = $scope.find('.var-vendor');
             if ($vendor.length) v.vendor_id = parseInt($vendor.val(), 10) || 0;
-            if (v.stock_status === 'onbackorder') {
-                var $back = $('#bpe-var-table-body tr.var-backorder-row[data-idx="' + idx + '"] input[type="radio"]:checked');
-                if ($back.length) v.backorders = $back.val() === 'notify' ? 'notify' : 'yes';
-            }
         });
     }
 
@@ -4047,11 +4046,11 @@
                 // every row from the last snapshot and wipe in-flight edits.
                 captureVarTableInputs();
                 captureVarExtraInputs();
-                // The backorder, details and extras rows are siblings of the
-                // main row, not children, so they would stay behind and
-                // visually detach from their variation. Drop them now; `stop`
-                // re-renders and rebuilds them in the new order.
-                $tb.find('tr.var-backorder-row, tr.var-details-row, tr.var-extras-row').remove(); // i18n-ignore: CSS selector, not user-facing text
+                // The details and extras rows are siblings of the main row,
+                // not children, so they would stay behind and visually detach
+                // from their variation. Drop them now; `stop` re-renders and
+                // rebuilds them in the new order.
+                $tb.find('tr.var-details-row, tr.var-extras-row').remove(); // i18n-ignore: CSS selector, not user-facing text
                 ui.placeholder.height(ui.item.outerHeight());
             },
             update: function () {
@@ -4153,11 +4152,11 @@
         Object.keys(combo).forEach(function (k) { sp.push(slugify(combo[k])); });
         return { id: ex ? ex.id : 0, attributes: combo, name: varDisplayName({ attributes: combo }),
             regular_price: ex ? ex.regular_price : '', sale_price: ex ? ex.sale_price : '',
-            stock_quantity: ex ? (ex.stock_quantity !== null ? ex.stock_quantity : '') : '',
+            // New variations count their stock and start at a visible 0, the
+            // way Shopify starts a new variant; ∞ next to the box makes one
+            // Unlimited. Existing ones keep whatever was saved.
+            stock_quantity: ex ? (ex.stock_quantity !== null ? ex.stock_quantity : '') : '0',
             stock_status: ex ? (ex.stock_status || 'instock') : 'instock',
-            // New variations track stock by default (quantity column
-            // active), preserving the prior behavior; existing ones keep
-            // whatever was saved.
             manage_stock: ex ? !!ex.manage_stock : true,
             // New variations are Active by default (matches WooCommerce);
             // regenerating keeps whatever active state an existing row had.
@@ -4200,7 +4199,7 @@
             manual: true,
             name: varDisplayName({ attributes: combo }),
             regular_price: '', sale_price: '', sale_from: '', sale_to: '',
-            stock_quantity: '', stock_status: 'instock', manage_stock: true,
+            stock_quantity: '0', stock_status: 'instock', manage_stock: true,
             enabled: true, backorders: 'no', sku: '', global_unique_id: '',
             tax_class: 'parent', shipping_class: '', images: [],
             cogs_value: '', vendor_id: 0, vendor_sku: ''
@@ -4675,47 +4674,71 @@
        row does not fit (tablet, phone, long translations) the shared helper
        (front-end/shared/brikpanel-fit-table.js) stacks the rows into cards.
 
-       One variation is up to four sibling rows, all carrying its data-idx:
-       main, backorder (optional), details (always rendered, [hidden] while
-       closed) and extras (third-party fields, optional).
+       One variation is up to three sibling rows, all carrying its data-idx:
+       main, details (always rendered, [hidden] while closed) and extras
+       (third-party fields, optional).
        ------------------------------------------------------------------ */
 
     // The controls of one variation: its main row plus its details row.
     // Everything that reads a moved field (sale dates, SKU, GTIN, tax class,
-    // shipping class, supplier) must read through this scope.
+    // shipping class, supplier, the stock rule) must read through this scope.
     function varRowScope($main) {
         var idx = $main.attr('data-idx');
         return $main.add($main.siblings('tr.var-details-row[data-idx="' + idx + '"]'));
     }
 
-    function toggleVarStockControl($el, active) {
-        $el.prop('disabled', !active).toggleClass('is-off', !active);
-        if (active) {
-            $el.removeAttr('aria-hidden').removeAttr('tabindex');
-        } else {
-            $el.attr({ 'aria-hidden': 'true', tabindex: '-1' });
-        }
+    /* Stock cell. One box per row: the quantity, and ∞ beside it. ∞ off, the
+       row counts its stock (WooCommerce "manage stock") and the status follows
+       the number. ∞ on, the row is not counted and the box reads Unlimited, or
+       the manual status kept in the row's details (Out of stock, On backorder).
+       What happens at 0 and the manual status live behind ▾, so the row itself
+       carries a single control instead of a switch plus a box or a list. */
+    function varRowCounts($main) {
+        return $main.find('.var-stock-box').attr('data-manage') === '1';
     }
 
-    /* Track on: the quantity box is live and WooCommerce derives the status.
-       Track off: the status select is live. Both sit in one grid cell, so the
-       column keeps its width whichever one shows. Switching tracking off with
-       "On backorder" already chosen brings its backorder row back. */
-    function setVarTracking($main, on) {
-        var $status = $main.find('.var-stock-status');
-        $main.find('.var-manage').prop('checked', on);
-        toggleVarStockControl($main.find('.var-stock'), on);
-        toggleVarStockControl($status, !on);
-        var idx = $main.attr('data-idx');
-        var $back = $main.siblings('tr.var-backorder-row[data-idx="' + idx + '"]');
-        var showBack = !on && $back.length > 0 && $status.val() === 'onbackorder';
-        if ($back.length) { $back.prop('hidden', !showBack); }
-        $main.toggleClass('has-backorder', showBack);
+    /* The backorder rule a row is saved with: a counted row reads its "Allow
+       backorders?" select (a control that is not on the page keeps the stored
+       rule). An uncounted row has none: WooCommerce resets backorders to "no"
+       on every save of a product that does not manage stock. */
+    function readVarBackorders($scope, v, counts) {
+        if (!counts) return 'no';
+        var $b = $scope.find('.var-backorders');
+        return $b.length ? ($b.val() || 'no') : ((v && v.backorders) || 'no');
+    }
+
+    // The word an uncounted row shows in its box.
+    function syncVarStockStatus($main) {
+        var t = PE.i18n || {};
+        var status = varRowScope($main).find('.var-stock-status').val() || 'instock';
+        var word = status === 'outofstock' ? t.out_of_stock : (status === 'onbackorder' ? t.on_backorder : t.var_unlimited);
+        $main.find('.var-stock-free-text').text(word || '');
+    }
+
+    /* Switch a row between counting and not counting. Until the product is
+       saved the hidden box keeps the number, so switching back brings it back
+       (on save WooCommerce clears the count of a row it does not manage). A
+       counted row with an empty box shows 0, which is what WooCommerce would
+       save. */
+    function setVarStockMode($main, counts, focus) {
+        var $box = $main.find('.var-stock-box');
+        var $qty = $box.find('.var-stock');
+        var $scope = varRowScope($main);
+        $box.attr('data-manage', counts ? '1' : '0').toggleClass('is-unlimited', !counts);
+        $box.find('.var-stock-inf').attr('aria-pressed', counts ? 'false' : 'true');
+        $box.find('.var-stock-free').prop('hidden', counts);
+        $qty.prop('hidden', !counts);
+        if (counts && $.trim($qty.val() || '') === '') { $qty.val('0'); }
+        $scope.find('.var-stock-when-out').prop('hidden', !counts);
+        $scope.find('.var-stock-state').prop('hidden', counts);
+        syncVarStockStatus($main);
+        if (counts && focus) { $qty.trigger('focus').trigger('select'); }
     }
 
     // Whether anything behind ▾ holds a value, so a closed row still says so.
     function varStateHasDetails(v) {
         if (v.sale_from || v.sale_to || v.sku) return true;
+        if (v.manage_stock && v.backorders && v.backorders !== 'no') return true;
         if (productData.gtin_enabled && v.global_unique_id) return true;
         if (productData.tax_enabled && v.tax_class !== undefined && v.tax_class !== null && ('' + v.tax_class) !== 'parent') return true;
         if (productData.shipping_class_enabled && v.shipping_class) return true;
@@ -4734,6 +4757,9 @@
         if ($ship.length && ($ship.val() || '') !== '') { filled = true; }
         var $vendor = $scope.find('.var-vendor');
         if ($vendor.length && (parseInt($vendor.val(), 10) || 0) > 0) { filled = true; }
+        // Selling past 0 is only visible behind ▾, so a counted row says so.
+        var $back = $scope.find('.var-stock-when-out:not([hidden]) .var-backorders');
+        if ($back.length && ($back.val() || 'no') !== 'no') { filled = true; }
         return filled;
     }
 
@@ -4808,7 +4834,7 @@
     // so keep the longest names, a manual row (its dropdowns) and an orphan
     // row (its badge).
     function prepareVarTableClone(copy) {
-        $(copy).find('tr.var-backorder-row, tr.var-details-row, tr.var-extras-row').remove(); // i18n-ignore: CSS selector, not user-facing text
+        $(copy).find('tr.var-details-row, tr.var-extras-row').remove(); // i18n-ignore: CSS selector, not user-facing text
         var rows = Array.prototype.slice.call(copy.querySelectorAll('tbody tr.var-main-row')); // i18n-ignore: CSS selector, not user-facing text
         if (rows.length <= 24) return;
         var nameLen = function (tr) {
@@ -4863,8 +4889,11 @@
         var chevronSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg>';
         var clearSvg = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
         var moreSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg>';
-        var detailField = function (label, control) {
-            return '<label class="brikpanel-pe-var-detail"><span class="brikpanel-pe-var-detail-label">' + esc(label) + '</span>' + control + '</label>';
+        var infSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg>';
+        // `cls` names a field the stock mode swaps in and out; `off` starts it
+        // hidden (the shown one depends on whether the row counts its stock).
+        var detailField = function (label, control, cls, off) {
+            return '<label class="brikpanel-pe-var-detail' + (cls ? ' ' + cls : '') + '"' + (off ? ' hidden' : '') + '><span class="brikpanel-pe-var-detail-label">' + esc(label) + '</span>' + control + '</label>';
         };
         var dateField = function (cls, label, val) {
             return detailField(label, '<span class="var-date-field"><input type="text" class="' + cls + ' var-date" value="' + esc(val || '') + '" placeholder="' + esc(t.date_placeholder) + '" autocomplete="off">' +
@@ -4876,9 +4905,10 @@
             var stk = (v.stock_quantity !== '' && v.stock_quantity !== null && v.stock_quantity !== undefined) ? v.stock_quantity : '';
             var cogsv = hasCogs && v.cogs_value ? ('' + v.cogs_value).replace('.', sep) : '';
             var varStatus = v.stock_status || 'instock';
-            // Per-variation stock tracking. When on, the quantity input is
-            // active and WC derives the status; when off, the status select
-            // is. Mirrors the simple-product "Track quantity".
+            // Per-variation stock counting (WooCommerce "manage stock"). On,
+            // the quantity box is live and WC derives the status; off (∞), the
+            // row sells without counting. Mirrors the simple-product "Track
+            // quantity".
             var varManage = !!v.manage_stock;
             // "Active" state. Undefined (freshly generated rows) defaults to on,
             // matching WooCommerce, so new variations are purchasable by default.
@@ -4940,48 +4970,46 @@
             var statusOpts = '<option value="instock"' + (varStatus === 'instock' ? ' selected' : '') + '>' + esc(t.in_stock) + '</option>' +
                 '<option value="outofstock"' + (varStatus === 'outofstock' ? ' selected' : '') + '>' + esc(t.out_of_stock) + '</option>' +
                 '<option value="onbackorder"' + (varStatus === 'onbackorder' ? ' selected' : '') + '>' + esc(t.on_backorder) + '</option>';
-            var offAttrs = ' disabled aria-hidden="true" tabindex="-1"';
-            var stockTd = '<td class="var-stock-cell" data-bp-label="' + esc(t.var_stock) + '"><span class="var-stock-ctl">' +
-                '<label class="brikpanel-pe-switch brikpanel-pe-switch-sm var-track-switch" title="' + esc(t.var_track_stock) + '">' +
-                '<input type="checkbox" class="var-manage"' + (varManage ? ' checked' : '') + ' aria-label="' + esc(t.var_track_stock) + '">' +
-                '<span class="brikpanel-pe-slider"></span></label>' +
-                '<span class="var-stock-pair">' +
-                '<input type="number" class="var-stock' + (varManage ? '' : ' is-off') + '" value="' + esc('' + stk) + '" min="0" placeholder="0" aria-label="' + esc(t.var_stock_qty) + '"' + (varManage ? '' : offAttrs) + '>' +
-                '<select class="var-stock-status' + (varManage ? ' is-off' : '') + '" aria-label="' + esc(t.var_stock_status) + '"' + (varManage ? offAttrs : '') + '>' + statusOpts + '</select>' +
-                '</span></span></td>';
+            // One box: the quantity, or (∞ pressed) the word for a row that is
+            // not counted. That word is a button: clicking it is how a merchant
+            // goes back to typing a number.
+            var freeWord = varStatus === 'outofstock' ? t.out_of_stock : (varStatus === 'onbackorder' ? t.on_backorder : t.var_unlimited);
+            var stockTd = '<td class="var-stock-cell" data-bp-label="' + esc(t.var_stock) + '">' +
+                '<span class="var-stock-box' + (varManage ? '' : ' is-unlimited') + '" data-manage="' + (varManage ? '1' : '0') + '">' +
+                '<input type="number" class="var-stock" value="' + esc('' + stk) + '" min="0" placeholder="0" aria-label="' + esc(t.var_stock_qty) + '"' + (varManage ? '' : ' hidden') + '>' +
+                '<button type="button" class="var-stock-free" title="' + esc(t.var_track_stock) + '"' + (varManage ? ' hidden' : '') + '><span class="var-stock-free-text">' + esc(freeWord) + '</span></button>' +
+                '<button type="button" class="brikpanel-pe-inf-btn var-stock-inf" aria-pressed="' + (varManage ? 'false' : 'true') + '" aria-label="' + esc(t.var_unlimited_toggle) + '" title="' + esc(t.var_unlimited_toggle) + '">' + infSvg + '</button>' +
+                '</span></td>';
             var cogsTd = hasCogs ? '<td class="var-num-cell" data-bp-label="' + esc(t.cogs) + '"><input type="text" class="var-cogs" value="' + esc(cogsv) + '" data-price="1" placeholder="0' + sep + '00" aria-label="' + esc(t.cogs) + '"></td>' : '';
             var deleteTd = '<td class="var-delete-cell"><button type="button" class="var-delete-btn" data-idx="' + idx + '" aria-label="' + esc(t.delete_variation) + '" title="' + esc(t.delete_variation) + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></td>';
 
             var rowClasses = 'var-main-row';
             if (hasExtra) rowClasses += ' has-extra';
-            if (hasBackorderNotify && !varManage && varStatus === 'onbackorder') rowClasses += ' has-backorder';
             if (!varEnabled) rowClasses += ' is-disabled';
             if (v._orphan) rowClasses += ' is-orphan';
             if (open) rowClasses += ' is-open';
             $tb.append('<tr data-idx="' + idx + '" class="' + rowClasses + '">' +
                 dragTd + expandTd + nameTd + priceTd + saleTd + stockTd + cogsTd + deleteTd + '</tr>');
 
-            // Per-variation backorder mode — only injected when the merchant
-            // enabled the sub-option in settings. Shown while the row's own
-            // status (tracking off) is "On backorder".
-            if (hasBackorderNotify) {
-                var varBackVal = (v.backorders === 'notify') ? 'notify' : 'yes';
-                var showBack = !varManage && varStatus === 'onbackorder';
-                $tb.append('<tr class="var-backorder-row" data-idx="' + idx + '"' + (showBack ? '' : ' hidden') + '>' +
-                    '<td colspan="' + baseCols + '">' +
-                    '<div class="brikpanel-pe-var-backorder">' +
-                    '<span class="brikpanel-pe-var-backorder-label">' + esc(t.backorder_label) + '</span>' +
-                    '<div class="brikpanel-pe-radio-group">' +
-                    '<label class="brikpanel-pe-radio"><input type="radio" name="var-backorders-' + idx + '" value="yes"' + (varBackVal === 'yes' ? ' checked' : '') + '><span>' + esc(t.backorder_silent) + '</span></label>' +
-                    '<label class="brikpanel-pe-radio"><input type="radio" name="var-backorders-' + idx + '" value="notify"' + (varBackVal === 'notify' ? ' checked' : '') + '><span>' + esc(t.backorder_notify) + '</span></label>' +
-                    '</div></div></td></tr>');
-            }
-
             // Details: always rendered, so the save payload always finds the
             // moved fields, and kept [hidden] while closed.
             var fields = dateField('var-sale-from', t.var_sale_start, v.sale_from) +
                 dateField('var-sale-to', t.var_sale_end, v.sale_to) +
                 detailField(t.var_sku, '<input type="text" class="var-sku" value="' + esc(v.sku || '') + '">');
+            // The stock rule. A counted row picks what happens at 0, with the
+            // simple product's "Allow backorders?" choices. An uncounted row
+            // keeps WooCommerce's manual status instead, which its box shows
+            // as Unlimited, Out of stock or On backorder. The notify choice
+            // follows the same setting as on simple products, and a rule set
+            // elsewhere is always offered so a save never changes it silently.
+            var backVal = v.backorders || 'no';
+            var backOpts = '<option value="no"' + (backVal === 'no' ? ' selected' : '') + '>' + esc(t.backorders_no) + '</option>';
+            if (hasBackorderNotify || backVal === 'notify') {
+                backOpts += '<option value="notify"' + (backVal === 'notify' ? ' selected' : '') + '>' + esc(t.backorders_notify) + '</option>';
+            }
+            backOpts += '<option value="yes"' + (backVal === 'yes' ? ' selected' : '') + '>' + esc(t.backorders_yes) + '</option>';
+            fields += detailField(t.backorders_label, '<select class="var-backorders">' + backOpts + '</select>', 'var-stock-when-out', !varManage);
+            fields += detailField(t.var_stock_status, '<select class="var-stock-status">' + statusOpts + '</select>', 'var-stock-state', varManage);
             if (hasGtin) {
                 fields += detailField(t.var_gtin, '<input type="text" class="var-gtin" value="' + esc(v.global_unique_id || '') + '" inputmode="numeric" autocomplete="off">');
             }
@@ -5126,28 +5154,43 @@
             $row.toggleClass('is-disabled', !$cb.is(':checked'));
             state.dirty = true;
         });
-        // Per-variation "Track" toggle: the quantity box or the status select.
-        $tb.find('.var-manage').on('change', function () {
-            setVarTracking($(this).closest('tr.var-main-row'), $(this).is(':checked'));
+        // ∞ switches a row between counting its stock and Unlimited. Pressing
+        // it on a counted row means "sell without counting", so whatever
+        // status that row's count had left behind (0 is Out of stock) gives
+        // way to In stock.
+        $tb.find('.var-stock-inf').on('click', function () {
+            var $main = $(this).closest('tr.var-main-row');
+            var counts = !varRowCounts($main);
+            if (!counts) { varRowScope($main).find('.var-stock-status').val('instock'); }
+            setVarStockMode($main, counts, false);
+            markVarDetailsDot($main);
             state.dirty = true;
         });
-        // Reveal the per-variation backorder sub-row only when the row's
-        // stock status flips to "On backorder". Adds/removes the
-        // `has-backorder` class so the main row's bottom border merges.
-        if (hasBackorderNotify) {
-            // Delegated on the persistent table body, which survives re-renders,
-            // so namespace + off first or each render stacks another handler and
-            // one status change fires N times.
-            $tb.off('change.bpVarStatus').on('change.bpVarStatus', '.var-stock-status', function () {
-                var $sel = $(this);
-                var idx = $sel.closest('tr.var-main-row').data('idx');
-                var $mainRow = $tb.find('tr.var-main-row[data-idx="' + idx + '"]');
-                var $backRow = $tb.find('tr.var-backorder-row[data-idx="' + idx + '"]');
-                var on = $sel.val() === 'onbackorder';
-                if (on) { $backRow.removeAttr('hidden'); $mainRow.addClass('has-backorder'); }
-                else    { $backRow.attr('hidden', 'hidden'); $mainRow.removeClass('has-backorder'); }
-            });
-        }
+        // The word in an uncounted box goes back to typing a number. Leaving
+        // the box again without typing undoes that, so a stray click cannot
+        // turn an unlimited variation into one that is sold out at 0.
+        $tb.find('.var-stock-free').on('click', function () {
+            var $main = $(this).closest('tr.var-main-row');
+            setVarStockMode($main, true, true);
+            $main.find('.var-stock').attr('data-bp-undo', '1');
+        });
+        $tb.find('.var-stock').on('input', function () {
+            $(this).removeAttr('data-bp-undo');
+        }).on('blur', function (e) {
+            var $qty = $(this);
+            if ($qty.attr('data-bp-undo') !== '1') return;
+            $qty.removeAttr('data-bp-undo');
+            // Moving on to the same box's ∞ is a choice of its own: its click
+            // decides, so undoing first would make that click flip it back.
+            var $box = $qty.closest('.var-stock-box');
+            if (e.relatedTarget && $box[0] && $box[0].contains(e.relatedTarget)) return;
+            setVarStockMode($qty.closest('tr.var-main-row'), false, false);
+        });
+        // A manual status picked behind ▾ shows in the row's box at once.
+        $tb.find('tr.var-details-row').on('change', '.var-stock-status', function () {
+            var idx = $(this).closest('tr.var-details-row').attr('data-idx');
+            syncVarStockStatus($tb.find('tr.var-main-row[data-idx="' + idx + '"]'));
+        });
 
         // Flatpickr on every per-variation sale date input
         if (typeof flatpickr === 'function') {
@@ -5309,16 +5352,24 @@
         var price = $.trim($('#bpe-bulk-price').val());
         var salePrice = $.trim($('#bpe-bulk-sale-price').val());
         var stock = $.trim($('#bpe-bulk-stock').val());
+        var unlimited = $('#bpe-bulk-stock-inf').attr('aria-pressed') === 'true';
         if (price) $('#bpe-var-table-body .var-price').val(price);
         if (salePrice) $('#bpe-var-table-body .var-sale-price').val(salePrice);
-        if (stock !== '') {
-            // Setting a bulk quantity implies the merchant wants tracking on,
-            // so enable it across all rows (and disable the now-derived status
-            // select) before applying the value.
+        if (unlimited) {
+            // ∞ in the strip: every variation sells without counting.
             $('#bpe-var-table-body tr.var-main-row').each(function () {
                 var $row = $(this);
-                setVarTracking($row, true);
-                $row.find('.var-stock').val(stock);
+                varRowScope($row).find('.var-stock-status').val('instock');
+                setVarStockMode($row, false, false);
+                markVarDetailsDot($row);
+            });
+        } else if (stock !== '') {
+            // A bulk quantity means the merchant counts stock, so every row
+            // switches to counting with that number.
+            $('#bpe-var-table-body tr.var-main-row').each(function () {
+                var $row = $(this);
+                $row.find('.var-stock').val(stock).removeAttr('data-bp-undo');
+                setVarStockMode($row, true, false);
             });
         }
         // Bulk Active/Inactive — flip every row's toggle and its dimmed state.
@@ -5334,7 +5385,20 @@
         }
         // A bulk apply mutates the table — mark dirty so the unload guard and
         // background auto-save treat it as a real change.
-        if (price || salePrice || stock !== '' || active === '1' || active === '0') { state.dirty = true; }
+        if (price || salePrice || unlimited || stock !== '' || active === '1' || active === '0') { state.dirty = true; }
+    }
+
+    /* ∞ beside the strip's Stock box. Pressed, Apply makes every variation
+       Unlimited, so the number box steps aside and says so. */
+    function toggleBulkUnlimited() {
+        var $btn = $('#bpe-bulk-stock-inf');
+        var on = $btn.attr('aria-pressed') !== 'true';
+        var $qty = $('#bpe-bulk-stock');
+        var t = PE.i18n || {};
+        $btn.attr('aria-pressed', on ? 'true' : 'false');
+        if (on) { $qty.val(''); }
+        $qty.prop('disabled', on).attr('placeholder', on ? (t.var_unlimited || '') : ($qty.attr('data-placeholder') || ''));
+        $btn.closest('.brikpanel-pe-var-bulk-stock').toggleClass('is-unlimited', on);
     }
 
     /* Validation — only enforces required fields that are actually visible.
@@ -5954,8 +6018,10 @@
                     if ($c.length) return $c.val() || '';
                     return (fallback === undefined || fallback === null) ? '' : String(fallback);
                 };
-                var varManageStock = $mainRow.find('.var-manage').is(':checked');
-                var varStockStatus = $mainRow.find('.var-stock-status').val() || 'instock';
+                var varManageStock = varRowCounts($mainRow);
+                // The manual status (sent always, the server only uses it for
+                // a row that is not counted).
+                var varStockStatus = pickVar('.var-stock-status', v.stock_status) || 'instock';
                 var varObj = { id: v.id || 0, attributes: v.attributes,
                     enabled: $mainRow.find('.var-enabled').is(':checked') ? 1 : 0,
                     regular_price: parsePrice($mainRow.find('.var-price').val(), sep),
@@ -5973,19 +6039,8 @@
                 if ($varTax.length) varObj.tax_class = $varTax.val();
                 var $varShip = $scope.find('.var-shipping-class');
                 if ($varShip.length) varObj.shipping_class = $varShip.val();
-                // Backorder mode. When tracking is on, WC derives the status,
-                // so we roundtrip the stored backorder rule (preserving any
-                // existing "allow/notify"). When off, it only matters while
-                // the manually-chosen status is "On backorder".
-                if (varManageStock) {
-                    if (v.backorders && v.backorders !== 'no') varObj.backorders = v.backorders;
-                } else if (varStockStatus === 'onbackorder') {
-                    var $backRow = $('#bpe-var-table-body tr.var-backorder-row[data-idx="' + idx + '"]');
-                    var $backSel = $backRow.find('input[type="radio"]:checked');
-                    if ($backSel.length) {
-                        varObj.backorders = $backSel.val() === 'notify' ? 'notify' : 'yes';
-                    }
-                }
+                // Backorder rule: the counted row's "Allow backorders?".
+                varObj.backorders = readVarBackorders($scope, v, varManageStock);
                 var $cogsInput = $(this).find('.var-cogs');
                 if ($cogsInput.length) varObj.cogs_value = parsePrice($cogsInput.val(), sep);
                 var $varVendor = $scope.find('.var-vendor');

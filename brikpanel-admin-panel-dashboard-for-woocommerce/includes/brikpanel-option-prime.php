@@ -100,6 +100,9 @@ function brikpanel_prime_keys_always() {
 		// Front-end tracking emitter.
 		'brikpanel_frontend_tracking',
 		'brikpanel_tracking_require_consent',
+		// Start of the person check's transition window, read on init by
+		// brikpanel_human_proof_maybe_roll_out() (autoloaded once written).
+		'brikpanel_human_proof_since',
 
 		// Measured hitting the database on a plain storefront request, on a
 		// store that has never saved the matching settings section. Both

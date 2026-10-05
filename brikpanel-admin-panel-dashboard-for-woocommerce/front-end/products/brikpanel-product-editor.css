@@ -920,6 +920,7 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
 .brikpanel-pe-var-details{width:0;min-width:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:.75rem;padding:.75rem 1rem .875rem;padding-inline-start:3.5rem}
 .brikpanel-pe-var-details-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9.5rem),1fr));gap:.625rem .875rem}
 .brikpanel-pe-var-detail{display:flex;flex-direction:column;gap:.25rem;min-width:0;margin:0}
+.brikpanel-pe-var-detail[hidden]{display:none}
 .brikpanel-pe-var-detail-label{font-size:.75rem;font-weight:600;color:var(--pe-text-secondary)}
 .brikpanel-pe-var-details select{width:100%;height:30px;box-sizing:border-box;padding:0 1.5rem 0 .5rem;font-size:.8125rem;line-height:normal;color:var(--pe-text);border:1px solid var(--pe-border);border-radius:4px;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background:var(--pe-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23616161' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right .5rem center;transition:border-color .15s ease,box-shadow .15s ease}
 .brikpanel-pe-var-details select:focus{border-color:var(--pe-input-focus);box-shadow:0 0 0 1px var(--pe-input-focus)}
@@ -1331,20 +1332,35 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
 .brikpanel-pe-metabox-content .acf-repeater,.brikpanel-pe-metabox-content .acf-flexible-content,.brikpanel-pe-wc-fields-content .acf-repeater,.brikpanel-pe-wc-fields-content .acf-flexible-content{border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm);overflow:hidden;background:#fff}
 .brikpanel-pe-metabox-content .acf-repeater .acf-table>thead>tr>th,.brikpanel-pe-wc-fields-content .acf-repeater .acf-table>thead>tr>th{background:#f7f7f7;border-bottom:1px solid var(--pe-border);font-weight:600;font-size:.75rem;text-transform:none;letter-spacing:normal;color:var(--pe-text-secondary)}
 
-/* Stock cell (field test B6): the Track switch, then the quantity box OR the
-   status select. Both sit in one grid cell sized by the wider of the two (the
-   select's longest option), so the column keeps its width when a row flips.
-   The inactive one is only made invisible, and is disabled and aria-hidden. */
-.brikpanel-pe-var-table .var-stock-ctl{display:inline-flex;align-items:center;gap:.375rem;vertical-align:middle}
-.brikpanel-pe-var-table .var-stock-pair{display:inline-grid}
-.brikpanel-pe-var-table .var-stock-pair>*{grid-area:1/1}
-.brikpanel-pe-var-table .var-stock-pair .is-off{visibility:hidden}
-.brikpanel-pe-var-table td .var-stock-pair input{min-width:0}
-.brikpanel-pe-var-table .var-stock-status{height:30px;box-sizing:border-box;padding:0 1.5rem 0 .5rem;font-size:.8125rem;line-height:normal;color:var(--pe-text);border:1px solid var(--pe-border);border-radius:4px;outline:none;cursor:pointer;background:var(--pe-card);transition:border-color .15s ease,box-shadow .15s ease;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23616161' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .5rem center}
-.brikpanel-pe-var-table .var-stock-status:focus{border-color:var(--pe-input-focus);box-shadow:0 0 0 1px var(--pe-input-focus)}
-.brikpanel-pe-switch-sm{width:34px;height:18px}
-.brikpanel-pe-switch-sm .brikpanel-pe-slider::before{width:12px;height:12px}
-.brikpanel-pe-switch-sm input:checked+.brikpanel-pe-slider::before{transform:translateX(16px)}
+/* Stock cell (field test B6): ONE box, the quantity with ∞ beside it. ∞
+   pressed means the row is not counted: the number steps aside for a word
+   (Unlimited, or the manual status picked in the row's details) and clicking
+   that word brings the number back. A fixed width keeps the column still when
+   a row flips: 8.5rem fits "Unlimited" in all nine languages with room to
+   spare, and the rarer manual statuses up to "On backorder"; a longer word
+   ends in an ellipsis. The box draws the border so the number and ∞ read as
+   one. */
+.brikpanel-pe-var-table .var-stock-box{display:inline-flex;align-items:stretch;width:8.5rem;max-width:100%;height:var(--brikpanel-control-h,40px);box-sizing:border-box;vertical-align:middle;background:var(--pe-card);border:1px solid var(--pe-border);border-radius:4px;overflow:hidden;transition:border-color .15s ease,box-shadow .15s ease}
+.brikpanel-pe-var-table .var-stock-box:focus-within{border-color:var(--pe-input-focus);box-shadow:0 0 0 1px var(--pe-input-focus)}
+/* The box is as tall as the price boxes beside it (the shared 40px control
+   height). min-height and line-height: WordPress gives number inputs its own
+   min-height and line-height 2, which pushed the digits below the middle. */
+.brikpanel-pe-var-table td .var-stock-box input.var-stock{flex:1 1 auto;width:auto;min-width:0;height:100%;min-height:0;padding-block:0;line-height:normal;border:0;border-radius:0;background:transparent;box-shadow:none}
+.brikpanel-pe-var-table td .var-stock-box input.var-stock[hidden]{display:none}
+.brikpanel-pe-var-table .var-stock-free{flex:1 1 auto;display:flex;align-items:center;min-width:0;margin:0;padding:0 .5rem;border:0;background:transparent;font:inherit;font-size:.8125rem;color:var(--pe-text-secondary);text-align:start;cursor:text}
+.brikpanel-pe-var-table .var-stock-free[hidden]{display:none}
+.brikpanel-pe-var-table .var-stock-free:hover{background:#fafafa;color:var(--pe-text)}
+.brikpanel-pe-var-table .var-stock-free:focus{outline:none}
+.brikpanel-pe-var-table .var-stock-free-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ∞, on every row and beside the strip's Stock box: a quiet suffix that turns
+   dark while pressed, like the editor's other on/off controls. */
+.brikpanel-pe-inf-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:2rem;margin:0;padding:0;border:0;border-inline-start:1px solid var(--pe-border);border-radius:0;background:#f7f7f7;color:var(--pe-text-secondary);cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.brikpanel-pe-inf-btn:hover{background:#ebebeb;color:var(--pe-text)}
+.brikpanel-pe-inf-btn[aria-pressed="true"]{background:var(--pe-primary);border-inline-start-color:var(--pe-primary);color:#fff}
+.brikpanel-pe-inf-btn[aria-pressed="true"]:hover{background:var(--pe-primary-hover)}
+.brikpanel-pe-inf-btn:focus{outline:none}
+.brikpanel-pe-inf-btn:focus-visible{box-shadow:inset 0 0 0 2px var(--pe-input-focus)}
+.brikpanel-pe-inf-btn[aria-pressed="true"]:focus-visible{box-shadow:inset 0 0 0 2px #fff}
 
 /* Variation tools panel — one quiet gray card holding a SINGLE toolbar strip:
    bulk edits, then sorting + "Default Form Values", side by side on ONE line.
@@ -1377,7 +1393,11 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
 /* Every control locks to the input-group's 34px outer height (2rem content +
    1px borders): the stock input fights WP admin's min-height:40px and the
    button's natural 32px — mismatched heights break the shared bottom line. */
-.brikpanel-pe-var-bulk #bpe-bulk-stock{width:calc(var(--bpe-ph,5) * 1.2ch + 1.75rem);height:2.125rem;min-height:0;flex:0 1 auto;min-width:3rem}
+.brikpanel-pe-var-bulk .brikpanel-pe-var-bulk-stock{flex:0 1 auto}
+.brikpanel-pe-var-bulk #bpe-bulk-stock{width:auto;min-width:0;height:100%;min-height:0}
+.brikpanel-pe-var-bulk #bpe-bulk-stock:disabled{background:transparent;box-shadow:none;cursor:default}
+/* Pressed ∞ puts "Unlimited" in the box: a state, so it reads like text. */
+.brikpanel-pe-var-bulk .brikpanel-pe-var-bulk-stock.is-unlimited #bpe-bulk-stock::placeholder{color:var(--pe-text-secondary);opacity:1}
 .brikpanel-pe-var-bulk #bpe-apply-bulk{height:2.125rem}
 
 /* Default Form Values — third segment of the strip, collapsed behind one
@@ -1645,17 +1665,13 @@ body.admin_page_brikpanel-product-editor{overflow-x:clip}
 .brikpanel-pe-var-table.is-stacked td.var-expand-cell{position:absolute;inset-inline-start:1.875rem;top:1.3rem;width:auto}
 .brikpanel-pe-var-table.is-stacked td.var-delete-cell{position:absolute;inset-inline-end:.75rem;top:1.2rem;width:auto}
 .brikpanel-pe-var-table.is-stacked td input:where([type="text"],[type="number"]){min-width:0}
-.brikpanel-pe-var-table.is-stacked .var-stock-ctl{display:flex}
-.brikpanel-pe-var-table.is-stacked .var-stock-pair{flex:1 1 auto;min-width:0}
-.brikpanel-pe-var-table.is-stacked .var-stock-pair>*{width:100%}
+.brikpanel-pe-var-table.is-stacked .var-stock-box{display:flex;width:100%}
 .brikpanel-pe-var-table.is-stacked .var-attr-picks{flex-direction:row;flex-wrap:wrap}
 .brikpanel-pe-var-table.is-stacked .var-attr-select{width:auto}
-.brikpanel-pe-var-table.is-stacked>tbody>tr.var-backorder-row:not([hidden]),
 .brikpanel-pe-var-table.is-stacked>tbody>tr.var-details-row:not([hidden]),
 .brikpanel-pe-var-table.is-stacked>tbody>tr.var-extras-row:not([hidden]){display:block}
 .brikpanel-pe-var-table.is-stacked .brikpanel-pe-var-details,
-.brikpanel-pe-var-table.is-stacked .brikpanel-pe-var-extras,
-.brikpanel-pe-var-table.is-stacked .brikpanel-pe-var-backorder{width:auto;padding-inline-start:.875rem}
+.brikpanel-pe-var-table.is-stacked .brikpanel-pe-var-extras{width:auto;padding-inline-start:.875rem}
 .brikpanel-pe-var-table.is-stacked .brikpanel-pe-var-details-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,8.5rem),1fr))}
 
 @media screen and (max-width:782px){
@@ -1906,15 +1922,6 @@ ul.ui-autocomplete.wp-tags-autocomplete .ui-menu-item-wrapper:hover{background:#
 .brikpanel-pe-radio input[type=radio]:checked{border-color:var(--pe-primary);box-shadow:0 0 0 1px var(--pe-primary)}
 .brikpanel-pe-radio input[type=radio]:checked::after{content:"";position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;background:var(--pe-primary);transform:translate(-50%,-50%)}
 .brikpanel-pe-radio input[type=radio]:focus{outline:none;border-color:var(--pe-primary);box-shadow:0 0 0 1px var(--pe-primary)}
-/* Per-variation backorder sub-row — sits between main row and any
-   third-party extras row when the merchant picks "On backorder". */
-.brikpanel-pe-var-table tr.var-backorder-row>td{padding:0;background:#fafafa;border-top:none}
-.brikpanel-pe-var-table tr.var-main-row.has-backorder{border-bottom:none}
-/* width:0 + min-width:100% and wrapping: the two long radio labels must not
-   widen the table (field test B6). */
-.brikpanel-pe-var-backorder{width:0;min-width:100%;box-sizing:border-box;padding:.625rem 1.25rem;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.25rem;font-size:.8125rem;color:var(--pe-text)}
-.brikpanel-pe-var-backorder .brikpanel-pe-var-backorder-label{font-weight:600;color:var(--pe-text-secondary);font-size:.75rem;text-transform:none;letter-spacing:normal}
-.brikpanel-pe-var-backorder .brikpanel-pe-radio-group{flex-direction:row;flex-wrap:wrap;gap:.25rem 1rem}
 
 /* ---- Product Catalog Feed Pro (WPWOOF) panel polish ----------------------
    The plugin's product-data panel ships WooCommerce-native float layouts plus

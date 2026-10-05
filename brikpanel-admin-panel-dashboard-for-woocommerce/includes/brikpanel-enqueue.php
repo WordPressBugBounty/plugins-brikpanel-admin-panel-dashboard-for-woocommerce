@@ -2284,9 +2284,6 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'in_stock'         => __('In stock', 'brikpanel'),
                 'out_of_stock'     => __('Out of stock', 'brikpanel'),
                 'on_backorder'     => __('On backorder', 'brikpanel'),
-                'backorder_label'  => __('Backorder', 'brikpanel'),
-                'backorder_silent' => __('Allow without notification', 'brikpanel'),
-                'backorder_notify' => __('Allow and notify customer', 'brikpanel'),
                 /* translators: date input hint, must stay a 4-2-2 digit mask */
                 'date_placeholder' => __('YYYY-MM-DD', 'brikpanel'),
                 /* translators: %s is the maximum number of variations */
@@ -2354,7 +2351,17 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'var_stock'          => __('Stock', 'brikpanel'),
                 'var_stock_qty'      => __('Stock quantity', 'brikpanel'),
                 'var_stock_status'   => __('Stock status', 'brikpanel'),
+                // Title of the "Unlimited" word in an uncounted row's box:
+                // clicking it goes back to counting.
                 'var_track_stock'    => __('Track stock quantity for this variation', 'brikpanel'),
+                'var_unlimited'      => _x('Unlimited', 'stock quantity that is not counted', 'brikpanel'),
+                'var_unlimited_toggle' => __('Unlimited stock (do not count)', 'brikpanel'),
+                // The counted row's rule at 0, same words as the simple
+                // product's Inventory card.
+                'backorders_label'   => __('Allow backorders?', 'brikpanel'),
+                'backorders_no'      => __('Do not allow', 'brikpanel'),
+                'backorders_yes'     => __('Allow', 'brikpanel'),
+                'backorders_notify'  => __('Allow, but notify customer', 'brikpanel'),
                 'var_sale_start'     => __('Sale start', 'brikpanel'),
                 'var_sale_end'       => __('Sale end', 'brikpanel'),
                 'var_clear_date'     => __('Clear', 'brikpanel'),

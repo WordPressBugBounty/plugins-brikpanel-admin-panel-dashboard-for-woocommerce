@@ -11845,29 +11845,9 @@ msgstr "Распознаёт вернувшийся браузер, чтобы �
 msgid "Remembers that this visitor allowed analytics, so the choice survives the next page load."
 msgstr "Запоминает, что этот посетитель разрешил аналитику, чтобы выбор сохранился при следующей загрузке страницы."
 
-#: includes/brikpanel-consent.php:564 includes/brikpanel-consent.php:571
-msgid "Until midnight"
-msgstr "До полуночи"
-
-#: includes/brikpanel-consent.php:565
-msgid "Counts an add-to-cart once per day per visitor for the conversion funnel."
-msgstr "Считает добавление в корзину один раз в день на посетителя для воронки конверсии."
-
-#: includes/brikpanel-consent.php:572
-msgid "Counts a checkout visit once per day per visitor for the conversion funnel."
-msgstr "Считает переход к оформлению один раз в день на посетителя для воронки конверсии."
-
 #: includes/brikpanel-consent.php:578 includes/brikpanel-consent.php:589
 msgid "Until cleared"
 msgstr "До очистки"
-
-#: includes/brikpanel-consent.php:579
-msgid "Marks that this browser has already been counted as a visitor today."
-msgstr "Отмечает, что этот браузер уже посчитан как посетитель сегодня."
-
-#: includes/brikpanel-consent.php:590
-msgid "Marks that this browser has already been counted as a product viewer today."
-msgstr "Отмечает, что этот браузер уже посчитан сегодня как просмотревший товар."
 
 #: includes/brikpanel-consent.php:603
 msgid "Until the browser tab is closed"
@@ -13079,10 +13059,6 @@ msgstr "Выбрать из медиабиблиотеки"
 #: includes/brikpanel-enqueue.php:2186
 msgid "Type and press Enter to add a tag..."
 msgstr "Введите и нажмите Enter, чтобы добавить тег..."
-
-#: includes/brikpanel-enqueue.php:2190
-msgid "Backorder"
-msgstr "Предзаказ"
 
 #. translators: date input hint, must stay a 4-2-2 digit mask
 #: includes/brikpanel-enqueue.php:2194
@@ -16406,3 +16382,49 @@ msgstr "Самые просматриваемые страницы"
 #: front-end/dashboard/brikpanel-dashboard.php:1978
 msgid "Products and pages"
 msgstr "Товары и страницы"
+
+msgid "A visitor is counted once a day, after they move the mouse, tap, scroll or press a key on your store. Bots, your staff and pages nobody looked at are left out."
+msgstr "Посетитель учитывается один раз в день, когда он двигает мышью, касается экрана, прокручивает страницу или нажимает клавишу в вашем магазине. Боты, ваши сотрудники и страницы, которые никто не смотрел, не учитываются."
+
+msgid "Bot traffic cleanup"
+msgstr "Очистка трафика ботов"
+
+msgid "Bot traffic is cleaned up automatically every night."
+msgstr "Трафик ботов автоматически очищается каждую ночь."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %1$s: %2$s."
+msgstr "Трафик ботов автоматически очищается каждую ночь. Последний запуск %1$s: %2$s."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %s: nothing needed cleaning."
+msgstr "Трафик ботов автоматически очищается каждую ночь. Последний запуск %s: очищать было нечего."
+
+msgid "Clears page caches once so every page carries the new visitor tracker."
+msgstr "Один раз очищает кеш страниц, чтобы на каждой странице был новый счётчик посетителей."
+
+msgid "Every night, lowers the analytics figures bots inflated and deletes scripted abandoned-cart entries, keeping a restore point."
+msgstr "Каждую ночь снижает завышенные ботами показатели аналитики и удаляет созданные скриптами записи брошенных корзин, сохраняя точку восстановления."
+
+msgid "Shows that this browser was used by a person and what was already counted for it today (visit, product view, add-to-cart, checkout), so bots and repeat counts stay out of the store's analytics."
+msgstr "Показывает, что этим браузером пользовался человек и что уже было учтено для него сегодня (визит, просмотр товара, добавление в корзину, оформление заказа), чтобы боты и повторные подсчёты не попадали в статистику магазина."
+
+msgid "Visitor counting update"
+msgstr "Обновление подсчёта посетителей"
+
+msgid "Days still being counted, days you put back with Undo and days when sales rose too, which can be a real promotion, are left for you to decide."
+msgstr "Дни, которые ещё считаются, дни, которые вы вернули кнопкой «Отменить», и дни, когда выросли и продажи, что может быть настоящей акцией, остаются на ваше решение."
+
+#: front-end/products/brikpanel-product-editor.php:1735
+#: includes/brikpanel-enqueue.php:2360
+msgctxt "stock quantity that is not counted"
+msgid "Unlimited"
+msgstr "Без лимита"
+
+#: includes/brikpanel-enqueue.php:2361
+msgid "Unlimited stock (do not count)"
+msgstr "Неограниченный запас (не считать)"
+
+#: front-end/products/brikpanel-product-editor.php:1761
+msgid "Unlimited stock for every variation"
+msgstr "Неограниченный запас для каждой вариации"

@@ -269,15 +269,19 @@ function brikpanel_record_campaign_visit( $raw ) {
  *
  * @param string $referrer    document.referrer reported by the tracker.
  * @param string $landing_url location.href of the landing page.
+ * @param bool   $apply_gate  Run the 3.3.11 once-a-day cap here. The 3.3.30
+ *                            tracker passes false: it already decided from the
+ *                            "this is a person" mark, which counts once a day
+ *                            on the server's own clock.
  */
-function brikpanel_record_visitor_view( $referrer = '', $landing_url = '' ) {
+function brikpanel_record_visitor_view( $referrer = '', $landing_url = '', $apply_gate = true ) {
     // Server-side once-per-day cap (3.3.11). The browser's local-storage latch
     // is the only reason this used to fire once a day, and a client that
     // starts every page with a blank profile never carries it: each page it
     // opened became a new visitor, plus a traffic-source hit and a device
     // hit below. A client with no memory of us now gets one count per
     // identity per day; returning browsers and signed-in users are untouched.
-    if ( function_exists( 'brikpanel_daily_counter_allowed' ) && ! brikpanel_daily_counter_allowed( 'visitor' ) ) {
+    if ( $apply_gate && function_exists( 'brikpanel_daily_counter_allowed' ) && ! brikpanel_daily_counter_allowed( 'visitor' ) ) {
         return;
     }
 
@@ -334,6 +338,11 @@ function brikpanel_visitor_view() {
     // cached pages that still carry the old tracker JS after the merchant
     // turned tracking off or switched the consent gate on.
     if ( function_exists( 'brikpanel_frontend_tracking_allowed' ) && ! brikpanel_frontend_tracking_allowed( 'endpoint' ) ) {
+        wp_send_json_success();
+    }
+    // Counted the old way only while caches may still serve the old script
+    // (3.3.30); afterwards a request that never proved a person is refused.
+    if ( function_exists( 'brikpanel_legacy_tracker_allowed' ) && ! brikpanel_legacy_tracker_allowed() ) {
         wp_send_json_success();
     }
     if ( brikpanel_is_admin_user() ) {

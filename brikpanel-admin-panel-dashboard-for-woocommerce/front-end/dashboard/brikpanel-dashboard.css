@@ -4347,6 +4347,15 @@ button.brikpanel-dash-guide__item:focus-visible {
     font-weight: 600;
 }
 
+/* Channel of a Top referrers row, only when the same site is listed twice
+   (from ads and from search, for example). */
+.bp-dv-ref-ch {
+    margin-inline-start: 0.5rem;
+    color: var(--bp-text-secondary);
+    font-size: 0.75rem;
+    font-style: normal;
+}
+
 .bp-dv-camps li {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;

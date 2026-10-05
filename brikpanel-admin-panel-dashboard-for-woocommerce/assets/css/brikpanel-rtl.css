@@ -267,7 +267,6 @@ body.rtl .brikpanel-pe-wc-fields-content .select2-container--default .select2-se
 }
 
 body.rtl .brikpanel-pe-var-table th { text-align: right; }
-body.rtl .brikpanel-pe-var-table .var-stock-status,
 body.rtl .brikpanel-pe-var-details select { background-position: left 0.5rem center; padding-right: 0.5rem; padding-left: 1.5rem; }
 /* Variation image: the stacked-card edges fan out to the left, so the room
    the image keeps beside the Active switch moves to the left too. */

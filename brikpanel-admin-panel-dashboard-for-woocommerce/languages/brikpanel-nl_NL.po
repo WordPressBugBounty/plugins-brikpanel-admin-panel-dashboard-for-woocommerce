@@ -11731,29 +11731,9 @@ msgstr "Herkent een terugkerende browser, zodat een bezoek één keer wordt gete
 msgid "Remembers that this visitor allowed analytics, so the choice survives the next page load."
 msgstr "Onthoudt dat deze bezoeker analytics heeft toegestaan, zodat de keuze de volgende paginalading overleeft."
 
-#: includes/brikpanel-consent.php:564 includes/brikpanel-consent.php:571
-msgid "Until midnight"
-msgstr "Tot middernacht"
-
-#: includes/brikpanel-consent.php:565
-msgid "Counts an add-to-cart once per day per visitor for the conversion funnel."
-msgstr "Telt een toevoeging aan de winkelwagen één keer per dag per bezoeker voor de conversietrechter."
-
-#: includes/brikpanel-consent.php:572
-msgid "Counts a checkout visit once per day per visitor for the conversion funnel."
-msgstr "Telt een afrekenbezoek één keer per dag per bezoeker voor de conversietrechter."
-
 #: includes/brikpanel-consent.php:578 includes/brikpanel-consent.php:589
 msgid "Until cleared"
 msgstr "Totdat het wordt gewist"
-
-#: includes/brikpanel-consent.php:579
-msgid "Marks that this browser has already been counted as a visitor today."
-msgstr "Markeert dat deze browser vandaag al als bezoeker is geteld."
-
-#: includes/brikpanel-consent.php:590
-msgid "Marks that this browser has already been counted as a product viewer today."
-msgstr "Markeert dat deze browser vandaag al als productbezoeker is geteld."
 
 #: includes/brikpanel-consent.php:603
 msgid "Until the browser tab is closed"
@@ -12950,10 +12930,6 @@ msgstr "Kiezen uit mediabibliotheek"
 #: includes/brikpanel-enqueue.php:2186
 msgid "Type and press Enter to add a tag..."
 msgstr "Typ en druk op Enter om een tag toe te voegen..."
-
-#: includes/brikpanel-enqueue.php:2190
-msgid "Backorder"
-msgstr "Achterstand"
 
 #. translators: date input hint, must stay a 4-2-2 digit mask
 #: includes/brikpanel-enqueue.php:2194
@@ -16243,3 +16219,49 @@ msgstr "Meest bekeken pagina's"
 #: front-end/dashboard/brikpanel-dashboard.php:1978
 msgid "Products and pages"
 msgstr "Producten en pagina's"
+
+msgid "A visitor is counted once a day, after they move the mouse, tap, scroll or press a key on your store. Bots, your staff and pages nobody looked at are left out."
+msgstr "Een bezoeker wordt één keer per dag geteld, zodra hij in uw winkel de muis beweegt, tikt, scrolt of een toets indrukt. Bots, uw medewerkers en pagina’s die niemand heeft bekeken, tellen niet mee."
+
+msgid "Bot traffic cleanup"
+msgstr "Bottraffic opruimen"
+
+msgid "Bot traffic is cleaned up automatically every night."
+msgstr "Bottraffic wordt elke nacht automatisch opgeruimd."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %1$s: %2$s."
+msgstr "Bottraffic wordt elke nacht automatisch opgeruimd. Laatste keer %1$s: %2$s."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %s: nothing needed cleaning."
+msgstr "Bottraffic wordt elke nacht automatisch opgeruimd. Laatste keer %s: er was niets op te ruimen."
+
+msgid "Clears page caches once so every page carries the new visitor tracker."
+msgstr "Leegt de paginacaches één keer, zodat elke pagina de nieuwe bezoekersteller bevat."
+
+msgid "Every night, lowers the analytics figures bots inflated and deletes scripted abandoned-cart entries, keeping a restore point."
+msgstr "Verlaagt elke nacht de analysecijfers die bots hebben opgeblazen en verwijdert door scripts geschreven verlaten-winkelwagenitems, met een herstelpunt."
+
+msgid "Shows that this browser was used by a person and what was already counted for it today (visit, product view, add-to-cart, checkout), so bots and repeat counts stay out of the store's analytics."
+msgstr "Laat zien dat deze browser door een mens is gebruikt en wat er vandaag al voor is geteld (bezoek, productweergave, toevoegen aan winkelwagen, afrekenen), zodat bots en dubbele tellingen buiten de statistieken van de winkel blijven."
+
+msgid "Visitor counting update"
+msgstr "Update van de bezoekerstelling"
+
+msgid "Days still being counted, days you put back with Undo and days when sales rose too, which can be a real promotion, are left for you to decide."
+msgstr "Dagen die nog worden geteld, dagen die u met Ongedaan maken hebt teruggezet en dagen waarop ook de verkopen stegen, wat een echte actie kan zijn, worden aan u overgelaten."
+
+#: front-end/products/brikpanel-product-editor.php:1735
+#: includes/brikpanel-enqueue.php:2360
+msgctxt "stock quantity that is not counted"
+msgid "Unlimited"
+msgstr "Onbeperkt"
+
+#: includes/brikpanel-enqueue.php:2361
+msgid "Unlimited stock (do not count)"
+msgstr "Onbeperkte voorraad (niet tellen)"
+
+#: front-end/products/brikpanel-product-editor.php:1761
+msgid "Unlimited stock for every variation"
+msgstr "Onbeperkte voorraad voor elke variatie"

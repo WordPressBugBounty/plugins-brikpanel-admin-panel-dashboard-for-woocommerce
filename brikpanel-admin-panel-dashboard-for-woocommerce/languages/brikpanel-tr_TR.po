@@ -11731,29 +11731,9 @@ msgstr "Geri dönen bir tarayıcıyı tanır, böylece bir ziyaret her sayfada b
 msgid "Remembers that this visitor allowed analytics, so the choice survives the next page load."
 msgstr "Bu ziyaretçinin analitiğe izin verdiğini hatırlar, böylece seçim bir sonraki sayfa yüklemesinde de geçerli kalır."
 
-#: includes/brikpanel-consent.php:564 includes/brikpanel-consent.php:571
-msgid "Until midnight"
-msgstr "Gece yarısına kadar"
-
-#: includes/brikpanel-consent.php:565
-msgid "Counts an add-to-cart once per day per visitor for the conversion funnel."
-msgstr "Dönüşüm hunisi için sepete eklemeyi ziyaretçi başına günde bir kez sayar."
-
-#: includes/brikpanel-consent.php:572
-msgid "Counts a checkout visit once per day per visitor for the conversion funnel."
-msgstr "Dönüşüm hunisi için ödeme sayfası ziyaretini ziyaretçi başına günde bir kez sayar."
-
 #: includes/brikpanel-consent.php:578 includes/brikpanel-consent.php:589
 msgid "Until cleared"
 msgstr "Temizlenene kadar"
-
-#: includes/brikpanel-consent.php:579
-msgid "Marks that this browser has already been counted as a visitor today."
-msgstr "Bu tarayıcının bugün zaten ziyaretçi olarak sayıldığını işaretler."
-
-#: includes/brikpanel-consent.php:590
-msgid "Marks that this browser has already been counted as a product viewer today."
-msgstr "Bu tarayıcının bugün zaten ürün görüntüleyen olarak sayıldığını işaretler."
 
 #: includes/brikpanel-consent.php:603
 msgid "Until the browser tab is closed"
@@ -12950,10 +12930,6 @@ msgstr "Medya kitaplığından seç"
 #: includes/brikpanel-enqueue.php:2186
 msgid "Type and press Enter to add a tag..."
 msgstr "Etiket eklemek için yazın ve Enter'a basın..."
-
-#: includes/brikpanel-enqueue.php:2190
-msgid "Backorder"
-msgstr "Ön sipariş"
 
 #. translators: date input hint, must stay a 4-2-2 digit mask
 #: includes/brikpanel-enqueue.php:2194
@@ -16243,3 +16219,49 @@ msgstr "En çok görüntülenen sayfalar"
 #: front-end/dashboard/brikpanel-dashboard.php:1978
 msgid "Products and pages"
 msgstr "Ürünler ve sayfalar"
+
+msgid "A visitor is counted once a day, after they move the mouse, tap, scroll or press a key on your store. Bots, your staff and pages nobody looked at are left out."
+msgstr "Ziyaretçi, mağazanızda fareyi oynattığında, ekrana dokunduğunda, sayfayı kaydırdığında ya da bir tuşa bastığında günde bir kez sayılır. Botlar, çalışanlarınız ve kimsenin bakmadığı sayfalar sayılmaz."
+
+msgid "Bot traffic cleanup"
+msgstr "Bot trafiği temizliği"
+
+msgid "Bot traffic is cleaned up automatically every night."
+msgstr "Bot trafiği her gece otomatik olarak temizlenir."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %1$s: %2$s."
+msgstr "Bot trafiği her gece otomatik olarak temizlenir. Son çalışma %1$s: %2$s."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %s: nothing needed cleaning."
+msgstr "Bot trafiği her gece otomatik olarak temizlenir. Son çalışma %s: temizlenecek bir şey yoktu."
+
+msgid "Clears page caches once so every page carries the new visitor tracker."
+msgstr "Her sayfada yeni ziyaretçi sayacı olsun diye sayfa önbelleklerini bir kez temizler."
+
+msgid "Every night, lowers the analytics figures bots inflated and deletes scripted abandoned-cart entries, keeping a restore point."
+msgstr "Her gece botların şişirdiği analiz rakamlarını düşürür ve betiklerin yazdığı terk edilmiş sepet kayıtlarını siler; bir geri yükleme noktası tutar."
+
+msgid "Shows that this browser was used by a person and what was already counted for it today (visit, product view, add-to-cart, checkout), so bots and repeat counts stay out of the store's analytics."
+msgstr "Bu tarayıcıyı bir insanın kullandığını ve bugün onun için neyin sayıldığını (ziyaret, ürün görüntüleme, sepete ekleme, ödeme) gösterir; böylece botlar ve tekrar sayımlar mağazanın istatistiklerine girmez."
+
+msgid "Visitor counting update"
+msgstr "Ziyaretçi sayımı güncellemesi"
+
+msgid "Days still being counted, days you put back with Undo and days when sales rose too, which can be a real promotion, are left for you to decide."
+msgstr "Hâlâ sayılmakta olan günler, Geri al ile geri getirdiğiniz günler ve satışların da arttığı, gerçek bir kampanya olabilecek günler kararınıza bırakılır."
+
+#: front-end/products/brikpanel-product-editor.php:1735
+#: includes/brikpanel-enqueue.php:2360
+msgctxt "stock quantity that is not counted"
+msgid "Unlimited"
+msgstr "Sınırsız"
+
+#: includes/brikpanel-enqueue.php:2361
+msgid "Unlimited stock (do not count)"
+msgstr "Sınırsız stok (adet sayılmaz)"
+
+#: front-end/products/brikpanel-product-editor.php:1761
+msgid "Unlimited stock for every variation"
+msgstr "Her varyasyon için sınırsız stok"

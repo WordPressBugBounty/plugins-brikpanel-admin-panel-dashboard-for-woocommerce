@@ -1732,6 +1732,7 @@ class Brikpanel_Product_Editor {
                             $bpe_ph_price = __('Price', 'brikpanel');
                             $bpe_ph_sale  = _x('Sale', 'short placeholder for the bulk sale price field', 'brikpanel');
                             $bpe_ph_stock = __('Stock', 'brikpanel');
+                            $bpe_ph_unlimited = _x('Unlimited', 'stock quantity that is not counted', 'brikpanel');
                             $bpe_ph_w = static function ($text) {
                                 $len = brikpanel_strlen($text);
                                 return max(4, min(12, (int) $len));
@@ -1751,7 +1752,14 @@ class Brikpanel_Product_Editor {
                                                   // the full name. ?>
                                             <input type="text" id="bpe-bulk-sale-price" data-price="1" placeholder="<?php echo esc_attr($bpe_ph_sale); ?>" aria-label="<?php esc_attr_e('Sale price', 'brikpanel'); ?>" title="<?php esc_attr_e('Sale price for every variation', 'brikpanel'); ?>">
                                         </div>
-                                        <input type="number" id="bpe-bulk-stock" class="brikpanel-pe-input small brikpanel-pe-var-bulk-item" min="0" style="--bpe-ph:<?php echo (int) $bpe_ph_w($bpe_ph_stock); ?>" placeholder="<?php echo esc_attr($bpe_ph_stock); ?>" aria-label="<?php esc_attr_e('Stock', 'brikpanel'); ?>" title="<?php esc_attr_e('Stock quantity for every variation', 'brikpanel'); ?>">
+                                        <?php // ∞ mirrors the one on every row: pressed, Apply makes every
+                                              // variation Unlimited. Pressing it swaps the "Stock"
+                                              // placeholder for "Unlimited", so the box is sized for the
+                                              // longer of the two. ?>
+                                        <div class="brikpanel-pe-input-group small brikpanel-pe-var-bulk-item brikpanel-pe-var-bulk-stock" style="--bpe-ph:<?php echo (int) max($bpe_ph_w($bpe_ph_stock), $bpe_ph_w($bpe_ph_unlimited)); ?>">
+                                            <input type="number" id="bpe-bulk-stock" min="0" placeholder="<?php echo esc_attr($bpe_ph_stock); ?>" data-placeholder="<?php echo esc_attr($bpe_ph_stock); ?>" aria-label="<?php esc_attr_e('Stock', 'brikpanel'); ?>" title="<?php esc_attr_e('Stock quantity for every variation', 'brikpanel'); ?>">
+                                            <button type="button" class="brikpanel-pe-inf-btn" id="bpe-bulk-stock-inf" aria-pressed="false" aria-label="<?php esc_attr_e('Unlimited stock for every variation', 'brikpanel'); ?>" title="<?php esc_attr_e('Unlimited stock for every variation', 'brikpanel'); ?>"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg></button>
+                                        </div>
                                         <select id="bpe-bulk-active" class="brikpanel-pe-select small brikpanel-pe-var-bulk-item" aria-label="<?php esc_attr_e('Active', 'brikpanel'); ?>" title="<?php esc_attr_e('Active state for every variation', 'brikpanel'); ?>">
                                             <option value=""><?php esc_html_e('No change', 'brikpanel'); ?></option>
                                             <option value="1"><?php esc_html_e('Set active', 'brikpanel'); ?></option>

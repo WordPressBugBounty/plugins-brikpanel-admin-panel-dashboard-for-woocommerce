@@ -1301,6 +1301,8 @@ class Brikpanel_Dashboard {
         } else {
             $body = __( 'BrikPanel measures visitors and conversions from the day it was activated. There is no visitor history before that, so a recent install can read low or empty here. Your sales and orders are not affected. Those use your full WooCommerce history.', 'brikpanel' );
         }
+        // How a visitor is counted since 3.3.30 (the person check).
+        $body .= '<br><br>' . esc_html__( 'A visitor is counted once a day, after they move the mouse, tap, scroll or press a key on your store. Bots, your staff and pages nobody looked at are left out.', 'brikpanel' );
         $this->render_hint( $title, $body, $align );
     }
 

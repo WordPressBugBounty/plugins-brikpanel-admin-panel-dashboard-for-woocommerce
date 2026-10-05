@@ -11731,29 +11731,9 @@ msgstr "Reconoce un navegador que vuelve, para que una visita se cuente una vez 
 msgid "Remembers that this visitor allowed analytics, so the choice survives the next page load."
 msgstr "Recuerda que este visitante permitió las analíticas, para que la elección sobreviva a la siguiente carga de página."
 
-#: includes/brikpanel-consent.php:564 includes/brikpanel-consent.php:571
-msgid "Until midnight"
-msgstr "Hasta medianoche"
-
-#: includes/brikpanel-consent.php:565
-msgid "Counts an add-to-cart once per day per visitor for the conversion funnel."
-msgstr "Cuenta un añadido al carrito una vez al día por visitante para el embudo de conversión."
-
-#: includes/brikpanel-consent.php:572
-msgid "Counts a checkout visit once per day per visitor for the conversion funnel."
-msgstr "Cuenta una visita al pago una vez al día por visitante para el embudo de conversión."
-
 #: includes/brikpanel-consent.php:578 includes/brikpanel-consent.php:589
 msgid "Until cleared"
 msgstr "Hasta que se borre"
-
-#: includes/brikpanel-consent.php:579
-msgid "Marks that this browser has already been counted as a visitor today."
-msgstr "Marca que este navegador ya se ha contado hoy como visitante."
-
-#: includes/brikpanel-consent.php:590
-msgid "Marks that this browser has already been counted as a product viewer today."
-msgstr "Marca que este navegador ya se ha contado hoy como visitante de producto."
 
 #: includes/brikpanel-consent.php:603
 msgid "Until the browser tab is closed"
@@ -12950,10 +12930,6 @@ msgstr "Elegir de la biblioteca de medios"
 #: includes/brikpanel-enqueue.php:2186
 msgid "Type and press Enter to add a tag..."
 msgstr "Escribe y pulsa Enter para añadir una etiqueta..."
-
-#: includes/brikpanel-enqueue.php:2190
-msgid "Backorder"
-msgstr "Reserva"
 
 #. translators: date input hint, must stay a 4-2-2 digit mask
 #: includes/brikpanel-enqueue.php:2194
@@ -16243,3 +16219,49 @@ msgstr "Páginas más vistas"
 #: front-end/dashboard/brikpanel-dashboard.php:1978
 msgid "Products and pages"
 msgstr "Productos y páginas"
+
+msgid "A visitor is counted once a day, after they move the mouse, tap, scroll or press a key on your store. Bots, your staff and pages nobody looked at are left out."
+msgstr "Un visitante se cuenta una vez al día, cuando mueve el ratón, toca la pantalla, se desplaza o pulsa una tecla en tu tienda. Los bots, tu equipo y las páginas que nadie miró quedan fuera."
+
+msgid "Bot traffic cleanup"
+msgstr "Limpieza del tráfico de bots"
+
+msgid "Bot traffic is cleaned up automatically every night."
+msgstr "El tráfico de bots se limpia automáticamente cada noche."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %1$s: %2$s."
+msgstr "El tráfico de bots se limpia automáticamente cada noche. Última ejecución %1$s: %2$s."
+
+#, php-format
+msgid "Bot traffic is cleaned up automatically every night. Last run %s: nothing needed cleaning."
+msgstr "El tráfico de bots se limpia automáticamente cada noche. Última ejecución %s: no había nada que limpiar."
+
+msgid "Clears page caches once so every page carries the new visitor tracker."
+msgstr "Vacía una vez las cachés de página para que todas las páginas lleven el nuevo contador de visitantes."
+
+msgid "Every night, lowers the analytics figures bots inflated and deletes scripted abandoned-cart entries, keeping a restore point."
+msgstr "Cada noche reduce las cifras de analítica que los bots inflaron y borra las entradas de carritos abandonados escritas por scripts, con un punto de restauración."
+
+msgid "Shows that this browser was used by a person and what was already counted for it today (visit, product view, add-to-cart, checkout), so bots and repeat counts stay out of the store's analytics."
+msgstr "Indica que este navegador lo usó una persona y lo que ya se contó hoy para él (visita, vista de producto, añadir al carrito, pago), para que los bots y los conteos repetidos queden fuera de la analítica de la tienda."
+
+msgid "Visitor counting update"
+msgstr "Actualización del conteo de visitantes"
+
+msgid "Days still being counted, days you put back with Undo and days when sales rose too, which can be a real promotion, are left for you to decide."
+msgstr "Los días que aún se están contando, los días que devolviste con Deshacer y los días en que también subieron las ventas, que pueden ser una promoción real, se dejan para que tú decidas."
+
+#: front-end/products/brikpanel-product-editor.php:1735
+#: includes/brikpanel-enqueue.php:2360
+msgctxt "stock quantity that is not counted"
+msgid "Unlimited"
+msgstr "Ilimitado"
+
+#: includes/brikpanel-enqueue.php:2361
+msgid "Unlimited stock (do not count)"
+msgstr "Stock ilimitado (sin contar)"
+
+#: front-end/products/brikpanel-product-editor.php:1761
+msgid "Unlimited stock for every variation"
+msgstr "Stock ilimitado para todas las variaciones"

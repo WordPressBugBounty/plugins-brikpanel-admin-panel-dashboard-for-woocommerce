@@ -4,13 +4,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Check if the current user is a site administrator.
- * Used to skip tracking for admin actions (cart, checkout, visits, etc.).
+ * Whether the current user runs the store: an administrator or anyone who
+ * manages WooCommerce (shop managers), the same people the abandoned-cart
+ * module treats as staff. Storefront analytics skip them, so the team
+ * checking products, testing the cart or placing a test order never shows up
+ * as visitors, product views or add-to-carts. Administrators only until 3.3.30.
  *
  * @return bool
  */
 function brikpanel_is_admin_user() {
-    return is_user_logged_in() && current_user_can( 'manage_options' );
+    if ( ! is_user_logged_in() ) {
+        return false;
+    }
+    $is_staff = current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' );
+
+    /**
+     * Filters whether the signed-in user is left out of storefront analytics.
+     *
+     * @since 3.3.30
+     *
+     * @param bool $is_staff True for administrators and shop managers.
+     * @param int  $user_id  Current user.
+     */
+    return (bool) apply_filters( 'brikpanel_tracking_excluded_user', $is_staff, get_current_user_id() );
 }
 
 /**
