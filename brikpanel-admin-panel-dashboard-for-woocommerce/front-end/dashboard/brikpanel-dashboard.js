@@ -2872,11 +2872,15 @@
         if (cards.length > 1 && !fixedRows) {
             var gap = parseFloat(window.getComputedStyle(grid).columnGap) || 0;
             var room = (grid.clientWidth - gap * (cards.length - 1)) / cards.length - (cards[0].offsetWidth - contentWidth(cards[0]));
+            // The figures are measured as drawn: a CSS zoom on the page scales
+            // that, not the widths above, and every row read as too long.
+            var drawn = grid.getBoundingClientRect().width;
+            var scale = grid.offsetWidth && Math.abs(drawn - grid.offsetWidth) > 1 ? drawn / grid.offsetWidth : 1;
             var widest = function () {
                 var w = 0;
                 cards.forEach(function (c) {
                     var v = c.querySelector('.brikpanel-dash-card-value');
-                    if (v) w = Math.max(w, v.getBoundingClientRect().width);
+                    if (v) w = Math.max(w, v.getBoundingClientRect().width / scale);
                 });
                 return w;
             };
@@ -3071,6 +3075,124 @@
         createGlobeInstance();
     }
 
+    // Dragging turns whichever globe is on screen. Bound once per element and
+    // once on the window: bound per globe, every range change added another
+    // set and a drag turned the globe that many times as fast.
+    var globeDrag = { down: false, x: 0, y: 0, el: null, bound: false };
+
+    function bindGlobeDrag(el) {
+        if (!el || el.__bpGlobeDrag) return;
+        el.__bpGlobeDrag = true;
+        el.style.cursor = 'grab';
+        el.addEventListener('pointerdown', function (e) {
+            globeDrag.down = true;
+            globeDrag.x = e.clientX;
+            globeDrag.y = e.clientY;
+            globeDrag.el = el;
+            el.style.cursor = 'grabbing';
+        });
+        el.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            // Firefox can count the wheel in lines (deltaMode 1) or pages, not pixels.
+            var dy = e.deltaMode === 1 ? e.deltaY * 33 : (e.deltaMode === 2 ? e.deltaY * 600 : e.deltaY);
+            globeTheta += dy * 0.0005;
+        }, { passive: false });
+        if (globeDrag.bound) return;
+        globeDrag.bound = true;
+        window.addEventListener('pointerup', function () {
+            globeDrag.down = false;
+            if (globeDrag.el) globeDrag.el.style.cursor = 'grab';
+        });
+        window.addEventListener('pointermove', function (e) {
+            if (!globeDrag.down) return;
+            globePhi += (e.clientX - globeDrag.x) * 0.005;
+            globeTheta += (e.clientY - globeDrag.y) * 0.005;
+            globeDrag.x = e.clientX;
+            globeDrag.y = e.clientY;
+        });
+    }
+
+    // cobe puts the canvas in a new box each time it starts and leaves the box
+    // behind when it is destroyed: every range change nested the globe one box
+    // deeper, each box keeping the size and the round clip of its day.
+    function unwrapGlobeCanvas(container, canvas) {
+        while (canvas.parentElement && canvas.parentElement !== container && container.contains(canvas.parentElement)) {
+            var box = canvas.parentElement;
+            box.parentElement.insertBefore(canvas, box);
+            box.parentElement.removeChild(box);
+        }
+    }
+
+    // Whether the canvas really has a live WebGL context. cobe draws nothing,
+    // without a word, when it cannot get one (LibreWolf ships with WebGL off).
+    function canvasHasGL(canvas) {
+        try {
+            var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+            return !!gl && !gl.isContextLost();
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // A WebGL context can be taken away at any time: the GPU resets after
+    // sleep or a driver update, or the browser is over its number of live
+    // contexts and drops the oldest. cobe never draws again after that and the
+    // globe vanished until the page was reloaded. Now the drawn globe stands
+    // in at once; the WebGL globe comes back when the browser returns the
+    // context, or on a new canvas when it does not (at most twice a page).
+    var globeLostTimer = 0;
+    var globeCanvasSwaps = 0;
+
+    function watchGlobeContext(canvas) {
+        if (canvas.__bpGlobeWatch) return;
+        canvas.__bpGlobeWatch = true;
+        canvas.addEventListener('webglcontextlost', function (e) {
+            e.preventDefault(); // without this the context is never handed back
+            if (document.getElementById('brikpanel-globe') !== canvas) return;
+            redrawGlobe();
+            clearTimeout(globeLostTimer);
+            globeLostTimer = setTimeout(function () {
+                if (document.getElementById('brikpanel-globe') !== canvas) return;
+                if (canvasHasGL(canvas) || globeCanvasSwaps >= 2) return;
+                globeCanvasSwaps++;
+                var fresh = document.createElement('canvas');
+                fresh.id = 'brikpanel-globe';
+                if (globeInstance) {
+                    globeInstance.destroy();
+                    globeInstance = null;
+                }
+                if (canvas.parentNode) canvas.parentNode.replaceChild(fresh, canvas);
+                redrawGlobe();
+            }, 3000);
+        });
+        canvas.addEventListener('webglcontextrestored', function () {
+            clearTimeout(globeLostTimer);
+            if (document.getElementById('brikpanel-globe') === canvas) redrawGlobe();
+        });
+    }
+
+    // Arc data-transfer animation: each arc pulses one at a time, the hub
+    // "sending" to a country. Grey level of arc idx at time (seconds): quickly
+    // brighter, held, then faded back.
+    function globeArcGlow(idx, total, time) {
+        var sendDuration = 1.2; // seconds for one arc to light up and fade
+        var cycleLen = (total || 1) * sendDuration;
+        var local = time % cycleLen - idx * sendDuration;
+        if (local < 0) local += cycleLen;
+        if (local >= sendDuration) return 0.08;
+        var p = local / sendDuration;
+        if (p < 0.3) return 0.08 + 0.52 * (p / 0.3);
+        if (p < 0.5) return 0.6;
+        return Math.max(0.08, 0.6 * (1 - (p - 0.5) / 0.5));
+    }
+
+    // Draw the globe again with the markers it has, when its box is showing.
+    function redrawGlobe() {
+        var container = document.getElementById('globe-container');
+        if (!container || container.hidden || !globeMarkers.length) return;
+        createGlobeInstance();
+    }
+
     function createGlobeInstance() {
         if (globeInstance) {
             globeInstance.destroy();
@@ -3080,12 +3202,19 @@
         var canvas = document.getElementById('brikpanel-globe');
         if (!canvas) return;
 
-        if (!COBE || !COBE.default) return;
-
         var container = document.getElementById('globe-container');
         var w = container ? container.offsetWidth : 500;
         var h = container ? container.offsetHeight : 450;
         var size = Math.min(w, h);
+
+        if (container) unwrapGlobeCanvas(container, canvas);
+        canvas.style.display = '';
+
+        if (typeof COBE === 'undefined' || !COBE.default) {
+            globeInstance = startLiteGlobe(container, canvas, size);
+            return;
+        }
+        watchGlobeContext(canvas);
 
         // Build arcs: hub (top country) to ALL others
         var allArcs = [];
@@ -3109,8 +3238,14 @@
         var quality = 'slow';
         for (var ti = 0; ti < tiers.length; ti++) {
             if (globeInstance) { globeInstance.destroy(); globeInstance = null; }
+            if (container) unwrapGlobeCanvas(container, canvas);
             quality = tryGlobeAtSize(canvas, size, tiers[ti].render, tiers[ti].samples, allArcs);
             if (quality === 'fast') return;
+            if (quality === 'nogl') {
+                if (container) unwrapGlobeCanvas(container, canvas);
+                globeInstance = startLiteGlobe(container, canvas, size);
+                return;
+            }
         }
 
         // All tiers too slow — static image fallback
@@ -3151,6 +3286,13 @@
             arcs: allArcs
         });
 
+        // No WebGL (switched off, blocked, or the context is gone): cobe has
+        // drawn nothing, the drawn globe takes over.
+        if (!canvasHasGL(canvas)) {
+            globe.destroy();
+            return 'nogl';
+        }
+
         // Benchmark: measure render time
         var t0 = performance.now();
         globe.update({ phi: globePhi, theta: globeTheta });
@@ -3165,9 +3307,6 @@
         // --- Fast enough: set up full interactive animated globe ---
         globeInstance = globe;
 
-        var pointerDown = false;
-        var pointerX = 0;
-        var pointerY = 0;
         var destroyed = false;
         var animFrame = null;
         var rotationSpeed = prefersReducedMotion ? 0 : 0.003;
@@ -3190,38 +3329,13 @@
         function animate() {
             if (destroyed || !globeVisible) { animFrame = null; return; }
 
-            if (!pointerDown && !prefersReducedMotion) {
+            if (!globeDrag.down && !prefersReducedMotion) {
                 globePhi += rotationSpeed;
             }
             arcTime += 0.016;
 
-            // Arc data-transfer animation: each arc pulses one at a time
-            // hub→country "sending" effect
-            var totalArcs = allArcs.length || 1;
-            var sendDuration = 1.2; // seconds for one arc to fully light up and fade
-            var cycleLen = totalArcs * sendDuration;
-            var t = arcTime % cycleLen;
-
             var pulsedArcs = allArcs.map(function (arc, idx) {
-                var arcStart = idx * sendDuration;
-                var local = t - arcStart;
-                if (local < 0) local += cycleLen;
-
-                var b;
-                if (local < sendDuration) {
-                    var p = local / sendDuration;
-                    // Smooth ease-in-out: quickly brighten, hold briefly, fade out
-                    if (p < 0.3) {
-                        b = 0.08 + 0.52 * (p / 0.3); // rise
-                    } else if (p < 0.5) {
-                        b = 0.6; // hold bright
-                    } else {
-                        b = 0.6 * (1 - (p - 0.5) / 0.5); // fade out
-                        b = Math.max(b, 0.08);
-                    }
-                } else {
-                    b = 0.08;
-                }
+                var b = globeArcGlow(idx, allArcs.length, arcTime);
                 return { from: arc.from, to: arc.to, color: [b, b, b] };
             });
 
@@ -3261,39 +3375,12 @@
             origDestroy();
         };
 
-        // Drag interaction
-        canvas.addEventListener('pointerdown', function (e) {
-            pointerDown = true;
-            pointerX = e.clientX;
-            pointerY = e.clientY;
-            canvas.style.cursor = 'grabbing';
-        });
+        bindGlobeDrag(canvas);
 
-        window.addEventListener('pointerup', function () {
-            pointerDown = false;
-            canvas.style.cursor = 'grab';
-        });
-
-        window.addEventListener('pointermove', function (e) {
-            if (pointerDown) {
-                var dx = e.clientX - pointerX;
-                var dy = e.clientY - pointerY;
-                pointerX = e.clientX;
-                pointerY = e.clientY;
-                globePhi += dx * 0.005;
-                globeTheta += dy * 0.005;
-            }
-        });
-
-        canvas.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            globeTheta += e.deltaY * 0.0005;
-        }, { passive: false });
-
-        canvas.style.cursor = 'grab';
-
-        // Add country code labels + set labelWrapper for visibility checks
+        // Add country code labels + set labelWrapper for visibility checks.
+        // Not for a globe already replaced (a quick range change).
         setTimeout(function () {
+            if (destroyed) return;
             setupGlobeLabels(canvas, displaySize);
             labelWrapper = canvas.parentElement;
         }, 300);
@@ -3337,6 +3424,247 @@
         // Hide theme toggle (static image can't change theme)
         var themeBtn = document.getElementById('globe-theme-toggle');
         if (themeBtn) themeBtn.style.display = 'none';
+    }
+
+    // =========================================================================
+    // GLOBE WITHOUT WEBGL
+    // LibreWolf ships with WebGL turned off, and any browser can have it
+    // blocked or lose it: cobe then draws nothing and the panel stood empty.
+    // The same dotted globe, drawn on a 2D canvas. Its land is the points cobe
+    // samples (12000 Fibonacci points over cobe's own map), worked out once and
+    // kept here as 2 bits each (how dark the dot is), so nothing reads pixels
+    // back (LibreWolf scrambles that). Light, size, markers, arcs, labels and
+    // dragging follow the WebGL globe (tryGlobeAtSize, cobe's shader).
+    // =========================================================================
+    var LITE_SAMPLES = 12000;
+    var LITE_LAND = '//////////////+////vv/98/zz/PPN8/8zzzPPdM8/zzzjPPO898zwzP/OM898xzD/vP8MwfwzPfMP8M8zzy/NPOMw/xDz/9P5w8/zw7EPD84M/Tx+Pv7I8v7zz+/Dw/c73z3v/PM+///z//Pz/8/3zz3/P7/8//z///PP8//73//PD/8//zz//PP/+/3//3PHf8/e//z/PD/8//393/PPc8P/3/zPDP8/f/z7/PDO89/z9zfPPM8P/zz/PDB89P////PHM8N/zwzPDP8MMvz8/LDM8ePzw9vHHNMPPzw/PDN8PP3x8/DDN8PHywwPDP8MPHz8/DDY8P/zw4PDD/MPHww8DDP8PP/w8/DD+8PXww4HDj+MPPw8/DD/8P/zw8/Dj/MPPww+DDD/PP/w8/DD/8P/ww8zDz8MPPw8/DD/8PPzw8/DD/MPPww/zDz8OP/w8/DD+8PPww8zDz8MPPw8/zD38OPxw8/DT+MLPww9zDz8OP/w8/DD/8MPww8zDz+MEPw8/zD78MPww8/DDPMCPww8zDz8OD/w8vDDj8OPww8zDS9MCPw8vzDz8MDxw8vDCzMHPww8zDz8MD/w8PDD/8MPww8zDA3MOPw4vzC78ML7w4fDBzMMPww8jDw/MDvwwPDD48MP8w8rDBzMHPwwfDDy8MPPww/DDxMMP8w8DDz/MDDwwfDDw8MPMw0bDD2MPPww/zDz8MHPww+DD4MMDcw8DDT/MDDww9DDw8MPMwwMDD8MPP0w+DDT8MHPwwMDDwMMDMw8jDD8MHnww8DDy8MPMwwKDDxMPH0w/TDB8MLjwwMDDyMMDEw8DDA/MPzww+DDD8MD0wwMDDzMPDww8DDA8MPvwwMDDTMMD8w8DDC3MPHww9DDD8MDcwwEDDzMOD8w/jDA8MPPwwsDDDMMDcw8TDD3MOLww9jDD8MLMwwQDDzMMP8w+zDD8MPPww8TDDMMHMw4TDD3MMOww8zDD8MLMww0DDzMMP8w4zDD8MOOww4zDDMMPMw0zDDzMMPwwwzDD8MNMwwwzDjMMP8wQzDD0MOPwwwzDDMMPMwgzjDzMMPwwwzDD8MLMwwwzDDMMP8wQzDDxMMOwwwzDDMMPMwQzzDDMMPwwwzDDwMGMwQwzDDMIP8wQzDDzMEOwwwzDDAMPMwwzzDDMAOwwwzDD2MIMwg0zDDMAPcwgzDDjMANwwwzDDNAPMw8zzDDMAOwwwzDDzIJMwg0zDDMAPMwwzDDDMBMgwwzDDDIHMw8zzDDMANAwwzDDzIKMgAwzDTMAPMgwxDDDMCMAw0zDDDALMAwzzDDMBPAwwyDDjEKMAAwzDzOBPMAwyDDDMAMAwwzDDDADMAAwzDzMDOAAwxDDjIIMAAwzDTPAPcAQxDDjMAMAAwzDDDADMAAwzDzMAO0AgxDDzIMMAAwwDDPANMAAwDDzMAMAAwzBDDMDMAAwyDjMAM8AAxDDjEMMAAwwBjPANMAAwDDzMAMgA0zADDMIMAAwwCzMAMsAAwDDTIMMAAwwAzPAMMAAwABzMAMYAwzADDMMMAAwwAzMAMsAAwDDDIIMAAwwAzPEMcAAwAADAAMMAwyADDMAMAAwwAzMAMsAAwCDDEGMAAwwADPGMMAIwADDADM8AwwADDMMMQMwwAzMDMcAEwBDDAPMAAwwAjDKMMAMwAADADMcA8wADDEMMwMwwAzEDMMAMwADDAPMQAwwAjDGMMAMwAADADM4A8wADDMMMwMwwAjADMMAMxADDAHMgAwwADDGMMQMwAADADMoA8wATDIIMwMwgADADMMQMzATDADMQAwwADDHMMQMxAABADMAA8zAzCAAMwMwQADADMIwMzAjAADMAAwQAzJDEMQMwAAAADMAw8zAzAAAMgMwAADADMAwMwAjAADMAAwAAzMDAMwMwAAAADMAg8zAzAAAMAMwAAzMDAAwMwATAADMQAwwAzMDAMwMyAAgMDMAgMxAzAAAMAMwgAzMDAAwMyATQMDMAAAwAzMDAMQMxAAwMDMgQMwAzAAAMAMQwAzMDAAwMzAzwMDMAAAwAxEDAsgMwAgwMDMwQMzAzAABMAMAwAzMDAQwMwAz0MDMAEAwAyMDA8gMRAgxMDMwgMzAzMABMAMDwwzEDAwwMwAy4IDMQIAwAzMDA8AMBAwxEDMggMzAzMADMAMAwwzADAwQMwAw4ADMAIAwAzIDB8gMAAw1ADMQQMwAyMADMAMAww7ADAwwMwAw8ADMAIAwAzADB8gMAAw1ADMQAMwAwMADMwMAwwzADAwwMwAw0ADMAAAwAzADCsQMAAwzADMQAMyAwIADMAMAwwzADAwAMwAw4ADMAAAwAyIDDMAMAAwzADMAAMwAwEADMAMAwAzADAAAMwAw0ADMAAAwAyADDMAMCAQzADMAAMwAwAADMAMCwAzADAQAMwAwyADMAAAwAwADCMAMjAAzADMwAMyAwAADMAMAwAzADAAAMzABzADMAAAwAwEDDMAMjAAzADMwAMzAwDADMAMAwAxMDAAAMzADzADMQAAwAwODDMAMCAAzIDMwAMzADDADMAMAwAwMDAAAMzADzADMwAAwAyPDCMAMCAAzMDkwAMzADDADMAMDwAxMDAAAMzABzMDAwAAwAzPABMAMDAAzMDAwAMzACDADEwMDwAzMDAAAMzAAzMDAwAAwAzPACIgMDAAzMDAwAMzAADADAwMDwAzMAAIwMzAAzMDAwABwAxPADAwMDAAzMDIwwMzAADADAwMDwAzMAAIwMzAAzMDAwAAxAwPADAwMDAAzMAMwwMzAADADAwMDwAyMADMwMjAAzMBAwAAzAwPADAwIDAAzMAMwwMzAADADAwADxAwMADMwMDAAzMAEwAAzAwPADAwADAAzMAD4wMDAADADAwADzAwMADMwEDAAzMAAwAATAwPADAwADAAzMADowMDAADADAwADzAwMADMwADAAzMAAwAMDAwPADAwADCAzMADMwADAADADAwADTAwMADMwADAAzMAAwAMDAAPADAwADBAyMADIwADAADADAwAHDAQMADMwADAAzMAAQAMDAAPADAgADDAwMADMwADAADADAQAODAAMADMAADAAwMAAAAMCAAPADAAALDAQIADMAADAAAADAAAMAAAMADAAADCAgIAAEAMAAAMADAAANBAAEADAAADAAAABAAAMAAIMADAAAHAAAAAAAAMAAAMADAAAMAAAMADAAADAAAAAAAAMAAMMADAAAMAAAAAAAAOAAAMAAAAAMAAAAACAAAAAAQAAAAAMAAMEAAAAAMAAAAAAAAMAAAEAAAAAMAAEAAAAAAAAAwAAAAAMAAAIAAAAAMAAMAAAAAAAAAYAAAAAMAAAAAAAAAAAA8AAAAAAAAAIAAAAAMAAEAAAAAAAAAQAAgAAMAAAAAAAAAAAAwAAAAAAAAAAAAgAAIAAAAAAAAAAAAwAAQAAAAAAAAAAAAAAAwAAAAAAAAAgAAAAAIAAAAAAAAAAAAwAAAAAAAAAQAAAAAAAAwAAAAAAAAAwAAAAAAAAAAAAAAAAAAwAAAAAAAAAgAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAgAAAAAAAAAwAAAAAAAAQAAAAAAAAAwAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEACAAAAAAAAAAgAAAAAAADAAAAAAAEDAAAMAAwQRBAwEIAAggDDBwMAAwwwDAhMMIgwwzDDwMMAwwwDDDOMOIwwzDD/MMPwwxzTD/MMM8wzzzDPMP9wzzzD//MP8wz3zDvfP/9w//D//8P+0y/7D//MP/0///z/8P//w//T//+v/////3///////////////////////////////////////'; // i18n-ignore: map data, not text
+    var liteLand = null;
+
+    function liteLandPoints() {
+        if (liteLand) return liteLand;
+        var bits = window.atob(LITE_LAND);
+        var golden = (Math.sqrt(5) - 1) / 2;
+        var pts = [];
+        for (var j = 0; j < LITE_SAMPLES; j++) {
+            var level = (bits.charCodeAt(j >> 2) >> ((j & 3) * 2)) & 3;
+            if (!level) continue;
+            var y = 1 - 2 * j / LITE_SAMPLES;
+            var m = Math.sqrt(Math.max(0, 1 - y * y));
+            var l = ((j * golden) % 1) * 2 * Math.PI;
+            pts.push(Math.cos(l) * m, y, Math.sin(l) * m, level / 3);
+        }
+        liteLand = new Float32Array(pts);
+        return liteLand;
+    }
+
+    // A place on the globe, where cobe puts it.
+    function liteXYZ(loc, lift) {
+        var lat = loc[0] * Math.PI / 180;
+        var lon = loc[1] * Math.PI / 180;
+        var c = Math.cos(lat) * lift;
+        return [c * Math.cos(lon), Math.sin(lat) * lift, -c * Math.sin(lon)];
+    }
+
+    // Brightness at a point of the globe facing the viewer by i, darkened by d
+    // (cobe's shader): white middle, a faint grey ring near the rim, white rim.
+    function liteShade(i, d) {
+        return Math.max(0, Math.min(1, (1 - d) * Math.pow(i, 0.4) + 0.1 + Math.pow(1 - i, 4)));
+    }
+
+    function startLiteGlobe(container, canvas, size) {
+        if (!container || !size) return null;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var px = Math.round(size * dpr);
+        var box = document.createElement('div');
+        box.className = 'brikpanel-globe-lite';
+        box.style.cssText = 'position:relative;width:' + size + 'px;height:' + size + 'px;margin:0 auto;border-radius:50%;overflow:hidden;';
+        var c2 = document.createElement('canvas');
+        c2.width = px;
+        c2.height = px;
+        c2.style.cssText = 'display:block;width:' + size + 'px;height:' + size + 'px;';
+        c2.setAttribute('role', 'img');
+        c2.setAttribute('aria-label', i18n.globe_alt || 'Order locations globe');
+        var ctx = c2.getContext('2d');
+        if (!ctx) return null;
+        box.appendChild(c2);
+        canvas.style.display = 'none';
+        container.appendChild(box);
+
+        var half = px / 2;
+        var R = half * 0.8;
+        var dot = 0.0062 * R;
+        var land = liteLandPoints();
+        var count = land.length / 4;
+        var screen = new Float32Array(count * 4);
+        var shades = [];
+
+        var sphere = ctx.createRadialGradient(half, half, 0, half, half, R);
+        for (var st = 0; st <= 24; st++) {
+            var rr = st / 24;
+            var g0 = Math.round(255 * liteShade(Math.sqrt(Math.max(0, 1 - rr * rr)), 0));
+            sphere.addColorStop(rr, 'rgb(' + g0 + ',' + g0 + ',' + g0 + ')');
+        }
+
+        var marks = globeMarkers.map(function (m, k) {
+            var data = globeMarkersData[k] || {};
+            var item = { p: liteXYZ(m.location, 1.02), r: Math.max(1.5 * dpr, m.size * R * 0.55), anchor: null, tag: null };
+            if (data.code) {
+                item.anchor = document.createElement('div');
+                item.anchor.style.cssText = 'position:absolute;width:0;height:0;overflow:visible;pointer-events:none;';
+                item.tag = document.createElement('span');
+                item.tag.className = 'globe-code-tag';
+                item.tag.textContent = data.code;
+                item.anchor.appendChild(item.tag);
+                box.appendChild(item.anchor);
+            }
+            return item;
+        });
+
+        // From the first country to each other one, lifted off the surface.
+        var arcs = [];
+        if (globeMarkers.length > 1) {
+            var a = liteXYZ(globeMarkers[0].location, 1);
+            for (var k = 1; k < globeMarkers.length; k++) {
+                var b = liteXYZ(globeMarkers[k].location, 1);
+                var w = Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
+                var pts = [];
+                for (var t = 0; t <= 32; t++) {
+                    var f = t / 32;
+                    var s0 = w < 1e-4 ? 1 - f : Math.sin((1 - f) * w) / Math.sin(w);
+                    var s1 = w < 1e-4 ? f : Math.sin(f * w) / Math.sin(w);
+                    var up = 1 + 0.32 * Math.sin(Math.PI * f) * Math.min(1, w / 1.2);
+                    pts.push([(s0 * a[0] + s1 * b[0]) * up, (s0 * a[1] + s1 * b[1]) * up, (s0 * a[2] + s1 * b[2]) * up]);
+                }
+                arcs.push(pts);
+            }
+        }
+
+        var destroyed = false;
+        var frame = 0;
+        var arcTime = 0;
+        var visible = true;
+
+        function draw() {
+            var sp = Math.sin(globePhi), cp = Math.cos(globePhi);
+            var sn = Math.sin(globeTheta), cn = Math.cos(globeTheta);
+            ctx.clearRect(0, 0, px, px);
+            ctx.fillStyle = sphere;
+            ctx.beginPath();
+            ctx.arc(half, half, R, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Land dots, one path per shade of grey.
+            for (var s = 0; s < 12; s++) shades[s] = [];
+            for (var n = 0; n < count; n++) {
+                var o = n * 4;
+                var x = land[o], y = land[o + 1], z = land[o + 2];
+                var vz = -x * sp * cn + y * sn + z * cp * cn;
+                if (vz <= 0.06) continue;
+                var lum = liteShade(vz, land[o + 3] * 6 * Math.pow(vz, 1.2));
+                if (lum > 0.97) continue;
+                screen[o] = half + (x * cp + z * sp) * R;
+                screen[o + 1] = half - (x * sp * sn + y * cn - z * cp * sn) * R;
+                screen[o + 2] = vz;
+                shades[Math.round(lum * 11)].push(o);
+            }
+            for (var g = 0; g < 12; g++) {
+                if (!shades[g].length) continue;
+                var gray = Math.round(255 * g / 11);
+                ctx.fillStyle = 'rgb(' + gray + ',' + gray + ',' + gray + ')';
+                ctx.beginPath();
+                for (var e = 0; e < shades[g].length; e++) {
+                    var q = shades[g][e];
+                    var dx = screen[q] - half, dy = screen[q + 1] - half;
+                    var rot = Math.atan2(dy, dx);
+                    var rx = dot * Math.max(0.2, screen[q + 2]);
+                    ctx.moveTo(screen[q] + rx * Math.cos(rot), screen[q + 1] + rx * Math.sin(rot));
+                    ctx.ellipse(screen[q], screen[q + 1], rx, dot, rot, 0, Math.PI * 2);
+                }
+                ctx.fill();
+            }
+
+            if (arcs.length) {
+                ctx.lineWidth = Math.max(1, 0.9 * dpr);
+                ctx.lineCap = 'round';
+                arcs.forEach(function (line, idx) {
+                    var lv = Math.round(255 * globeArcGlow(idx, arcs.length, arcTime));
+                    ctx.strokeStyle = 'rgb(' + lv + ',' + lv + ',' + lv + ')';
+                    ctx.beginPath();
+                    var pen = false;
+                    line.forEach(function (p) {
+                        var ax = p[0] * cp + p[2] * sp;
+                        var ay = p[0] * sp * sn + p[1] * cn - p[2] * cp * sn;
+                        var az = -p[0] * sp * cn + p[1] * sn + p[2] * cp * cn;
+                        if (az > 0 || ax * ax + ay * ay > 1) {
+                            if (pen) ctx.lineTo(half + ax * R, half - ay * R); else ctx.moveTo(half + ax * R, half - ay * R);
+                            pen = true;
+                        } else {
+                            pen = false;
+                        }
+                    });
+                    ctx.stroke();
+                });
+            }
+
+            ctx.fillStyle = '#1a1a1a';
+            marks.forEach(function (m) {
+                var mx = m.p[0] * cp + m.p[2] * sp;
+                var my = m.p[0] * sp * sn + m.p[1] * cn - m.p[2] * cp * sn;
+                var mz = -m.p[0] * sp * cn + m.p[1] * sn + m.p[2] * cp * cn;
+                if (mz > 0) {
+                    ctx.beginPath();
+                    ctx.arc(half + mx * R, half - my * R, m.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                if (m.anchor) {
+                    m.anchor.style.left = ((half + mx * R) / px * 100) + '%';
+                    m.anchor.style.top = ((half - my * R) / px * 100) + '%';
+                    m.tag.classList.toggle('globe-code-tag--visible', mz > 0.15);
+                }
+            });
+        }
+
+        function tick() {
+            frame = 0;
+            if (destroyed || !visible) return;
+            if (!globeDrag.down) globePhi += 0.003;
+            arcTime += 0.016;
+            draw();
+            frame = requestAnimationFrame(tick);
+        }
+
+        // Reduced motion: drawn once, and again only while it is dragged.
+        var onDrag = null;
+        if (prefersReducedMotion) {
+            onDrag = function () { if (globeDrag.down && globeDrag.el === c2) draw(); };
+            window.addEventListener('pointermove', onDrag);
+        }
+
+        var io = null;
+        if (window.IntersectionObserver) {
+            io = new IntersectionObserver(function (entries) {
+                visible = entries[0].isIntersecting;
+                if (visible && !frame && !destroyed && !prefersReducedMotion) frame = requestAnimationFrame(tick);
+            }, { threshold: 0.1 });
+            io.observe(c2);
+        }
+
+        bindGlobeDrag(c2);
+        draw();
+        if (!prefersReducedMotion) frame = requestAnimationFrame(tick);
+
+        return {
+            lite: true,
+            update: function () {},
+            destroy: function () {
+                destroyed = true;
+                if (frame) cancelAnimationFrame(frame);
+                if (io) io.disconnect();
+                if (onDrag) window.removeEventListener('pointermove', onDrag);
+                if (box.parentNode) box.parentNode.removeChild(box);
+                canvas.style.display = '';
+            }
+        };
     }
 
     // Shared label setup for live globe

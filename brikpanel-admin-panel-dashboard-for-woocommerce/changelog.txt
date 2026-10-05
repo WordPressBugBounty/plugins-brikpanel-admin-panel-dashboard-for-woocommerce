@@ -2,6 +2,11 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.31 (2026-10-05) =
+* Fix: **The dashboard in Firefox.** In Firefox, the dashboard's cards stacked one per line and its header took the phone layout on every screen size, and on a phone the Low stock list turned into cards. All of them look as they should again.
+* Fix: **The dashboard on a zoomed page.** On a zoomed page, the cards could stack one per line and the header could switch to its phone layout, even on a wide screen.
+* Fix: **The Order locations globe no longer goes blank.** Browsers without WebGL, such as LibreWolf, showed an empty box, and a globe that lost its graphics context stayed blank until the page was reloaded. A drawn globe now stands in, and the 3D globe comes back on its own.
+
 = 3.3.30 (2026-10-05) =
 * Fix: **Visitors are counted once a day, and only real people.** A visitor now counts after they move the mouse, tap, scroll or press a key. Bots, cloud servers, your staff and pages served from an old cache no longer add visitors, product views, add-to-carts or checkouts. A first-party cookie, `brikpanel_human`, remembers the check for 30 days and follows your cookie consent setting.
 * New: **Bot traffic is cleaned up every night.** Store Health lowers past days that bots inflated, leaves days with real sales for you to decide, and keeps an Undo. Days you put back with Undo are never touched again.

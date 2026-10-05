@@ -4485,8 +4485,12 @@ button.brikpanel-dash-guide__item:focus-visible {
     text-align: match-parent;
 }
 
+/* A long SKU wraps at its dashes (the <wbr> skuHtml() puts after each) when
+   the card is short of room, never inside a letter group. Not `nowrap`:
+   Chrome breaks at <wbr> even then, Firefox does not, and the Low stock
+   table turned into cards on a phone in Firefox only. */
 .bp-dv-stock-sku {
-    white-space: nowrap;
+    white-space: normal;
 }
 
 /* The Products page stock badge. */

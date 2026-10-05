@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.30
+Stable tag: 3.3.31
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -497,6 +497,11 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.31 (2026-10-05) =
+* Fix: **The dashboard in Firefox.** In Firefox, the dashboard's cards stacked one per line and its header took the phone layout on every screen size, and on a phone the Low stock list turned into cards. All of them look as they should again.
+* Fix: **The dashboard on a zoomed page.** On a zoomed page, the cards could stack one per line and the header could switch to its phone layout, even on a wide screen.
+* Fix: **The Order locations globe no longer goes blank.** Browsers without WebGL, such as LibreWolf, showed an empty box, and a globe that lost its graphics context stayed blank until the page was reloaded. A drawn globe now stands in, and the 3D globe comes back on its own.
+
 = 3.3.30 (2026-10-05) =
 * Fix: **Visitors are counted once a day, and only real people.** A visitor now counts after they move the mouse, tap, scroll or press a key. Bots, cloud servers, your staff and pages served from an old cache no longer add visitors, product views, add-to-carts or checkouts. A first-party cookie, `brikpanel_human`, remembers the check for 30 days and follows your cookie consent setting.
 * New: **Bot traffic is cleaned up every night.** Store Health lowers past days that bots inflated, leaves days with real sales for you to decide, and keeps an Undo. Days you put back with Undo are never touched again.
@@ -558,8 +563,3 @@ The full release history of every version is in changelog.txt, included with the
 * Tweak: **Darker text.** Text meant to be read and status colours now have enough contrast.
 * Tweak: **All 9 languages are fully translated.** Two storefront texts changed (the popup's "Check your inbox…" and the login page footer): update them if you translated them yourself.
 * Tweak: **WooCommerce tested up to 11.1.** The Ad Platforms page now says that ad tokens are sent to the brksoft.com helper for syncing.
-
-= 3.3.24 (2026-09-26) =
-* New: **Page names in Live Visitors.** Each row shows the name of the product, page or category the visitor is on instead of its address, and the campaign and search term appear next to the source without hovering. Pages cached before the update show the address until the page cache is cleared.
-* New: **Tax kept in Revenue.** Dashboard → "Tax in the Profit section" (formerly "Exclude tax from Revenue and Expenses") has a new "Kept in Revenue (not in Expenses)" choice: Revenue keeps the tax and shows the amount under it, and Expenses leave it out. Net profit stays the same.
-* Fix: **Profit cards in right-to-left languages.** The buttons in the corner of the Revenue and Expenses cards no longer cover the card title.
