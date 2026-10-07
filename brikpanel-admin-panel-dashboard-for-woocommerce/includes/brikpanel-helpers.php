@@ -1094,6 +1094,36 @@ function brikpanel_paid_order_statuses() {
 }
 
 /**
+ * Order statuses that announce a new order: the new-order popup and sound,
+ * and the phone notifications. The same entry points as WooCommerce's own
+ * "New order" email, so a bank transfer that waits on-hold is announced too.
+ *
+ * Not the paid statuses above: those are an analytics setting a merchant
+ * edits for reporting, and that must not change who gets told about orders.
+ *
+ * @return string[] Status slugs without the "wc-" prefix.
+ */
+function brikpanel_new_order_statuses() {
+    $default = array( 'processing', 'completed', 'on-hold' );
+
+    /**
+     * Filter the order statuses that announce a new order.
+     *
+     * @param string[] $statuses Status slugs without the "wc-" prefix.
+     */
+    $statuses = apply_filters( 'brikpanel_new_order_statuses', $default );
+
+    $out = array();
+    foreach ( (array) $statuses as $status ) {
+        $status = sanitize_key( preg_replace( '/^wc-/', '', (string) $status ) );
+        if ( '' !== $status && ! in_array( $status, $out, true ) ) {
+            $out[] = $status;
+        }
+    }
+    return $out ? $out : $default;
+}
+
+/**
  * Order statuses a merchant treats as refunds. Used by the refund counters
  * and folded into the lifetime-value set so refunded customers still register
  * as having ordered.

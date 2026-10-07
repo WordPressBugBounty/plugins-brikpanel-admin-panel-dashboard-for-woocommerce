@@ -64,10 +64,15 @@ if ( ! defined( 'BRIKPANEL_NAV_BLOCKED_SOURCES_META' ) ) {
 /**
  * Whether "Block pages hidden from the menu" is on.
  *
+ * "Ignore BrikPanel's access rules" switches the blocking off as a whole, rows
+ * hidden for everyone included: blocking spares administrators, so it is a
+ * per-person rule itself. The sidebar and the palette still leave those rows out.
+ *
  * @return bool
  */
 function brikpanel_nav_block_hidden_pages_enabled() {
-	return get_option( BRIKPANEL_NAV_BLOCK_OPTION, 'no' ) === 'yes';
+	return get_option( BRIKPANEL_NAV_BLOCK_OPTION, 'no' ) === 'yes'
+		&& ! ( function_exists( 'brikpanel_access_rules_ignored' ) && brikpanel_access_rules_ignored() );
 }
 
 /**
@@ -395,6 +400,8 @@ function brikpanel_nav_page_rows( $refresh = false ) {
 		did_action( 'admin_init' ) ? 'after' : 'before',
 		md5( (string) wp_json_encode( $config ) ),
 		brikpanel_nav_hide_new_items_enabled() ? 'hide-new' : '',
+		// The answer changes with "Ignore BrikPanel's access rules" too.
+		( function_exists( 'brikpanel_access_rules_ignored' ) && brikpanel_access_rules_ignored() ) ? 'rules-ignored' : '',
 	] );
 	if ( isset( $memo[ $key ] ) ) {
 		return $memo[ $key ];

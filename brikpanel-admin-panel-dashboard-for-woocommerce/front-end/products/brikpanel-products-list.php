@@ -496,17 +496,30 @@ class Brikpanel_Products_List {
         $backorders   = false;
 
         if ($product->is_type('variable')) {
-            $total = 0;
+            // A variation that leaves its stock to the product reports the
+            // product's quantity as its own (get_manage_stock() is 'parent'):
+            // that quantity is counted once, not once per variation (a product
+            // with 10 in stock and 6 such variations showed 60). A switched-off
+            // variation (status private) is not for sale and not counted.
+            $total       = 0;
+            $uses_parent = false;
             foreach ($product->get_children() as $cid) {
                 $v = wc_get_product($cid);
-                if (!$v) continue;
-                if ($v->get_manage_stock()) {
+                if (!$v || 'publish' !== $v->get_status()) continue;
+                $managed = $v->get_manage_stock();
+                if ('parent' === $managed) {
+                    $uses_parent = true;
+                } elseif ($managed) {
                     $manage_stock = true;
                     $total += (int) $v->get_stock_quantity();
                 }
                 if ($v->backorders_allowed()) {
                     $backorders = true;
                 }
+            }
+            if ($uses_parent) {
+                $manage_stock = true;
+                $total += (int) $product->get_stock_quantity();
             }
             $qty = $manage_stock ? $total : null;
         } else {
@@ -1670,10 +1683,14 @@ class Brikpanel_Products_List {
                                 <span class="brikpanel-pl-screen-label"><?php esc_html_e('Screen Options', 'brikpanel'); ?></span>
                             </button>
                         </div>
-                        <div class="brikpanel-overflow">
+                        <?php
+                        // --phone: on a phone the three always fold into "...",
+                        // which opens them as a sheet from the bottom edge (--sheet).
+                        ?>
+                        <div class="brikpanel-overflow brikpanel-overflow--phone brikpanel-overflow--sheet">
                             <?php
                             if (function_exists('brikpanel_overflow_trigger')) {
-                                brikpanel_overflow_trigger('bpl-header-more');
+                                brikpanel_overflow_trigger('bpl-header-more', 'brikpanel-pl-header-more');
                             }
                             ?>
                             <div class="brikpanel-overflow__menu" id="bpl-header-more">
@@ -1701,7 +1718,7 @@ class Brikpanel_Products_List {
                                 </button>
                             </div>
                         </div>
-                        <a href="<?php echo esc_url(admin_url('admin.php?page=brikpanel-product-editor')); ?>" class="brikpanel-pl-btn primary" id="bpl-add-new">
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=brikpanel-product-editor')); ?>" class="brikpanel-pl-btn primary" id="bpl-add-new" data-bp-vt="forward">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             <span class="brikpanel-pl-add-label"><?php esc_html_e('Add product', 'brikpanel'); ?></span>
                         </a>
@@ -1765,6 +1782,30 @@ class Brikpanel_Products_List {
                             <button type="button" class="brikpanel-pl-find-cancel" id="bpl-find-cancel"><?php esc_html_e('Cancel', 'brikpanel'); ?></button>
                         </div>
                     </div>
+                </div>
+                <?php
+                // Phones only (CSS shows it at 782px and below): the sort, which
+                // opens a sheet, and Select, which turns on the round checkboxes
+                // and the bar at the bottom. The label is the server's, so the
+                // row does not change once the script runs.
+                $bpl_sort_labels = [
+                    'date-desc'  => __('Newest first', 'brikpanel'),
+                    'date-asc'   => __('Oldest first', 'brikpanel'),
+                    'title-asc'  => __('Name A-Z', 'brikpanel'),
+                    'title-desc' => __('Name Z-A', 'brikpanel'),
+                    'price-asc'  => __('Price low-high', 'brikpanel'),
+                    'price-desc' => __('Price high-low', 'brikpanel'),
+                    'menu-asc'   => __('Custom order', 'brikpanel'),
+                ];
+                $bpl_sort_label = isset($bpl_sort_labels[$bpl_req['sort']]) ? $bpl_sort_labels[$bpl_req['sort']] : $bpl_sort_labels['date-desc'];
+                ?>
+                <div class="brikpanel-pl-mbar" id="bpl-mbar">
+                    <button type="button" class="brikpanel-pl-msort" id="bpl-msort" aria-haspopup="dialog">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 4.5v11M4 13l2.5 2.5L9 13M13.5 15.5v-11M11 7l2.5-2.5L16 7"/></svg>
+                        <span class="brikpanel-pl-msort-label" id="bpl-msort-label"><?php echo esc_html($bpl_sort_label); ?></span>
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 8 4 4 4-4"/></svg>
+                    </button>
+                    <button type="button" class="brikpanel-pl-mselect" id="bpl-mselect" aria-pressed="false"><?php esc_html_e('Select', 'brikpanel'); ?></button>
                 </div>
                 <div class="brikpanel-pl-refine" id="bpl-refine">
                     <div class="brikpanel-pl-refine-inner">
@@ -1933,6 +1974,8 @@ class Brikpanel_Products_List {
 
                 <!-- Pagination -->
                 <div class="brikpanel-pl-pagination" id="bpl-pagination"></div>
+                <?php // Phones load the next page when this comes near the screen. ?>
+                <div class="brikpanel-pl-msentinel" id="bpl-msentinel" aria-hidden="true"></div>
             </div>
 
             <?php
@@ -1951,9 +1994,14 @@ class Brikpanel_Products_List {
                     <button type="button" class="brikpanel-pl-bulk-link" id="bpl-deselect-all-btn"><?php esc_html_e('Deselect all', 'brikpanel'); ?></button>
                 </div>
                 <div class="brikpanel-pl-bulk-right">
-                    <div class="brikpanel-overflow">
+                    <?php
+                    // On a phone the bar is always the same three parts: the
+                    // buttons fold into "Actions" (--phone), a sheet (--sheet).
+                    ?>
+                    <div class="brikpanel-overflow brikpanel-overflow--phone brikpanel-overflow--sheet">
                         <button type="button" class="brikpanel-overflow__trigger brikpanel-pl-bulk-more" aria-expanded="false" aria-controls="bpl-bulk-more">
-                            <?php esc_html_e('Bulk actions', 'brikpanel'); ?>
+                            <span class="brikpanel-pl-bulk-more-label"><?php esc_html_e('Bulk actions', 'brikpanel'); ?></span>
+                            <span class="brikpanel-pl-bulk-more-short"><?php echo esc_html_x('Actions', 'button that opens the bulk actions on phones', 'brikpanel'); ?></span>
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l5-5 5 5"/></svg>
                         </button>
                         <div class="brikpanel-overflow__menu" id="bpl-bulk-more">

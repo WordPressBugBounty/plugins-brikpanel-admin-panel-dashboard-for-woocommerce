@@ -109,6 +109,7 @@
         initThirdPartyHint();
         initCogsMirror();
         loadExistingData();
+        initPhone();
     }
 
     /* Discovery card shown when other plugins add fields to this product but
@@ -884,6 +885,12 @@
 
         $menu.on('click', 'li[role="option"]', function () {
             var v = $(this).data('value');
+            // The status lives in the header, outside the fields the change
+            // watcher covers: a new one is an unsaved change of its own (the
+            // leave-page warning and the phone's unsaved dot rely on it).
+            if (String(v) !== String($hidden.val())) {
+                state.dirty = true;
+            }
             $hidden.val(v).trigger('change');
             $wrap.attr('data-status', v);
             $menu.find('li').removeClass('is-active');
@@ -1288,7 +1295,8 @@
         frame.on('close', disableClickToToggle);
         frame.on('select', function () {
             frame.state().get('selection').toJSON().forEach(function (att) {
-                addImage(att.id, (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url, att.alt);
+                addImage(att.id, (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url, att.alt,
+                    (att.sizes && att.sizes.medium) ? att.sizes.medium.url : att.url);
             });
         });
         frame.open();
@@ -1597,9 +1605,10 @@
 
     // `alt` is carried purely so the SEO analysers can read the featured
     // image the way they would on the native editor; it is never saved here.
-    function addImage(id, url, alt) {
+    // `urlM`: the medium size, which the phone layout shows for the featured image.
+    function addImage(id, url, alt, urlM) {
         if (state.images.some(function (i) { return i.id === id; })) return;
-        state.images.push({ id: id, url: url, alt: alt ? String(alt) : '' });
+        state.images.push({ id: id, url: url, url_m: urlM || '', alt: alt ? String(alt) : '' });
         renderGallery();
         state.dirty = true;
     }
@@ -1627,6 +1636,7 @@
         $g.sortable('refresh');
         // Whichever image sits first is the featured one the SEO analysers see.
         if (seoScheduleSync) seoScheduleSync();
+        phoneAfterGallery();
     }
 
     function syncImageOrder() {
@@ -2335,7 +2345,9 @@
 
             // Swap checklist — server-rendered HTML keeps depth classes,
             // hierarchical order, and the newly created term pre-checked.
-            $('.brikpanel-pe-cat-list').html(d.checklist_html);
+            // The category list only: the brand list wears the same class,
+            // and replacing it emptied the product's brands on the next save.
+            $('#bpe-cat-list').html(d.checklist_html);
 
             // The new term is pre-checked, so refresh the primary-category
             // dropdown to include it.
@@ -4223,10 +4235,11 @@
        "start this over" is not a change anyone wants to stage. The server
        deletes the children and keeps the parent variable with its attributes
        intact, so the very next click can be "Generate variations". */
-    function clearAllVariations() {
+    // `skipAsk`: the caller already asked (the phone asks with a sheet).
+    function clearAllVariations(e, skipAsk) {
         var n = (state.variations || []).length;
         if (!n) return;
-        if (!window.confirm(countText(PE.i18n.confirm_clear_variations, n))) return;
+        if (skipAsk !== true && !window.confirm(countText(PE.i18n.confirm_clear_variations, n))) return;
 
         var pid = parseInt($('#bpe-product-id').val() || 0, 10) || 0;
         if (!pid) {
@@ -5088,30 +5101,13 @@
             var idx = $(this).data('idx');
             var confirmMsg = t.confirm_delete_variation;
             if (!window.confirm(confirmMsg)) return;
-            // Pull live DOM edits back into state.variations BEFORE the splice
+            deleteVariationAt(idx);
+        });
+        // ▾ opens the row's details (sale schedule, SKU, optional fields).
             // so unsaved price/stock/SKU edits on sibling rows survive the
             // re-render. Without this, renderVarTable() restores those rows
             // from the stale server-hydrated values and the user perceives
             // deleting one variation as wiping data from the others.
-            captureVarTableInputs();
-            captureVarExtraInputs();
-            // Remember what was removed. findExVar() also searches the
-            // server-hydrated snapshot, which still holds this row, so without
-            // this a later Generate would re-add it WITH ITS OLD ID and the
-            // save would quietly undo the deletion.
-            var gone = state.variations[idx];
-            if (gone && gone.id) {
-                (state.removedVariationIds || (state.removedVariationIds = {}))[gone.id] = true;
-            }
-            state.variations.splice(idx, 1);
-            state.dirty = true;
-            renderVarTable();
-            // When the last variation is removed there is nothing to show — hide
-            // the table. The product stays "Variable" per the top toggle until
-            // the user turns it off (save with zero variations falls back to a
-            // simple product server-side).
-            if (!state.variations.length) { $('#bpe-var-table-section').hide(); }
-        });
         // ▾ opens the row's details (sale schedule, SKU, optional fields).
         $tb.find('.var-expand-btn').on('click', function () {
             var $main = $(this).closest('tr.var-main-row');
@@ -5218,6 +5214,34 @@
 
         syncVarExpandAll();
         refitVarTable();
+        phoneAfterVarTable();
+    }
+
+    /* Removes the variation at `idx` (already confirmed by the caller). */
+    function deleteVariationAt(idx) {
+        // Pull live DOM edits back into state.variations BEFORE the splice
+        // so unsaved price/stock/SKU edits on sibling rows survive the
+        // re-render. Without this, renderVarTable() restores those rows
+        // from the stale server-hydrated values and the user perceives
+        // deleting one variation as wiping data from the others.
+        captureVarTableInputs();
+        captureVarExtraInputs();
+        // Remember what was removed. findExVar() also searches the
+        // server-hydrated snapshot, which still holds this row, so without
+        // this a later Generate would re-add it WITH ITS OLD ID and the
+        // save would quietly undo the deletion.
+        var gone = state.variations[idx];
+        if (gone && gone.id) {
+            (state.removedVariationIds || (state.removedVariationIds = {}))[gone.id] = true;
+        }
+        state.variations.splice(idx, 1);
+        state.dirty = true;
+        renderVarTable();
+        // When the last variation is removed there is nothing to show — hide
+        // the table. The product stays "Variable" per the top toggle until
+        // the user turns it off (save with zero variations falls back to a
+        // simple product server-side).
+        if (!state.variations.length) { $('#bpe-var-table-section').hide(); }
     }
 
     /* One dropdown per variation axis for a manually added row. The empty
@@ -5442,8 +5466,8 @@
     /* Save */
     function saveProduct(status, silent) {
         if (state.saving) return;
-        if (!silent && (status === 'publish' || status === 'future') && !validateAll()) { showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error'); return; }
-        if (!silent && (status === 'publish' || status === 'future') && !validateSalePrice()) { showToast(PE.i18n.fill_price, 'error'); return; }
+        if (!silent && (status === 'publish' || status === 'future') && !validateAll()) { showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error'); phoneRevealError(); return; }
+        if (!silent && (status === 'publish' || status === 'future') && !validateSalePrice()) { showToast(PE.i18n.fill_price, 'error'); phoneRevealError(); return; }
         var name = $.trim($('#bpe-name').val());
         if (!name) { if (!silent) { showToast(PE.i18n.fill_name || 'Please fill in the product name', 'error'); validateField($('#bpe-name')); } return; }
 
@@ -5470,6 +5494,7 @@
                     },
                     failure: function () {
                         showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error');
+                        phoneRevealError();
                     }
                 });
                 return;
@@ -6128,7 +6153,10 @@
                     // saved back to draft.
                     $('#bpe-product-id').data('live', (status === 'publish' || status === 'private' || status === 'password') ? 1 : 0);
                     var newUrl = PE.admin_url + 'admin.php?page=brikpanel-product-editor&product_id=' + r.data.product_id;
-                    window.history.replaceState(null, '', newUrl);
+                    // The entry's state is kept: on a phone it says which page
+                    // is open, and the back gesture closes that page.
+                    window.history.replaceState(window.history.state, '', newUrl);
+                    phoneUrlChanged(newUrl);
                     // The header's secondary actions (View product / Duplicate /
                     // Add new) are printed for every product and hidden until
                     // they apply, inside "More actions" so the header levels
@@ -6153,7 +6181,7 @@
                     $('#bpe-header-overflow').prop('hidden', false);
                     // A new product becomes an existing one with this save.
                     if (PE.i18n.edit_product) {
-                        $('#bpe-header h1').text(PE.i18n.edit_product);
+                        $('#bpe-header h1, #bpe-ph-h1').text(PE.i18n.edit_product);
                     }
                 }
             } else showToast(r.data.message || PE.i18n.error || 'An error occurred', 'error');
@@ -6300,7 +6328,7 @@
             return;
         }
         if (productData.gallery && productData.gallery.length) {
-            productData.gallery.forEach(function (i) { state.images.push({ id: i.id, url: i.url, alt: i.alt ? String(i.alt) : '' }); });
+            productData.gallery.forEach(function (i) { state.images.push({ id: i.id, url: i.url, url_m: i.url_m || '', alt: i.alt ? String(i.alt) : '' }); });
             renderGallery();
         }
         // From here the gallery mirrors the saved product, so a save is
@@ -6746,6 +6774,14 @@
 
     /* Toast */
     function showToast(msg, type, duration) {
+        // A phone shows it in the strip at the bottom, above the save bar.
+        if (isPhoneEditor() && window.brikpanelSnack) {
+            window.brikpanelSnack.show(String(msg || ''), {
+                tone: type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info'),
+                ms: duration || 0
+            });
+            return;
+        }
         var $c = $('#bpe-toast-container');
         if (!$c.length) { $c = $('<div id="bpe-toast-container" class="bpe-toast-container">'); $('body').append($c); }
         var $t = $('<div class="bpe-toast bpe-toast-' + type + '">' + esc(msg) + '</div>');
@@ -6778,6 +6814,1497 @@
     // SKU like `x" onfocus="…` closed the attribute and ran script in this
     // editor (field test B6 review, proven on a test store before the fix).
     function esc(s) { return escText(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    // =========================================================================
+    // PHONE (782px and narrower): the editor the way a phone app shows it
+    // =========================================================================
+    // Approved 2026-10-06 (option 3, "section pages"): a bar on top (back, the
+    // product's name and kind, "..."), the status and the save button in a bar
+    // at the bottom, the images as tiles, the variations as one-line rows that
+    // open a page of their own, the attributes as rows that open as sheets, and
+    // the cards a merchant rarely needs gathered into rows ("Details", "From
+    // other plugins") that open as pages sliding in from the side.
+    //
+    // Nothing here saves or validates: every phone control drives the editor's
+    // own control (a click on the real button, a value written to the real
+    // field), so a save is the very one wider screens make, and every field
+    // stays on the page the whole time. A closed page is moved out of view,
+    // never display:none: validateAll() checks visible fields only, and a field
+    // missing from the payload gets cleared on save. Cards are moved, never
+    // copied: BrikPanel's own cards into their page (a comment marks the place
+    // they go back to on a wider screen); another plugin's card becomes a page
+    // where it stands, because moving a plugin's markup can break its scripts.
+    // Variation and attribute rows never move at all (the save pairs variation
+    // rows by their position). Styles: the "Phones" part at the end of
+    // brikpanel-product-editor.css.
+
+    var phoneMq = window.matchMedia ? window.matchMedia('(max-width: 782px)') : null;
+    var PH = {
+        ready: false,
+        built: false,
+        url: '',
+        pages: {},
+        open: null,
+        pushed: false,
+        stale: 0,
+        ignorePop: false,
+        returnTo: null,
+        inert: [],
+        markers: [],
+        scrollY: null,
+        sections: null,
+        varIdx: -1,
+        varWasOpen: false,
+        varClosing: null,
+        varHead: null,
+        bulk: null,
+        bulkSheet: null,
+        attrAdd: null,
+        attrAddEl: null,
+        attrAddBtn: null,
+        attrObserver: null
+    };
+    var PH_ICON = {
+        back: '<svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg>',
+        chev: '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m8 5.5 4.5 4.5L8 14.5"/></svg>',
+        up: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m5.5 12.5 4.5-4.5 4.5 4.5"/></svg>',
+        down: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>',
+        more: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+        check: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4.5 10.5 3.5 3.5 7.5-8"/></svg>',
+        plus: '<svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M10 4.5v11M4.5 10h11"/></svg>',
+        star: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m10 3.6 1.9 4 4.3.5-3.2 2.9.9 4.3L10 13.1l-3.9 2.2.9-4.3L3.8 8.1l4.3-.5L10 3.6Z"/></svg>',
+        external: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11.5 4.5h4v4M15.5 4.5 9 11M14 11.5v3a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3"/></svg>',
+        copy: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/></svg>',
+        play: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7"/><path d="M8.5 7.3v5.4l4.2-2.7-4.2-2.7Z"/></svg>',
+        trash: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 6h11M8 6V4.5h4V6M6 6l.7 9.2a1 1 0 0 0 1 .8h4.6a1 1 0 0 0 1-.8L14 6"/></svg>',
+        wand: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4 16 8.5-8.5M11 4.5v2M15.5 9h-2M14.2 5.8l-1.4 1.4M9.5 3.5l.7.7M16.5 10.5l-.7-.7"/></svg>',
+        edit: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12.5 4.5 15.5 7.5 7.5 15.5H4.5v-3l8-8Z"/></svg>',
+        sort: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 4.5v11M4 13l2.5 2.5L9 13M13.5 15.5v-11M11 7l2.5-2.5L16 7"/></svg>',
+        pin: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 5.5h11M4.5 10h11M4.5 14.5h6"/><circle cx="14.5" cy="14.5" r="1.6"/></svg>',
+        folder: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 6.5a1 1 0 0 1 1-1h3.4l1.6 1.8h6a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V6.5Z"/></svg>',
+        text: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4.5 6h11M4.5 10h11M4.5 14h7"/></svg>',
+        truck: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.5 6h9v7.5h-9zM11.5 8.5h3.2l2.3 2.6v2.4h-5.5"/><circle cx="6" cy="14.5" r="1.4"/><circle cx="14" cy="14.5" r="1.4"/></svg>',
+        link: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M8.6 11.4a3 3 0 0 0 4.2 0l2.4-2.4a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M11.4 8.6a3 3 0 0 0-4.2 0L4.8 11a3 3 0 0 0 4.2 4.2l1-1"/></svg>',
+        sliders: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M3.5 6h8M14.5 6h2M3.5 14h2M8.5 14h8"/><circle cx="13" cy="6" r="1.7"/><circle cx="7" cy="14" r="1.7"/></svg>',
+        globe: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6.5"/><path d="M3.5 10h13M10 3.5c1.8 1.9 2.6 4 2.6 6.5S11.8 14.6 10 16.5C8.2 14.6 7.4 12.5 7.4 10S8.2 5.4 10 3.5Z"/></svg>',
+        plug: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7.5 3.5v3.5M12.5 3.5v3.5M5.5 7h9v2.5a4.5 4.5 0 0 1-9 0V7ZM10 14v2.5"/></svg>'
+    };
+    // BrikPanel's own cards a phone gathers into pages. The name, images,
+    // variations (with the attributes), price, cost and stock stay on the
+    // main page: they are what a merchant opens a product for.
+    var PH_GROUPS = [
+        { id: 'organization', icon: 'folder', title: 'ph_organization', sections: ['category', 'brand', 'tags'] },
+        { id: 'description', icon: 'text', title: 'ph_description', sections: ['short_desc', 'description'] },
+        { id: 'shipping', icon: 'truck', title: 'ph_shipping', sections: ['digital', 'weight', 'dimensions', 'shipping_class'] },
+        { id: 'linked', icon: 'link', title: 'ph_linked', sections: ['linked'] },
+        { id: 'more', icon: 'sliders', title: 'ph_more_options', sections: ['slug', 'gtin', 'tax', 'sold_individually', 'advanced'] }
+    ];
+    // Another plugin's card (or a BrikPanel card around another plugin's
+    // fields): a page where it stands.
+    var PH_FOREIGN = '.brikpanel-pe-seo-card, .brikpanel-pe-wc-fields, .brikpanel-pe-metabox-card, .brikpanel-pe-ext-card';
+
+    function isPhoneEditor() { return !!(phoneMq && phoneMq.matches); }
+    function phSheet() { return window.brikpanelSheet || null; }
+    function phT(key) { return (PE.i18n && PE.i18n[key]) || ''; }
+    function phTrim(v) { return String(v === null || v === undefined ? '' : v).trim(); }
+    function phText(el) { return el ? phTrim((el.textContent || '').replace(/\s+/g, ' ')) : ''; }
+    // Writes a text only when it changed: the attribute rows are watched by
+    // an observer, which would otherwise see every write of its own.
+    function phSetText(el, text) {
+        if (el && el.textContent !== text) { el.textContent = text; }
+    }
+    function phMake(tag, cls, text) {
+        var n = document.createElement(tag);
+        if (cls) { n.className = cls; }
+        if (text !== undefined && text !== null) { n.textContent = text; }
+        return n;
+    }
+    function phIcon(name, cls) {
+        var span = phMake('span', cls || 'brikpanel-pe-ph-rowicon');
+        span.setAttribute('aria-hidden', 'true');
+        span.innerHTML = PH_ICON[name] || PH_ICON.sliders; // Static markup.
+        return span;
+    }
+    function phFocus(el) {
+        if (!el || !el.focus || !document.documentElement.contains(el)) { return; }
+        try { el.focus({ preventScroll: true }); } catch (e) { /* not focusable */ }
+    }
+
+    // "Are you sure?" as a sheet on a phone, the browser's box elsewhere.
+    function phoneAsk(opts, fn) {
+        var S = phSheet();
+        if (isPhoneEditor() && S) {
+            S.confirm(opts).then(function (yes) { if (yes) { fn(); } });
+            return;
+        }
+        if (window.confirm(opts.text || opts.title || '')) { fn(); }
+    }
+
+    // A new product's first save writes its id into the address; a page
+    // closed after that must not bring the old address back (a reload would
+    // then open an empty new product).
+    function phoneUrlChanged(url) { PH.url = url; }
+
+    function initPhone() {
+        if (!document.getElementById('bpe-ph-appbar') || !phoneMq) { return; }
+        PH.ready = true;
+        PH.url = window.location.href;
+
+        // The save button wears a dot while anything is unsaved: every place
+        // that marks the editor dirty writes state.dirty, so it is watched there.
+        var dirty = !!state.dirty;
+        try {
+            Object.defineProperty(state, 'dirty', {
+                configurable: true,
+                enumerable: true,
+                get: function () { return dirty; },
+                set: function (v) {
+                    dirty = !!v;
+                    var b = document.getElementById('bpe-ph-save');
+                    if (b) { b.classList.toggle('is-dirty', dirty); }
+                }
+            });
+        } catch (e) {
+            // A frozen state object: the dot simply never shows.
+        }
+        $('#bpe-ph-save').toggleClass('is-dirty', dirty);
+
+        $('#bpe-ph-save').on('click', function () {
+            var pub = document.getElementById('bpe-publish');
+            if (pub && !pub.disabled) { pub.click(); }
+        });
+        $('#bpe-ph-status').on('click', openStatusSheet);
+        $('#bpe-ph-more').on('click', phoneMoreMenu);
+        $('#bpe-ph-back').on('click', phoneBackClick);
+
+        // The header's own controls change in many places; the phone bars
+        // follow them instead of being told.
+        if (typeof window.MutationObserver === 'function') {
+            var pub = document.getElementById('bpe-publish');
+            if (pub) {
+                new window.MutationObserver(phoneSyncSave).observe(pub, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+            }
+            var ovf = document.getElementById('bpe-header-overflow');
+            if (ovf) {
+                new window.MutationObserver(function () {
+                    $('#bpe-ph-more').prop('hidden', !!ovf.hidden);
+                }).observe(ovf, { attributes: true, attributeFilter: ['hidden'] });
+            }
+        }
+        $('#bpe-status').on('change', phoneSyncStatus);
+        $('#bpe-name').on('input change', phoneSyncTitle);
+        $('#bpe-var-toggle, #bpe-product-type').on('change', function () {
+            window.setTimeout(function () {
+                phoneSyncSub();
+                phoneSummaries();
+                phoneAttrRows();
+            }, 0);
+        });
+
+        // A tap on an image tile: its actions as a sheet.
+        $('#bpe-gallery').on('click', '.brikpanel-pe-gallery-item', phoneImageTap);
+        // A tap on a variation row opens its page; what is typed there keeps
+        // the row's one-line summary current.
+        $('#bpe-var-table-body').on('click', 'tr.var-main-row', phoneVarRowTap);
+        $('#bpe-var-table-body').on('input change', ':input', phoneVarInput);
+        // "Apply" in the edit-all sheet is the end of that task.
+        $('#bpe-apply-bulk').on('click', function () {
+            if (PH.bulkSheet && PH.bulkSheet.isOpen()) {
+                window.setTimeout(function () { PH.bulkSheet.close(); }, 0);
+            }
+        });
+        // "Custom" on an empty variable product: the attribute picker opens.
+        $('#bpe-var-templates').on('click', '.brikpanel-pe-var-template[data-template="custom"]', function () {
+            if (PH.built && PH.attrAdd) {
+                window.setTimeout(function () { PH.attrAdd.open(); }, 0);
+            }
+        });
+
+        // Plugins draw their fields late (on load, or after a request): the
+        // rows' summaries are read again then.
+        var lateSummaries = function () {
+            phoneSummaries();
+            window.setTimeout(phoneSummaries, 1500);
+        };
+        if (document.readyState === 'complete') {
+            lateSummaries();
+        } else {
+            window.addEventListener('load', lateSummaries);
+        }
+
+        // The back gesture closes an open page instead of leaving the editor.
+        $(window).on('popstate', phonePopState);
+        if (window.history.state && window.history.state.bpePage) {
+            try { window.history.replaceState(null, '', window.location.href); } catch (e) { /* stays */ }
+        }
+        // Escape closes an open page too (a sheet on top closes first: it
+        // stops the key itself).
+        document.addEventListener('keydown', function (e) {
+            if ((e.key === 'Escape' || e.key === 'Esc') && PH.open && !e.defaultPrevented) {
+                var S = phSheet();
+                if (S && S.isOpen()) { return; }
+                e.preventDefault();
+                phoneGoBack();
+            }
+        });
+        // The keyboard covers the bottom bar's place: the bar steps aside.
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', phoneKeyboard);
+        }
+
+        if (phoneMq.addEventListener) {
+            phoneMq.addEventListener('change', phoneSwitch);
+        } else if (phoneMq.addListener) {
+            phoneMq.addListener(phoneSwitch);
+        }
+        phoneSwitch();
+    }
+
+    function phoneSwitch() {
+        if (isPhoneEditor()) {
+            phoneEnter();
+        } else {
+            phoneLeave();
+        }
+    }
+
+    function phoneEnter() {
+        if (!PH.ready || PH.built) { return; }
+        PH.built = true;
+        document.documentElement.classList.add('bpe-ph');
+        phoneFoldSaleDates();
+        phoneBuildSections();
+        phoneBuildVarTools();
+        phoneBuildAttrUi();
+        phoneSyncTitle();
+        phoneSyncSub();
+        phoneSyncStatus();
+        phoneSyncSave();
+        renderGallery();
+        if (state.variations && state.variations.length) { refitVarTable(); }
+        phoneAfterVarTable();
+    }
+
+    function phoneLeave() {
+        if (!PH.built) { return; }
+        var S = phSheet();
+        if (S && S.isOpen()) { S.close(); }
+        if (PH.open) { phoneClosePage(true, true); }
+        phoneVarFlushClose();
+        phoneTeardownAttrUi();
+        phoneTeardownVarTools();
+        phoneTeardownSections();
+        phoneUnfoldSaleDates();
+        PH.built = false;
+        document.documentElement.classList.remove('bpe-ph', 'bp-kbd-open');
+        $('#bpe-var-table-body').find('.brikpanel-pe-ph-varsum, .brikpanel-pe-ph-varopen, .brikpanel-pe-ph-active').remove();
+        if (varFit) {
+            varFit.floor = 0;
+            varFit.refit();
+        }
+        renderGallery();
+    }
+
+    function phoneKeyboard() {
+        var vv = window.visualViewport;
+        if (!vv) { return; }
+        var kb = window.innerHeight - vv.height * (vv.scale || 1);
+        var t = document.activeElement;
+        var typing = !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
+        document.documentElement.classList.toggle('bp-kbd-open', !!(PH.built && typing && kb > 120));
+    }
+
+    // ---- The two bars ----------------------------------------------------
+    function phoneSyncTitle() {
+        if (!PH.ready) { return; }
+        var name = phTrim($('#bpe-name').val() || '');
+        $('#bpe-ph-name').text(name || phT('ph_add_product'));
+        $('.brikpanel-pe-ph-pagebar[data-sub="name"] .brikpanel-pe-ph-sub').text(name);
+    }
+
+    function phoneSyncSub() {
+        if (!PH.ready) { return; }
+        var sub;
+        var $type = $('#bpe-product-type');
+        if (isVariableOn()) {
+            sub = phT('ph_variable');
+            var n = (state.variations || []).length;
+            if (n > 0) { sub += ' · ' + countText(PE.i18n.ph_variations, n); }
+        } else if ($type.length && $type.val() && $type.val() !== 'simple') {
+            sub = phText($type.find('option:selected')[0]);
+        } else {
+            sub = phT('ph_simple');
+        }
+        $('#bpe-ph-sub').text(sub);
+    }
+
+    function phoneSyncStatus() {
+        if (!PH.ready) { return; }
+        var v = $('#bpe-status').val() || 'publish';
+        var $li = $('.brikpanel-pe-status-menu li[role="option"]').filter(function () { return this.getAttribute('data-value') === v; });
+        var label = phText($li.find('strong')[0]);
+        $('#bpe-ph-status-label').text(label);
+        $('#bpe-ph-status .brikpanel-pe-ph-dot').attr('data-status', v);
+    }
+
+    function phoneSyncSave() {
+        if (!PH.ready) { return; }
+        var pub = document.getElementById('bpe-publish');
+        var btn = document.getElementById('bpe-ph-save');
+        if (!pub || !btn) { return; }
+        $('#bpe-ph-save-label').text(phText(pub));
+        btn.disabled = !!pub.disabled;
+        btn.classList.toggle('is-busy', !!pub.disabled);
+    }
+
+    // "..." on top: the header's secondary actions (View product, Duplicate,
+    // Add new), each pressing the real one, in this tap (a new tab opens).
+    function phoneMoreMenu() {
+        var S = phSheet();
+        if (!S) { return; }
+        var items = [];
+        [['bpe-view-product', 'external'], ['bpe-duplicate', 'copy'], ['bpe-add-new', 'plus']].forEach(function (pair) {
+            var el = document.getElementById(pair[0]);
+            if (!el || el.hidden || el.disabled) { return; }
+            items.push({ label: phText(el), icon: PH_ICON[pair[1]], run: function () { el.click(); } });
+        });
+        if (items.length) { S.actions({ label: phT('ph_more_actions'), items: items, returnFocus: this }); }
+    }
+
+    // The list this product was opened from, when it is the page right
+    // before this one: going back to it is a step back in history, as an
+    // app does, so the phone's own back gesture afterwards does not land on
+    // this product again.
+    function phoneListReferrer(href) {
+        try {
+            if (window.history.length < 2 || !document.referrer) { return ''; }
+            var r = new URL(document.referrer);
+            var h = new URL(href, window.location.href);
+            if (r.origin !== h.origin || r.pathname !== h.pathname) { return ''; }
+            return r.searchParams.get('page') === h.searchParams.get('page') ? r.href : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    // Back to the list. Unsaved changes ask first, in a sheet (a phone shows
+    // the browser's own "leave page?" box unreliably or not at all).
+    function phoneBackClick(e) {
+        if (!isPhoneEditor() || e.metaKey || e.ctrlKey || e.shiftKey) { return; }
+        var link = this;
+        var ref = phoneListReferrer(link.href);
+        if (!state.dirty && !ref) { return; }
+        e.preventDefault();
+        var go = function () {
+            var S = phSheet();
+            if (S && S.flagTransition) { S.flagTransition(ref || link.href, 'back'); }
+            if (ref) {
+                window.history.go(-(1 + PH.stale));
+            } else {
+                window.location.href = link.href;
+            }
+        };
+        if (!state.dirty) {
+            go();
+            return;
+        }
+        phoneAsk({
+            title: phT('ph_discard_title'),
+            text: phT('ph_discard_text'),
+            ok: phT('ph_discard'),
+            cancel: phT('ph_keep_editing'),
+            danger: true,
+            returnFocus: link
+        }, function () {
+            state.dirty = false;
+            go();
+        });
+    }
+
+    // The status, its password, the publish date, the catalog visibility and
+    // the featured switch: the header's controls, gathered in one sheet.
+    function openStatusSheet() {
+        var S = phSheet();
+        if (!S) { return; }
+        var body = phMake('div', 'brikpanel-pe-ph-form');
+
+        var list = phMake('div', 'brikpanel-pe-ph-radios');
+        list.setAttribute('role', 'radiogroup');
+        list.setAttribute('aria-label', phT('ph_status_title'));
+        body.appendChild(list);
+
+        var field = function (labelText, control, id) {
+            var box = phMake('div', 'brikpanel-pe-ph-field');
+            var label = phMake('label', 'brikpanel-pe-ph-label', labelText);
+            label.htmlFor = id;
+            control.id = id;
+            box.appendChild(label);
+            box.appendChild(control);
+            body.appendChild(box);
+            return box;
+        };
+
+        var $pw = $('#bpe-post-password');
+        var pw = phMake('input', 'brikpanel-control brikpanel-pe-ph-input');
+        pw.type = 'text';
+        pw.autocomplete = 'off';
+        pw.value = $pw.val() || '';
+        pw.addEventListener('input', function () { $pw.val(pw.value).trigger('input'); });
+        var pwBox = field(phT('ph_password'), pw, 'bpe-ph-password');
+
+        var $date = $('#bpe-schedule-date');
+        var date = null;
+        if ($date.length) {
+            date = phMake('input', 'brikpanel-control brikpanel-pe-ph-input');
+            date.type = 'datetime-local';
+            date.value = $date.val() || '';
+            date.addEventListener('change', function () { $date.val(date.value).trigger('change'); });
+            field(phT('ph_publish_date'), date, 'bpe-ph-date');
+        }
+
+        var $cvItems = $('#bpe-catvis-menu li[role="option"]');
+        if ($cvItems.length) {
+            var cv = phMake('select', 'brikpanel-control brikpanel-pe-ph-input');
+            $cvItems.each(function () {
+                var o = phMake('option', '', phText(this));
+                o.value = this.getAttribute('data-value') || '';
+                cv.appendChild(o);
+            });
+            cv.value = $('#bpe-catalog-visibility').val() || '';
+            cv.addEventListener('change', function () {
+                $cvItems.filter(function () { return this.getAttribute('data-value') === cv.value; }).first().each(function () { this.click(); });
+            });
+            field(phT('ph_catalog_visibility'), cv, 'bpe-ph-catvis');
+        }
+
+        var star = document.getElementById('bpe-featured-star');
+        if (star) {
+            var row = phMake('label', 'brikpanel-pe-ph-switchrow');
+            var sw = phMake('span', 'brikpanel-pe-switch');
+            var cb = phMake('input');
+            cb.type = 'checkbox';
+            cb.checked = $('#bpe-is-featured').val() === '1';
+            sw.appendChild(cb);
+            sw.appendChild(phMake('span', 'brikpanel-pe-slider'));
+            cb.addEventListener('change', function () {
+                if ((cb.checked ? '1' : '0') !== $('#bpe-is-featured').val()) { star.click(); }
+            });
+            row.appendChild(phMake('span', 'brikpanel-pe-ph-switchrow-text', phT('ph_featured')));
+            row.appendChild(sw);
+            body.appendChild(row);
+        }
+
+        var paint = function () {
+            var cur = $('#bpe-status').val() || 'publish';
+            Array.prototype.forEach.call(list.children, function (b) {
+                b.setAttribute('aria-checked', String(b.getAttribute('data-value') === cur));
+            });
+            pwBox.hidden = cur !== 'password';
+            if (date) { date.value = $date.val() || ''; }
+        };
+
+        $('.brikpanel-pe-status-menu li[role="option"]').each(function () {
+            var li = this;
+            var val = li.getAttribute('data-value') || '';
+            var b = phMake('button', 'brikpanel-pe-ph-radio');
+            b.type = 'button';
+            b.setAttribute('role', 'radio');
+            b.setAttribute('data-value', val);
+            var dot = phMake('span', 'brikpanel-pe-ph-dot');
+            dot.setAttribute('data-status', val);
+            dot.setAttribute('aria-hidden', 'true');
+            var text = phMake('span', 'brikpanel-pe-ph-radio-text');
+            text.appendChild(phMake('b', '', phText($(li).find('strong')[0])));
+            text.appendChild(phMake('span', '', phText($(li).find('small')[0])));
+            b.appendChild(dot);
+            b.appendChild(text);
+            b.appendChild(phIcon('check', 'brikpanel-pe-ph-tick'));
+            b.addEventListener('click', function () {
+                li.click();
+                window.setTimeout(function () {
+                    paint();
+                    if (val === 'password') { phFocus(pw); }
+                }, 0);
+            });
+            list.appendChild(b);
+        });
+        paint();
+
+        var done = phMake('button', 'brikpanel-btn brikpanel-btn--primary brikpanel-sheet__btn', phT('ph_done'));
+        done.type = 'button';
+        done.addEventListener('click', function () { S.close(); });
+
+        S.open({ title: phT('ph_status_title'), body: body, foot: done, onClose: phoneSyncStatus });
+    }
+
+    // ---- The price card ----------------------------------------------------
+    // A sale's start and end dates wait behind "Schedule the sale" while both
+    // are empty: most sales have none. The fields stay in the page (hidden),
+    // so the save reads them as always.
+    function phoneFoldSaleDates() {
+        var from = document.getElementById('bpe-sale-from');
+        var to = document.getElementById('bpe-sale-to');
+        var card = document.getElementById('bpe-pricing-card');
+        if (!from || !to || !card || phTrim(from.value) || phTrim(to.value)) { return; }
+        var row = $(from).closest('.brikpanel-pe-row').addClass('brikpanel-pe-ph-saledates');
+        row.next('.brikpanel-pe-help-text').addClass('brikpanel-pe-ph-salehelp');
+        var link = phMake('button', 'brikpanel-btn brikpanel-btn--link brikpanel-pe-ph-salelink', phT('ph_schedule_sale'));
+        link.type = 'button';
+        link.addEventListener('click', function () {
+            card.classList.remove('is-ph-sale-folded');
+            if (link.parentNode) { link.parentNode.removeChild(link); }
+            phFocus(from);
+        });
+        row.before(link);
+        card.classList.add('is-ph-sale-folded');
+    }
+
+    function phoneUnfoldSaleDates() {
+        var $card = $('#bpe-pricing-card').removeClass('is-ph-sale-folded');
+        $card.find('.brikpanel-pe-ph-salelink').remove();
+        $card.find('.brikpanel-pe-ph-saledates').removeClass('brikpanel-pe-ph-saledates');
+        $card.find('.brikpanel-pe-ph-salehelp').removeClass('brikpanel-pe-ph-salehelp');
+    }
+
+    // ---- Images ------------------------------------------------------------
+    // On a phone the gallery is tiles: the featured image twice as large (its
+    // medium size), an Add tile at the end, and a tap opens the image's actions.
+    function phoneAfterGallery() {
+        if (!PH.ready || !PH.built) { return; }
+        var g = document.getElementById('bpe-gallery');
+        if (!g) { return; }
+        var add = phMake('button', 'brikpanel-pe-ph-addimg');
+        add.type = 'button';
+        add.appendChild(phIcon('plus', 'brikpanel-pe-ph-addimg-icon'));
+        add.appendChild(phMake('span', '', phT('ph_add')));
+        add.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openMediaLibrary();
+        });
+        g.appendChild(add);
+        var first = g.querySelector('.brikpanel-pe-gallery-item img');
+        var img = state.images[0];
+        if (first && img && img.url_m && first.getAttribute('src') !== img.url_m) {
+            first.setAttribute('src', img.url_m);
+        }
+    }
+
+    function phoneImageTap(e) {
+        var S = phSheet();
+        if (!PH.built || !S || this.classList.contains('is-uploading')) { return; }
+        if ($(e.target).closest('button').length) { return; }
+        var id = parseInt($(this).attr('data-id'), 10);
+        var idx = -1;
+        for (var i = 0; i < state.images.length; i++) {
+            if (state.images[i].id === id) { idx = i; break; }
+        }
+        if (idx < 0) { return; }
+        var img = state.images[idx];
+        var items = [];
+        if (idx > 0) {
+            items.push({
+                label: phT('ph_set_featured'),
+                icon: PH_ICON.star,
+                run: function () {
+                    var at = state.images.indexOf(img);
+                    if (at > 0) {
+                        state.images.splice(at, 1);
+                        state.images.unshift(img);
+                        renderGallery();
+                        state.dirty = true;
+                    }
+                }
+            });
+        }
+        var vbtn = this.querySelector('.brikpanel-pe-gallery-item-video');
+        if (vbtn) {
+            items.push({ label: vbtn.getAttribute('aria-label') || vbtn.getAttribute('title') || '', icon: PH_ICON.play, run: function () { vbtn.click(); } });
+        }
+        items.push({ label: PE.i18n.remove_image || '', icon: PH_ICON.trash, danger: true, run: function () { removeImage(id); } });
+        S.actions({
+            context: { img: img.url, title: idx === 0 ? (PE.i18n.featured || '') : '' },
+            label: phT('ph_more_actions'),
+            items: items,
+            returnFocus: this
+        });
+    }
+
+    // ---- Pages -------------------------------------------------------------
+    function phonePageBar(title, subKind, onBack) {
+        var bar = phMake('div', 'brikpanel-pe-ph-pagebar');
+        if (subKind) { bar.setAttribute('data-sub', subKind); }
+        var back = phMake('button', 'brikpanel-pe-ph-iconbtn brikpanel-pe-ph-pageback');
+        back.type = 'button';
+        back.setAttribute('aria-label', phT('ph_back'));
+        back.innerHTML = PH_ICON.back; // Static markup.
+        back.addEventListener('click', onBack);
+        var head = phMake('div', 'brikpanel-pe-ph-heading');
+        var name = phMake('span', 'brikpanel-pe-ph-name', title);
+        name.setAttribute('dir', 'auto');
+        var sub = phMake('span', 'brikpanel-pe-ph-sub', subKind === 'name' ? phTrim($('#bpe-name').val() || '') : '');
+        sub.setAttribute('dir', 'auto');
+        head.appendChild(name);
+        head.appendChild(sub);
+        bar.appendChild(back);
+        bar.appendChild(head);
+        bar.appendChild(phMake('span', 'brikpanel-pe-ph-barend'));
+        return bar;
+    }
+
+    function phoneGoBack() {
+        if (PH.pushed) {
+            window.history.back();
+        } else {
+            phoneClosePage(false);
+        }
+    }
+
+    // Closes the open page at once, and drops the history entry it pushed
+    // without reacting to that step (a variation deleted from its page).
+    function phoneDismissPage() {
+        var pushed = PH.pushed;
+        phoneClosePage(false, true);
+        if (pushed) {
+            PH.ignorePop = true;
+            window.history.back();
+        }
+    }
+
+    // A card's own heading, for its row and its page.
+    function phoneCardTitle(card) {
+        var el = card.querySelector('.brikpanel-pe-wc-fields-head > label, .brikpanel-pe-ext-title, .postbox-header .hndle');
+        if (!el) { el = card.querySelector(':scope > label'); }
+        if (!el) { return ''; }
+        var copy = el.cloneNode(true);
+        $(copy).find('.brikpanel-pe-seo-plugin-badge, button, input, select, .screen-reader-text, .brikpanel-pe-attr-row-controls').remove();
+        return phText(copy);
+    }
+
+    function phoneBuildSections() {
+        var content = document.querySelector('.brikpanel-pe-content');
+        if (!content) { return; }
+        var details = [];
+        var foreign = [];
+
+        PH_GROUPS.forEach(function (g) {
+            var cards = [];
+            g.sections.forEach(function (slug) {
+                var card = content.querySelector('[data-bpe-section="' + slug + '"]');
+                if (card && card.parentNode && !card.closest('.brikpanel-pe-ph-page')) { cards.push(card); }
+            });
+            if (!cards.length) { return; }
+            var page = phMake('section', 'brikpanel-pe-ph-page');
+            page.setAttribute('data-page', g.id);
+            page.setAttribute('aria-label', phT(g.title));
+            page.appendChild(phonePageBar(phT(g.title), 'name', phoneGoBack));
+            var bodyEl = phMake('div', 'brikpanel-pe-ph-pagebody');
+            cards.forEach(function (card) {
+                var marker = document.createComment('bpe-ph:' + g.id);
+                card.parentNode.insertBefore(marker, card);
+                PH.markers.push({ marker: marker, card: card });
+                bodyEl.appendChild(card);
+            });
+            page.appendChild(bodyEl);
+            content.appendChild(page);
+            PH.pages[g.id] = { el: page, kind: 'own', group: g, cards: cards };
+            details.push(g.id);
+        });
+
+        var n = 0;
+        $(content).find(PH_FOREIGN).each(function () {
+            var card = this;
+            if (card.closest('.brikpanel-pe-ph-page, .brikpanel-pe-ph-inplace')) { return; }
+            var id = 'plugin-' + (++n);
+            var title = phoneCardTitle(card) || phT('ph_from_plugins');
+            card.classList.add('brikpanel-pe-ph-inplace');
+            card.setAttribute('data-page', id);
+            card.insertBefore(phonePageBar(title, 'name', phoneGoBack), card.firstChild);
+            PH.pages[id] = { el: card, kind: 'inplace', title: title };
+            foreign.push(id);
+        });
+
+        var wrap = phMake('div', 'brikpanel-pe-ph-sections');
+        var addGroup = function (heading, ids) {
+            if (!ids.length) { return; }
+            wrap.appendChild(phMake('p', 'brikpanel-pe-ph-grouplabel', heading));
+            var box = phMake('div', 'brikpanel-pe-ph-rows');
+            ids.forEach(function (id) {
+                var p = PH.pages[id];
+                var row = phMake('button', 'brikpanel-pe-ph-row');
+                row.type = 'button';
+                row.setAttribute('data-page', id);
+                row.appendChild(phIcon(p.kind === 'own' ? p.group.icon : (p.el.classList.contains('brikpanel-pe-seo-card') ? 'globe' : 'plug')));
+                var text = phMake('span', 'brikpanel-pe-ph-rowtext');
+                var b = phMake('b', '', p.kind === 'own' ? phT(p.group.title) : p.title);
+                // The SEO card names the plugin that draws it in its heading.
+                var badge = p.kind === 'inplace' ? p.el.querySelector(':scope > label .brikpanel-pe-seo-plugin-badge') : null;
+                if (badge && phText(badge)) {
+                    b.appendChild(phMake('span', 'brikpanel-pe-ph-rowtag', phText(badge)));
+                }
+                text.appendChild(b);
+                var sumEl = phMake('span', 'brikpanel-pe-ph-rowsum');
+                sumEl.setAttribute('dir', 'auto');
+                text.appendChild(sumEl);
+                row.appendChild(text);
+                row.appendChild(phIcon('chev', 'brikpanel-pe-ph-chev'));
+                row.addEventListener('click', function () { phoneOpenPage(id); });
+                p.row = row;
+                box.appendChild(row);
+            });
+            wrap.appendChild(box);
+        };
+        addGroup(phT('ph_details'), details);
+        addGroup(phT('ph_from_plugins'), foreign);
+        content.appendChild(wrap);
+        PH.sections = wrap;
+        phoneSummaries();
+    }
+
+    function phoneTeardownSections() {
+        PH.markers.forEach(function (m) {
+            if (m.marker.parentNode) {
+                m.marker.parentNode.insertBefore(m.card, m.marker);
+                m.marker.parentNode.removeChild(m.marker);
+            }
+        });
+        PH.markers = [];
+        Object.keys(PH.pages).forEach(function (id) {
+            var p = PH.pages[id];
+            if (p.kind === 'own') {
+                if (p.el.parentNode) { p.el.parentNode.removeChild(p.el); }
+            } else if (p.kind === 'inplace') {
+                p.el.classList.remove('brikpanel-pe-ph-inplace', 'is-ph-open');
+                p.el.removeAttribute('data-page');
+                p.el.removeAttribute('tabindex');
+                var bar = p.el.querySelector(':scope > .brikpanel-pe-ph-pagebar');
+                if (bar) { p.el.removeChild(bar); }
+            }
+        });
+        PH.pages = {};
+        if (PH.sections && PH.sections.parentNode) { PH.sections.parentNode.removeChild(PH.sections); }
+        PH.sections = null;
+    }
+
+    // The line under each row's name: what the page holds right now.
+    function phoneSummaries() {
+        if (!PH.built) { return; }
+        Object.keys(PH.pages).forEach(function (id) {
+            var p = PH.pages[id];
+            if (!p.row) { return; }
+            phSetText(p.row.querySelector('.brikpanel-pe-ph-rowsum'), phoneSummaryOf(id, p));
+            // A row whose cards the editor hides (a virtual product has no
+            // weight to set) is not offered.
+            p.row.hidden = p.kind === 'own'
+                ? !p.cards.some(function (c) { return c.style.display !== 'none'; })
+                : p.el.style.display === 'none';
+        });
+    }
+
+    function phoneSummaryOf(id, p) {
+        var names = function (sel) {
+            return $(sel).map(function () { return phText($(this).closest('label')[0]); }).get().filter(Boolean);
+        };
+        if (id === 'organization') {
+            var parts = names('#bpe-cat-list input:checked').concat(names('#bpe-brand-list input:checked'));
+            (state.tags || []).forEach(function (tg) { parts.push(String(tg)); });
+            return parts.length ? parts.join(', ') : phT('ph_no_category');
+        }
+        if (id === 'description') {
+            var txt = phText(document.getElementById('bpe-short-desc')) || phText(document.getElementById('bpe-description'));
+            return txt ? txt.slice(0, 120) : phT('ph_no_description');
+        }
+        if (id === 'shipping') {
+            if ($('#bpe-virtual-toggle').is(':checked')) { return phT('ph_virtual'); }
+            var unitOf = function (sel) {
+                return phText($(sel).closest('.brikpanel-pe-input-group').find('.brikpanel-pe-input-suffix')[0]);
+            };
+            var out = [];
+            var w = phTrim($('#bpe-weight').val() || '');
+            if (w) { out.push(phTrim(w + ' ' + unitOf('#bpe-weight'))); }
+            var dims = ['#bpe-length', '#bpe-width', '#bpe-height'].map(function (s) { return phTrim($(s).val() || ''); });
+            if (dims.some(Boolean)) {
+                out.push(phTrim(dims.map(function (d) { return d || '0'; }).join(' × ') + ' ' + unitOf('#bpe-length')));
+            }
+            var $sc = $('#bpe-shipping-class');
+            if ($sc.length && $sc.val()) { out.push(phText($sc.find('option:selected')[0])); }
+            return out.length ? out.join(' · ') : phT('ph_not_set');
+        }
+        if (id === 'linked') {
+            var up = (state.linked && state.linked.upsells) ? state.linked.upsells.length : 0;
+            var cross = (state.linked && state.linked.cross_sells) ? state.linked.cross_sells.length : 0;
+            if (!up && !cross) { return phT('ph_none'); }
+            var pair = phT('ph_pair');
+            var fmt = function (label, num) { return pair.replace('%1$s', label).replace('%2$s', fmtCount(num)); };
+            return fmt(phT('ph_upsells'), up) + ' · ' + fmt(phT('ph_cross_sells'), cross);
+        }
+        if (p.kind === 'own') {
+            return p.cards.filter(function (c) { return c.style.display !== 'none'; })
+                .map(function (c) { return phoneCardTitle(c); }).filter(Boolean).join(', ');
+        }
+        // Another plugin's card: the names of the first fields a merchant sees
+        // there (a plugin's hidden tabs do not count), else how many there are.
+        var labels = [];
+        $(p.el).find('label').each(function () {
+            if (labels.length >= 3 || !this.getClientRects().length || $(this).closest('.brikpanel-pe-ph-pagebar').length) { return; }
+            var copy = this.cloneNode(true);
+            $(copy).find('input, select, textarea, button, .screen-reader-text, .woocommerce-help-tip, .brikpanel-pe-seo-plugin-badge').remove();
+            var t = phText(copy).replace(/\s*[:*]+$/, '');
+            if (t && t.length <= 60 && labels.indexOf(t) < 0) { labels.push(t); }
+        });
+        if (labels.length) { return labels.join(', '); }
+        var fields = $(p.el).find('input, select, textarea').filter(function () {
+            return !/^(hidden|button|submit|reset)$/.test(this.type || '') && this.getClientRects().length > 0;
+        }).length;
+        return fields ? countText(PE.i18n.ph_fields, fields) : '';
+    }
+
+    // Everything but the open page answers no taps: the siblings of the page
+    // and of each of its parents, up to the editor (the bottom bar stays live).
+    function phoneInertAround(el) {
+        var list = [];
+        var stop = document.querySelector('.brikpanel-pe');
+        var node = el;
+        while (node && node !== stop && node.parentNode) {
+            var parent = node.parentNode;
+            for (var c = parent.firstElementChild; c; c = c.nextElementSibling) {
+                if (c === node || c.inert || c.id === 'bpe-ph-bar' || /^(SCRIPT|STYLE|LINK|TEMPLATE)$/.test(c.tagName)) { continue; }
+                c.inert = true;
+                list.push(c);
+            }
+            if (parent === stop) { break; }
+            node = parent;
+        }
+        return list;
+    }
+
+    // The page behind does not scroll while a page is open, and comes back
+    // where it was.
+    function phoneLock(on) {
+        var html = document.documentElement;
+        if (on) {
+            if (PH.scrollY === null) { PH.scrollY = window.pageYOffset; }
+            html.classList.add('bpe-ph-lock');
+            return;
+        }
+        html.classList.remove('bpe-ph-lock');
+        if (PH.scrollY !== null && window.pageYOffset !== PH.scrollY) { window.scrollTo(0, PH.scrollY); }
+        PH.scrollY = null;
+    }
+
+    function phonePush(id) {
+        try {
+            window.history.pushState({ bpePage: id }, '', window.location.href);
+            PH.pushed = true;
+        } catch (e) {
+            PH.pushed = false;
+        }
+    }
+
+    function phoneOpenPage(id) {
+        var p = PH.pages[id];
+        if (!p || PH.open === id) { return; }
+        if (PH.open) { phoneClosePage(true, true); }
+        phoneVarFlushClose();
+        PH.open = id;
+        PH.returnTo = p.row || document.activeElement;
+        phoneLock(true);
+        p.el.classList.add('is-ph-open');
+        p.el.scrollTop = 0;
+        PH.inert = phoneInertAround(p.el);
+        phonePush(id);
+        // The page itself takes the focus (a screen reader names it); a
+        // focused back button would show its ring after every tap.
+        p.el.setAttribute('tabindex', '-1');
+        window.setTimeout(function () { phFocus(p.el); }, 60);
+    }
+
+    // `silent`: closed by the code (a wider screen, another page), not by the
+    // merchant: no focus move, and the history entry the page pushed is left
+    // for the back gesture to skip. `instant`: no slide.
+    function phoneClosePage(silent, instant) {
+        var id = PH.open;
+        if (!id) { return; }
+        var p = PH.pages[id];
+        PH.open = null;
+        PH.inert.forEach(function (c) { c.inert = false; });
+        PH.inert = [];
+        if (id === 'var') {
+            phoneVarPageOff(instant);
+        } else if (p) {
+            p.el.classList.remove('is-ph-open');
+        }
+        if (PH.pushed && silent) { PH.stale++; }
+        PH.pushed = false;
+        phoneLock(false);
+        phoneSummaries();
+        if (!silent) { phFocus(PH.returnTo); }
+        PH.returnTo = null;
+    }
+
+    // The address the save gave a new product, kept on the entry the back
+    // step lands on.
+    function phoneKeepUrl() {
+        if (PH.url && window.location.href !== PH.url) {
+            try { window.history.replaceState(window.history.state, '', PH.url); } catch (e) { /* stays */ }
+        }
+    }
+
+    function phonePopState(e) {
+        var ev = e.originalEvent || e;
+        var st = ev.state || null;
+        if (PH.ignorePop) {
+            PH.ignorePop = false;
+            phoneKeepUrl();
+            return;
+        }
+        if (PH.open && !(st && st.bpePage === PH.open)) {
+            PH.pushed = false;
+            phoneClosePage(false);
+            phoneKeepUrl();
+            // Landed on an entry of a page closed earlier by the code: skip it,
+            // or the next back step would seem to do nothing.
+            if (st && st.bpePage && PH.stale > 0) {
+                PH.stale--;
+                PH.ignorePop = true;
+                window.history.back();
+            }
+            return;
+        }
+        if (!PH.open && PH.stale > 0) {
+            // A back step onto nothing (the page it opened was closed by the
+            // code): the merchant meant to go back, so go on.
+            PH.stale--;
+            window.history.back();
+        }
+    }
+
+    // A save stopped by a field on a closed page (a required field, ACF's own
+    // checks): that page opens and the field comes into view.
+    function phoneRevealError() {
+        if (!PH.built) { return; }
+        window.setTimeout(function () {
+            var el = document.querySelector('.brikpanel-pe-content .has-error, .brikpanel-pe-content .acf-error-message, .brikpanel-pe-content .acf-field.-error');
+            if (!el) { return; }
+            var page = el.closest('.brikpanel-pe-ph-page, .brikpanel-pe-ph-inplace');
+            var id = page ? page.getAttribute('data-page') : null;
+            if (id && id !== PH.open) { phoneOpenPage(id); }
+            window.setTimeout(function () {
+                try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) { el.scrollIntoView(); }
+            }, id ? 420 : 0);
+        }, 0);
+    }
+
+    // ---- Sheets made of the editor's own parts ----------------------------
+    // The edit-all strip, the attribute picker and each attribute row become
+    // a sheet where they stand (brikpanelSheet.attach): their fields and
+    // handlers stay put. Dressed as a dialog only while the phone layout is on.
+    function phoneSheetDress(el, label, title) {
+        el.classList.add('brikpanel-pe-ph-sheet');
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-modal', 'true');
+        if (label) { el.setAttribute('aria-label', label); }
+        var h = el.querySelector(':scope > .brikpanel-pe-ph-sheettitle');
+        if (title && !h) {
+            h = phMake('p', 'brikpanel-pe-ph-sheettitle');
+            h.setAttribute('aria-hidden', 'true');
+            var grip = el.querySelector(':scope > .brikpanel-sheet__grip');
+            el.insertBefore(h, grip ? grip.nextSibling : el.firstChild);
+        }
+        if (h) { phSetText(h, title || ''); }
+    }
+
+    function phoneSheetUndress(el) {
+        if (!el) { return; }
+        el.classList.remove('brikpanel-pe-ph-sheet');
+        el.removeAttribute('role');
+        el.removeAttribute('aria-modal');
+        el.removeAttribute('aria-label');
+        $(el).children('.brikpanel-pe-ph-sheettitle, .brikpanel-pe-ph-sheetdone').remove();
+        // An attribute's remove button goes back beside its switches.
+        var rm = el.querySelector(':scope > .brikpanel-pe-attr-remove');
+        var controls = el.querySelector('.brikpanel-pe-attr-row-controls');
+        if (rm && controls) { controls.appendChild(rm); }
+    }
+
+    // ---- Variations --------------------------------------------------------
+    // The card's tools as one "..." (generate, add, edit all, sort, defaults,
+    // delete all). While there are none yet, Generate and Add keep their own
+    // buttons.
+    function phoneBuildVarTools() {
+        var build = document.getElementById('bpe-var-build');
+        var S = phSheet();
+        if (!build || !S) { return; }
+        if (!PH.varHead) {
+            var head = phMake('div', 'brikpanel-pe-ph-varhead');
+            var title = phMake('span', 'brikpanel-pe-ph-varhead-title');
+            title.setAttribute('dir', 'auto');
+            head.appendChild(title);
+            var more = phMake('button', 'brikpanel-pe-ph-iconbtn');
+            more.type = 'button';
+            more.setAttribute('aria-haspopup', 'dialog');
+            more.setAttribute('aria-label', phT('ph_more_actions'));
+            more.innerHTML = PH_ICON.more; // Static markup.
+            more.addEventListener('click', phoneVarMenu);
+            head.appendChild(more);
+            build.insertBefore(head, build.firstChild);
+            PH.varHead = head;
+        }
+        var bulk = document.querySelector('#bpe-var-table-section .brikpanel-pe-var-bulk > .brikpanel-pe-var-bulk-group:not(.brikpanel-pe-var-sort)');
+        if (bulk) {
+            if (!PH.bulkSheet) { PH.bulkSheet = S.attach(bulk, {}); }
+            PH.bulk = bulk;
+            phoneSheetDress(bulk, phT('ph_edit_all'), phT('ph_edit_all'));
+        }
+        phoneVarHeadSync();
+    }
+
+    function phoneTeardownVarTools() {
+        if (PH.varHead && PH.varHead.parentNode) { PH.varHead.parentNode.removeChild(PH.varHead); }
+        PH.varHead = null;
+        phoneSheetUndress(PH.bulk);
+        $('#bpe-var-build').removeClass('is-ph-has-vars');
+    }
+
+    function phoneVarHeadSync() {
+        if (!PH.varHead) { return; }
+        var n = (state.variations || []).length;
+        phSetText(PH.varHead.querySelector('.brikpanel-pe-ph-varhead-title'), n ? countText(PE.i18n.ph_variations, n) : '');
+        PH.varHead.hidden = !n;
+        $('#bpe-var-build').toggleClass('is-ph-has-vars', n > 0);
+    }
+
+    function phoneVarMenu() {
+        var S = phSheet();
+        if (!S) { return; }
+        var t = PE.i18n;
+        var n = (state.variations || []).length;
+        // The next sheet waits for this one to slide away.
+        var later = function (fn) { return function () { window.setTimeout(fn, 300); }; };
+        var clickIt = function (sel) { return function () { var b = document.querySelector(sel); if (b) { b.click(); } }; };
+        var items = [
+            { label: phT('ph_generate'), icon: PH_ICON.wand, run: clickIt('#bpe-generate-vars') },
+            { label: phT('ph_add_manually'), icon: PH_ICON.plus, run: clickIt('#bpe-add-variation') }
+        ];
+        if (n && PH.bulkSheet) {
+            items.push({ label: phT('ph_edit_all'), icon: PH_ICON.edit, run: later(function () { PH.bulkSheet.open(); }) });
+        }
+        if (n > 1 && document.getElementById('bpe-var-sort')) {
+            items.push({ label: phT('ph_sort_variations'), icon: PH_ICON.sort, run: later(phoneSortSheet) });
+        }
+        if ($('#bpe-var-defaults').css('display') !== 'none' && $('#bpe-var-defaults-row .bpe-var-default').length) {
+            items.push({ label: phT('ph_default_values'), icon: PH_ICON.pin, run: later(phoneDefaultsSheet) });
+        }
+        if (n) {
+            items.push({
+                label: phT('ph_clear_variations'),
+                icon: PH_ICON.trash,
+                danger: true,
+                run: later(function () {
+                    phoneAsk({ text: countText(t.confirm_clear_variations, n), ok: phT('ph_clear_variations'), danger: true }, function () {
+                        clearAllVariations(null, true);
+                    });
+                })
+            });
+        }
+        S.actions({ label: phT('ph_more_actions'), items: items, returnFocus: this });
+    }
+
+    function phoneSortSheet() {
+        var S = phSheet();
+        var src = document.getElementById('bpe-var-sort');
+        if (!S || !src) { return; }
+        var items = [];
+        Array.prototype.forEach.call(src.options, function (o) {
+            if (!o.value) { return; }
+            items.push({ label: o.textContent, run: function () { $(src).val(o.value).trigger('change'); } });
+        });
+        S.actions({ title: phT('ph_sort_variations'), items: items });
+    }
+
+    // One select per axis, each driving the real one in the card.
+    function phoneDefaultsSheet() {
+        var S = phSheet();
+        if (!S) { return; }
+        var body = phMake('div', 'brikpanel-pe-ph-form');
+        collectVariationAttributes().forEach(function (a, i) {
+            var real = document.querySelector('#bpe-var-defaults-row .bpe-var-default[data-key="' + attrAxisKey(a) + '"]');
+            if (!real) { return; }
+            var box = phMake('div', 'brikpanel-pe-ph-field');
+            var label = phMake('label', 'brikpanel-pe-ph-label', a.name);
+            label.htmlFor = 'bpe-ph-default-' + i;
+            var sel = real.cloneNode(true);
+            sel.id = 'bpe-ph-default-' + i;
+            sel.className = 'brikpanel-control brikpanel-pe-ph-input';
+            sel.removeAttribute('data-key');
+            sel.value = real.value;
+            sel.addEventListener('change', function () { $(real).val(sel.value).trigger('change'); });
+            box.appendChild(label);
+            box.appendChild(sel);
+            body.appendChild(box);
+        });
+        var done = phMake('button', 'brikpanel-btn brikpanel-btn--primary brikpanel-sheet__btn', phT('ph_done'));
+        done.type = 'button';
+        done.addEventListener('click', function () { S.close(); });
+        S.open({ title: phT('ph_default_values'), body: body, foot: done });
+    }
+
+    // Every render of the table: rows as one-line summaries, a page kept on
+    // its variation, the count in the card's head and the app bar.
+    function phoneAfterVarTable() {
+        if (!PH.ready) { return; }
+        phoneSyncSub();
+        if (!PH.built) { return; }
+        if (varFit && varFit.floor !== Infinity) {
+            varFit.floor = Infinity;
+            varFit.refit();
+        }
+        phoneVarHeadSync();
+        $('#bpe-var-table-body tr.var-main-row').each(function () { phoneVarSummary(this); });
+        if (PH.open === 'var') {
+            if (state.variations[PH.varIdx]) {
+                phoneVarFocus(PH.varIdx);
+            } else {
+                phoneDismissPage();
+            }
+        }
+    }
+
+    function phoneMoney(raw) {
+        var v = parsePrice(String(raw || ''), PE.decimal_sep || ',');
+        var n = parseFloat(v);
+        if (!v || isNaN(n)) { return ''; }
+        return window.brikpanelFormat ? window.brikpanelFormat.money(n) : String(raw);
+    }
+
+    function phoneVarName($main) {
+        var name = phText($main.find('.var-name-text')[0]);
+        if (!name) {
+            name = $main.find('.var-attr-select').map(function () { return phText($(this).find('option:selected')[0]); }).get().filter(Boolean).join(' / ');
+        }
+        return name;
+    }
+
+    // The row's one line under its name (price · stock), the "Active" word
+    // its page shows beside the switch, and the arrow that opens the page.
+    function phoneVarSummary(tr) {
+        var inner = tr.querySelector('.var-name-inner');
+        var wrap = tr.querySelector('.var-name-text-wrap');
+        if (!inner || !wrap) { return; }
+        var $tr = $(tr);
+        var sum = wrap.querySelector('.brikpanel-pe-ph-varsum');
+        if (!sum) {
+            sum = phMake('span', 'brikpanel-pe-ph-varsum');
+            sum.setAttribute('dir', 'auto');
+            wrap.appendChild(sum);
+            var sw = inner.querySelector('.var-enabled-switch');
+            if (sw) {
+                var act = phMake('span', 'brikpanel-pe-ph-active', PE.i18n.variation_active || '');
+                act.setAttribute('aria-hidden', 'true');
+                inner.insertBefore(act, sw);
+            }
+            var open = phMake('button', 'brikpanel-pe-ph-varopen');
+            open.type = 'button';
+            open.innerHTML = PH_ICON.chev; // Static markup.
+            inner.appendChild(open);
+        }
+        tr.querySelector('.brikpanel-pe-ph-varopen').setAttribute('aria-label', phoneVarName($tr));
+        var price = phoneMoney($tr.find('.var-sale-price').val()) || phoneMoney($tr.find('.var-price').val());
+        var stock;
+        if ($tr.find('.var-stock-box').attr('data-manage') === '1') {
+            stock = countText(PE.i18n.ph_in_stock, parseInt($tr.find('.var-stock').val(), 10) || 0);
+        } else {
+            stock = phText($tr.find('.var-stock-free-text')[0]);
+        }
+        phSetText(sum, [price, stock].filter(Boolean).join(' · '));
+    }
+
+    function phoneVarInput() {
+        if (!PH.built) { return; }
+        var idx = $(this).closest('tr').attr('data-idx');
+        var main = document.querySelector('#bpe-var-table-body tr.var-main-row[data-idx="' + idx + '"]');
+        if (main) { phoneVarSummary(main); }
+        if (PH.open === 'var' && String(PH.varIdx) === String(idx)) { phoneVarBarSync(); }
+    }
+
+    function phoneVarRowTap(e) {
+        if (!PH.built || PH.open === 'var') { return; }
+        if ($(e.target).closest('.var-enabled-switch, .var-attr-select, .var-image-wrap, .var-drag-handle, input, select, textarea, a').length) { return; }
+        var idx = parseInt(this.getAttribute('data-idx'), 10);
+        if (isNaN(idx)) { return; }
+        e.preventDefault();
+        phoneOpenVarPage(idx, this.querySelector('.brikpanel-pe-ph-varopen'));
+    }
+
+    // A variation's page is the table's own box, full screen, showing that
+    // variation's rows only: nothing is moved or copied.
+    function phoneOpenVarPage(idx, returnTo) {
+        var wrap = document.querySelector('.brikpanel-pe-var-table-wrap');
+        if (!wrap) { return; }
+        if (PH.open) { phoneClosePage(true, true); }
+        phoneVarFlushClose();
+        PH.pages['var'] = { el: wrap, kind: 'var' };
+        PH.open = 'var';
+        PH.returnTo = returnTo || null;
+        PH.varIdx = -1;
+        if (!wrap.querySelector(':scope > .brikpanel-pe-ph-pagebar')) {
+            var bar = phonePageBar('', '', phoneGoBack);
+            bar.classList.add('brikpanel-pe-ph-varbar');
+            var end = bar.querySelector('.brikpanel-pe-ph-barend');
+            var step = function (cls, label, icon, by) {
+                var b = phMake('button', 'brikpanel-pe-ph-iconbtn ' + cls);
+                b.type = 'button';
+                b.setAttribute('aria-label', label);
+                b.innerHTML = PH_ICON[icon]; // Static markup.
+                b.addEventListener('click', function () { phoneVarFocus(PH.varIdx + by); });
+                end.appendChild(b);
+            };
+            step('brikpanel-pe-ph-prev', phT('ph_prev_variation'), 'up', -1);
+            step('brikpanel-pe-ph-next', phT('ph_next_variation'), 'down', 1);
+            wrap.insertBefore(bar, wrap.firstChild);
+            var del = phMake('button', 'brikpanel-btn brikpanel-btn--secondary brikpanel-pe-ph-vardelete', PE.i18n.delete_variation || '');
+            del.type = 'button';
+            del.addEventListener('click', function () {
+                var at = PH.varIdx;
+                phoneAsk({ text: PE.i18n.confirm_delete_variation || '', ok: PE.i18n.delete_variation || '', danger: true }, function () {
+                    phoneDismissPage();
+                    deleteVariationAt(at);
+                });
+            });
+            wrap.appendChild(del);
+        }
+        phoneLock(true);
+        wrap.classList.add('is-ph-open');
+        PH.inert = phoneInertAround(wrap);
+        phonePush('var');
+        phoneVarFocus(idx);
+        wrap.setAttribute('tabindex', '-1');
+        window.setTimeout(function () { phFocus(wrap); }, 60);
+    }
+
+    // Shows one variation on its page: its row as a form with its details
+    // open. Moving to another variation is the same.
+    function phoneVarFocus(idx) {
+        var wrap = document.querySelector('.brikpanel-pe-var-table-wrap');
+        var n = (state.variations || []).length;
+        if (!wrap || idx < 0 || idx >= n) { return; }
+        var $body = $('#bpe-var-table-body');
+        var $main = $body.find('tr.var-main-row[data-idx="' + idx + '"]');
+        if (!$main.length) { return; }
+        if (PH.varIdx !== idx) {
+            if (PH.varIdx >= 0) {
+                var $old = $body.find('tr.var-main-row[data-idx="' + PH.varIdx + '"]');
+                if ($old.length && !PH.varWasOpen) { setVarDetailsOpen($old, false, false); }
+            }
+            PH.varWasOpen = $main.hasClass('is-open');
+            PH.varIdx = idx;
+            wrap.scrollTop = 0;
+        }
+        $body.find('tr.is-ph-focus').removeClass('is-ph-focus');
+        $body.find('tr[data-idx="' + idx + '"]').addClass('is-ph-focus');
+        if (!$main.hasClass('is-open')) { setVarDetailsOpen($main, true, false); }
+        phoneVarBarSync();
+    }
+
+    function phoneVarBarSync() {
+        var wrap = document.querySelector('.brikpanel-pe-var-table-wrap');
+        var bar = wrap ? wrap.querySelector(':scope > .brikpanel-pe-ph-pagebar') : null;
+        if (!bar) { return; }
+        var n = (state.variations || []).length;
+        var $main = $('#bpe-var-table-body tr.var-main-row[data-idx="' + PH.varIdx + '"]');
+        phSetText(bar.querySelector('.brikpanel-pe-ph-name'), phoneVarName($main));
+        phSetText(bar.querySelector('.brikpanel-pe-ph-sub'), phT('ph_variation_of').replace('%1$s', fmtCount(PH.varIdx + 1)).replace('%2$s', fmtCount(n)));
+        bar.querySelector('.brikpanel-pe-ph-prev').disabled = PH.varIdx <= 0;
+        bar.querySelector('.brikpanel-pe-ph-next').disabled = PH.varIdx >= n - 1;
+    }
+
+    // The page slides away first (`instant`: at once, as when a wider screen
+    // or another page takes over), then the rows read as one-liners again.
+    function phoneVarPageOff(instant) {
+        var wrap = document.querySelector('.brikpanel-pe-var-table-wrap');
+        var idx = PH.varIdx;
+        var wasOpen = PH.varWasOpen;
+        delete PH.pages['var'];
+        PH.varIdx = -1;
+        PH.varWasOpen = false;
+        var finish = function () {
+            PH.varClosing = null;
+            var $body = $('#bpe-var-table-body');
+            var $main = $body.find('tr.var-main-row[data-idx="' + idx + '"]');
+            $body.find('tr.is-ph-focus').removeClass('is-ph-focus');
+            if ($main.length && !wasOpen) { setVarDetailsOpen($main, false, false); }
+            if (wrap) {
+                wrap.classList.remove('is-ph-open', 'is-ph-closing');
+                wrap.removeAttribute('tabindex');
+                $(wrap).children('.brikpanel-pe-ph-pagebar, .brikpanel-pe-ph-vardelete').remove();
+            }
+            if ($main.length && PH.built) { phoneVarSummary($main[0]); }
+        };
+        if (!wrap || instant || prefersReducedMotion()) {
+            finish();
+            return;
+        }
+        wrap.classList.add('is-ph-closing');
+        PH.varClosing = { timer: window.setTimeout(finish, 280), finish: finish };
+    }
+
+    function phoneVarFlushClose() {
+        if (PH.varClosing) {
+            window.clearTimeout(PH.varClosing.timer);
+            PH.varClosing.finish();
+        }
+    }
+
+    // ---- Attributes --------------------------------------------------------
+    // Each attribute row reads as one line (name, values, whether it builds
+    // variations); a tap opens the row's own controls as a sheet, with every
+    // control it has on a wider screen. Adding one is a sheet too.
+    function phoneBuildAttrUi() {
+        var list = document.getElementById('bpe-attr-list');
+        var S = phSheet();
+        if (!list || !S) { return; }
+        var add = document.querySelector('#bpe-var-attr-controls .brikpanel-pe-attr-add');
+        if (add) {
+            if (!PH.attrAdd) { PH.attrAdd = S.attach(add, {}); }
+            PH.attrAddEl = add;
+            phoneSheetDress(add, phT('ph_add_attribute'), phT('ph_add_attribute'));
+            if (!PH.attrAddBtn) {
+                var btn = phMake('button', 'brikpanel-btn brikpanel-btn--secondary brikpanel-pe-ph-addattr');
+                btn.type = 'button';
+                btn.setAttribute('aria-haspopup', 'dialog');
+                btn.appendChild(phIcon('plus', 'brikpanel-pe-ph-addattr-icon'));
+                btn.appendChild(phMake('span', '', phT('ph_add_attribute')));
+                btn.addEventListener('click', function () { if (PH.attrAdd) { PH.attrAdd.open(); } });
+                list.parentNode.insertBefore(btn, list.nextSibling);
+                PH.attrAddBtn = btn;
+            }
+        }
+        if (typeof window.MutationObserver === 'function') {
+            if (!PH.attrObserver) { PH.attrObserver = new window.MutationObserver(phoneAttrMutations); }
+            PH.attrObserver.observe(list, { childList: true, subtree: true });
+        }
+        $(list).on('change.bpeph', phoneAttrRows);
+        // Removing an attribute from its open sheet: the sheet closes first.
+        list.addEventListener('click', phoneAttrRemoveFirst, true);
+        phoneAttrRows();
+    }
+
+    function phoneTeardownAttrUi() {
+        var list = document.getElementById('bpe-attr-list');
+        if (PH.attrObserver) { PH.attrObserver.disconnect(); }
+        if (list) {
+            $(list).off('change.bpeph');
+            list.removeEventListener('click', phoneAttrRemoveFirst, true);
+            $(list).find('.brikpanel-pe-ph-attrsum').remove();
+            $(list).find('.brikpanel-pe-tag-group').each(function () { phoneSheetUndress(this); });
+        }
+        phoneSheetUndress(PH.attrAddEl);
+        if (PH.attrAddBtn && PH.attrAddBtn.parentNode) { PH.attrAddBtn.parentNode.removeChild(PH.attrAddBtn); }
+        PH.attrAddBtn = null;
+    }
+
+    function phoneAttrMutations(records) {
+        var list = document.getElementById('bpe-attr-list');
+        var added = [];
+        var relevant = false;
+        records.forEach(function (r) {
+            var t = r.target;
+            if (t.nodeType === 1 && t.closest('.brikpanel-pe-ph-attrsum, .brikpanel-pe-ph-sheettitle')) { return; }
+            relevant = true;
+            if (t === list) {
+                Array.prototype.forEach.call(r.addedNodes, function (n) {
+                    if (n.nodeType === 1 && n.classList.contains('brikpanel-pe-attr-row')) { added.push(n); }
+                });
+            }
+        });
+        if (!relevant) { return; }
+        phoneAttrRows();
+        // Picked in the "Add attribute" sheet: the new attribute's own sheet
+        // takes its place, ready for its values.
+        if (added.length && PH.attrAdd && PH.attrAdd.isOpen()) {
+            if (added.length === 1) {
+                phoneOpenAttrSheet(added[0]);
+            } else {
+                PH.attrAdd.close();
+            }
+        }
+    }
+
+    // An attribute row's own controls become its (closed) sheet once, when
+    // the row first shows on a phone.
+    function phoneAttrSheet(row) {
+        var S = phSheet();
+        var g = row ? row.querySelector(':scope > .brikpanel-pe-tag-group') : null;
+        if (!S || !g) { return null; }
+        var ctl = $(g).data('bpePhSheet');
+        if (!ctl) {
+            ctl = S.attach(g, {});
+            $(g).data('bpePhSheet', ctl);
+        }
+        if (!g.classList.contains('brikpanel-pe-ph-sheet')) {
+            phoneSheetDress(g, $(g).attr('data-attr-name') || '', '');
+            var done = phMake('button', 'brikpanel-btn brikpanel-btn--primary brikpanel-sheet__btn brikpanel-pe-ph-sheetdone', phT('ph_done'));
+            done.type = 'button';
+            done.addEventListener('click', function () { ctl.close(); });
+            g.appendChild(done);
+            // Removing the attribute is the last line of its sheet, under Done,
+            // away from the switches (its handler is bound to the button itself).
+            var rm = g.querySelector('.brikpanel-pe-attr-row-controls > .brikpanel-pe-attr-remove');
+            if (rm) { g.appendChild(rm); }
+        }
+        return ctl;
+    }
+
+    function phoneOpenAttrSheet(row) {
+        if (!PH.built) { return; }
+        var ctl = phoneAttrSheet(row);
+        if (ctl) { ctl.open(); }
+    }
+
+    function phoneAttrRemoveFirst(e) {
+        var rm = e.target.closest ? e.target.closest('.brikpanel-pe-attr-remove') : null;
+        if (!rm) { return; }
+        var g = rm.closest('.brikpanel-pe-tag-group');
+        var ctl = g ? $(g).data('bpePhSheet') : null;
+        if (ctl && ctl.isOpen()) {
+            ctl.close();
+            window.setTimeout(function () { phFocus(PH.attrAddBtn); }, 0);
+        }
+    }
+
+    function phoneAttrRows() {
+        if (!PH.built) { return; }
+        $('#bpe-attr-list > .brikpanel-pe-attr-row').each(function () {
+            var row = this;
+            var sum = row.querySelector(':scope > .brikpanel-pe-ph-attrsum');
+            if (!sum) {
+                sum = phMake('button', 'brikpanel-pe-ph-attrsum');
+                sum.type = 'button';
+                sum.setAttribute('aria-haspopup', 'dialog');
+                var text = phMake('span', 'brikpanel-pe-ph-rowtext');
+                text.appendChild(phMake('b'));
+                var sumLine = phMake('span', 'brikpanel-pe-ph-rowsum');
+                sumLine.setAttribute('dir', 'auto');
+                text.appendChild(sumLine);
+                sum.appendChild(text);
+                sum.appendChild(phIcon('chev', 'brikpanel-pe-ph-chev'));
+                sum.addEventListener('click', function () { phoneOpenAttrSheet(row); });
+                row.insertBefore(sum, row.firstChild);
+            }
+            phoneAttrSheet(row);
+            var $g = $(row).children('.brikpanel-pe-tag-group').first();
+            var vals = [];
+            $g.find('.brikpanel-pe-tag').each(function () {
+                vals.push(phTrim($(this).clone().children().remove().end().text()));
+            });
+            var line = vals.length ? vals.join(', ') : phT('ph_no_values');
+            if (isVariableOn() && $g.find('.brikpanel-pe-usevar-check').is(':checked')) {
+                line += ' · ' + phT('ph_used_for_variations');
+            }
+            phSetText(sum.querySelector('b'), $g.attr('data-attr-name') || '');
+            phSetText(sum.querySelector('.brikpanel-pe-ph-rowsum'), line);
+        });
+    }
 
     $(document).ready(init);
 })(jQuery);

@@ -2801,6 +2801,27 @@ button.brikpanel-dash-guide__item:focus-visible {
     color: var(--bp-text-secondary, #616161);
 }
 
+/* "Keep screen on" (phones). Never in the unfolded row on wide screens: the
+   folded More menu shows it (brikpanel-overflow.css, :not([hidden])), and
+   brikpanel-wake-lock.js unhides it only on phones that can keep the screen on. */
+.brikpanel-wake-toggle {
+    display: none;
+}
+
+.brikpanel-wake-toggle[hidden] {
+    display: none;
+}
+
+.brikpanel-wake-toggle__icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--bp-text-secondary, #616161);
+}
+
+.brikpanel-wake-toggle[aria-pressed="true"] .brikpanel-wake-toggle__icon {
+    color: #1a8917;
+}
+
 /* The ad platforms link beside Export: the same secondary button. Its style
    used to be printed inline by the ads module, where a margin-left beat the
    phone rules and pushed it out of line (field test C6). */
@@ -2855,6 +2876,18 @@ button.brikpanel-dash-guide__item:focus-visible {
     display: inline-flex;
     align-items: center;
     color: var(--bp-text-placeholder, #8a8a8a);
+}
+
+/* "Customize" (the Dashboard sections setting) at the far end of the date
+   line. Its look is the shared link button (brikpanel-ui.css); only the place
+   is set here. */
+.brikpanel-dash-customize {
+    margin-inline-start: auto;
+}
+
+.brikpanel-dash-customize-icon {
+    flex: none;
+    color: var(--bp-text-secondary, #616161);
 }
 
 /* Stacked dashboard tables (field test B6; brikpanel-fit-table.css draws the
@@ -3064,6 +3097,12 @@ button.brikpanel-dash-guide__item:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* A narrow card before a wide one (Live visitors moved above Sales over
+   time): the mirror of --21. */
+.bp-dv-row--12 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
 .bp-dv-row--1 {
     grid-template-columns: minmax(0, 1fr);
 }
@@ -3071,13 +3110,25 @@ button.brikpanel-dash-guide__item:focus-visible {
 /* One card per line below 920px of dashboard; the media query covers the
    first paint before the script has measured. */
 .brikpanel-dashboard.bp-dv-lt920 .bp-dv-row--21,
+.brikpanel-dashboard.bp-dv-lt920 .bp-dv-row--12,
 .brikpanel-dashboard.bp-dv-lt920 .bp-dv-row--11 {
     grid-template-columns: minmax(0, 1fr);
 }
 
 @media (max-width: 960px) {
     .bp-dv-row--21,
+    .bp-dv-row--12,
     .bp-dv-row--11 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Subscriptions has no bottom margin of its own (it used to sit at the end);
+   a box placed right under it keeps the usual gap. */
+.brikpanel-dash-subs-panel + .bp-dv-row,
+.brikpanel-dash-subs-panel + .brikpanel-dash-row,
+.brikpanel-dash-subs-panel + .brikpanel-dash-profit,
+.brikpanel-dash-subs-panel + .bp-dv-kpis,
+.brikpanel-dash-subs-panel + .brikpanel-dash-marketplace {
+    margin-top: 1.25rem;
 }
 
 .bp-dv-card {

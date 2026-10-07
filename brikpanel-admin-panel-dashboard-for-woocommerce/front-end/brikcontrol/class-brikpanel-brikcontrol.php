@@ -766,7 +766,7 @@ class Brikpanel_BrikControl {
         ];
         if ( function_exists( 'brikpanel_user_can_open_settings' ) && brikpanel_user_can_open_settings() ) {
             $rec['link'] = [
-                'url'   => admin_url( 'admin.php?page=wc-settings&tab=brikpanel&section=analytics' ) . '#bp-jump=brikpanel_excluded_user_agents',
+                'url'   => admin_url( 'admin.php?page=wc-settings&tab=brikpanel&section=analytics' ) . '#bp-jump-brikpanel_excluded_user_agents',
                 'label' => __( 'Analytics settings', 'brikpanel' ),
             ];
         }

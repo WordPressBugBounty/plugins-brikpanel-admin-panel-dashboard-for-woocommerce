@@ -427,6 +427,12 @@ function brikpanel_nav_cfg_hidden_for_current_user( $cfg ) {
 	}
 	$audience = isset( $cfg['audience'] ) ? (string) $cfg['audience'] : 'all';
 
+	// "Ignore BrikPanel's access rules": the per-person rule below is kept but
+	// not applied. The `hidden` flag above (off for everyone) still is.
+	if ( $audience !== 'all' && function_exists( 'brikpanel_access_rules_ignored' ) && brikpanel_access_rules_ignored() ) {
+		return false;
+	}
+
 	if ( $audience === 'admins' ) {
 		// Visible to administrators only.
 		return ! brikpanel_nav_current_user_is_admin();
@@ -1930,6 +1936,11 @@ function brikpanel_render_nav_customizer_field( $value ) {
 							<p class="brikpanel-navc-subtitle">
 								<?php esc_html_e( 'Drag to reorder, toggle visibility, move items between sections, or add custom links.', 'brikpanel' ); ?>
 							</p>
+							<?php
+							if ( function_exists( 'brikpanel_access_rules_ignored_print_note' ) ) {
+								brikpanel_access_rules_ignored_print_note( 'choices', true );
+							}
+							?>
 						</div>
 						<button type="button" class="brikpanel-navc-btn brikpanel-navc-btn-secondary" data-navc-action="reset">
 							<?php esc_html_e( 'Reset to defaults', 'brikpanel' ); ?>

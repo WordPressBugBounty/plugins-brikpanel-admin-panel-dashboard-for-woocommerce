@@ -608,7 +608,13 @@ class Brikpanel_Product_Editor {
      * plain product list.
      */
     private function get_back_url() {
-        $default = admin_url('edit.php?post_type=product');
+        // The list itself, not WordPress's address that redirects to it: one
+        // load less, and a phone's back slide knows the page it leads to
+        // (brikpanel_print_page_transition_script()).
+        $wp_list = admin_url('edit.php?post_type=product');
+        $default = function_exists('brikpanel_module_url')
+            ? brikpanel_module_url('brikpanel-products', [], $wp_list)
+            : $wp_list;
 
         if (empty($_GET['bpl_return'])) {
             return $default;
@@ -1189,7 +1195,7 @@ class Brikpanel_Product_Editor {
                 wp_print_inline_script_tag('if(window.brikpanelFitRow){window.brikpanelFitRow.auto(document.getElementById("bpe-header"));}');
                 ?>
                 <div class="brikpanel-pe-header-left">
-                    <a href="<?php echo esc_url($back_url); ?>" class="brikpanel-pe-back">
+                    <a href="<?php echo esc_url($back_url); ?>" class="brikpanel-pe-back" data-bp-vt="back">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         <span class="brikpanel-pe-back-label"><?php esc_html_e('Products', 'brikpanel'); ?></span>
                     </a>
@@ -1252,7 +1258,7 @@ class Brikpanel_Product_Editor {
                         <div class="brikpanel-pe-overflow-menu" id="bpe-overflow-menu">
                             <a<?php echo $is_live ? ' href="' . esc_url(get_permalink($product_id)) . '"' : ' hidden'; ?> class="brikpanel-pe-btn secondary" id="bpe-view-product" target="_blank" rel="noopener"><?php esc_html_e('View product', 'brikpanel'); ?></a>
                             <button type="button" class="brikpanel-pe-btn secondary" id="bpe-duplicate" data-id="<?php echo $is_edit ? esc_attr($product_id) : ''; ?>"><?php esc_html_e('Duplicate', 'brikpanel'); ?></button>
-                            <a href="<?php echo esc_url(admin_url('admin.php?page=brikpanel-product-editor')); ?>" class="brikpanel-pe-btn secondary" id="bpe-add-new"<?php echo $is_live ? '' : ' hidden'; ?>>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=brikpanel-product-editor')); ?>" class="brikpanel-pe-btn secondary" id="bpe-add-new" data-bp-vt="forward"<?php echo $is_live ? '' : ' hidden'; ?>>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                 <?php esc_html_e('Add new', 'brikpanel'); ?>
                             </a>
@@ -1386,22 +1392,24 @@ class Brikpanel_Product_Editor {
                         __('Saving...', 'brikpanel'),
                     ];
                     ?>
+                    <?php
+                    // Existing live (or password-protected) product → Update.
+                    // Brand-new product with the default Published status →
+                    // Publish (clicking actually publishes).
+                    // Anything else (Draft / Private new product) → Save.
+                    // The phone's bottom bar prints the same label.
+                    if ($effective_status === 'future') {
+                        $bpe_publish_label = __('Schedule', 'brikpanel');
+                    } elseif (($is_edit && in_array($data['status'], ['publish', 'private'], true)) || $is_password) {
+                        $bpe_publish_label = __('Update', 'brikpanel');
+                    } elseif (!$is_edit && $data['status'] === 'publish') {
+                        $bpe_publish_label = __('Publish', 'brikpanel');
+                    } else {
+                        $bpe_publish_label = __('Save', 'brikpanel');
+                    }
+                    ?>
                     <button type="button" class="brikpanel-pe-btn primary" id="bpe-publish" data-bp-fit-labels="<?php echo esc_attr(wp_json_encode($bpe_publish_labels)); ?>">
-                        <?php
-                        // Existing live (or password-protected) product → Update.
-                        // Brand-new product with the default Published status →
-                        // Publish (clicking actually publishes).
-                        // Anything else (Draft / Private new product) → Save.
-                        if ($effective_status === 'future') {
-                            esc_html_e('Schedule', 'brikpanel');
-                        } elseif (($is_edit && in_array($data['status'], ['publish', 'private'], true)) || $is_password) {
-                            esc_html_e('Update', 'brikpanel');
-                        } elseif (!$is_edit && $data['status'] === 'publish') {
-                            esc_html_e('Publish', 'brikpanel');
-                        } else {
-                            esc_html_e('Save', 'brikpanel');
-                        }
-                        ?>
+                        <?php echo esc_html($bpe_publish_label); ?>
                     </button>
                 </div>
             </div>
@@ -1415,7 +1423,43 @@ class Brikpanel_Product_Editor {
                 . 'if(window.brikpanelFitRow&&h){var c=window.brikpanelFitRow.get(h)||window.brikpanelFitRow.auto(h);if(c){c.refit();}}'
                 . '})();'
             );
+
+            // Phones (782px and narrower) hide the header above and show this
+            // bar instead, as an app does: back, the product's name and kind in
+            // the middle, "..." for View product, Duplicate and Add new. The
+            // status and the save button sit in a bar at the bottom of the page
+            // (after the content). Both drive the header's own controls
+            // (brikpanel-product-editor.js, "PHONE"), so a save is the same save.
+            // Wider screens never show either bar. One heading at a time: the
+            // header's on wider screens, this hidden one on phones.
+            $bpe_ph_types = function_exists('wc_get_product_types') ? (array) wc_get_product_types() : [];
+            $bpe_ph_vars  = isset($data['variation_count']) ? (int) $data['variation_count'] : 0;
+            if (!empty($data['is_variable'])) {
+                $bpe_ph_sub = __('Variable product', 'brikpanel');
+                if ($is_edit && $bpe_ph_vars > 0) {
+                    /* translators: %s: number of variations on the product. */
+                    $bpe_ph_sub .= ' · ' . sprintf(_n('%s variation', '%s variations', $bpe_ph_vars, 'brikpanel'), brikpanel_number($bpe_ph_vars));
+                }
+            } elseif ($product_type_current === 'simple' || !isset($bpe_ph_types[$product_type_current])) {
+                $bpe_ph_sub = __('Simple product', 'brikpanel');
+            } else {
+                $bpe_ph_sub = (string) $bpe_ph_types[$product_type_current];
+            }
+            $bpe_ph_name = ($is_edit && $data['name'] !== '') ? $data['name'] : __('Add product', 'brikpanel');
             ?>
+            <div class="brikpanel-pe-ph-appbar" id="bpe-ph-appbar">
+                <h1 class="screen-reader-text" id="bpe-ph-h1"><?php echo esc_html($page_title); ?></h1>
+                <a href="<?php echo esc_url($back_url); ?>" class="brikpanel-pe-ph-iconbtn" id="bpe-ph-back" data-bp-vt="back" aria-label="<?php esc_attr_e('Products', 'brikpanel'); ?>">
+                    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg>
+                </a>
+                <div class="brikpanel-pe-ph-heading">
+                    <span class="brikpanel-pe-ph-name" id="bpe-ph-name" dir="auto"><?php echo esc_html($bpe_ph_name); ?></span>
+                    <span class="brikpanel-pe-ph-sub" id="bpe-ph-sub" dir="auto"><?php echo esc_html($bpe_ph_sub); ?></span>
+                </div>
+                <button type="button" class="brikpanel-pe-ph-iconbtn" id="bpe-ph-more" aria-haspopup="dialog" aria-label="<?php esc_attr_e('More actions', 'brikpanel'); ?>"<?php echo $is_edit ? '' : ' hidden'; ?>>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                </button>
+            </div>
 
             <?php
             // Product types whose own product-data panel this editor cannot show
@@ -1480,7 +1524,7 @@ class Brikpanel_Product_Editor {
                 <?php endif; ?>
 
                 <!-- Product Name -->
-                <div class="brikpanel-pe-card">
+                <div class="brikpanel-pe-card" data-bpe-section="name">
                     <div class="brikpanel-pe-field">
                         <label for="bpe-name"><?php esc_html_e('Product name', 'brikpanel'); ?></label>
                         <input type="text" id="bpe-name" value="<?php echo esc_attr($data['name']); ?>" placeholder="<?php esc_attr_e('E.g.: Cotton White T-Shirt - M Size', 'brikpanel'); ?>" data-required="1">
@@ -2146,7 +2190,7 @@ class Brikpanel_Product_Editor {
                     <label><?php esc_html_e('Category', 'brikpanel'); ?></label>
                     <div class="brikpanel-pe-cat-wrap">
                         <input type="text" class="brikpanel-pe-cat-search" id="bpe-cat-search" placeholder="<?php esc_attr_e('Search categories...', 'brikpanel'); ?>">
-                        <div class="brikpanel-pe-cat-list">
+                        <div class="brikpanel-pe-cat-list" id="bpe-cat-list">
                             <?php $this->render_category_checklist($categories, $data['category_ids']); ?>
                         </div>
                     </div>
@@ -2647,10 +2691,11 @@ class Brikpanel_Product_Editor {
                 $bpe_side_html = '';
                 foreach ($visible as $rendered_slug) {
                     if (isset($section_html[$rendered_slug]) && $section_html[$rendered_slug] !== '') {
+                        $bpe_marked = self::mark_section($section_html[$rendered_slug], $rendered_slug);
                         if ($bpe_widescreen && in_array($rendered_slug, $bpe_side_slugs, true)) {
-                            $bpe_side_html .= $section_html[$rendered_slug];
+                            $bpe_side_html .= $bpe_marked;
                         } else {
-                            echo $section_html[$rendered_slug];
+                            echo $bpe_marked; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-rendered section markup, escaped at build time.
                         }
                     } elseif (strpos($rendered_slug, 'mb:') === 0) {
                         $mb_id = substr($rendered_slug, 3);
@@ -2713,6 +2758,24 @@ class Brikpanel_Product_Editor {
             <?php endif; ?>
 
             </div><!-- .brikpanel-pe-content -->
+
+            <?php
+            // Phones only (the app bar above says why): the status opens a sheet
+            // with the status, password, publish date, catalog visibility and
+            // featured switch; the save button presses #bpe-publish.
+            $bpe_ph_status_label = isset($labels[$effective_status]) ? $labels[$effective_status] : __('Draft', 'brikpanel');
+            ?>
+            <div class="brikpanel-pe-ph-bar" id="bpe-ph-bar">
+                <button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-pe-ph-status" id="bpe-ph-status" aria-haspopup="dialog">
+                    <span class="brikpanel-pe-ph-dot" data-status="<?php echo esc_attr($effective_status); ?>" aria-hidden="true"></span>
+                    <span class="brikpanel-pe-ph-status-label" id="bpe-ph-status-label"><?php echo esc_html($bpe_ph_status_label); ?></span>
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 8 4 4 4-4"/></svg>
+                </button>
+                <button type="button" class="brikpanel-btn brikpanel-btn--primary brikpanel-pe-ph-save" id="bpe-ph-save">
+                    <span id="bpe-ph-save-label"><?php echo esc_html($bpe_publish_label); ?></span>
+                    <span class="brikpanel-pe-ph-dirty" aria-hidden="true"></span>
+                </button>
+            </div>
         </div><!-- .brikpanel-pe -->
         </div><!-- .wrap -->
 
@@ -2723,6 +2786,20 @@ class Brikpanel_Product_Editor {
     // =========================================================================
     // HELPERS
     // =========================================================================
+
+    /**
+     * Gives a section's card its slug (data-bpe-section) on its first tag, so
+     * the phone layout can tell the cards apart and gather the rarely used ones
+     * into pages (brikpanel-product-editor.js, "PHONE"). Wider screens never
+     * read it. A leading HTML comment is skipped: it starts with `<!`.
+     *
+     * @param string $html Pre-rendered section markup.
+     * @param string $slug Section slug.
+     * @return string
+     */
+    private static function mark_section($html, $slug) {
+        return (string) preg_replace('/<([a-z][a-z0-9]*)\b/i', '<$1 data-bpe-section="' . esc_attr($slug) . '"', (string) $html, 1);
+    }
 
     private function get_visible_sections() {
         $default = function_exists('brikpanel_pe_section_default_visible')
@@ -6406,10 +6483,13 @@ class Brikpanel_Product_Editor {
         // Alt text travels with each image so the SEO analysers can assess the
         // featured image the way they do on the native editor, where they read
         // it straight out of the featured-image metabox we do not render.
+        // `url_m`: the medium size, for the phone layout, which draws the
+        // first image (the featured one) as a large tile.
         if ($image_id) {
             $gallery[] = [
                 'id'    => (int) $image_id,
                 'url'   => wp_get_attachment_image_url($image_id, 'thumbnail'),
+                'url_m' => wp_get_attachment_image_url($image_id, 'medium'),
                 'alt'   => (string) get_post_meta((int) $image_id, '_wp_attachment_image_alt', true),
             ];
         }
@@ -6417,6 +6497,7 @@ class Brikpanel_Product_Editor {
             $gallery[] = [
                 'id'    => (int) $gid,
                 'url'   => wp_get_attachment_image_url($gid, 'thumbnail'),
+                'url_m' => wp_get_attachment_image_url($gid, 'medium'),
                 'alt'   => (string) get_post_meta((int) $gid, '_wp_attachment_image_alt', true),
             ];
         }

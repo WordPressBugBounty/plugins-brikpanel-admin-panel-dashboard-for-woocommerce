@@ -181,6 +181,9 @@ function brikpanel_export_placeholder_field_ids() {
 		// Renders a sentence pointing at the brand logo picker. No value of
 		// its own, in either direction.
 		'brk_login_logo_hint',
+		// Lists the person's own phones (front-end/push/brikpanel-push-admin.php).
+		// The devices live in their own table and never travel in a settings file.
+		'brikpanel_push_devices_card',
 	];
 }
 
@@ -329,6 +332,10 @@ function brikpanel_export_core_table() {
 		'brikpanel_brikcontrol_dismissed',
 		// The old-WooCommerce notice this admin closed, keyed by the version it named.
 		'brikpanel_wc_min_notice_dismissed',
+		// Whose turn it is among the cards and windows (includes/brikpanel-asks.php):
+		// this admin on this site, and the same person across a network.
+		'brikpanel_asks',
+		'brikpanel_asks_person',
 	] as $key ) {
 		$map[ $key ] = [ 'class' => 'internal' ];
 	}

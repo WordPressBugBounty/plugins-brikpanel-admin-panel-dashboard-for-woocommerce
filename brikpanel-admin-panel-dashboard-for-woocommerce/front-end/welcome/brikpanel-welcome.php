@@ -20,6 +20,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_action( 'wp_ajax_brikpanel_dismiss_welcome', function () {
     check_ajax_referer( 'brikpanel_welcome_nonce' );
     update_user_meta( get_current_user_id(), '_brikpanel_welcome_dismissed', BRIKPANEL_VERSION );
+    // The tour was the first ask: the next one (bar the new-store guide) waits
+    // its turn instead of opening on the very next page.
+    if ( function_exists( 'brikpanel_ask_closed' ) ) {
+        brikpanel_ask_closed( 'welcome' );
+    }
     wp_send_json_success();
 } );
 

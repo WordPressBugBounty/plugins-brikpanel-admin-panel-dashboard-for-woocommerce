@@ -75,9 +75,40 @@ class Brikpanel_Dashboard {
     // sales chart, its previous period and "Today so far" share them.
     private $sales_buckets = [];
 
-    // Set by plan_merged_cards() before the sections render.
-    private $merge_products  = false;
-    private $merge_customers = false;
+    // The WordPress dashboard widgets this user gets, once worked out
+    // (embedded_wp_widgets()).
+    private $wp_widgets_chosen = null;
+
+    // Dashboard boxes that take a whole row of their own markup ('block'), or
+    // a row of their own as a single card ('solo'). Every other box is a card
+    // that shares its row with the next one (plan_rows()).
+    const BOX_KIND = [
+        'profit'                => 'block',
+        'kpis'                  => 'block',
+        'marketplace_analytics' => 'block',
+        'locations'             => 'block',
+        'subscriptions'         => 'block',
+        'wp_widgets'            => 'block',
+        'segments'              => 'solo',
+    ];
+
+    // Cards drawn wider or narrower than half a row next to each other.
+    const BOX_WIDTH = [
+        'sales' => 'wide',
+        'live'  => 'narrow',
+    ];
+
+    // A row that holds exactly what one of the 3.3.31 rows held keeps that
+    // row's name in data-bp-dv-section, so a store's own CSS keeps working.
+    const LEGACY_ROW_ATTR = [
+        'sales+live'                 => 'sales_live',
+        'funnel+rates'               => 'funnel_rates',
+        'best_sellers+recent_orders' => 'products_orders',
+        'most_viewed+most_added'     => 'views_cart',
+        'visitors+customers'         => 'devices',
+        'segments'                   => 'customer_segments',
+        'low_stock+ltv'              => 'stock_returns',
+    ];
 
     // The Customers card draws the ten segments of Customer Analytics
     // (brikpanel_ca_rfm_segment_labels()) as three groups: customers to keep,
@@ -365,64 +396,39 @@ class Brikpanel_Dashboard {
     // =========================================================================
 
     /**
-     * Ordered list of dashboard section keys the customer can reorder via
-     * the `brikpanel_dashboard_section_order` filter or the Settings UI.
-     * Callables map each key to its renderer.
-     */
-    private function get_sections() {
-        $sections = [
-            'profit'          => [ $this, 'render_section_profit' ],
-            'kpis'            => [ $this, 'render_section_kpis' ],
-            'sales_live'      => [ $this, 'render_section_sales_live' ],
-            'funnel_rates'    => [ $this, 'render_section_funnel_rates' ],
-            'locations'       => [ $this, 'render_section_locations' ],
-            'products_orders' => [ $this, 'render_section_products_orders' ],
-            'views_cart'      => [ $this, 'render_section_views_cart' ],
-            'devices'         => [ $this, 'render_section_devices' ],
-            'customer_segments' => [ $this, 'render_section_customer_segments' ],
-            'stock_returns'   => [ $this, 'render_section_stock_returns' ],
-            'subscriptions'   => [ $this, 'render_section_subscriptions' ],
-            'wp_widgets'      => [ $this, 'render_embedded_wp_widgets' ],
-        ];
-        if ( function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active() ) {
-            // Insert the marketplace analytics section right after KPIs so the
-            // marketplace breakdown sits next to the (now site-only) headline
-            // numbers it's separating out.
-            $reordered = [];
-            foreach ( $sections as $key => $cb ) {
-                $reordered[ $key ] = $cb;
-                if ( 'kpis' === $key ) {
-                    $reordered['marketplace_analytics'] = [ $this, 'render_section_marketplace_analytics' ];
-                }
-            }
-            $sections = $reordered;
-        }
-        return $sections;
-    }
-
-    /**
-     * Human-readable labels for each section key, used by the Settings UI to
-     * populate the "Visible dashboard sections" multiselect. Order mirrors
-     * get_sections() so admins see the cards in the same sequence as the
-     * dashboard renders them. Marketplace label is only included when
-     * BrikMarket is active so it doesn't show up as a phantom option.
+     * Every box the dashboard can show, keyed for the "Dashboard sections"
+     * setting, with its label there, in the factory order. Since 3.3.32 the
+     * setting lists boxes one by one; up to 3.3.31 it listed rows of two
+     * (brikpanel_dashboard_legacy_rows() in brikpanel-dashboard-section-order.php
+     * reads those saved lists). The marketplace box exists only while
+     * BrikMarket is active, so it never shows up as a phantom option.
+     *
+     * @return array<string,string> Box key => label.
      */
     public static function get_section_labels() {
         $labels = [
-            'profit'            => __( 'Profit (Revenue, Cost of goods, Net profit)', 'brikpanel' ),
-            'kpis'              => __( 'KPI cards (Sales, Orders, AOV, Visitors, Conversion)', 'brikpanel' ),
-            'sales_live'        => __( 'Sales over time + Live visitors', 'brikpanel' ),
-            'funnel_rates'      => __( 'Conversion funnel + Order rates', 'brikpanel' ),
-            'locations'         => __( 'Order locations globe + Top countries/cities', 'brikpanel' ),
-            'products_orders'   => __( 'Top products + Recent orders', 'brikpanel' ),
-            'views_cart'        => __( 'Most viewed pages + Most added to cart', 'brikpanel' ),
-            'devices'           => __( 'Visitors by device + Customer types + Traffic sources', 'brikpanel' ),
-            'customer_segments' => __( 'Customer segments (RFM)', 'brikpanel' ),
-            'stock_returns'     => __( 'Low stock + Customer lifetime value', 'brikpanel' ),
-            'subscriptions'     => __( 'Subscriptions', 'brikpanel' ),
-            'wp_widgets'        => __( 'WordPress dashboard widgets', 'brikpanel' ),
+            'profit'        => __( 'Profit (Revenue, Cost of goods, Net profit)', 'brikpanel' ),
+            'kpis'          => __( 'KPI cards (Sales, Orders, AOV, Visitors, Conversion)', 'brikpanel' ),
+            'sales'         => __( 'Sales over time', 'brikpanel' ),
+            'live'          => __( 'Live visitors', 'brikpanel' ),
+            'funnel'        => __( 'Conversion funnel', 'brikpanel' ),
+            'rates'         => __( 'Order rates', 'brikpanel' ),
+            'locations'     => __( 'Order locations globe + Top countries/cities', 'brikpanel' ),
+            'best_sellers'  => __( 'Best sellers', 'brikpanel' ),
+            'most_viewed'   => __( 'Most viewed pages', 'brikpanel' ),
+            'most_added'    => __( 'Most added to cart', 'brikpanel' ),
+            'recent_orders' => __( 'Recent orders', 'brikpanel' ),
+            'visitors'      => __( 'Visitors (devices, sources, campaigns)', 'brikpanel' ),
+            'customers'     => __( 'Customers (new and returning)', 'brikpanel' ),
+            'segments'      => __( 'Customer segments (RFM)', 'brikpanel' ),
+            'low_stock'     => __( 'Low stock', 'brikpanel' ),
+            'ltv'           => __( 'Customer lifetime value', 'brikpanel' ),
+            'subscriptions' => __( 'Subscriptions', 'brikpanel' ),
+            'wp_widgets'    => __( 'WordPress dashboard widgets', 'brikpanel' ),
         ];
         if ( function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active() ) {
+            // Right after the store cards, so the marketplace breakdown sits
+            // next to the (now site-only) headline numbers it separates out.
             $reordered = [];
             foreach ( $labels as $k => $v ) {
                 $reordered[ $k ] = $v;
@@ -436,105 +442,287 @@ class Brikpanel_Dashboard {
     }
 
     /**
-     * Resolve the set of section keys the admin has chosen to display.
+     * How a box sits on the dashboard: 'block' (a whole row of its own
+     * markup), 'solo' (a card alone in its row) or 'half' (a card that shares
+     * its row with the next one).
      *
-     * Empty/missing means "show all" — that covers the default install (option
-     * never written), a cleared multiselect (WC saves `[]`), and the legacy
-     * `''` value some hosts persisted before WC normalised the type. An
-     * explicit non-empty list is allowlisted against current sections so a
-     * stale key for a removed section can never reach the renderer.
+     * @param string $key Box key.
+     * @return string
      */
-    private function get_visible_sections( array $sections ) {
-        $default = array_keys( $sections );
-        $saved   = get_option( 'brikpanel_dashboard_visible_sections' );
-        if ( ! is_array( $saved ) || empty( $saved ) ) {
-            $visible = $default;
-        } else {
-            $visible = array_values( array_intersect( $saved, $default ) );
-            if ( empty( $visible ) ) {
-                $visible = $default;
-            }
-
-            // Newly introduced sections must default to VISIBLE — otherwise a
-            // flagship feature shipped in an update (e.g. Profit) would stay
-            // hidden forever on every install that ever touched these
-            // settings, because it can't appear in a list saved before it
-            // existed. The persisted section-order option records every
-            // section key known at the last save (the save handler appends
-            // all known keys), so any current key missing from it is brand
-            // new — show it. Keys that ARE in the order list but absent from
-            // the visible list were deliberately hidden and stay hidden.
-            $order_raw = get_option( 'brikpanel_dashboard_section_order', '' );
-            $known_at_save = [];
-            if ( is_string( $order_raw ) && '' !== $order_raw ) {
-                $decoded = json_decode( $order_raw, true );
-                if ( is_array( $decoded ) ) {
-                    $known_at_save = array_values( array_filter( $decoded, 'is_string' ) );
-                }
-            }
-            if ( ! empty( $known_at_save ) ) {
-                foreach ( $default as $slug ) {
-                    if ( ! in_array( $slug, $known_at_save, true )
-                        && ! in_array( $slug, $visible, true ) ) {
-                        $visible[] = $slug;
-                    }
-                }
-            }
-        }
-
-        /**
-         * Filter the visible dashboard sections.
-         *
-         * @param string[] $visible  Section keys that should render.
-         * @param string[] $default  All known section keys for this install.
-         */
-        $visible = apply_filters( 'brikpanel_dashboard_visible_sections', $visible, $default );
-        return is_array( $visible ) ? array_values( array_intersect( $visible, $default ) ) : $default;
+    public static function box_kind( $key ) {
+        return isset( self::BOX_KIND[ $key ] ) ? self::BOX_KIND[ $key ] : 'half';
     }
 
     /**
-     * Resolve the final section order from (1) the Settings UI and (2) the
-     * filter hook. Unknown keys are discarded; known keys missing from the
-     * saved order are appended in their default position so newly added
-     * sections remain visible after a plugin update.
+     * The rows the dashboard draws, in order. Pure: the settings list and the
+     * layout test use it too.
+     *
+     * Cards join first, on the ticked list: Best sellers takes Most viewed
+     * pages and Most added to cart in as tabs while they come right after it,
+     * and the Customers card takes Customer segments in when it comes right
+     * after it. A box that prints nothing on this request (`$silent`) still
+     * stands between two cards for that, as its row did up to 3.3.31. Then
+     * blocks take their own row, a lone Customer segments card takes a row of
+     * its own, and the other cards go two to a row in list order; a card left
+     * without a partner fills the row alone.
+     *
+     * @param string[] $order   Box keys in their order.
+     * @param string[] $visible Ticked box keys.
+     * @param string[] $silent  Box keys that print nothing on this request.
+     * @return array[] Each row: ['block' => key] or ['class' => '21'|'12'|'11'|'1',
+     *                 'section' => legacy row name or '', 'cards' => [card, ...]];
+     *                 a card is ['box' => key, 'keys' => [box keys], 'views' => [...]
+     *                 (products), 'blocks' => [...] (customers), 'width' => ...].
      */
-    private function resolve_section_order( array $sections ) {
-        $default = array_keys( $sections );
-
-        // Order comes from the Settings UI's reorderable picker (see
-        // brikpanel-dashboard-section-order.php). When nothing is persisted
-        // yet, that helper falls back to the legacy
-        // `brikpanel_dashboard_wp_widgets_position` toggle so installs
-        // upgrading from pre-reorder versions don't see wp_widgets jump.
-        $order = function_exists( 'brikpanel_dashboard_get_section_order' )
-            ? brikpanel_dashboard_get_section_order()
-            : $default;
-
-        $order = apply_filters( 'brikpanel_dashboard_section_order', $order, $sections );
-        if ( ! is_array( $order ) ) {
-            $order = $default;
-        }
-
-        // Allowlist + preserve discovery of new defaults.
-        $clean = [];
-        foreach ( $order as $k ) {
-            if ( isset( $sections[ $k ] ) && ! in_array( $k, $clean, true ) ) {
-                $clean[] = $k;
+    public static function plan_rows( array $order, array $visible, array $silent = [] ) {
+        $on    = array_fill_keys( array_map( 'strval', $visible ), true );
+        $shown = [];
+        foreach ( $order as $key ) {
+            if ( is_string( $key ) && isset( $on[ $key ] ) && ! in_array( $key, $shown, true ) ) {
+                $shown[] = $key;
             }
         }
-        foreach ( $default as $k ) {
-            if ( ! in_array( $k, $clean, true ) ) {
-                $clean[] = $k;
+
+        $units = [];
+        $count = count( $shown );
+        for ( $i = 0; $i < $count; $i++ ) {
+            $key = $shown[ $i ];
+            if ( 'best_sellers' === $key ) {
+                $unit = [ 'box' => 'products', 'keys' => [ $key ], 'views' => [ 'sold' ], 'kind' => 'half', 'width' => '' ];
+                while ( $i + 1 < $count && in_array( $shown[ $i + 1 ], [ 'most_viewed', 'most_added' ], true ) ) {
+                    $i++;
+                    $unit['keys'][]  = $shown[ $i ];
+                    $unit['views'][] = 'most_viewed' === $shown[ $i ] ? 'viewed' : 'cart';
+                }
+                $units[] = $unit;
+            } elseif ( 'most_viewed' === $key || 'most_added' === $key ) {
+                $units[] = [ 'box' => 'products', 'keys' => [ $key ], 'views' => [ 'most_viewed' === $key ? 'viewed' : 'cart' ], 'kind' => 'half', 'width' => '' ];
+            } elseif ( 'customers' === $key ) {
+                $unit = [ 'box' => 'customers', 'keys' => [ $key ], 'blocks' => [ 'types' ], 'kind' => 'half', 'width' => '' ];
+                if ( $i + 1 < $count && 'segments' === $shown[ $i + 1 ] ) {
+                    $i++;
+                    $unit['keys'][]   = 'segments';
+                    $unit['blocks'][] = 'segments';
+                }
+                $units[] = $unit;
+            } elseif ( 'segments' === $key ) {
+                $units[] = [ 'box' => 'customers', 'keys' => [ $key ], 'blocks' => [ 'segments' ], 'kind' => 'solo', 'width' => '' ];
+            } else {
+                $units[] = [
+                    'box'   => $key,
+                    'keys'  => [ $key ],
+                    'kind'  => self::box_kind( $key ),
+                    'width' => isset( self::BOX_WIDTH[ $key ] ) ? self::BOX_WIDTH[ $key ] : '',
+                ];
             }
         }
-        return $clean;
+
+        $quiet   = array_fill_keys( array_map( 'strval', $silent ), true );
+        $rows    = [];
+        $pending = null;
+        foreach ( $units as $unit ) {
+            if ( isset( $quiet[ $unit['keys'][0] ] ) ) {
+                continue;
+            }
+            if ( 'half' !== $unit['kind'] ) {
+                if ( null !== $pending ) {
+                    $rows[]  = self::plan_row( [ $pending ] );
+                    $pending = null;
+                }
+                $rows[] = 'block' === $unit['kind'] ? [ 'block' => $unit['box'] ] : self::plan_row( [ $unit ] );
+                continue;
+            }
+            if ( null === $pending ) {
+                $pending = $unit;
+                continue;
+            }
+            $rows[]  = self::plan_row( [ $pending, $unit ] );
+            $pending = null;
+        }
+        if ( null !== $pending ) {
+            $rows[] = self::plan_row( [ $pending ] );
+        }
+        return $rows;
+    }
+
+    /**
+     * One row of cards: its column class and, when it holds exactly what a
+     * 3.3.31 row held, that row's name.
+     *
+     * @param array[] $cards One or two cards from plan_rows().
+     * @return array
+     */
+    private static function plan_row( array $cards ) {
+        $class = '1';
+        if ( 2 === count( $cards ) ) {
+            $class = '11';
+            if ( 'wide' === $cards[0]['width'] && 'narrow' === $cards[1]['width'] ) {
+                $class = '21';
+            } elseif ( 'narrow' === $cards[0]['width'] && 'wide' === $cards[1]['width'] ) {
+                $class = '12';
+            }
+        }
+        $lead = [];
+        foreach ( $cards as $card ) {
+            $lead[] = $card['keys'][0];
+        }
+        $lead = implode( '+', $lead );
+        return [
+            'class'   => $class,
+            'section' => isset( self::LEGACY_ROW_ATTR[ $lead ] ) ? self::LEGACY_ROW_ATTR[ $lead ] : '',
+            'cards'   => $cards,
+        ];
+    }
+
+    /**
+     * Ticked boxes that print nothing for this request: Subscriptions without
+     * WooCommerce Subscriptions, and the WordPress widgets when none of the
+     * picked ones is for this user.
+     *
+     * @param array $visible Ticked box keys (as keys).
+     * @return string[]
+     */
+    private function silent_boxes( array $visible ) {
+        $silent = [];
+        if ( ! class_exists( 'WC_Subscriptions' ) ) {
+            $silent[] = 'subscriptions';
+        }
+        if ( isset( $visible['wp_widgets'] ) && ! $this->embedded_wp_widgets() ) {
+            $silent[] = 'wp_widgets';
+        }
+        return $silent;
+    }
+
+    /**
+     * Print the planned rows (plan_rows()).
+     *
+     * @param array[] $rows
+     * @return void
+     */
+    private function render_rows( array $rows ) {
+        foreach ( $rows as $row ) {
+            if ( isset( $row['block'] ) ) {
+                $this->render_block( $row['block'] );
+                continue;
+            }
+            $attr = '' !== $row['section'] ? ' data-bp-dv-section="' . esc_attr( $row['section'] ) . '"' : '';
+            echo "\n" . '            <section class="bp-dv-row bp-dv-row--' . esc_attr( $row['class'] ) . '"' . $attr . '>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- both parts escaped above
+            foreach ( $row['cards'] as $card ) {
+                $this->render_card( $card );
+            }
+            echo "\n" . '            </section>' . "\n";
+        }
+    }
+
+    /**
+     * A box with its own markup and its own row.
+     *
+     * @param string $key Box key.
+     * @return void
+     */
+    private function render_block( $key ) {
+        switch ( $key ) {
+            case 'profit':
+                $this->render_section_profit();
+                break;
+            case 'kpis':
+                $this->render_section_kpis();
+                break;
+            case 'marketplace_analytics':
+                $this->render_section_marketplace_analytics();
+                break;
+            case 'locations':
+                $this->render_section_locations();
+                break;
+            case 'subscriptions':
+                $this->render_section_subscriptions();
+                break;
+            case 'wp_widgets':
+                $this->render_embedded_wp_widgets();
+                break;
+        }
+    }
+
+    /**
+     * One card of a row.
+     *
+     * @param array $card From plan_rows().
+     * @return void
+     */
+    private function render_card( array $card ) {
+        switch ( $card['box'] ) {
+            case 'products':
+                $this->render_products_card( $card['views'] );
+                break;
+            case 'customers':
+                $this->render_customers_card( $card['blocks'] );
+                break;
+            case 'sales':
+                $this->render_box_sales();
+                break;
+            case 'live':
+                $this->render_box_live();
+                break;
+            case 'funnel':
+                $this->render_box_funnel();
+                break;
+            case 'rates':
+                $this->render_box_rates();
+                break;
+            case 'recent_orders':
+                $this->render_box_recent_orders();
+                break;
+            case 'visitors':
+                $this->render_box_visitors();
+                break;
+            case 'low_stock':
+                $this->render_box_low_stock();
+                break;
+            case 'ltv':
+                $this->render_box_ltv();
+                break;
+        }
+    }
+
+    /**
+     * "Customize" at the end of the date line: opens the "Dashboard sections"
+     * list in Settings. Only for someone who can open those settings
+     * (the multisite lock and "settings for administrators only" included).
+     *
+     * @return void
+     */
+    private function render_customize_link() {
+        $can = function_exists( 'brikpanel_user_can_open_settings' )
+            ? brikpanel_user_can_open_settings()
+            : current_user_can( 'manage_woocommerce' );
+        if ( ! $can ) {
+            return;
+        }
+        $url = add_query_arg(
+            [
+                'page'    => 'wc-settings',
+                'tab'     => 'brikpanel',
+                'section' => 'dashboard',
+            ],
+            admin_url( 'admin.php' )
+        ) . '#bp-jump-brikpanel-dashboard-section-order';
+        ?>
+                <a class="brikpanel-btn brikpanel-btn--link brikpanel-dash-customize" href="<?php echo esc_url( $url ); ?>">
+                    <svg class="brikpanel-dash-customize-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span><?php echo esc_html_x( 'Customize', 'link on the dashboard date line to the dashboard layout settings', 'brikpanel' ); ?></span>
+                </a>
+        <?php
     }
 
     public function render_page() {
-        $sections = $this->get_sections();
-        $order    = $this->resolve_section_order( $sections );
-        $visible  = array_flip( $this->get_visible_sections( $sections ) );
-        $this->plan_merged_cards( $order, $visible );
+        // Which boxes, in which order (brikpanel-dashboard-section-order.php
+        // reads both the box lists saved since 3.3.32 and the row lists saved
+        // before), then the rows they make.
+        $layout  = function_exists( 'brikpanel_dashboard_layout' )
+            ? brikpanel_dashboard_layout( true )
+            : [ 'order' => array_keys( self::get_section_labels() ), 'visible' => array_keys( self::get_section_labels() ) ];
+        $visible = array_flip( $layout['visible'] );
+        $rows    = self::plan_rows( $layout['order'], $layout['visible'], $this->silent_boxes( $visible ) );
         ?>
         <div id="brikpanel-dashboard" class="brikpanel-dashboard brikpanel-shell__page">
             <?php
@@ -643,6 +831,20 @@ class Brikpanel_Dashboard {
                                     </span>
                                     <span class="brikpanel-dash-export-label" data-bp-fit-labels="<?php echo esc_attr( wp_json_encode( [ __( 'Export Excel', 'brikpanel' ), __( 'Preparing…', 'brikpanel' ) ] ) ); ?>"><?php esc_html_e( 'Export Excel', 'brikpanel' ); ?></span>
                                 </button>
+                                <?php
+                                // "Keep screen on": phones only, in the folded menu.
+                                // front-end/dashboard/brikpanel-wake-lock.js shows it
+                                // where the browser can keep the screen awake. Parked
+                                // with the phone app (brikpanel_phone_app_enabled()).
+                                if ( brikpanel_phone_app_enabled() ) :
+                                ?>
+                                <button type="button" class="brikpanel-wake-toggle" id="brikpanel-wake-toggle" aria-pressed="false" hidden>
+                                    <span class="brikpanel-wake-toggle__icon" aria-hidden="true">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+                                    </span>
+                                    <span class="brikpanel-wake-toggle__label"><?php esc_html_e( 'Keep screen on', 'brikpanel' ); ?></span>
+                                </button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -680,24 +882,28 @@ class Brikpanel_Dashboard {
                 </span>
                 <span class="brikpanel-dash-period-text"><?php esc_html_e( 'Loading…', 'brikpanel' ); ?></span>
                 <?php $this->render_scope_hint(); ?>
+                <?php $this->render_customize_link(); ?>
             </div>
             <?php brikpanel_header_end(); ?>
 
             <?php $this->render_new_store_guide( isset( $visible['profit'] ) ); ?>
 
             <?php
-            foreach ( $order as $section_key ) {
-                if ( ! isset( $visible[ $section_key ] ) ) {
-                    continue;
-                }
-                if ( isset( $sections[ $section_key ] ) && is_callable( $sections[ $section_key ] ) ) {
-                    call_user_func( $sections[ $section_key ] );
-                }
-            }
+            /**
+             * Fires right after the new-store guide, above the first section.
+             * The survey card prints here. It runs after the guide on purpose:
+             * when the guide finds the store already has orders, its turn
+             * passes on in the same request (includes/brikpanel-asks.php).
+             *
+             * @since 3.3.32
+             */
+            do_action( 'brikpanel_dashboard_before_sections' );
+
+            $this->render_rows( $rows );
 
             /**
              * Fires after all dashboard sections, at the bottom of the dashboard
-             * content. Used to render the dismissible promo and newsletter cards.
+             * content. Used to render the dismissible BrikMentor card.
              *
              * @since 3.1.28
              */
@@ -706,37 +912,6 @@ class Brikpanel_Dashboard {
 
         </div>
         <?php
-    }
-
-    /**
-     * Which sections share a card in the October 2026 layout. The list of
-     * sections in Settings did not change, so every saved choice keeps
-     * working: "Top products + Recent orders" and "Most viewed pages + Most
-     * added to cart" now fill one Products card with three tabs, and
-     * "Visitors by device + Customer types + Traffic sources" and "Customer
-     * segments (RFM)" fill the Visitors and Customers cards.
-     *
-     * Two such sections share a card only when both are shown and stand next
-     * to each other in the chosen order. Apart (one moved up the page, or one
-     * hidden), each draws its own part where it stands: Best sellers beside
-     * Recent orders, the two lists as two cards, the Visitors card beside new
-     * and returning customers, the segments as a card of their own.
-     *
-     * @param string[] $order   Section keys in their order.
-     * @param array    $visible Shown section keys (as keys).
-     * @return void
-     */
-    private function plan_merged_cards( array $order, array $visible ) {
-        $shown = array_values( array_filter( $order, function ( $key ) use ( $visible ) {
-            return isset( $visible[ $key ] );
-        } ) );
-        $adjacent = function ( $a, $b ) use ( $shown ) {
-            $ia = array_search( $a, $shown, true );
-            $ib = array_search( $b, $shown, true );
-            return false !== $ia && false !== $ib && 1 === abs( $ia - $ib );
-        };
-        $this->merge_products  = $adjacent( 'products_orders', 'views_cart' );
-        $this->merge_customers = $adjacent( 'devices', 'customer_segments' );
     }
 
     // =========================================================================
@@ -754,6 +929,11 @@ class Brikpanel_Dashboard {
      *                             quick "Add expense" window, is on this page.
      */
     private function render_new_store_guide( $profit_visible ) {
+        // One ask at a time (includes/brikpanel-asks.php): the guide takes its
+        // turn after the welcome tour like every other card on this page.
+        if ( ! function_exists( 'brikpanel_ask_allows' ) || ! brikpanel_ask_allows( 'guide' ) ) {
+            return;
+        }
         if ( ! current_user_can( 'manage_woocommerce' ) ) {
             return;
         }
@@ -765,6 +945,9 @@ class Brikpanel_Dashboard {
         // request, not to the page's first paint.
         $state = $this->store_basics();
         if ( ! empty( $state['has_any_order'] ) ) {
+            // Not a new store after all: the turn passes on at once, so the
+            // next card can take this same spot on this page view.
+            brikpanel_ask_retire( 'guide' );
             return;
         }
 
@@ -806,6 +989,7 @@ class Brikpanel_Dashboard {
         }
 
         $admin_orders = (int) ( $state['admin_orders'] ?? 0 );
+        brikpanel_ask_shown( 'guide' );
         ?>
         <section class="brikpanel-dash-guide" id="brikpanel-dash-guide" aria-labelledby="brikpanel-dash-guide-title"
                  data-nonce="<?php echo esc_attr( wp_create_nonce( 'brikpanel_dash_guide_dismiss' ) ); ?>">
@@ -950,6 +1134,9 @@ class Brikpanel_Dashboard {
             wp_send_json_error( [ 'message' => 'Unauthorized.' ], 403 );
         }
         update_user_option( get_current_user_id(), self::GUIDE_DISMISSED_OPTION, 1 );
+        if ( function_exists( 'brikpanel_ask_closed' ) ) {
+            brikpanel_ask_closed( 'guide' );
+        }
         wp_send_json_success();
     }
 
@@ -1788,12 +1975,14 @@ class Brikpanel_Dashboard {
         <?php
     }
 
-    public function render_section_sales_live() {
+    /**
+     * Sales over time. The cards below print without a row around them:
+     * render_rows() puts them two to a row (plan_rows()).
+     */
+    private function render_box_sales() {
         $mp_active = function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active();
         $chart_id  = wp_unique_id( 'bp-dv-sales-chart-' );
         ?>
-            <!-- Row: Sales over time + Live visitors -->
-            <section class="bp-dv-row bp-dv-row--21" data-bp-dv-section="sales_live">
                 <article class="bp-dv-card bp-dv-sales" data-bp-dv="sales" aria-labelledby="bp-dv-sales-title">
                     <div class="bp-dv-card-h">
                         <h2 class="bp-dv-title" id="bp-dv-sales-title"><?php esc_html_e( 'Sales over time', 'brikpanel' ); ?></h2>
@@ -1830,6 +2019,11 @@ class Brikpanel_Dashboard {
                     <p class="brikpanel-dash-empty bp-dv-empty" data-bp-dv-slot="empty" hidden></p>
                     <span class="screen-reader-text" aria-live="polite" data-bp-dv-slot="live"></span>
                 </article>
+        <?php
+    }
+
+    private function render_box_live() {
+        ?>
                 <article class="bp-dv-card bp-dv-live" data-bp-dv="live" aria-labelledby="bp-dv-live-title">
                     <div class="bp-dv-card-h">
                         <h2 class="bp-dv-title" id="bp-dv-live-title"><?php esc_html_e( 'Live visitors', 'brikpanel' ); ?></h2>
@@ -1840,14 +2034,11 @@ class Brikpanel_Dashboard {
                     <div class="bp-dv-live-body" id="live-visitors-list" data-bp-dv-slot="body"></div>
                     <span class="screen-reader-text" aria-live="polite" data-bp-dv-slot="hours-live"></span>
                 </article>
-            </section>
         <?php
     }
 
-    public function render_section_funnel_rates() {
+    private function render_box_funnel() {
         ?>
-            <!-- Row: Conversion funnel + Order rates -->
-            <section class="bp-dv-row bp-dv-row--11" data-bp-dv-section="funnel_rates">
                 <article class="bp-dv-card bp-dv-funnel" data-bp-dv="funnel">
                     <div class="bp-dv-card-h">
                         <h2 class="bp-dv-title"><?php esc_html_e( 'Conversion funnel', 'brikpanel' ); ?><?php $this->render_tracking_hint(); ?></h2>
@@ -1862,6 +2053,11 @@ class Brikpanel_Dashboard {
                         <a class="brikpanel-dash-cartab-label" href="<?php echo esc_url( function_exists( 'brikpanel_module_url' ) ? brikpanel_module_url( 'brikpanel-abandoned-carts' ) : admin_url( 'admin.php?page=brikpanel-abandoned-carts' ) ); ?>"><?php esc_html_e( 'Abandoned carts', 'brikpanel' ); ?></a>
                     </p>
                 </article>
+        <?php
+    }
+
+    private function render_box_rates() {
+        ?>
                 <article class="bp-dv-card bp-dv-rates" data-bp-dv="rates">
                     <div class="bp-dv-card-h">
                         <h2 class="bp-dv-title"><?php esc_html_e( 'Order rates', 'brikpanel' ); ?></h2>
@@ -1876,7 +2072,6 @@ class Brikpanel_Dashboard {
                         <p class="brikpanel-dash-empty bp-dv-empty" data-bp-dv-slot="empty" hidden></p>
                     </div>
                 </article>
-            </section>
         <?php
     }
 
@@ -1921,17 +2116,8 @@ class Brikpanel_Dashboard {
         <?php
     }
 
-    /**
-     * "Top products + Recent orders". Next to "Most viewed pages + Most added
-     * to cart" (plan_merged_cards()) the Products card carries all three
-     * lists as tabs; on its own it shows Best sellers.
-     */
-    public function render_section_products_orders() {
-        $views = $this->merge_products ? [ 'sold', 'viewed', 'cart' ] : [ 'sold' ];
+    private function render_box_recent_orders() {
         ?>
-            <!-- Row: Products + Recent orders -->
-            <section class="bp-dv-row bp-dv-row--11" data-bp-dv-section="products_orders">
-                <?php $this->render_products_card( $views ); ?>
                 <article class="bp-dv-card bp-dv-orders" data-bp-dv="orders">
                     <div class="bp-dv-card-h">
                         <h2 class="bp-dv-title"><?php esc_html_e( 'Recent orders', 'brikpanel' ); ?></h2>
@@ -1939,29 +2125,13 @@ class Brikpanel_Dashboard {
                     </div>
                     <div class="bp-dv-card-body bp-dv-list-body" data-bp-dv-slot="list"></div>
                 </article>
-            </section>
-        <?php
-    }
-
-    /**
-     * "Most viewed pages + Most added to cart": inside the Products card when
-     * it stands next to "Top products + Recent orders", else two cards.
-     */
-    public function render_section_views_cart() {
-        if ( $this->merge_products ) {
-            return;
-        }
-        ?>
-            <!-- Row: Most viewed + Most added to cart -->
-            <section class="bp-dv-row bp-dv-row--11" data-bp-dv-section="views_cart">
-                <?php $this->render_products_card( [ 'viewed' ] ); ?>
-                <?php $this->render_products_card( [ 'cart' ] ); ?>
-            </section>
         <?php
     }
 
     /**
      * A Products card: one list (its name as the title) or several as tabs.
+     * Best sellers takes Most viewed pages and Most added to cart in as tabs
+     * when they come right after it on the dashboard (plan_rows()).
      *
      * @param string[] $views 'sold', 'viewed', 'cart'.
      * @return void
@@ -2008,18 +2178,15 @@ class Brikpanel_Dashboard {
     }
 
     /**
-     * "Visitors by device + Customer types + Traffic sources": the Visitors
-     * card (devices, sources, top campaigns) and the Customers card. Next to
-     * "Customer segments (RFM)" the Customers card shows the segments too.
+     * The Visitors card: devices, traffic sources and top campaigns.
      */
-    public function render_section_devices() {
+    private function render_box_visitors() {
         $ids = [
             'devices'   => wp_unique_id( 'bp-dv-visitors-devices-' ),
             'sources'   => wp_unique_id( 'bp-dv-visitors-sources-' ),
             'campaigns' => wp_unique_id( 'bp-dv-visitors-campaigns-' ),
         ];
         ?>
-        <section class="bp-dv-row bp-dv-row--11" data-bp-dv-section="devices">
             <article class="bp-dv-card bp-dv-visitors" data-bp-dv="visitors">
                 <div class="bp-dv-card-h">
                     <h2 class="bp-dv-title"><?php esc_html_e( 'Visitors', 'brikpanel' ); ?></h2>
@@ -2071,28 +2238,13 @@ class Brikpanel_Dashboard {
                     <div data-bp-dv-slot="campaigns"></div>
                 </div>
             </article>
-            <?php $this->render_customers_card( $this->merge_customers ? [ 'types', 'segments' ] : [ 'types' ] ); ?>
-        </section>
-        <?php
-    }
-
-    /**
-     * "Customer segments (RFM)": inside the Customers card when it stands
-     * next to the devices section, else a card of its own.
-     */
-    public function render_section_customer_segments() {
-        if ( $this->merge_customers ) {
-            return;
-        }
-        ?>
-        <section class="bp-dv-row bp-dv-row--1" data-bp-dv-section="customer_segments">
-            <?php $this->render_customers_card( [ 'segments' ] ); ?>
-        </section>
         <?php
     }
 
     /**
      * The Customers card: new and returning, the segments in three groups, or both.
+     * Customer segments joins the Customers card when it comes right after it
+     * on the dashboard; on its own it is a card of its own row (plan_rows()).
      *
      * @param string[] $blocks 'types', 'segments'.
      * @return void
@@ -2340,7 +2492,7 @@ class Brikpanel_Dashboard {
         return $out;
     }
 
-    public function render_section_stock_returns() {
+    private function render_box_low_stock() {
         $catalog = $this->get_catalog_counts();
         // Compact catalog-size line under the Low stock heading, joined with a
         // middot: products (catalog entries), variations, sellable items
@@ -2374,12 +2526,7 @@ class Brikpanel_Dashboard {
                 );
             }
         }
-        $ca_url = function_exists( 'brikpanel_module_url' )
-            ? brikpanel_module_url( 'brikpanel-customer-analytics', [], '', false )
-            : admin_url( 'admin.php?page=brikpanel-customer-analytics' );
         ?>
-            <!-- Row: Low stock + Customer lifetime value -->
-            <section class="bp-dv-row bp-dv-row--11" data-bp-dv-section="stock_returns">
                 <article class="bp-dv-card bp-dv-stock" data-bp-dv="stock">
                     <div class="bp-dv-card-h">
                         <h2 class="bp-dv-title"><?php esc_html_e( 'Low stock', 'brikpanel' ); ?></h2>
@@ -2393,6 +2540,14 @@ class Brikpanel_Dashboard {
                         <p class="brikpanel-dash-empty"><?php esc_html_e( 'Loading...', 'brikpanel' ); ?></p>
                     </div>
                 </article>
+        <?php
+    }
+
+    private function render_box_ltv() {
+        $ca_url = function_exists( 'brikpanel_module_url' )
+            ? brikpanel_module_url( 'brikpanel-customer-analytics', [], '', false )
+            : admin_url( 'admin.php?page=brikpanel-customer-analytics' );
+        ?>
                 <article class="bp-dv-card bp-dv-ltv" data-bp-dv="ltv">
                     <div class="bp-dv-card-h">
                         <h2 class="bp-dv-title"><?php esc_html_e( 'Customer lifetime value', 'brikpanel' ); ?></h2>
@@ -2402,7 +2557,6 @@ class Brikpanel_Dashboard {
                         <p class="brikpanel-dash-empty"><?php esc_html_e( 'Loading...', 'brikpanel' ); ?></p>
                     </div>
                 </article>
-            </section>
         <?php
     }
 
@@ -2673,34 +2827,43 @@ class Brikpanel_Dashboard {
     // =========================================================================
 
     /**
-     * Render user-selected WordPress dashboard widgets inside the BrikPanel
-     * dashboard, styled as BrikPanel cards in a responsive 3-column grid.
+     * The WordPress dashboard widgets this user gets on the BrikPanel
+     * dashboard: the ones picked in Settings, in that order, each passing its
+     * own audience rule (Everyone / Admins only / Specific roles) so the owner
+     * can keep sensitive widgets like Site Health limited by role. Worked out
+     * once per request: the row planner asks before the widgets render.
+     *
+     * @return array<string,array> Widget id => widget.
      */
-    public function render_embedded_wp_widgets() {
+    private function embedded_wp_widgets() {
+        if ( null !== $this->wp_widgets_chosen ) {
+            return $this->wp_widgets_chosen;
+        }
+        $this->wp_widgets_chosen = [];
         $selected = (array) get_option( 'brikpanel_dashboard_wp_widgets', [] );
-        if ( empty( $selected ) ) {
-            return;
+        if ( empty( $selected ) || ! function_exists( 'brikpanel_collect_dashboard_widgets' ) ) {
+            return $this->wp_widgets_chosen;
         }
-
-        if ( ! function_exists( 'brikpanel_collect_dashboard_widgets' ) ) {
-            return;
-        }
-
         $widgets = brikpanel_collect_dashboard_widgets();
-        // Preserve user-selected order. Each widget is additionally gated by its
-        // own audience rule (Everyone / Admins only / Specific roles) so the
-        // owner can keep sensitive widgets like Site Health limited by role.
-        $chosen = [];
         foreach ( $selected as $widget_id ) {
-            if ( ! isset( $widgets[ $widget_id ] ) ) {
+            if ( ! is_string( $widget_id ) || ! isset( $widgets[ $widget_id ] ) ) {
                 continue;
             }
             if ( function_exists( 'brikpanel_dashboard_widget_audience_allows' )
                 && ! brikpanel_dashboard_widget_audience_allows( $widget_id ) ) {
                 continue;
             }
-            $chosen[ $widget_id ] = $widgets[ $widget_id ];
+            $this->wp_widgets_chosen[ $widget_id ] = $widgets[ $widget_id ];
         }
+        return $this->wp_widgets_chosen;
+    }
+
+    /**
+     * Render user-selected WordPress dashboard widgets inside the BrikPanel
+     * dashboard, styled as BrikPanel cards in a responsive 3-column grid.
+     */
+    public function render_embedded_wp_widgets() {
+        $chosen = $this->embedded_wp_widgets();
         if ( empty( $chosen ) ) {
             return;
         }

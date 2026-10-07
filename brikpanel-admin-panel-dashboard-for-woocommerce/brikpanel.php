@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.31
+ * Version: 3.3.32
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.31');
+define('BRIKPANEL_VERSION', '3.3.32');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -323,6 +323,7 @@ function brikpanel_drop_subsite_tables($tables, $blog_id) {
         'brikpanel_stock_order_items',
         'brikpanel_ad_spend',
         'brikpanel_abandoned_carts',
+        'brikpanel_push_devices',
     ] as $name) {
         $tables[] = $prefix . $name;
     }
@@ -346,6 +347,9 @@ add_action( 'wp_delete_site', function ( $old_site ) {
     // Dashboard "new store" guide dismissal
     // (front-end/dashboard/brikpanel-dashboard.php), stored the same way.
     delete_metadata( 'user', 0, $brikpanel_blog_prefix . 'brikpanel_new_store_guide_dismissed', '', true );
+    // Phone notifications: the stamp of what this person's phone can do
+    // (front-end/push/brikpanel-push-admin.php), stored the same way.
+    delete_metadata( 'user', 0, $brikpanel_blog_prefix . 'brikpanel_push_phone', '', true );
 } );
 
 // =============================================================================
@@ -712,6 +716,21 @@ brikpanel_require('front-end/order-statuses/brikpanel-order-statuses.php');
 // admin-gated. See front-end/order-statuses/brikpanel-status-emails.php.
 brikpanel_require('front-end/order-statuses/brikpanel-status-emails.php');
 
+// Phone notifications (Web Push), the Home Screen app and "Keep screen on" on
+// the dashboard: parked until they are tested on real phones. The code ships,
+// but none of it loads unless wp-config.php has
+// define( 'BRIKPANEL_PHONE_APP', true ). When on, the module loads on every
+// request for the same reason as the emails above: orders reach a new status
+// at checkout, in payment webhooks and in cron jobs, not only in wp-admin. The
+// gate file loads either way (export keys, jobs left by a test).
+function brikpanel_phone_app_enabled() {
+    return defined( 'BRIKPANEL_PHONE_APP' ) && BRIKPANEL_PHONE_APP;
+}
+brikpanel_require('front-end/push/brikpanel-push-gate.php');
+if ( brikpanel_phone_app_enabled() ) {
+    brikpanel_require('front-end/push/brikpanel-push.php');
+}
+
 // WhatsApp follow-ups: a status change drops an order's press note. Global for
 // the same reason: statuses change outside wp-admin too.
 brikpanel_require('front-end/orders/brikpanel-order-whatsapp-press.php');
@@ -774,6 +793,8 @@ function brikpanel_init_admin() {
     brikpanel_require('front-end/order/brikpanel-order-fields.php');
     brikpanel_require('front-end/order/brikpanel-order-shipping-cost.php');
     brikpanel_require('front-end/order/brikpanel-order-box-placement.php');
+    // Product weights under each order line and the order's total weight.
+    brikpanel_require('front-end/order/brikpanel-order-weight.php');
     brikpanel_require('front-end/import-export/brikpanel-import-export.php');
     brikpanel_require('front-end/products/brikpanel-section-order.php');
     brikpanel_require('front-end/products/brikpanel-qe-order.php');
@@ -896,12 +917,13 @@ function brikpanel_suppress_foreign_notices() {
                 // the same boat. Leave them untouched and in place — collecting
                 // or restyling them would either bury a genuine "saving is
                 // disabled" warning or surface it when nothing is wrong.
+                // WordPress/WooCommerce first-party "updated" confirmation
+                // (id="message", e.g. "Order updated.") — keep it inline.
+                $is_message_notice = (bool) preg_match('#\bid=(["\'])message\1#i', $open_tag);
                 $is_control_notice =
                     preg_match('#\bid=(["\'])(?:lost-connection-notice|local-storage-notice)\1#i', $open_tag)
                     || preg_match('#\bclass=(["\'])[^"\']*\bhidden\b[^"\']*\1#i', $open_tag)
-                    // WordPress/WooCommerce first-party "updated" confirmation
-                    // (id="message", e.g. "Order updated.") — keep it inline.
-                    || preg_match('#\bid=(["\'])message\1#i', $open_tag);
+                    || $is_message_notice;
 
                 // Error notices (the red ones) flag something genuinely broken,
                 // so they stay on screen instead of being tucked behind the
@@ -933,6 +955,16 @@ function brikpanel_suppress_foreign_notices() {
                     // Error/control/empty notices and BrikPanel's own notices
                     // stay inline and exactly where WordPress put them.
                     $out .= $block;
+                    // A box that stays visible holds back this page view's ask
+                    // card, so the two never stack (includes/brikpanel-asks.php,
+                    // rule 6). Hidden control notices and empty shells show
+                    // nothing, and an ask never holds itself back.
+                    $is_visible_box = $is_error_notice || $is_message_notice
+                        || ( ! $is_control_notice && ! $is_empty_notice );
+                    if ($is_visible_box && strpos($open_tag, 'brikpanel-ask') === false
+                        && function_exists('brikpanel_asks_hold')) {
+                        brikpanel_asks_hold(true);
+                    }
                 } else {
                     // Everything else is stashed behind the reveal toggle.
                     // WordPress core's common.js hoists every `div.notice`
@@ -1347,12 +1379,19 @@ brikpanel_require('includes/brikpanel-asset-isolation.php');
 brikpanel_require('includes/brikpanel-hooks-api.php');
 
 // =============================================================================
+// ONE ASK AT A TIME: the tour, the new-store guide, the survey card, the review
+// request and the BrikMentor surfaces take turns (loaded before all of them).
+// =============================================================================
+brikpanel_require('includes/brikpanel-asks.php');
+
+// =============================================================================
 // REVIEW REQUEST NOTICES (50 completed orders)
 // =============================================================================
 brikpanel_require('includes/brikpanel-review-notices.php');
 
 // =============================================================================
-// NEWSLETTER SUBSCRIPTION CAPTURE (dashboard card + settings row)
+// NEWSLETTER SUBSCRIPTION (settings row + its window, lead outbox) and the
+// BrikMentor card at the bottom of the dashboard
 // =============================================================================
 brikpanel_require('includes/brikpanel-early-access.php');
 
@@ -1771,6 +1810,11 @@ function brikpanel_create_table() {
     dbDelta($sql_stock_order_items);
     dbDelta($sql_ad_spend);
     dbDelta($sql_abandoned_carts);
+    // Phone notifications: one row per phone or browser that turned them on.
+    // The schema lives with its code (front-end/push/class-brikpanel-push-store.php).
+    if (class_exists('Brikpanel_Push_Store')) {
+        dbDelta(Brikpanel_Push_Store::schema_sql());
+    }
 
     // Stamp the moment the recurring-expense engine became available. Only
     // expense templates created at or after this point are auto-materialised

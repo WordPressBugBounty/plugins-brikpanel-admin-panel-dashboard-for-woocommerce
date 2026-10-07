@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.31
+Stable tag: 3.3.32
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -453,7 +453,7 @@ Everything stays in your WordPress database. Visitor tracking writes to `wp_brik
 
 By default, nothing. BrikPanel only contacts an external service for features you explicitly opt into:
 
-* **Newsletter (optional).** A dismissible dashboard card, or the Newsletter row in WooCommerce > Settings > BrikPanel, offers occasional emails about new features, WooCommerce tips and ideas for growing your store. Only if you type your email address and tick the consent box are that address, your site address, site language and BrikPanel version sent to our server at brksoft.com. You can unsubscribe from any email we send. Privacy policy: https://brksoft.com/privacy-policy/ . Terms: https://brksoft.com/terms-and-conditions/
+* **Newsletter and survey (optional).** The Newsletter row in WooCommerce > Settings > BrikPanel offers occasional emails about new features and tips. Only if you type your email and tick the consent box are that address, your site address, site language and BrikPanel version sent to brksoft.com. Unsubscribe from any email. A dashboard card links to a short survey on brksoft.com, carrying only your admin language. Privacy policy: https://brksoft.com/privacy-policy/ . Terms: https://brksoft.com/terms-and-conditions/
 * **Google Sheets sync and Google / Meta Ads (optional).** If you connect these, BrikPanel exchanges data with Google, Meta and our helper at brksoft.com to run the sync and read your ad spend: Google Sheets uses it only for authentication, while every Google Ads and Meta Ads request (ad account ID and token, site address, date range) passes through it. They only run after you connect the relevant account.
 * **Deactivation survey (optional).** Deactivating BrikPanel from the Plugins screen opens a short window asking why. "Skip and deactivate" sends nothing. Only "Send and deactivate" sends your answer, the days BrikPanel was in use, your BrikPanel, WordPress, WooCommerce and PHP versions and your admin language to our server at brksoft.com. Your site address, email and store data are never sent; the request's IP address is used only against floods and is not stored. Privacy policy: https://brksoft.com/privacy-policy/
 
@@ -497,6 +497,24 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.32 (2026-10-07) =
+* New: **Arrange the dashboard box by box.** Setting: Dashboard → "Dashboard sections" now lists every box on its own, such as Recent orders, Order rates and the Conversion funnel, so you can move or hide each one. Boxes joined by a line sit side by side, and a new "Customize" link on the dashboard's date line opens the list. Layouts you saved before look the same.
+* New: **Product weights on the order screen.** The order's Items tab shows each product's weight, such as "0.12 kg × 3 = 0.36 kg", and a "Total weight" line under the totals, with a note when a product that ships has no weight. Orders without weighted products look as before.
+* New: **The products list on phones works like an app.** Each row shows the image, name, price and a stock dot, a tap opens the product, and coming back keeps your place. Filters, sorting, quick edit and row actions open from the bottom of the screen, "Select" or a long press picks several products, more load as you scroll, and Undo brings back a trashed product.
+* New: **The product editor on phones works like an app.** Back and ⋯ sit at the top, the status and Save at the bottom, images are square tiles, each variation has its own page, and less used cards such as Organization, Description, Shipping and Linked products open as pages. Computers and tablets look as before.
+* New: **Ignore BrikPanel's access rules.** Setting: Access control → "Ignore BrikPanel's access rules", off by default. Turn it on when a plugin such as Advanced Access Manager or B2BKing decides who sees what: BrikPanel then stops applying its own choices of who sees menu items, top bar controls, dashboard widgets and orders analytics, and stops blocking hidden pages. Your saved rules are kept.
+* Tweak: **The new order popup works in a background tab.** The popup and the chime no longer stop when the BrikPanel tab is in the background. With several tabs open, the chime plays once and the popup shows in the tab you are looking at, after any open window is closed.
+* Tweak: **The new order popup for every new order.** It now also shows for completed orders and for orders on hold, marked "Awaiting payment". On an iPhone the chime works after your first tap, volume 0 is silent, and the item count uses the right plural in every language.
+* Fix: **Store Health on MySQL 8.** On MySQL 8.0.22 and later, the daily "Abandoned cart entries" check failed with a database error: the card stayed Pending, Bot traffic missed fake cart entries, the nightly cleanup could not remove them and the error log got new lines every day. It now works on MySQL 8, MySQL 5.7 and MariaDB.
+* Fix: **Stock total of variable products.** When the main product keeps the stock, it is counted once instead of once per variation, and switched-off variations are left out.
+* Fix: **Adding a category keeps the brands.** In the product editor, "Add new category" emptied the brand list, so the next save removed the product's brands.
+* Fix: **A status change counts as an unsaved change** in the product editor, so you are warned before leaving the page.
+* Tweak: **Stock badges follow your low stock threshold.** In the products list, the stock badge turns amber at the store's low stock threshold instead of a fixed 5, and red below zero.
+* Tweak: **A survey card instead of the newsletter card.** The card at the top of the dashboard opens a 2-minute survey on brksoft.com. The newsletter signup stays in WooCommerce > Settings > BrikPanel, with the survey above it.
+* Tweak: **One message at a time.** The welcome tour, the new store guide, the survey card, the review request and the BrikMentor cards take turns: one at a time, at least 7 days apart, and none while another notice is on the screen.
+* Fix: **Settings search opens the right row.** Six results, such as Dashboard sections and Top bar items, now open at their own row, and a tall row shows from its top.
+* Fix: **Keyboard focus on the order screen.** An item reached with the Tab key no longer hides under the fixed header and tab bar.
+
 = 3.3.31 (2026-10-05) =
 * Fix: **The dashboard in Firefox.** In Firefox, the dashboard's cards stacked one per line and its header took the phone layout on every screen size, and on a phone the Low stock list turned into cards. All of them look as they should again.
 * Fix: **The dashboard on a zoomed page.** On a zoomed page, the cards could stack one per line and the header could switch to its phone layout, even on a wide screen.
@@ -537,29 +555,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **WhatsApp follow-up message.** Setting: Orders → "Message per order status" → "Follow-up message", one per status, empty by default. The first WhatsApp press on an order opens the status message; later presses open the follow-up ("Send follow-up") until the order's status changes.
 * Fix: **WhatsApp buttons follow a status change right away.** After changing the status from the list badge or the tracking number window, they no longer open the old status's message until the page is reloaded.
 * Tweak: **The Share cart button looks like your theme's buttons.** It now takes the same style as the other cart buttons, such as "Apply coupon", in both the classic and the block cart.
-
-= 3.3.25 (2026-09-28) =
-* New: **Several ad accounts.** Ad Platforms → "Ad accounts" is now a list: tick up to 20 Meta or Google Ads accounts. Each account's history loads and updates on its own, and ROAS, Expenses and Net profit add them all up. Reconnecting fills the missing days instead of loading three years again.
-* New: **Trakoo tracking numbers in WhatsApp and the orders list.** With Trakoo (Orders Tracking for WooCommerce) active, WhatsApp messages can use {tracking_number}, {carrier_name} and {tracking_url}, and each order in the list gets an "Add tracking number" button. Trakoo saves it, so its emails and status changes work as usual.
-* New: **Show menu items by permission.** In Navigation, a menu item can be shown to "Users with a permission", and a role list can "Show only to these roles" as well as hide from them.
-* New: **Block pages hidden from the menu.** Setting: Navigation → "Block pages hidden from the menu": people who cannot see an item cannot open its page from a link, search or shortcut either. Administrators are never blocked. Off by default.
-* New: **Publish products without a price.** Setting: Products → "Require a price to publish" can now be turned off. On by default, as before.
-* New: **A starting guide for new stores.** A store with no orders gets first steps on the dashboard, and empty cards and charts say why they are empty. Customer Analytics, Segments, Abandoned Carts and Orders do the same.
-* Fix: **Customers can retry payment with their own discount code.** A single-use popup or BrikMentor code held by the customer's own unpaid order is released when they come back, so they no longer see "usage limit reached".
-* Fix: **Removed the "Default status for new orders" setting.** With a status such as "Processing" chosen, the classic checkout skipped payment. Every order now starts as "Pending payment".
-* Fix: **No "no callback is registered" errors.** Switching off Abandoned carts, Store Health, Google Sheets or Ad Platforms removes their background jobs. "Failed (24h)" and "Done (24h)" in Scheduled Tasks count only the last 24 hours.
-* Fix: **Background jobs stop when BrikPanel is deactivated** and start again when it is activated. No data is deleted.
-* Fix: **The image remove button works in right-to-left languages and on touch screens.** The × no longer sits under the video button, and it is always visible on phones and tablets.
-* Fix: **No "set_cogs_value was called incorrectly" lines in the error log** when WooCommerce's cost of goods feature is off. BrikPanel still saves its own cost.
-* Fix: **Net profit change points the right way** when the previous period was a loss.
-* Fix: **Numbers, percentages, prices and dates follow the store settings on every screen,** not the browser language. Sentences with a count use the right plural in every language.
-* Fix: **Store Health shows its results in the admin's language.** The images card turns red only for large or missing images, and stores without images see "OK".
-* Fix: **The Low stock card tells the real state** and links to out-of-stock products. Variation names no longer repeat the SKU.
-* Fix: **Admin orders are left out of Recent Orders and the Excel report,** and dashboard numbers update right away when an order is trashed, restored or deleted.
-* Fix: **Sale prices are readable in the products list** again, also after quick edit.
-* Fix: **Menu hiding works for Categories, Tags and renamed items,** and BrikPanel search no longer lists pages hidden from the menu.
-* Tweak: **The products list looks like Orders.** One line per product with row icons, tabs and filters inside the card, and "Screen Options" next to Import. When the table does not fit, row buttons fold into a "⋯" menu first, then rows turn into cards.
-* Tweak: **One look on every screen.** Fields, buttons, badges and lists share one style. Lists and reports use the full width, forms 820px, with equal side margins. Titles use normal capitalisation and one size, and WordPress's blue accent is dark grey in the BrikPanel look.
-* Tweak: **Darker text.** Text meant to be read and status colours now have enough contrast.
-* Tweak: **All 9 languages are fully translated.** Two storefront texts changed (the popup's "Check your inbox…" and the login page footer): update them if you translated them yourself.
-* Tweak: **WooCommerce tested up to 11.1.** The Ad Platforms page now says that ad tokens are sent to the brksoft.com helper for syncing.
