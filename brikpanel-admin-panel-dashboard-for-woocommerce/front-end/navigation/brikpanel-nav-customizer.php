@@ -1075,6 +1075,11 @@ function brikpanel_nav_customizer_collect_menu_items() {
 				if ( ! is_array( $sub ) || ! isset( $sub[2] ) ) {
 					continue;
 				}
+				// A BrikPanel screen kept in the menu for access plugins only
+				// (includes/brikpanel-screen-menu.php) is not a sidebar row.
+				if ( function_exists( 'brikpanel_is_menu_only_row' ) && brikpanel_is_menu_only_row( $sub ) ) {
+					continue;
+				}
 				$sub_slug = (string) $sub[2];
 				if ( $sub_slug === '' ) {
 					continue;
@@ -1479,6 +1484,10 @@ function brikpanel_nav_customizer_apply( &$menu, &$submenu = null, &$dropped = n
 				$cap = $top_cap;
 				if ( ! current_user_can( $top_cap ) && ! empty( $submenu[ $slug ] ) && is_array( $submenu[ $slug ] ) ) {
 					foreach ( $submenu[ $slug ] as $child_row ) {
+						// A BrikPanel screen kept for access plugins only is no page of the menu.
+						if ( function_exists( 'brikpanel_is_menu_only_row' ) && brikpanel_is_menu_only_row( $child_row ) ) {
+							continue;
+						}
 						if ( is_array( $child_row ) && isset( $child_row[1] ) && ( is_string( $child_row[1] ) || is_int( $child_row[1] ) ) && current_user_can( $child_row[1] ) ) {
 							$cap = (string) $child_row[1];
 							break;
@@ -1676,7 +1685,11 @@ function brikpanel_nav_customizer_apply( &$menu, &$submenu = null, &$dropped = n
 			$hide_lookup = array_flip( array_map( 'brikpanel_nav_slug_key', $hide_slugs ) );
 			$kept        = [];
 			foreach ( $submenu[ $parent_slug ] as $row ) {
-				if ( is_array( $row ) && isset( $row[2] ) && isset( $hide_lookup[ brikpanel_nav_slug_key( $row[2] ) ] ) ) {
+				// A BrikPanel screen kept for access plugins only stays, and is
+				// never reported: hiding it would close BrikPanel's own page
+				// through page access (includes/brikpanel-screen-menu.php).
+				if ( is_array( $row ) && isset( $row[2] ) && isset( $hide_lookup[ brikpanel_nav_slug_key( $row[2] ) ] )
+					&& ! ( function_exists( 'brikpanel_is_menu_only_row' ) && brikpanel_is_menu_only_row( $row ) ) ) {
 					if ( $record ) {
 						$dropped[] = [ 'parent' => (string) $parent_slug, 'slug' => (string) $row[2], 'reason' => 'rule' ];
 					}

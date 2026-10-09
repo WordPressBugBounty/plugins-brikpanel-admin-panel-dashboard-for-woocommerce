@@ -8,6 +8,11 @@
 
     var PL = window.brikpanelPL || {};
 
+    // False for someone who may only send products in for review (no
+    // publish_products): the server refuses every publish from them, so the
+    // list offers none (bulk Publish, the status badge, quick edit).
+    var canPublish = PL.can_publish !== '0';
+
     // Numbers and percentages with the store's separators, the percent sign
     // where the viewer's language writes it (front-end/shared/brikpanel-format.js).
     var BF = window.brikpanelFormat || null;
@@ -943,6 +948,10 @@
                 }
                 return;
             }
+            // Trash, or a badge this person may not publish from (renderProductRow()).
+            if ($(this).hasClass('brikpanel-pl-status-static')) {
+                return;
+            }
             var id = parseInt($tr.data('id'));
             toggleStatus(id);
         });
@@ -1758,12 +1767,25 @@
         } else if (p.status === 'trash') {
             statusClass = 'trashed';
             statusLabel = PL.i18n.trashed;
+        } else if (p.status === 'pending') {
+            // Sent in for review (an inventory integration, a contributor): a
+            // click approves it, i.e. publishes it.
+            statusClass = 'pending';
+            statusLabel = PL.i18n.pending;
+            statusTitle = PL.i18n.click_to_publish;
         } else if (p.status === 'private') {
             statusClass = 'private';
             statusLabel = PL.i18n.private_status || 'Private';
         } else {
             statusClass = 'draft';
             statusLabel = PL.i18n.draft;
+        }
+        // Not a toggle: Trash (Restore is the row's action), and for someone
+        // who may not publish, every badge but Published (unpublishing stays).
+        var staticBadge = p.status === 'trash'
+            || (!canPublish && p.status !== 'publish' && p.status !== 'future');
+        if (staticBadge) {
+            statusTitle = statusLabel;
         }
 
         var stockHtml = '';
@@ -2065,7 +2087,7 @@
             '<td class="brikpanel-pl-cell-shipclass brikpanel-pl-col brikpanel-pl-col-shipping_class">' + (p.shipping_class ? escHtml(p.shipping_class) : '<span class="brikpanel-pl-text-muted">—</span>') + '</td>' +
             '<td class="brikpanel-pl-cell-author brikpanel-pl-col brikpanel-pl-col-author">' + (p.author ? escHtml(p.author) : '<span class="brikpanel-pl-text-muted">—</span>') + '</td>' +
             '<td class="brikpanel-pl-cell-menu_order brikpanel-pl-col brikpanel-pl-col-menu_order"><span class="brikpanel-pl-editable brikpanel-pl-menu-order-cell" data-field="menu_order" data-value="' + escAttr(p.menu_order != null ? p.menu_order : 0) + '">' + escHtml(String(p.menu_order != null ? p.menu_order : 0)) + '</span></td>' +
-            '<td class="brikpanel-pl-cell-status brikpanel-pl-col brikpanel-pl-col-status"><span class="brikpanel-pl-status-badge ' + statusClass + '" title="' + escAttr(statusTitle) + '">' + escHtml(statusLabel) + '</span></td>' +
+            '<td class="brikpanel-pl-cell-status brikpanel-pl-col brikpanel-pl-col-status"><span class="brikpanel-pl-status-badge ' + statusClass + (staticBadge ? ' brikpanel-pl-status-static' : '') + '" title="' + escAttr(statusTitle) + '">' + escHtml(statusLabel) + '</span></td>' +
             '<td class="brikpanel-pl-cell-date brikpanel-pl-col brikpanel-pl-col-date">' + (p.date ? escHtml(p.date) : '<span class="brikpanel-pl-text-muted">—</span>') + '</td>' +
             aseCellsHtml +
             '<td class="brikpanel-pl-actions-cell">' +
@@ -2632,6 +2654,20 @@
         $('#bpl-qe-id').val(product.id);
         $('#bpl-qe-name').val(product.name);
         $('#bpl-qe-sku').val(product.sku || '');
+        // Offer what this person may pick, as the editor's status menu does:
+        // "Pending review" on a product already waiting for review (or to
+        // someone who may only send products in for review), and to that
+        // person Published, Scheduled and Private only as the product's
+        // current status. `disabled` is the real guard (Safari still lists
+        // hidden options); the server applies the same rule.
+        $('#bpl-qe-status option').each(function () {
+            var v = this.value;
+            var off = v !== product.status && (v === 'pending'
+                ? canPublish
+                : (!canPublish && (v === 'publish' || v === 'future' || v === 'private')));
+            this.hidden = off;
+            this.disabled = off;
+        });
         $('#bpl-qe-status').val(product.status);
 
         // Featured star — gated by the same opt-in setting as the row star;
@@ -3158,21 +3194,20 @@
             success: function (res) {
                 $badge.removeClass('brikpanel-pl-status-saving');
                 if (res.success) {
-                    var newClass = res.data.status === 'publish' ? 'published' : 'draft';
-                    var newLabel = res.data.status === 'publish' ? PL.i18n.published : PL.i18n.draft;
-                    $badge.removeClass('published draft').addClass(newClass).text(newLabel);
-
-                    // Update state
-                    for (var i = 0; i < state.products.length; i++) {
-                        if (state.products[i].id === id) {
-                            state.products[i].status = res.data.status;
-                            break;
-                        }
+                    // Redraw the row from the status the server saved (a
+                    // product dated in the future comes back Scheduled): the
+                    // badge, the stacked line and the phone pill all follow.
+                    var product = getProductById(id);
+                    if (product) {
+                        product.status = res.data.status;
+                        refreshRow($('#bpl-table-body tr[data-id="' + id + '"]'), product); // i18n-ignore: selector fragment
                     }
-
                     showToast(res.data.message, 'success');
+                    // The tab counts move, and a product approved on the
+                    // Pending review tab (or published from Draft) leaves it.
+                    fetchProducts(true);
                 } else {
-                    showToast(res.data.message || PL.i18n.error, 'error');
+                    showToast((res.data && res.data.message) || PL.i18n.error, 'error');
                 }
             },
             error: function () {
@@ -3418,6 +3453,29 @@
             $('[data-count="future"]').text(0);
         } else {
             $('[data-status="future"]').remove();
+        }
+
+        // Show/hide the Pending review tab, right after Draft as in WordPress's
+        // own list. Kept (at 0) while the user is on it, like Scheduled: the
+        // last product just approved should not pull the tab from under them.
+        var pendingCount = counts.pending || 0;
+        var $pendingTab = $('.brikpanel-pl-tab[data-status="pending"]');
+        if (pendingCount > 0 || state.status === 'pending') {
+            if (!$pendingTab.length) {
+                $pendingTab = $('<button class="brikpanel-pl-tab" data-status="pending"></button>')
+                    .text(PL.i18n.pending + ' ')
+                    .append($('<span class="brikpanel-pl-tab-count" data-count="pending"></span>'));
+                if (state.status === 'pending') {
+                    $('.brikpanel-pl-tab').removeClass('active');
+                    $pendingTab.addClass('active');
+                }
+                var $draftTabForPending = $('.brikpanel-pl-tab[data-status="draft"]');
+                if ($draftTabForPending.length) { $pendingTab.insertAfter($draftTabForPending); }
+                else { $('.brikpanel-pl-tabs').append($pendingTab); }
+            }
+            $pendingTab.find('[data-count="pending"]').text(pendingCount);
+        } else {
+            $pendingTab.remove();
         }
 
         // Show/hide private tab (inserted before trash tab if present)

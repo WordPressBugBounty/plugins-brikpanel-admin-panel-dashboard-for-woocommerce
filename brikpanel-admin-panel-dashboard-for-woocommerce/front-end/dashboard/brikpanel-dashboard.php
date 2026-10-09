@@ -47,6 +47,21 @@ class Brikpanel_Dashboard {
     // closed the "Your store is ready for its first order" guide.
     const GUIDE_DISMISSED_OPTION = 'brikpanel_new_store_guide_dismissed';
 
+    // Per-user memory of the tab last opened in each tabbed card, stored like
+    // the range above (per user and per site). Only these cards and tabs are
+    // kept; a tab the card does not have falls back to its first one.
+    const TAB_PREF_OPTION = 'brikpanel_dash_tabs';
+    const TAB_KEYS        = [
+        'sales'    => [ 'r', 'o', 'aov' ],
+        'products' => [ 'sold', 'viewed', 'cart' ],
+        'visitors' => [ 'devices', 'sources', 'campaigns' ],
+    ];
+
+    // The Most viewed pages window loads this many rows at a time; the Excel
+    // sheet lists at most PAGES_SHEET_MAX pages.
+    const PAGES_PER_LOAD  = 50;
+    const PAGES_SHEET_MAX = 5000;
+
     // How long the store-wide order facts behind the empty states and the
     // guide are kept. The key carries the data version, so any order event
     // starts a fresh copy before this runs out.
@@ -141,6 +156,10 @@ class Brikpanel_Dashboard {
         add_action( 'wp_ajax_brikpanel_dashboard_live', [ $this, 'ajax_dashboard_live' ] );
         // Closing the new-store guide (per user).
         add_action( 'wp_ajax_brikpanel_dash_guide_dismiss', [ $this, 'ajax_guide_dismiss' ] );
+        // The tab a user opens in a card (per user).
+        add_action( 'wp_ajax_brikpanel_dash_save_tab', [ $this, 'ajax_save_tab' ] );
+        // The Products and pages window: a list of the period, a load at a time.
+        add_action( 'wp_ajax_brikpanel_dash_list', [ $this, 'ajax_list' ] );
         // CSV export of the current date-range report (streamed download).
         add_action( 'admin_post_brikpanel_dashboard_export', [ $this, 'handle_export' ] );
 
@@ -265,6 +284,95 @@ class Brikpanel_Dashboard {
     }
 
     /**
+     * The tab the current user last opened in each tabbed card. Only known
+     * cards and tabs come back, so a corrupted value never reaches the markup.
+     *
+     * @return array<string,string> Card => tab key.
+     */
+    public static function get_tab_preferences() {
+        $user_id = get_current_user_id();
+        $pref    = $user_id ? get_user_option( self::TAB_PREF_OPTION, $user_id ) : false;
+        if ( ! is_array( $pref ) ) {
+            return [];
+        }
+        $out = [];
+        foreach ( self::TAB_KEYS as $card => $keys ) {
+            if ( isset( $pref[ $card ] ) && is_string( $pref[ $card ] ) && in_array( $pref[ $card ], $keys, true ) ) {
+                $out[ $card ] = $pref[ $card ];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The tab a card opens on: the one this user last opened when the card
+     * has it, otherwise the card's first tab.
+     *
+     * @param string   $card     Key of TAB_KEYS.
+     * @param string[] $has      Tabs this card has.
+     * @param string   $fallback The card's first tab.
+     * @return string
+     */
+    public static function tab_for( $card, array $has, $fallback ) {
+        $pref = self::get_tab_preferences();
+        return ( isset( $pref[ $card ] ) && in_array( $pref[ $card ], $has, true ) ) ? $pref[ $card ] : $fallback;
+    }
+
+    /**
+     * Remember the tabs the current user just opened. Unknown cards and tabs
+     * are ignored, and nothing is written when nothing changed.
+     *
+     * @param array $tabs Card => tab key.
+     * @return void
+     */
+    public static function save_tab_preferences( array $tabs ) {
+        $user_id = get_current_user_id();
+        if ( ! $user_id ) {
+            return;
+        }
+        $current = self::get_tab_preferences();
+        $next    = $current;
+        foreach ( $tabs as $card => $key ) {
+            $card = is_string( $card ) ? sanitize_key( $card ) : '';
+            $key  = is_string( $key ) ? sanitize_key( $key ) : '';
+            if ( isset( self::TAB_KEYS[ $card ] ) && in_array( $key, self::TAB_KEYS[ $card ], true ) ) {
+                $next[ $card ] = $key;
+            }
+        }
+        if ( $next === $current ) {
+            return;
+        }
+        update_user_option( $user_id, self::TAB_PREF_OPTION, $next );
+    }
+
+    /**
+     * A date range sent by the browser, checked like the Excel export does:
+     * a range outside allowed_ranges(), or a custom range without two real
+     * dates, becomes "today".
+     *
+     * @param array $src Request values (range, start_date, end_date).
+     * @return array{range:string,start:?string,end:?string}
+     */
+    private function request_range( array $src ) {
+        $range = isset( $src['range'] ) && is_string( $src['range'] ) ? sanitize_key( wp_unslash( $src['range'] ) ) : 'today';
+        if ( ! in_array( $range, self::allowed_ranges(), true ) ) {
+            $range = 'today';
+        }
+        $start = null;
+        $end   = null;
+        if ( 'custom' === $range ) {
+            $start = isset( $src['start_date'] ) && is_string( $src['start_date'] ) ? sanitize_text_field( wp_unslash( $src['start_date'] ) ) : '';
+            $end   = isset( $src['end_date'] ) && is_string( $src['end_date'] ) ? sanitize_text_field( wp_unslash( $src['end_date'] ) ) : '';
+            if ( ! self::is_valid_ymd( $start ) || ! self::is_valid_ymd( $end ) ) {
+                $range = 'today';
+                $start = null;
+                $end   = null;
+            }
+        }
+        return [ 'range' => $range, 'start' => $start, 'end' => $end ];
+    }
+
+    /**
      * Delete the cached catalog counters so the inventory summary line
      * recomputes on the next dashboard view. Cheap; accepts any hook args.
      */
@@ -341,17 +449,16 @@ class Brikpanel_Dashboard {
     // PAGE REGISTRATION & REDIRECT
     // =========================================================================
 
+    /**
+     * Registers the dashboard under WordPress's Dashboard menu, as a row only
+     * access plugins see (includes/brikpanel-screen-menu.php).
+     */
     public function register_page() {
-        $hook = add_submenu_page(
-            '',
-            __( 'Dashboard', 'brikpanel' ),
-            '',
-            'manage_woocommerce',
-            'brikpanel-dashboard',
-            [ $this, 'render_page' ]
-        );
+        $hooks = function_exists( 'brikpanel_add_screen_page' )
+            ? brikpanel_add_screen_page( 'index.php', __( 'Dashboard', 'brikpanel' ), 'manage_woocommerce', 'brikpanel-dashboard', [ $this, 'render_page' ] )
+            : array_filter( [ add_submenu_page( '', __( 'Dashboard', 'brikpanel' ), '', 'manage_woocommerce', 'brikpanel-dashboard', [ $this, 'render_page' ] ) ] );
 
-        if ( $hook ) {
+        foreach ( $hooks as $hook ) {
             add_action( 'load-' . $hook, function () {
                 global $title;
                 $title = __( 'Dashboard', 'brikpanel' );
@@ -612,6 +719,57 @@ class Brikpanel_Dashboard {
             }
             echo "\n" . '            </section>' . "\n";
         }
+    }
+
+    /**
+     * The Products and pages window: the whole list of a card's open tab
+     * (Best sellers, Most viewed pages or Most added to cart) for the period,
+     * opened from the card's "View all" button. Printed inside the dashboard
+     * so it takes the dashboard's type and colours, and only when a Products
+     * card is on it. The browser's own dialog keeps it above the top bar,
+     * keeps the keyboard inside it and closes it on Esc
+     * (brikpanel-dashboard.js initPagesWindow()).
+     *
+     * @param array[] $rows From plan_rows().
+     * @return void
+     */
+    private function render_pages_window( array $rows ) {
+        $has_lists = false;
+        foreach ( $rows as $row ) {
+            foreach ( isset( $row['cards'] ) ? $row['cards'] : [] as $card ) {
+                if ( 'products' === $card['box'] ) {
+                    $has_lists = true;
+                }
+            }
+        }
+        if ( ! $has_lists ) {
+            return;
+        }
+        ?>
+            <dialog class="bp-dv-pages" id="bp-dv-pages" aria-labelledby="bp-dv-pages-title">
+                <div class="bp-dv-pages-box">
+                    <div class="bp-dv-pages-head">
+                        <div class="bp-dv-pages-titles">
+                            <h2 class="bp-dv-pages-title" id="bp-dv-pages-title"><?php esc_html_e( 'Most viewed pages', 'brikpanel' ); ?></h2>
+                            <p class="bp-dv-pages-sub" data-bp-dv-slot="pages-sub"></p>
+                        </div>
+                        <button type="button" class="bp-dv-pages-x" data-bp-dv-pages-close aria-label="<?php esc_attr_e( 'Close', 'brikpanel' ); ?>">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                    <div class="bp-dv-pages-tools">
+                        <input type="search" class="brikpanel-control brikpanel-control--quiet bp-dv-pages-q" data-bp-dv-slot="pages-q" placeholder="<?php esc_attr_e( 'Search pages', 'brikpanel' ); ?>" aria-label="<?php esc_attr_e( 'Search pages', 'brikpanel' ); ?>" maxlength="100" autocomplete="off">
+                    </div>
+                    <div class="bp-dv-pages-body" data-bp-dv-slot="pages-body">
+                        <ul class="bp-dv-plist bp-dv-pages-list" data-bp-dv-slot="pages-list"></ul>
+                        <p class="brikpanel-dash-empty bp-dv-pages-note" data-bp-dv-slot="pages-note" role="status" hidden></p>
+                        <div class="bp-dv-pages-foot">
+                            <button type="button" class="brikpanel-btn brikpanel-btn--secondary bp-dv-pages-more" data-bp-dv-slot="pages-more" hidden><?php esc_html_e( 'Show more', 'brikpanel' ); ?></button>
+                        </div>
+                    </div>
+                </div>
+            </dialog>
+        <?php
     }
 
     /**
@@ -900,6 +1058,7 @@ class Brikpanel_Dashboard {
             do_action( 'brikpanel_dashboard_before_sections' );
 
             $this->render_rows( $rows );
+            $this->render_pages_window( $rows );
 
             /**
              * Fires after all dashboard sections, at the bottom of the dashboard
@@ -1138,6 +1297,75 @@ class Brikpanel_Dashboard {
             brikpanel_ask_closed( 'guide' );
         }
         wp_send_json_success();
+    }
+
+    /**
+     * AJAX: remember the tab the current user just opened (tabs[card]=key).
+     */
+    public function ajax_save_tab() {
+        if ( ! check_ajax_referer( 'brikpanel_dashboard_nonce', 'security', false ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid nonce.' ], 403 );
+        }
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( [ 'message' => 'Unauthorized.' ], 403 );
+        }
+        // Every card and tab is checked against TAB_KEYS in save_tab_preferences().
+        $tabs = ( isset( $_POST['tabs'] ) && is_array( $_POST['tabs'] ) ) ? wp_unslash( $_POST['tabs'] ) : []; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        self::save_tab_preferences( array_slice( $tabs, 0, count( self::TAB_KEYS ), true ) );
+        wp_send_json_success( [ 'tabs' => self::get_tab_preferences() ] );
+    }
+
+    /**
+     * AJAX: one load of the Products and pages window (list, search, offset):
+     * Best sellers ('sold'), Most viewed pages ('viewed') or Most added to
+     * cart ('cart'), the same lists the cards and the Excel sheets read.
+     */
+    public function ajax_list() {
+        if ( ! check_ajax_referer( 'brikpanel_dashboard_nonce', 'security', false ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid nonce.' ], 403 );
+        }
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( [ 'message' => 'Unauthorized.' ], 403 );
+        }
+        $kind = isset( $_POST['list'] ) && is_string( $_POST['list'] ) ? sanitize_key( wp_unslash( $_POST['list'] ) ) : '';
+        if ( ! in_array( $kind, [ 'sold', 'viewed', 'cart' ], true ) ) {
+            wp_send_json_error( [ 'message' => 'Unknown list.' ], 400 );
+        }
+        $range  = $this->request_range( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce checked above.
+        $dates  = $this->calculate_dates( $range['range'], $range['start'], $range['end'] );
+        $search = isset( $_POST['search'] ) && is_string( $_POST['search'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['search'] ) ) ) : '';
+        $search = brikpanel_substr( $search, 0, 100 );
+        $offset = isset( $_POST['offset'] ) ? min( self::PAGES_SHEET_MAX, absint( $_POST['offset'] ) ) : 0;
+        $args   = [
+            'limit'  => self::PAGES_PER_LOAD,
+            'offset' => $offset,
+            'search' => $search,
+            'count'  => 0 === $offset,
+        ];
+
+        $rows = [];
+        if ( 'viewed' === $kind ) {
+            $list = $this->most_viewed_query( $dates['start_local'], $dates['end_local'], $args );
+            foreach ( $list['rows'] as $row ) {
+                $rows[] = [ 'key' => $row['key'], 'title' => $row['title'], 'type' => $row['type'], 'value' => $row['views'], 'url' => $row['url'] ];
+            }
+        } else {
+            $args['exclude_marketplace'] = function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active();
+            $list = $this->products_list_query( $kind, $dates, $args );
+            foreach ( $list['rows'] as $row ) {
+                $rows[] = [ 'key' => $row['key'], 'title' => $row['title'], 'type' => '', 'value' => $row['value'], 'url' => $row['url'] ];
+            }
+        }
+        wp_send_json_success(
+            [
+                'list'     => $kind,
+                'rows'     => $rows,
+                'total'    => $list['total'],
+                'has_more' => $list['has_more'],
+                'offset'   => $offset,
+                'next'     => $offset + self::PAGES_PER_LOAD,
+            ]
+        );
     }
 
     // =========================================================================
@@ -1995,7 +2223,7 @@ class Brikpanel_Dashboard {
                                     'o'   => [ __( 'Orders', 'brikpanel' ), $chart_id ],
                                     'aov' => [ __( 'Avg. order value', 'brikpanel' ), $chart_id ],
                                 ],
-                                'r'
+                                self::tab_for( 'sales', self::TAB_KEYS['sales'], 'r' )
                             );
                             ?>
                         </div>
@@ -2159,22 +2387,47 @@ class Brikpanel_Dashboard {
         foreach ( $views as $view ) {
             $tabs[ $view ] = [ $labels[ $view ], $ids[ $view ] ];
         }
+        // The tab this user opened last time, when this card has it.
+        $selected = count( $views ) > 1 ? self::tab_for( 'products', $views, $views[0] ) : $views[0];
         ?>
         <article class="bp-dv-card bp-dv-products" data-bp-dv="products" data-views="<?php echo esc_attr( implode( ' ', $views ) ); ?>">
             <div class="bp-dv-card-h">
                 <h2 class="bp-dv-title"><?php echo esc_html( $title ); ?></h2>
                 <?php if ( count( $views ) > 1 ) : ?>
-                    <div class="bp-dv-aside"><?php $this->tab_row( $title, $tabs, $views[0] ); ?></div>
+                    <div class="bp-dv-aside"><?php $this->tab_row( $title, $tabs, $selected ); ?></div>
                 <?php endif; ?>
             </div>
-            <?php foreach ( $views as $i => $view ) : ?>
-                <div class="bp-dv-panel bp-dv-list-body" id="<?php echo esc_attr( $ids[ $view ] ); ?>" data-bp-dv-view="<?php echo esc_attr( $view ); ?>"<?php echo count( $views ) > 1 ? ' role="tabpanel"' : ''; ?><?php echo $i > 0 ? ' hidden' : ''; ?>></div>
+            <?php foreach ( $views as $view ) : ?>
+                <div class="bp-dv-panel bp-dv-list-body" id="<?php echo esc_attr( $ids[ $view ] ); ?>" data-bp-dv-view="<?php echo esc_attr( $view ); ?>"<?php echo count( $views ) > 1 ? ' role="tabpanel"' : ''; ?><?php echo $view !== $selected ? ' hidden' : ''; ?>></div>
             <?php endforeach; ?>
-            <?php if ( in_array( 'sold', $views, true ) || in_array( 'cart', $views, true ) ) : ?>
-                <div class="bp-dv-card-foot"><?php $this->card_link( admin_url( 'edit.php?post_type=product' ), __( 'View all products', 'brikpanel' ) ); ?></div>
-            <?php endif; ?>
+            <?php
+            // "View all" opens the window with the open tab's whole list
+            // (render_pages_window()) once the period has more than the card
+            // shows; the script names it and shows it for the open tab.
+            ?>
+            <div class="bp-dv-card-foot bp-dv-foot-pages">
+                <button type="button" class="brikpanel-btn brikpanel-btn--link bp-dv-more bp-dv-pages-open" aria-haspopup="dialog" hidden><span data-bp-dv-slot="pages-label"></span><svg class="bp-dv-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"></polyline></svg></button>
+            </div>
         </article>
         <?php
+    }
+
+    /**
+     * The "About campaigns" help bubble, beside the campaign list in the Top
+     * campaigns tab and in the Sources tab's campaign column.
+     *
+     * @return void
+     */
+    private function render_campaigns_hint() {
+        // A campaign's orders and revenue come from WooCommerce and exist
+        // without any visit counted here.
+        $this->render_hint(
+            __( 'About campaigns', 'brikpanel' ),
+            __( 'Orders and revenue come from WooCommerce\'s order attribution: each order counts for the last campaign link its customer came through, even when that visit was before this period.', 'brikpanel' )
+                . '<br><br>'
+                . __( 'Conversion rate is those orders divided by the visits that arrived from the campaign link in this period, counted once a day per visitor. Visits follow your visitor tracking and cookie consent settings, and a dash means none were counted.', 'brikpanel' ),
+            'end'
+        );
     }
 
     /**
@@ -2186,6 +2439,11 @@ class Brikpanel_Dashboard {
             'sources'   => wp_unique_id( 'bp-dv-visitors-sources-' ),
             'campaigns' => wp_unique_id( 'bp-dv-visitors-campaigns-' ),
         ];
+        // The tab this user opened last time.
+        $selected = self::tab_for( 'visitors', self::TAB_KEYS['visitors'], 'devices' );
+        $hide     = static function ( $view ) use ( $selected ) {
+            return $view !== $selected ? ' hidden' : '';
+        };
         ?>
             <article class="bp-dv-card bp-dv-visitors" data-bp-dv="visitors">
                 <div class="bp-dv-card-h">
@@ -2199,12 +2457,12 @@ class Brikpanel_Dashboard {
                                 'sources'   => [ __( 'Sources', 'brikpanel' ), $ids['sources'] ],
                                 'campaigns' => [ __( 'Top campaigns', 'brikpanel' ), $ids['campaigns'] ],
                             ],
-                            'devices'
+                            $selected
                         );
                         ?>
                     </div>
                 </div>
-                <div class="bp-dv-panel" id="<?php echo esc_attr( $ids['devices'] ); ?>" role="tabpanel" data-bp-dv-view="devices">
+                <div class="bp-dv-panel" id="<?php echo esc_attr( $ids['devices'] ); ?>" role="tabpanel" data-bp-dv-view="devices"<?php echo $hide( 'devices' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed attribute. ?>>
                     <div class="bp-dv-dev-blk">
                         <div class="bp-dv-sub"><span><?php esc_html_e( 'Visitors by device', 'brikpanel' ); ?></span></div>
                         <div data-bp-dv-slot="dev-visitors"></div>
@@ -2214,31 +2472,34 @@ class Brikpanel_Dashboard {
                         <div data-bp-dv-slot="dev-orders"></div>
                     </div>
                 </div>
-                <div class="bp-dv-panel" id="<?php echo esc_attr( $ids['sources'] ); ?>" role="tabpanel" data-bp-dv-view="sources" hidden>
+                <div class="bp-dv-panel" id="<?php echo esc_attr( $ids['sources'] ); ?>" role="tabpanel" data-bp-dv-view="sources"<?php echo $hide( 'sources' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed attribute. ?>>
                     <div class="bp-dv-src2">
                         <div><h3 class="bp-dv-h3"><?php esc_html_e( 'Channels', 'brikpanel' ); ?></h3><div data-bp-dv-slot="channels"></div></div>
                         <div data-bp-dv-slot="referrers-wrap"><h3 class="bp-dv-h3"><?php esc_html_e( 'Top referrers', 'brikpanel' ); ?></h3><div data-bp-dv-slot="referrers"></div></div>
+                        <?php
+                        // On a wide card (is-src3) the campaigns join Sources as a
+                        // third column and the Top campaigns tab steps aside; a
+                        // narrower card keeps the tab, so the card never grows.
+                        ?>
+                        <div class="bp-dv-src-camps">
+                            <h3 class="bp-dv-h3"><?php esc_html_e( 'Top campaigns', 'brikpanel' ); ?><?php $this->render_campaigns_hint(); ?></h3>
+                            <div data-bp-dv-slot="campaigns-col"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="bp-dv-panel" id="<?php echo esc_attr( $ids['campaigns'] ); ?>" role="tabpanel" data-bp-dv-view="campaigns" hidden>
+                <div class="bp-dv-panel" id="<?php echo esc_attr( $ids['campaigns'] ); ?>" role="tabpanel" data-bp-dv-view="campaigns"<?php echo $hide( 'campaigns' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed attribute. ?>>
                     <div class="bp-dv-sub">
                         <span><?php esc_html_e( 'Orders from campaign links', 'brikpanel' ); ?></span>
-                        <?php
-                        // A campaign's orders and revenue come from WooCommerce
-                        // and exist without any visit counted here.
-                        $this->render_hint(
-                            __( 'About campaigns', 'brikpanel' ),
-                            __( 'Orders and revenue come from WooCommerce\'s order attribution: each order counts for the last campaign link its customer came through, even when that visit was before this period.', 'brikpanel' )
-                                . '<br><br>'
-                                . __( 'Conversion rate is those orders divided by the visits that arrived from the campaign link in this period, counted once a day per visitor. Visits follow your visitor tracking and cookie consent settings, and a dash means none were counted.', 'brikpanel' ),
-                            'end'
-                        );
-                        ?>
+                        <?php $this->render_campaigns_hint(); ?>
                     </div>
                     <div data-bp-dv-slot="campaigns"></div>
                 </div>
             </article>
         <?php
+        // Wide enough for three columns: decided here, before the first paint,
+        // and kept up to date by fitVisitors() in brikpanel-dashboard.js (same
+        // 740px). A card opening on Top campaigns shows Sources instead.
+        wp_print_inline_script_tag( '(function(){var s=document.currentScript,c=s&&s.previousElementSibling;if(!c||!window.getComputedStyle||!c.classList.contains("bp-dv-visitors")){return;}var y=getComputedStyle(c),w=c.clientWidth-(parseFloat(y.paddingLeft)||0)-(parseFloat(y.paddingRight)||0);if(w<740){return;}c.classList.add("is-src3");var t=c.querySelector(\'[data-bp-dv-tab="campaigns"]\'),o=c.querySelector(\'[data-bp-dv-tab="sources"]\');if(!t||!o||t.getAttribute("aria-selected")!=="true"){return;}[t,o].forEach(function(b){var on=b===o,p=document.getElementById(b.getAttribute("aria-controls"));b.setAttribute("aria-selected",on?"true":"false");if(on){b.removeAttribute("tabindex");}else{b.setAttribute("tabindex","-1");}if(p){p.hidden=!on;}});})();' );
     }
 
     /**
@@ -3643,8 +3904,11 @@ class Brikpanel_Dashboard {
         // those. "f3": abandoned carts and top campaigns joined the payload.
         // "g1": the redesigned cards (October 2026) read the sales series with
         // its previous period and hours, order-rate counts, segment groups,
-        // the low-stock product and options lines and the order times.
-        $cache_key = 'bp_dash_g1_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_' . $locale_for_key;
+        // the low-stock product and options lines and the order times. "g3":
+        // Most viewed pages lists only pages a shopper can open, and the three
+        // Products and pages lists carry their counts (most_viewed_total,
+        // top_products_total, most_cart_total).
+        $cache_key = 'bp_dash_g3_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_' . $locale_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $this->with_tracking_state( $this->with_today( $cached ) ) );
@@ -3947,9 +4211,14 @@ class Brikpanel_Dashboard {
                 'orders'   => $order_count,
             ],
             'order_rates'      => $order_rates,
-            'top_products'     => $top_products,
-            'most_viewed'      => $most_viewed,
-            'most_cart'        => $most_cart,
+            'top_products'     => $top_products['rows'],
+            // Products of the period in all: the cards' "View all" button.
+            'top_products_total' => $top_products['total'],
+            'most_viewed'      => $most_viewed['rows'],
+            // Pages of the period in all: the card's "View all" link.
+            'most_viewed_total' => $most_viewed['total'],
+            'most_cart'        => $most_cart['rows'],
+            'most_cart_total'  => $most_cart['total'],
             'sales_over_time'      => $sales_over_time,
             'sales_series'     => $sales_series,
             'recent_orders'    => $recent_orders,
@@ -4561,7 +4830,39 @@ class Brikpanel_Dashboard {
     // TOP PRODUCTS (by quantity sold)
     // =========================================================================
 
+    /**
+     * The Best sellers card: its first five products and how many products
+     * sold in the period (the card's "View all" button).
+     *
+     * @param string $start_gmt           Y-m-d H:i:s (UTC).
+     * @param string $end_gmt             Y-m-d H:i:s (UTC).
+     * @param bool   $exclude_marketplace Leave BrikMarket orders out.
+     * @return array{rows:array,total:int}
+     */
     private function get_top_products( $start_gmt, $end_gmt, $exclude_marketplace = false ) {
+        $list = $this->products_list_query(
+            'sold',
+            [ 'start_gmt' => $start_gmt, 'end_gmt' => $end_gmt ],
+            [ 'limit' => 5, 'count' => true, 'exclude_marketplace' => $exclude_marketplace ]
+        );
+        $rows = [];
+        foreach ( $list['rows'] as $row ) {
+            $rows[] = [ 'name' => $row['title'], 'qty' => $row['value'], 'id' => $row['id'], 'url' => $row['url'] ];
+        }
+        return [ 'rows' => $rows, 'total' => (int) $list['total'] ];
+    }
+
+    /**
+     * Units sold per product in the period's paid orders, as SQL to wrap:
+     * admins' own orders and (with BrikMarket) marketplace orders left out,
+     * like every site card. Every variation counts for its parent product.
+     *
+     * @param string $start_gmt           Y-m-d H:i:s (UTC).
+     * @param string $end_gmt             Y-m-d H:i:s (UTC).
+     * @param bool   $exclude_marketplace Leave BrikMarket orders out.
+     * @return array{sql:string,args:array} Columns product_id, total.
+     */
+    private function sold_totals_sql( $start_gmt, $end_gmt, $exclude_marketplace ) {
         global $wpdb;
 
         $include_statuses    = brikpanel_paid_order_statuses();
@@ -4576,29 +4877,25 @@ class Brikpanel_Dashboard {
             : [ 'sql' => '', 'args' => [] ];
 
         if ( $is_hpos ) {
-            $admin_sql = str_replace( 'customer_id', 'o.customer_id', $exclusion['sql'] );
+            $admin_sql  = str_replace( 'customer_id', 'o.customer_id', $exclusion['sql'] );
             $query_args = array_merge( $query_args, $exclusion['args'], $mp_excl['args'], [ $start_gmt, $end_gmt ] );
             // type='shop_order' excludes shop_order_refund rows in the lookup table
             // (their negative qty would silently subtract from each parent's total).
             // product_id > 0 drops orphaned line items whose product was deleted.
-            $query = $wpdb->prepare(
-                "SELECT p.product_id, SUM(p.product_qty) AS total_sold
+            $sql = "SELECT p.product_id AS product_id, SUM(p.product_qty) AS total
                  FROM {$wpdb->prefix}wc_order_product_lookup p
                  INNER JOIN {$wpdb->prefix}wc_orders o ON p.order_id = o.id
                  WHERE o.type = 'shop_order'
                  AND o.status IN ({$status_placeholders}){$admin_sql}{$mp_excl['sql']}
                  AND o.date_created_gmt >= %s AND o.date_created_gmt <= %s
                  AND p.product_id > 0
-                 GROUP BY p.product_id ORDER BY total_sold DESC LIMIT 5",
-                $query_args
-            );
+                 GROUP BY p.product_id";
         } else {
             $query_args = array_merge( $query_args, $exclusion['args'], $mp_excl['args'], [ $start_gmt, $end_gmt ] );
             // Group by parent product. Joining itemmeta on _product_id alone (not also
             // _variation_id) prevents variable products from being double-counted —
             // every variation purchase rolls up to its parent, matching HPOS semantics.
-            $query = $wpdb->prepare(
-                "SELECT m2.meta_value AS product_id, SUM(m1.meta_value) AS total_sold
+            $sql = "SELECT m2.meta_value AS product_id, SUM(m1.meta_value) AS total
                  FROM {$wpdb->posts} AS p
                  INNER JOIN {$wpdb->prefix}woocommerce_order_items AS oi ON p.ID = oi.order_id AND oi.order_item_type = 'line_item'
                  INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta AS m1 ON oi.order_item_id = m1.order_item_id AND m1.meta_key = '_qty'
@@ -4607,37 +4904,101 @@ class Brikpanel_Dashboard {
                  AND p.post_status IN ({$status_placeholders}){$exclusion['sql']}{$mp_excl['sql']}
                  AND p.post_date_gmt >= %s AND p.post_date_gmt <= %s
                  AND m2.meta_value > 0
-                 GROUP BY m2.meta_value ORDER BY total_sold DESC LIMIT 5",
-                $query_args
-            );
+                 GROUP BY m2.meta_value";
+        }
+        return [ 'sql' => $sql, 'args' => $query_args ];
+    }
+
+    /**
+     * Products of a period, most first: Best sellers (units sold) or Most
+     * added to cart (cart adds the tracker counted). The card, its "View all"
+     * window and the Excel sheet read this one list.
+     *
+     * The figures are added up per product first, then the products are
+     * joined to their post: a product moved to the trash or deleted drops out,
+     * as wc_get_products() left it out of the cards before (drafts, pending
+     * and private products stay, like there).
+     *
+     * @param string $kind  'sold' or 'cart'.
+     * @param array  $dates From calculate_dates(): start_gmt and end_gmt for
+     *                      'sold', start_local and end_local for 'cart'.
+     * @param array  $args {
+     *     @type int    $limit               Rows to return (1 to PAGES_SHEET_MAX).
+     *     @type int    $offset              Rows to skip.
+     *     @type string $search              Part of a product name.
+     *     @type bool   $count               Also count every matching product.
+     *     @type bool   $exclude_marketplace 'sold': leave BrikMarket orders out.
+     * }
+     * @return array{rows:array,total:?int,has_more:bool}
+     */
+    private function products_list_query( $kind, array $dates, array $args = [] ) {
+        global $wpdb;
+        $limit  = max( 1, min( self::PAGES_SHEET_MAX, (int) ( $args['limit'] ?? 5 ) ) );
+        $offset = max( 0, min( self::PAGES_SHEET_MAX, (int) ( $args['offset'] ?? 0 ) ) );
+        $search = isset( $args['search'] ) ? trim( (string) $args['search'] ) : '';
+
+        if ( 'sold' === $kind ) {
+            $inner = $this->sold_totals_sql( $dates['start_gmt'], $dates['end_gmt'], ! empty( $args['exclude_marketplace'] ) );
+        } else {
+            $inner = [
+                'sql'  => "SELECT product_id, SUM(cart_count) AS total
+                           FROM {$wpdb->prefix}brikpanel_cart_tracking
+                           WHERE date_column >= %s AND date_column <= %s
+                           GROUP BY product_id",
+                'args' => [ $dates['start_local'] . ' 00:00:00', $dates['end_local'] . ' 23:59:59' ],
+            ];
+        }
+        $statuses = array_keys( get_post_statuses() );
+        $from     = "FROM ( {$inner['sql']} ) a
+                     INNER JOIN {$wpdb->posts} pr ON pr.ID = a.product_id AND pr.post_type = 'product'
+                     AND pr.post_status IN (" . implode( ',', array_fill( 0, count( $statuses ), '%s' ) ) . ')';
+        $params   = array_merge( $inner['args'], $statuses );
+        $where    = '';
+        if ( '' !== $search ) {
+            $where    = 'WHERE pr.post_title LIKE %s';
+            $params[] = '%' . $wpdb->esc_like( $search ) . '%';
         }
 
-        $results = $wpdb->get_results( $query );
-        if ( empty( $results ) ) {
-            return [];
+        // One row more than asked tells whether there is a next load.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders -- table names from $wpdb, every value a placeholder.
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT a.product_id, a.total {$from} {$where}
+                 ORDER BY a.total DESC, a.product_id ASC
+                 LIMIT %d OFFSET %d",
+                array_merge( $params, [ $limit + 1, $offset ] )
+            )
+        );
+        $total = null;
+        if ( ! empty( $args['count'] ) ) {
+            $total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) {$from} {$where}", $params ) );
         }
+        // phpcs:enable
 
-        $product_ids  = wp_list_pluck( $results, 'product_id' );
-        $products     = wc_get_products( [ 'include' => $product_ids, 'limit' => -1 ] );
-        $products_map = [];
-        foreach ( $products as $p ) {
-            $products_map[ $p->get_id() ] = $p;
+        $results  = is_array( $results ) ? $results : [];
+        $has_more = count( $results ) > $limit;
+        $results  = array_slice( $results, 0, $limit );
+        $ids      = array_map( 'intval', wp_list_pluck( $results, 'product_id' ) );
+        if ( $ids ) {
+            _prime_post_caches( $ids, false, false );
         }
 
         $data = [];
         foreach ( $results as $row ) {
-            $product = isset( $products_map[ $row->product_id ] ) ? $products_map[ $row->product_id ] : null;
-            if ( $product ) {
-                $permalink = $product->get_permalink();
-                $data[] = [
-                    'name' => brikpanel_plain_name( $product->get_name() ),
-                    'qty'  => (int) $row->total_sold,
-                    'id'   => (int) $row->product_id,
-                    'url'  => $permalink ? $permalink : '',
-                ];
-            }
+            $id        = (int) $row->product_id;
+            $permalink = get_permalink( $id );
+            $data[]    = [
+                'key'   => 'product:' . $id,
+                // The product's own name, like WC_Product::get_name(): no
+                // "Private:" prefix from the_title.
+                'title' => brikpanel_plain_name( (string) get_post_field( 'post_title', $id, 'raw' ) ),
+                'value' => (int) round( (float) $row->total ),
+                'id'    => $id,
+                'url'   => $permalink ? $permalink : '',
+            ];
         }
-        return $data;
+
+        return [ 'rows' => $data, 'total' => $total, 'has_more' => $has_more ];
     }
 
     // =========================================================================
@@ -4655,30 +5016,116 @@ class Brikpanel_Dashboard {
      */
     const MOST_CARD_FETCH = 40;
 
+    /**
+     * The Most viewed pages card: its first five pages and how many pages the
+     * period has in all (the "View all" link of the card).
+     *
+     * @param string $start_local Y-m-d.
+     * @param string $end_local   Y-m-d.
+     * @return array{rows:array,total:int}
+     */
     private function get_most_viewed( $start_local, $end_local ) {
+        $list = $this->most_viewed_query( $start_local, $end_local, [ 'limit' => 5, 'count' => true ] );
+        return [ 'rows' => $list['rows'], 'total' => (int) $list['total'] ];
+    }
+
+    /**
+     * Post types, post statuses and taxonomies a shopper can open. The page
+     * lists keep only these: the same rule the tracker applies when it counts
+     * a view (brikpanel_view_target_is_public()), so a page moved to the trash,
+     * a draft or a private page drops out of the lists.
+     *
+     * @return array{types:string[],statuses:string[],taxonomies:string[]}
+     */
+    private static function viewable_objects() {
+        static $objects = null;
+        if ( null === $objects ) {
+            $objects = [
+                'types'      => array_values( array_filter( get_post_types( [], 'names' ), 'is_post_type_viewable' ) ),
+                'statuses'   => array_values( array_filter( get_post_stati( [], 'names' ), 'is_post_status_viewable' ) ),
+                'taxonomies' => array_values( array_filter( get_taxonomies( [], 'names' ), 'is_taxonomy_viewable' ) ),
+            ];
+        }
+        return $objects;
+    }
+
+    /**
+     * Pages of a period, most viewed first: the Most viewed pages card, its
+     * window and the Excel sheet all read this one list.
+     *
+     * Views are added up per page first, then the pages are joined to their
+     * post or term, so a long period costs one pass over its view rows and one
+     * lookup per page. Rows written before 3.2.41 have no object_type of their
+     * own and take the column default, so anything but 'term' is a post.
+     *
+     * @param string $start_local Y-m-d.
+     * @param string $end_local   Y-m-d.
+     * @param array  $args {
+     *     @type int    $limit  Rows to return (1 to PAGES_SHEET_MAX).
+     *     @type int    $offset Rows to skip.
+     *     @type string $search Part of a page title or category name.
+     *     @type bool   $count  Also count every matching page.
+     * }
+     * @return array{rows:array,total:?int,has_more:bool}
+     */
+    private function most_viewed_query( $start_local, $end_local, array $args = [] ) {
         global $wpdb;
-        $table = $wpdb->prefix . 'brikpanel_visited_pages';
+        $limit   = max( 1, min( self::PAGES_SHEET_MAX, (int) ( $args['limit'] ?? 5 ) ) );
+        $offset  = max( 0, min( self::PAGES_SHEET_MAX, (int) ( $args['offset'] ?? 0 ) ) );
+        $search  = isset( $args['search'] ) ? trim( (string) $args['search'] ) : '';
+        $objects = self::viewable_objects();
+        $table   = $wpdb->prefix . 'brikpanel_visited_pages';
+        $in      = static function ( array $list ) {
+            return implode( ',', array_fill( 0, count( $list ), '%s' ) );
+        };
 
-        $start_dt = $start_local . ' 00:00:00';
-        $end_dt   = $end_local . ' 23:59:59';
+        $params = [ $start_local . ' 00:00:00', $end_local . ' 23:59:59' ];
+        $from   = "FROM ( SELECT page_id, object_type, SUM(visit_count) AS total_views
+                            FROM {$table}
+                            WHERE date_column >= %s AND date_column <= %s
+                            GROUP BY page_id, object_type ) v
+                   LEFT JOIN {$wpdb->posts} p ON v.object_type <> 'term' AND p.ID = v.page_id
+                   LEFT JOIN {$wpdb->terms} t ON v.object_type = 'term' AND t.term_id = v.page_id";
 
-        $results = $wpdb->get_results( $wpdb->prepare(
-            "SELECT page_id, object_type, SUM(visit_count) AS total_views
-             FROM {$table}
-             WHERE date_column >= %s AND date_column <= %s
-             GROUP BY page_id, object_type
-             ORDER BY total_views DESC LIMIT %d",
-            $start_dt,
-            $end_dt,
-            self::MOST_CARD_FETCH
-        ) );
-
-        if ( empty( $results ) ) {
-            return [];
+        $post_ok = '0 = 1';
+        if ( $objects['types'] && $objects['statuses'] ) {
+            $post_ok = "( p.ID IS NOT NULL AND p.post_title <> '' AND p.post_type IN (" . $in( $objects['types'] ) . ') AND p.post_status IN (' . $in( $objects['statuses'] ) . ') )';
+            $params  = array_merge( $params, $objects['types'], $objects['statuses'] );
+        }
+        $term_ok = '0 = 1';
+        if ( $objects['taxonomies'] ) {
+            $term_ok = "( t.term_id IS NOT NULL AND EXISTS ( SELECT 1 FROM {$wpdb->term_taxonomy} tt WHERE tt.term_id = t.term_id AND tt.taxonomy IN (" . $in( $objects['taxonomies'] ) . ') ) )';
+            $params  = array_merge( $params, $objects['taxonomies'] );
+        }
+        $where = "WHERE ( {$post_ok} OR {$term_ok} )";
+        if ( '' !== $search ) {
+            // Category names are stored with "&amp;" for "&", titles are not.
+            $where   .= ' AND ( p.post_title LIKE %s OR t.name LIKE %s OR t.name LIKE %s )';
+            $params[] = '%' . $wpdb->esc_like( $search ) . '%';
+            $params[] = '%' . $wpdb->esc_like( $search ) . '%';
+            $params[] = '%' . $wpdb->esc_like( esc_html( $search ) ) . '%';
         }
 
-        // Rows written before 3.2.41 have no object_type of their own and take
-        // the column default, so anything unrecognised is treated as a post.
+        // One row more than asked tells whether there is a next load.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders -- table names from $wpdb, every value a placeholder.
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT v.page_id, v.object_type, v.total_views {$from} {$where}
+                 ORDER BY v.total_views DESC, v.object_type ASC, v.page_id ASC
+                 LIMIT %d OFFSET %d",
+                array_merge( $params, [ $limit + 1, $offset ] )
+            )
+        );
+        $total = null;
+        if ( ! empty( $args['count'] ) ) {
+            $total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) {$from} {$where}", $params ) );
+        }
+        // phpcs:enable
+
+        $results  = is_array( $results ) ? $results : [];
+        $has_more = count( $results ) > $limit;
+        $results  = array_slice( $results, 0, $limit );
+
         $post_ids = [];
         foreach ( $results as $row ) {
             if ( 'term' !== $row->object_type ) {
@@ -4691,91 +5138,65 @@ class Brikpanel_Dashboard {
 
         $data = [];
         foreach ( $results as $row ) {
-            if ( count( $data ) >= 5 ) {
-                break;
-            }
-
             $id = (int) $row->page_id;
-
             if ( 'term' === $row->object_type ) {
                 $term = get_term( $id );
                 if ( ! $term || is_wp_error( $term ) ) {
                     continue;
                 }
+                $tax   = get_taxonomy( $term->taxonomy );
                 $title = brikpanel_plain_name( $term->name );
                 $link  = get_term_link( $term );
                 $url   = is_wp_error( $link ) ? '' : $link;
+                $type  = $tax ? $tax->labels->singular_name : '';
             } else {
                 // get_the_title() is display HTML: "&" comes back as "&#038;",
-                // " - " as "&#8211;". The card writes the title as text.
+                // " - " as "&#8211;". The lists write the title as text.
                 $title = brikpanel_plain_label( get_the_title( $id ) );
                 if ( ! $title ) {
                     continue;
                 }
                 $permalink = get_permalink( $id );
                 $url       = $permalink ? $permalink : '';
+                $pto       = get_post_type_object( get_post_type( $id ) );
+                $type      = $pto ? $pto->labels->singular_name : '';
             }
-
             $data[] = [
+                'key'   => ( 'term' === $row->object_type ? 'term:' : 'post:' ) . $id,
                 'title' => $title,
+                'type'  => brikpanel_plain_label( (string) $type ),
                 'views' => (int) $row->total_views,
                 'id'    => $id,
                 'url'   => $url,
             ];
         }
-        return $data;
+
+        return [ 'rows' => $data, 'total' => $total, 'has_more' => $has_more ];
     }
 
     // =========================================================================
     // MOST ADDED TO CART
     // =========================================================================
 
+    /**
+     * The Most added to cart card: its first five products and how many
+     * products were added to a cart in the period (the card's "View all").
+     *
+     * @param string $start_local Y-m-d.
+     * @param string $end_local   Y-m-d.
+     * @return array{rows:array,total:int}
+     */
     private function get_most_cart( $start_local, $end_local ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'brikpanel_cart_tracking';
-
-        $start_dt = $start_local . ' 00:00:00';
-        $end_dt   = $end_local . ' 23:59:59';
-
-        $results = $wpdb->get_results( $wpdb->prepare(
-            "SELECT product_id, SUM(cart_count) AS total_count
-             FROM {$table}
-             WHERE date_column >= %s AND date_column <= %s
-             GROUP BY product_id
-             ORDER BY total_count DESC LIMIT %d",
-            $start_dt,
-            $end_dt,
-            self::MOST_CARD_FETCH
-        ) );
-
-        if ( empty( $results ) ) {
-            return [];
+        $list = $this->products_list_query(
+            'cart',
+            [ 'start_local' => $start_local, 'end_local' => $end_local ],
+            [ 'limit' => 5, 'count' => true ]
+        );
+        $rows = [];
+        foreach ( $list['rows'] as $row ) {
+            $rows[] = [ 'name' => $row['title'], 'count' => $row['value'], 'id' => $row['id'], 'url' => $row['url'] ];
         }
-
-        $product_ids  = wp_list_pluck( $results, 'product_id' );
-        $products     = wc_get_products( [ 'include' => $product_ids, 'limit' => -1 ] );
-        $products_map = [];
-        foreach ( $products as $p ) {
-            $products_map[ $p->get_id() ] = $p;
-        }
-
-        $data = [];
-        foreach ( $results as $row ) {
-            if ( count( $data ) >= 5 ) {
-                break;
-            }
-            $product = isset( $products_map[ $row->product_id ] ) ? $products_map[ $row->product_id ] : null;
-            if ( $product ) {
-                $permalink = $product->get_permalink();
-                $data[] = [
-                    'name'  => brikpanel_plain_name( $product->get_name() ),
-                    'count' => (int) $row->total_count,
-                    'id'    => (int) $row->product_id,
-                    'url'   => $permalink ? $permalink : '',
-                ];
-            }
-        }
-        return $data;
+        return [ 'rows' => $rows, 'total' => (int) $list['total'] ];
     }
 
     // =========================================================================
@@ -6250,32 +6671,44 @@ class Brikpanel_Dashboard {
         }
 
         // ---------- Sheet 6: Top Products ----------
-        $products = [ [ [ __( 'Product', 'brikpanel' ), $H ], [ __( 'Qty sold', 'brikpanel' ), $H ] ] ];
-        if ( empty( $d['top_products'] ) ) {
+        // Every product of the period (up to PAGES_SHEET_MAX), not only the
+        // five on the card: the same list as the card's "View all" window.
+        $sheet_dates = $this->calculate_dates( $range, $custom_start, $custom_end );
+        $products    = [ [ [ __( 'Product', 'brikpanel' ), $H ], [ __( 'Qty sold', 'brikpanel' ), $H ] ] ];
+        $sold_list   = $this->products_list_query(
+            'sold',
+            $sheet_dates,
+            [ 'limit' => self::PAGES_SHEET_MAX, 'exclude_marketplace' => function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active() ]
+        );
+        if ( empty( $sold_list['rows'] ) ) {
             $products[] = [ __( 'No data for this period', 'brikpanel' ), '' ];
         } else {
-            foreach ( $d['top_products'] as $tp ) {
-                $products[] = [ $tp['name'], (int) $tp['qty'] ];
+            foreach ( $sold_list['rows'] as $tp ) {
+                $products[] = [ $tp['title'], (int) $tp['value'] ];
             }
         }
 
         // ---------- Sheet 7: Most Viewed ----------
-        $viewed = [ [ [ __( 'Product', 'brikpanel' ), $H ], [ __( 'Views', 'brikpanel' ), $H ] ] ];
-        if ( empty( $d['most_viewed'] ) ) {
-            $viewed[] = [ __( 'No data for this period', 'brikpanel' ), '' ];
+        // Every page of the period (up to PAGES_SHEET_MAX), not only the five
+        // on the card: the same list as the card's "View all" window.
+        $viewed      = [ [ [ _x( 'Page', 'column header: a page of the store', 'brikpanel' ), $H ], [ __( 'Type', 'brikpanel' ), $H ], [ __( 'Views', 'brikpanel' ), $H ] ] ];
+        $viewed_list = $this->most_viewed_query( $period['from_iso'], $period['to_iso'], [ 'limit' => self::PAGES_SHEET_MAX ] );
+        if ( empty( $viewed_list['rows'] ) ) {
+            $viewed[] = [ __( 'No data for this period', 'brikpanel' ), '', '' ];
         } else {
-            foreach ( $d['most_viewed'] as $mv ) {
-                $viewed[] = [ $mv['title'], (int) $mv['views'] ];
+            foreach ( $viewed_list['rows'] as $mv ) {
+                $viewed[] = [ $mv['title'], $mv['type'], (int) $mv['views'] ];
             }
         }
 
         // ---------- Sheet 8: Most Added to Cart ----------
-        $carted = [ [ [ __( 'Product', 'brikpanel' ), $H ], [ __( 'Cart adds', 'brikpanel' ), $H ] ] ];
-        if ( empty( $d['most_cart'] ) ) {
+        $carted    = [ [ [ __( 'Product', 'brikpanel' ), $H ], [ __( 'Cart adds', 'brikpanel' ), $H ] ] ];
+        $cart_list = $this->products_list_query( 'cart', $sheet_dates, [ 'limit' => self::PAGES_SHEET_MAX ] );
+        if ( empty( $cart_list['rows'] ) ) {
             $carted[] = [ __( 'No data for this period', 'brikpanel' ), '' ];
         } else {
-            foreach ( $d['most_cart'] as $mc ) {
-                $carted[] = [ $mc['name'], (int) $mc['count'] ];
+            foreach ( $cart_list['rows'] as $mc ) {
+                $carted[] = [ $mc['title'], (int) $mc['value'] ];
             }
         }
 
@@ -6414,7 +6847,7 @@ class Brikpanel_Dashboard {
         $writer->add_sheet( __( 'Campaigns', 'brikpanel' ), $campaigns_sheet, [ 1 => 32, 2 => 10, 3 => 10, 4 => 18, 5 => 16 ] );
         $writer->add_sheet( __( 'Customer segments', 'brikpanel' ), $segments_sheet, [ 1 => 28, 2 => 14, 3 => 14 ] );
         $writer->add_sheet( __( 'Top products', 'brikpanel' ), $products, [ 1 => 40, 2 => 12 ] );
-        $writer->add_sheet( __( 'Most viewed', 'brikpanel' ), $viewed, [ 1 => 40, 2 => 12 ] );
+        $writer->add_sheet( __( 'Most viewed', 'brikpanel' ), $viewed, [ 1 => 40, 2 => 16, 3 => 12 ] );
         $writer->add_sheet( __( 'Most added to cart', 'brikpanel' ), $carted, [ 1 => 40, 2 => 12 ] );
         $writer->add_sheet( __( 'Sales over time', 'brikpanel' ), $sot, [ 1 => 16, 2 => 16, 3 => 12 ], true );
         $writer->add_sheet( __( 'Countries', 'brikpanel' ), $countries, [ 1 => 24, 2 => 12, 3 => 14, 4 => 16 ] );

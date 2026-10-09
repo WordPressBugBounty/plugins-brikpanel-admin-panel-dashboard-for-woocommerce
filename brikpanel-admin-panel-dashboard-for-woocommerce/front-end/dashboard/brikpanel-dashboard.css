@@ -4115,6 +4115,29 @@ button.brikpanel-dash-guide__item:focus-visible {
     font-size: 0.75rem;
 }
 
+/* A page's type after its name (Product, Page, Category), in the Most viewed
+   pages window. */
+.bp-dv-pline {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.bp-dv-ptype {
+    flex: none;
+    color: var(--bp-text-secondary);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+/* The Products foot keeps its line when the open tab has no link there (Most
+   viewed pages with no more pages than the card shows): the card never jumps
+   between tabs. */
+.bp-dv-foot-pages {
+    min-height: 1.21875rem;
+}
+
 /* ---- Recent orders: the Orders page rows ---- */
 .bp-dv-olist {
     display: grid;
@@ -4451,6 +4474,48 @@ button.brikpanel-dash-guide__item:focus-visible {
 .bp-dv-card.is-w560 .bp-dv-cmeta { grid-column: 1; grid-row: 2; }
 .bp-dv-card.is-w560 .bp-dv-crev { grid-row: 1 / span 2; align-self: center; }
 
+/* Sources with the campaigns (is-src3, fitVisitors() in brikpanel-dashboard.js):
+   on a card at least 740px wide the campaigns are a third column and the Top
+   campaigns tab steps aside. Every row stays one line, so the tallest column is
+   still the six channel rows and the card is no taller than before; a
+   narrower card keeps the tab. */
+.bp-dv-visitors:not(.is-src3) .bp-dv-src-camps,
+.bp-dv-visitors.is-src3 .bp-dv-tab[data-bp-dv-tab="campaigns"] {
+    display: none;
+}
+
+.bp-dv-visitors.is-src3 .bp-dv-src2 {
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) minmax(0, 1.5fr);
+    gap: 1.5rem;
+}
+
+/* Visitor tracking off: no referrers column, the other two share the row. */
+.bp-dv-visitors.is-src3 .bp-dv-src2.is-noref {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+
+.bp-dv-visitors.is-src3 .bp-dv-srcs li {
+    grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr) 2.6rem;
+}
+
+.bp-dv-src-camps .bp-dv-h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.bp-dv-src-camps .bp-dv-camps li {
+    grid-template-columns: minmax(4.5rem, 1fr) minmax(0, max-content) max-content;
+    gap: 0.625rem;
+    padding: 0.3125rem 0;
+}
+
+.bp-dv-src-camps .bp-dv-cmeta {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* ---- Customers (new and returning, segments in three groups) ---- */
 .bp-dv-cust-body {
     justify-content: flex-start;
@@ -4692,6 +4757,145 @@ button.brikpanel-dash-guide__item:focus-visible {
 .bp-dv-tip-line {
     display: block;
     overflow-wrap: anywhere;
+}
+
+/* ---- Most viewed pages window (render_pages_window()) ---- */
+/* On <html>, with !important, like html.brikpanel-welcome-lock: the top bar
+   fixes <body>'s height, so a body lock jumps. */
+html.bp-dv-pages-lock {
+    overflow-y: hidden !important;
+}
+
+/* No display here: a closed <dialog> must keep the browser's display:none. */
+.bp-dv-pages {
+    box-sizing: border-box;
+    width: min(42rem, calc(100vw - 2rem));
+    max-width: none;
+    max-height: min(52rem, calc(100dvh - 4rem));
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+    color: var(--bp-text);
+    background: var(--bp-card);
+    border: 0;
+    border-radius: 0.75rem;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+}
+
+.bp-dv-pages::backdrop {
+    background: rgba(48, 48, 48, 0.4);
+}
+
+.bp-dv-pages-box {
+    display: flex;
+    flex-direction: column;
+    max-height: min(52rem, calc(100dvh - 4rem));
+}
+
+.bp-dv-pages-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1.125rem 1.25rem 0.875rem;
+    border-bottom: 1px solid var(--bp-dv-line-2);
+}
+
+.bp-dv-pages-titles {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.bp-dv-pages-title {
+    margin: 0 0 0.125rem;
+    color: var(--bp-text);
+    font-size: var(--brikpanel-card-title-size, 1rem);
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.bp-dv-pages-sub {
+    margin: 0;
+    color: var(--bp-text-secondary);
+    font-size: 0.78125rem;
+}
+
+.bp-dv-pages-x {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    color: var(--bp-text);
+    background: #f1f1f1;
+    border: 0;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.bp-dv-pages-x:hover {
+    background: #e3e3e3;
+}
+
+.bp-dv-pages-x:focus-visible {
+    outline: 2px solid var(--bp-input-focus);
+    outline-offset: 2px;
+}
+
+.bp-dv-pages-tools {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--bp-dv-line-2);
+}
+
+.bp-dv-pages-q {
+    width: 100%;
+}
+
+.bp-dv-pages-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0.375rem 1.25rem 1rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* Ranks run to three digits here. */
+.bp-dv-pages-list {
+    grid-template-columns: 2rem 34px minmax(0, 1fr) max-content;
+}
+
+.bp-dv-pages-note {
+    padding: 1.5rem 0;
+}
+
+.bp-dv-pages-foot {
+    display: flex;
+    justify-content: center;
+    padding-top: 0.75rem;
+}
+
+/* A phone: the whole screen. */
+@media (max-width: 782px) {
+    .bp-dv-pages {
+        width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    .bp-dv-pages-box {
+        height: 100%;
+        max-height: none;
+    }
+
+    .bp-dv-pages-head,
+    .bp-dv-pages-tools {
+        padding-inline: 1rem;
+    }
+
+    .bp-dv-pages-body {
+        padding-inline: 1rem;
+    }
 }
 
 /* ---- Motion: none at all when the system asks for it ---- */

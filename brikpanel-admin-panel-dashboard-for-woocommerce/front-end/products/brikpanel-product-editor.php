@@ -51,6 +51,15 @@ class Brikpanel_Product_Editor {
     private static $render_hook_memo = [];
 
     /**
+     * What the last capture_wc_product_data_fields() call put in the card:
+     * whether any section is on screen, and the ids of every third-party panel
+     * rendered (shown or kept hidden).
+     *
+     * @var array{any_visible: bool, panels: string[]}
+     */
+    private static $capture_info = ['any_visible' => false, 'panels' => []];
+
+    /**
      * User-facing, non-fatal warnings collected during a single save request
      * (e.g. a SKU or GTIN that WooCommerce rejected as duplicate/invalid).
      * Surfaced in the AJAX response so the editor can tell the merchant *why*
@@ -89,6 +98,16 @@ class Brikpanel_Product_Editor {
      * @var array<string,string>
      */
     private $promoted_axis_map = [];
+
+    /**
+     * The status this save writes, after the publish permission and the
+     * schedule rules ('' outside a save). save_variations() reads it: a
+     * "publish" from someone who may only send products in for review is
+     * saved as pending and must not create site-wide attributes.
+     *
+     * @var string
+     */
+    private $save_status = '';
 
     public function __construct() {
         // Always register the page slug so WordPress doesn't throw a permission error
@@ -393,18 +412,20 @@ class Brikpanel_Product_Editor {
     // ADMIN PAGE
     // =========================================================================
 
+    /**
+     * Registers the editor under WordPress's Products menu, as a row only access
+     * plugins see (includes/brikpanel-screen-menu.php). The editor always runs
+     * under its old screen name, admin_page_brikpanel-product-editor: the SEO
+     * bootstrap in brikpanel.php makes WordPress look it up as post.php, and the
+     * helper keeps that name registered.
+     */
     public function register_page() {
-        $hook = add_submenu_page(
-            '',
-            __('Product Editor', 'brikpanel'),
-            '',
-            'edit_products',
-            'brikpanel-product-editor',
-            [$this, 'render_page']
-        );
+        $hooks = function_exists('brikpanel_add_screen_page')
+            ? brikpanel_add_screen_page('edit.php?post_type=product', __('Product Editor', 'brikpanel'), 'edit_products', 'brikpanel-product-editor', [$this, 'render_page'])
+            : array_filter([add_submenu_page('', __('Product Editor', 'brikpanel'), '', 'edit_products', 'brikpanel-product-editor', [$this, 'render_page'])]);
 
         // Set page title before admin-header.php runs (prevents strip_tags null warning)
-        if ($hook) {
+        foreach ($hooks as $hook) {
             add_action('load-' . $hook, function () {
                 global $title;
                 $title = __('Product Editor', 'brikpanel');
@@ -584,7 +605,9 @@ class Brikpanel_Product_Editor {
      */
     public function add_body_class($classes) {
         $screen = get_current_screen();
-        if ($screen && $screen->id === 'admin_page_brikpanel-product-editor') {
+        // Compared by its end: the screen sits under the Products menu and keeps
+        // its old name too (includes/brikpanel-screen-menu.php).
+        if ($screen && str_ends_with((string) $screen->id, '_page_brikpanel-product-editor')) {
             $classes .= ' brikpanel-product-editor-page';
             if (get_option('brikpanel_variation_gallery_enabled', 'yes') !== 'yes') {
                 $classes .= ' brikpanel-pe-no-var-gallery';
@@ -841,6 +864,12 @@ class Brikpanel_Product_Editor {
         // silent auto-save stays off for them — the user hasn't published yet.
         $is_live     = $is_edit && in_array($data['status'], ['publish', 'private'], true);
 
+        // Someone who may edit but not publish products gets what WordPress's
+        // own editor gives them (post_submit_meta_box()): Draft and Pending
+        // review plus the product's current live status, no publish date, and
+        // "Submit for review" on the button. The save enforces the same rule.
+        $can_publish = brikpanel_user_can_publish_products();
+
         // COGS: gated on the "Cost of goods" entry in the section visibility
         // picker. WC 9.5+ native COGS is still consumed under the hood when
         // available; otherwise the save handler falls back to the
@@ -1002,12 +1031,29 @@ class Brikpanel_Product_Editor {
         // `brikpanel_pe_wc_tabs_position` setting. Middle = default, matches
         // the historical layout.
         $wc_extras_card     = '';
+        $bpe_native_attrs   = '';
         $wc_extras_position = get_option('brikpanel_pe_wc_tabs_position', 'middle');
         if (!in_array($wc_extras_position, ['top', 'middle', 'bottom'], true)) {
             $wc_extras_position = 'middle';
         }
         if ($product_id) {
-            $wc_extras = $this->capture_wc_product_data_fields($product_id, $product);
+            $wc_extras  = $this->capture_wc_product_data_fields($product_id, $product);
+            $wc_capture = self::$capture_info;
+            // Blocksy's swatches editor reads the product's attributes out of
+            // WooCommerce's Attributes panel, which this editor replaces: give
+            // it the hidden rows it looks for (native_attribute_mirror_rows()).
+            /**
+             * Whether to print the hidden copy of the product's variation
+             * attributes that WooCommerce-panel readers like Blocksy's swatches
+             * editor look for.
+             *
+             * @param bool       $print   Default: Blocksy's swatches panel is in the card.
+             * @param string[]   $panels  Third-party panel ids in the card.
+             * @param WC_Product $product Product being edited.
+             */
+            if (apply_filters('brikpanel_pe_native_attribute_mirror', in_array('ct_product_variation_swatches', $wc_capture['panels'], true), $wc_capture['panels'], $product)) {
+                $bpe_native_attrs = self::native_attribute_mirror($product);
+            }
             if ($wc_extras !== '') {
                 // Recreate the native editor's ancestor chain around the
                 // captured third-party panels:
@@ -1111,7 +1157,13 @@ class Brikpanel_Product_Editor {
                         . esc_html__('Hide these fields', 'brikpanel') . '</button>'
                     : '';
 
-                $wc_extras_card = '<div class="brikpanel-pe-card brikpanel-pe-wc-fields">'
+                // Nothing to show (every section hidden for this product type,
+                // or only kept for its values): the card stays on the page so
+                // its fields travel with the save, but out of sight. The
+                // editor JS shows it again when a type change reveals a
+                // section. Inline display, not [hidden]: the phone layout reads
+                // a card's style.display to decide whether to list it.
+                $wc_extras_card = '<div class="brikpanel-pe-card brikpanel-pe-wc-fields"' . ($wc_capture['any_visible'] ? '' : ' style="display:none"') . '>'
                     . '<div class="brikpanel-pe-wc-fields-head">'
                     . '<label>' . esc_html__('Additional product data', 'brikpanel') . '</label>'
                     . $wc_extras_hide
@@ -1210,6 +1262,13 @@ class Brikpanel_Product_Editor {
                     // save payload stays unified. A brand-new or auto-draft product
                     // has no committed date yet, so the label reads "Immediately"
                     // until the merchant picks one.
+                    //
+                    // Not for someone who may not publish: WordPress gives them no
+                    // date either ("Contributors don't get to choose the date of
+                    // publish", post_submit_meta_box()), and the save keeps the
+                    // stored one. Every script that reads the control checks that
+                    // it is on the page.
+                    if ($can_publish) :
                     $pubdate_ts = 0;
                     if ($data['post_date'] !== '') {
                         $pd = date_create($data['post_date'], wp_timezone());
@@ -1238,6 +1297,7 @@ class Brikpanel_Product_Editor {
                             <input type="datetime-local" id="bpe-schedule-date" value="<?php echo esc_attr($data['post_date']); ?>" aria-label="<?php esc_attr_e('Publish date and time', 'brikpanel'); ?>">
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
                 <div class="brikpanel-pe-header-right">
                     <?php
@@ -1273,6 +1333,12 @@ class Brikpanel_Product_Editor {
                     if ($is_password) {
                         $effective_status = 'password';
                     }
+                    // A status that publishes is offered to someone who may not
+                    // publish only when it is the product's current one, as in
+                    // WordPress's own status dropdown.
+                    $bpe_status_offered = static function ($value) use ($can_publish, $effective_status) {
+                        return $can_publish || $value === $effective_status;
+                    };
                     ?>
                     <?php if ($featured_star_on) :
                         $is_featured = !empty($data['is_featured']);
@@ -1302,6 +1368,7 @@ class Brikpanel_Product_Editor {
                                     'publish'  => __('Published', 'brikpanel'),
                                     'future'   => __('Scheduled', 'brikpanel'),
                                     'draft'    => __('Draft', 'brikpanel'),
+                                    'pending'  => brikpanel_product_status_label('pending'),
                                     'private'  => __('Private', 'brikpanel'),
                                     'password' => __('Password protected', 'brikpanel'),
                                 );
@@ -1312,6 +1379,7 @@ class Brikpanel_Product_Editor {
                         </button>
                         <input type="hidden" id="bpe-status" value="<?php echo esc_attr($effective_status); ?>">
                         <ul class="brikpanel-pe-status-menu" role="listbox" aria-labelledby="bpe-status-trigger">
+                            <?php if ($bpe_status_offered('publish')) : ?>
                             <li role="option" data-value="publish" class="<?php echo $effective_status === 'publish' ? 'is-active' : ''; ?>">
                                 <span class="brikpanel-pe-status-dot" data-status="publish"></span>
                                 <span class="brikpanel-pe-status-option-text">
@@ -1319,7 +1387,8 @@ class Brikpanel_Product_Editor {
                                     <small><?php esc_html_e('Visible to everyone on the storefront', 'brikpanel'); ?></small>
                                 </span>
                             </li>
-                            <?php if ($scheduling_on) : ?>
+                            <?php endif; ?>
+                            <?php if ($scheduling_on && $bpe_status_offered('future')) : ?>
                             <li role="option" data-value="future" class="<?php echo $effective_status === 'future' ? 'is-active' : ''; ?>">
                                 <span class="brikpanel-pe-status-dot" data-status="future"></span>
                                 <span class="brikpanel-pe-status-option-text">
@@ -1335,6 +1404,21 @@ class Brikpanel_Product_Editor {
                                     <small><?php esc_html_e('Not visible on the storefront', 'brikpanel'); ?></small>
                                 </span>
                             </li>
+                            <?php
+                            // "Pending review": the product waits for someone who may
+                            // publish. Listed only where it means something (the product
+                            // already waits, or the person may not publish), so a store
+                            // that never sends products in for review sees no new choice.
+                            if (!$can_publish || 'pending' === $effective_status) : ?>
+                            <li role="option" data-value="pending" class="<?php echo $effective_status === 'pending' ? 'is-active' : ''; ?>">
+                                <span class="brikpanel-pe-status-dot" data-status="pending"></span>
+                                <span class="brikpanel-pe-status-option-text">
+                                    <strong><?php echo esc_html(brikpanel_product_status_label('pending')); ?></strong>
+                                    <small><?php esc_html_e('Waiting for a manager to publish it', 'brikpanel'); ?></small>
+                                </span>
+                            </li>
+                            <?php endif; ?>
+                            <?php if ($bpe_status_offered('private')) : ?>
                             <li role="option" data-value="private" class="<?php echo $effective_status === 'private' ? 'is-active' : ''; ?>">
                                 <span class="brikpanel-pe-status-dot" data-status="private"></span>
                                 <span class="brikpanel-pe-status-option-text">
@@ -1342,6 +1426,8 @@ class Brikpanel_Product_Editor {
                                     <small><?php esc_html_e('Visible only to admins and editors', 'brikpanel'); ?></small>
                                 </span>
                             </li>
+                            <?php endif; ?>
+                            <?php if ($bpe_status_offered('password')) : ?>
                             <li role="option" data-value="password" class="<?php echo $effective_status === 'password' ? 'is-active' : ''; ?>">
                                 <span class="brikpanel-pe-status-dot" data-status="password"></span>
                                 <span class="brikpanel-pe-status-option-text">
@@ -1349,10 +1435,12 @@ class Brikpanel_Product_Editor {
                                     <small><?php esc_html_e('Visitors must enter a password to view', 'brikpanel'); ?></small>
                                 </span>
                             </li>
+                            <?php endif; ?>
                         </ul>
                     </div>
                     <div class="brikpanel-pe-password-inline <?php echo $is_password ? 'is-visible' : ''; ?>" id="bpe-password-wrap">
-                        <input type="text" id="bpe-post-password" value="<?php echo esc_attr($data['post_password']); ?>" placeholder="<?php esc_attr_e('Password...', 'brikpanel'); ?>">
+                        <?php // Read-only for someone who may not publish: the save keeps the stored password (WordPress drops theirs too). ?>
+                        <input type="text" id="bpe-post-password" value="<?php echo esc_attr($data['post_password']); ?>" placeholder="<?php esc_attr_e('Password...', 'brikpanel'); ?>"<?php echo $can_publish ? '' : ' readonly'; ?>>
                     </div>
                     <!-- Catalog Visibility (mini dropdown) -->
                     <?php
@@ -1391,15 +1479,31 @@ class Brikpanel_Product_Editor {
                         __('Schedule', 'brikpanel'),
                         __('Saving...', 'brikpanel'),
                     ];
+                    // Only those who may not publish ever see it: for everyone
+                    // else the longer label would fold the header earlier.
+                    if (!$can_publish) {
+                        $bpe_publish_labels[] = __('Submit for review', 'brikpanel');
+                    }
                     ?>
                     <?php
                     // Existing live (or password-protected) product → Update.
                     // Brand-new product with the default Published status →
                     // Publish (clicking actually publishes).
                     // Anything else (Draft / Private new product) → Save.
+                    // Someone who may not publish: "Submit for review" on Pending
+                    // review (updatePublishLabel() in the editor script follows
+                    // the same rule when the status changes).
                     // The phone's bottom bar prints the same label.
                     if ($effective_status === 'future') {
                         $bpe_publish_label = __('Schedule', 'brikpanel');
+                    } elseif (!$can_publish) {
+                        if ('pending' === $effective_status) {
+                            $bpe_publish_label = __('Submit for review', 'brikpanel');
+                        } elseif (in_array($effective_status, ['publish', 'private', 'password'], true)) {
+                            $bpe_publish_label = __('Update', 'brikpanel');
+                        } else {
+                            $bpe_publish_label = __('Save', 'brikpanel');
+                        }
                     } elseif (($is_edit && in_array($data['status'], ['publish', 'private'], true)) || $is_password) {
                         $bpe_publish_label = __('Update', 'brikpanel');
                     } elseif (!$is_edit && $data['status'] === 'publish') {
@@ -1476,6 +1580,11 @@ class Brikpanel_Product_Editor {
             // `brikpanel=0` flag is what makes the native URL survive
             // handle_redirects() for this one request.
             $bpe_native_edit_url   = $is_edit ? self::native_edit_url($product_id) : '';
+
+            // Hidden attribute rows for Blocksy's swatches editor. Ahead of the
+            // card so they are parsed before Blocksy looks for them, and outside
+            // every container the save collects, so they are never posted.
+            echo $bpe_native_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped piece by piece in native_attribute_mirror_rows().
             ?>
 
             <!-- Content -->
@@ -5540,6 +5649,18 @@ class Brikpanel_Product_Editor {
      *
      * @return bool
      */
+    /**
+     * Whether the multi-currency price block alone puts the "Additional product
+     * data" card on the page (CURCY in fixed-price mode). The asset bootstrap
+     * asks: that card also carries every other plugin's panel, hidden, and
+     * those panels need their scripts.
+     *
+     * @return bool
+     */
+    public static function multicurrency_card_active() {
+        return self::multicurrency_autosurface_active();
+    }
+
     private static function multicurrency_autosurface_active() {
         if ( ! class_exists( 'WOOMULTI_CURRENCY_Data' ) ) {
             return false;
@@ -6163,10 +6284,13 @@ class Brikpanel_Product_Editor {
     }
 
     /**
-     * Render selected "Additional product data" sections for a product.
+     * Render the "Additional product data" sections for a product.
      *
-     * Sections come from `brikpanel_pe_wc_tabs_selected`; if the option is
-     * empty, nothing is emitted (default-off behaviour requested by admins).
+     * Sections come from `brikpanel_pe_wc_tabs_selected` (plus the automatic
+     * ones); if there are none, nothing is emitted (default-off behaviour
+     * requested by admins). When the card renders, the sections that were not
+     * picked are on the page too, hidden, so their values survive the save.
+     * self::$capture_info says what ended up in the card.
      */
     private function capture_wc_product_data_fields($product_id, $product) {
         // Section discovery below must fire the product-data hooks for THIS
@@ -6176,6 +6300,7 @@ class Brikpanel_Product_Editor {
         $selected = (array) get_option('brikpanel_pe_wc_tabs_selected', []);
         $selected = self::augment_sections_for_multicurrency($selected, 'product');
         $selected = self::augment_sections_auto($selected, 'product');
+        self::$capture_info = ['any_visible' => false, 'panels' => []];
         if (empty($selected)) {
             self::$render_product = null;
             return '';
@@ -6197,6 +6322,11 @@ class Brikpanel_Product_Editor {
         $core_targets   = self::core_panel_targets();
         $core_sub_hooks = self::core_product_data_sub_hooks();
         $output = '';
+        // Whether any section ends up on screen. When none does (a simple
+        // product whose only picked section is Blocksy's variable-only Swatches)
+        // the card is printed hidden: its fields still have to travel.
+        $any_visible = false;
+        $visibility  = self::wc_tab_visibility_context($product);
 
         // Multi-currency per-currency price fields — auto-surfaced in fixed
         // mode via the synthetic `curcy:product_pricing` key. Rendered in
@@ -6206,6 +6336,7 @@ class Brikpanel_Product_Editor {
             && self::multicurrency_saves_product_type($product instanceof WC_Product ? $product->get_type() : 'simple')) {
             $curcy_html = self::render_isolated_multicurrency_fields('woocommerce_product_options_pricing');
             if ($curcy_html !== '') {
+                $any_visible = true;
                 $output .= '<div class="brikpanel-pe-wc-tab-group" data-tab="multicurrency">'
                     . '<h4 class="brikpanel-pe-wc-tab-title">' . esc_html__('Multi-currency prices', 'brikpanel') . '</h4>'
                     . $curcy_html
@@ -6237,7 +6368,14 @@ class Brikpanel_Product_Editor {
                 if ($html !== '') $section .= $html;
             }
             if ($section !== '') {
-                $hidden_attr = in_array($key, $selected, true) ? '' : ' style="display:none" aria-hidden="true"';
+                $is_picked = in_array($key, $selected, true);
+                if ($is_picked) {
+                    $any_visible = true;
+                }
+                // `data-bp-unpicked` marks a section that is on the page only so
+                // its values round-trip: the editor JS neither counts its events
+                // as edits nor lets its copy of a field win over a shown one.
+                $hidden_attr = $is_picked ? '' : ' style="display:none" aria-hidden="true" data-bp-unpicked="1"';
                 $output .= '<div class="brikpanel-pe-wc-tab-group" data-tab="' . esc_attr($label) . '"' . $hidden_attr . '>'
                     . '<h4 class="brikpanel-pe-wc-tab-title">' . esc_html($label) . '</h4>'
                     . $section
@@ -6258,6 +6396,10 @@ class Brikpanel_Product_Editor {
         // its own do_action, which is why the selector listed the tab while the
         // render path used to come up empty.)
         $tab_meta = self::collect_custom_tab_meta();
+        // Panels gated to a product type this editor cannot represent (Product
+        // Bundles, Composite…): never put on the page unpicked, see below.
+        $unrendered     = self::unrendered_type_panels($product);
+        $seen_panel_ids = [];
         if (has_action('woocommerce_product_data_panels')) {
             // Buffer-safe, per-callback fire — see capture_hook_chunks(). Each
             // plugin's output is parsed on its own so a panel that dies mid-tag
@@ -6269,7 +6411,6 @@ class Brikpanel_Product_Editor {
             // store where collect_custom_tab_meta() has to fall back to its
             // per-callback pass the filter runs twice. Two identical panels mean
             // two sets of inputs with the same names, so keep the first.
-            $seen_panel_ids = [];
             foreach (self::render_hook_capture('woocommerce_product_data_panels', true) as $panels_html) {
                 $target_to_label = $tab_meta['labels'];
                 $target_to_key   = $tab_meta['keys'];
@@ -6294,8 +6435,22 @@ class Brikpanel_Product_Editor {
                             if ($id === '' || in_array($id, $core_targets, true) || in_array($id, $skip_ids, true)) continue;
                             if (isset($seen_panel_ids[$id])) continue;
 
-                            $tab_key = 'tab:' . $id;
-                            if (!in_array($tab_key, $selected, true)) continue;
+                            // Every panel goes on the page, the ones the merchant did
+                            // not pick hidden. This card carries WooCommerce's save
+                            // nonce, and plugins that verify it treat a field missing
+                            // from the post as cleared: Blocksy deleted a product's
+                            // swatches when only its "Thank you Page" section was
+                            // picked, and the thank-you page when only "Swatches"
+                            // was. A hidden copy carries the stored values through
+                            // the save unchanged, the way WooCommerce's own form
+                            // carries every tab it is not showing.
+                            //
+                            // Panels gated to a product type this editor cannot
+                            // represent stay out: unrendered_type_panels() keeps
+                            // those plugins off the save hooks instead.
+                            $tab_key   = 'tab:' . $id;
+                            $is_picked = in_array($tab_key, $selected, true);
+                            if (!$is_picked && in_array($id, $unrendered, true)) continue;
 
                             $has_controls = false;
                             foreach (['input', 'select', 'textarea', 'button'] as $tag) {
@@ -6351,7 +6506,25 @@ class Brikpanel_Product_Editor {
                                 . '<a href="#' . esc_attr($id) . '" tabindex="-1"><span>' . esc_html($label) . '</span></a>'
                                 . '</li></ul>';
 
-                            $output .= '<div class="brikpanel-pe-wc-tab-group" data-tab="' . esc_attr($label) . '">'
+                            if (!$is_picked) {
+                                $group_attrs = ' style="display:none" aria-hidden="true" data-bp-unpicked="1"';
+                            } else {
+                                // WooCommerce shows a plugin's tab only for the
+                                // product types its `show_if_*` / `hide_if_*`
+                                // classes allow (Blocksy's Swatches: variable
+                                // products only). The section follows the same
+                                // rule; the editor JS re-applies it when the type
+                                // changes (initThirdPartyTabTypes).
+                                $gate        = self::wc_tab_gate_classes($tab_meta['classes'][$id] ?? []);
+                                $group_attrs = $gate ? ' data-wc-tab-class="' . esc_attr(implode(' ', $gate)) . '"' : '';
+                                if ($gate && !self::wc_tab_shown_for($gate, $visibility)) {
+                                    $group_attrs .= ' hidden';
+                                } else {
+                                    $any_visible = true;
+                                }
+                            }
+
+                            $output .= '<div class="brikpanel-pe-wc-tab-group" data-tab="' . esc_attr($label) . '"' . $group_attrs . '>'
                                 . '<h4 class="brikpanel-pe-wc-tab-title">' . esc_html($label) . '</h4>'
                                 . $tab_nav
                                 . $panel_html
@@ -6362,6 +6535,8 @@ class Brikpanel_Product_Editor {
             }
         }
 
+        self::$capture_info = ['any_visible' => $any_visible, 'panels' => array_keys($seen_panel_ids)];
+
         // Restore globals
         $post           = $orig_post;
         $thepostid      = $orig_postid;
@@ -6370,6 +6545,150 @@ class Brikpanel_Product_Editor {
         self::$render_hook_memo = [];
 
         return $output;
+    }
+
+    /**
+     * The `show_if_*` / `hide_if_*` classes of a product-data tab: the part of
+     * its class list WooCommerce reads to show or hide it per product type.
+     *
+     * @param mixed $classes Tab classes as harvested by collect_custom_tab_meta().
+     * @return string[]
+     */
+    private static function wc_tab_gate_classes($classes) {
+        $gate = [];
+        foreach ((array) $classes as $class) {
+            $class = sanitize_html_class((string) $class);
+            if (strpos($class, 'show_if_') === 0 || strpos($class, 'hide_if_') === 0) {
+                $gate[] = $class;
+            }
+        }
+        return array_values(array_unique($gate));
+    }
+
+    /**
+     * The product type and flags WooCommerce's tab rules read, for the product
+     * as stored. Virtual and downloadable only count for types that carry them
+     * on the parent: WooCommerce clears both on variable, grouped and external
+     * products, and this editor's switches mean "every variation" there.
+     *
+     * @param WC_Product|null $product Product being rendered.
+     * @return array{type: string, virtual: bool, downloadable: bool}
+     */
+    private static function wc_tab_visibility_context($product) {
+        $type = ($product instanceof WC_Product) ? (string) $product->get_type() : '';
+        if ($type === '') {
+            $type = 'simple';
+        }
+        $flags = !in_array($type, ['variable', 'grouped', 'external'], true)
+            && !(function_exists('brikpanel_is_variable_product_type') && brikpanel_is_variable_product_type($type));
+        $downloadable = $flags && $product instanceof WC_Product && $product->is_downloadable();
+        // The editor's Digital switch turns Virtual on with it, so it counts as both.
+        $virtual = $flags && $product instanceof WC_Product && ($product->is_virtual() || $downloadable);
+        return ['type' => $type, 'virtual' => $virtual, 'downloadable' => $downloadable];
+    }
+
+    /**
+     * WooCommerce's show_and_hide_panels() rule for one tab: a tab with
+     * `show_if_*` classes shows only when one of them matches the product type
+     * (or virtual / downloadable), and any matching `hide_if_*` class hides it.
+     * The editor JS applies the same rule live (initThirdPartyTabTypes); keep
+     * the two in step.
+     *
+     * @param string[] $gate    Classes from wc_tab_gate_classes().
+     * @param array    $context From wc_tab_visibility_context().
+     * @return bool
+     */
+    private static function wc_tab_shown_for(array $gate, array $context) {
+        $type    = (string) $context['type'];
+        $virtual = !empty($context['virtual']);
+        $digital = !empty($context['downloadable']);
+        $shows   = array_filter($gate, static function ($c) { return strpos($c, 'show_if_') === 0; });
+        $shown   = true;
+        if ($shows) {
+            $shown = in_array('show_if_' . $type, $shows, true)
+                || ($virtual && in_array('show_if_virtual', $shows, true))
+                || ($digital && in_array('show_if_downloadable', $shows, true));
+        }
+        if (in_array('hide_if_' . $type, $gate, true)
+            || ($virtual && in_array('hide_if_virtual', $gate, true))
+            || ($digital && in_array('hide_if_downloadable', $gate, true))) {
+            $shown = false;
+        }
+        return $shown;
+    }
+
+    /**
+     * Blocksy's swatches editor (Blocksy Companion Pro) lists a product's
+     * attributes by reading WooCommerce's own Attributes panel out of the page:
+     * every `[name*=attribute_values]` control inside a
+     * `.woocommerce_attribute_data` box whose "Used for variations" box is
+     * ticked, its label in `.attribute_name` and its taxonomy on the nearest
+     * `[data-taxonomy]`. This editor replaces that panel with its own attribute
+     * editor, so Blocksy found nothing and offered no swatches at all.
+     *
+     * These are hidden rows carrying just that much, for the attributes that
+     * drive variations. A global attribute lists its terms by id (Blocksy keys
+     * each swatch by term id) in a multiple select with every option selected,
+     * because Blocksy drops the swatches of unselected terms on the next edit.
+     * A custom attribute gets a text box with its name and WooCommerce's
+     * `a | b` value list. Nothing else of WooCommerce's markup is copied, so its
+     * own attribute scripts never act on these rows.
+     *
+     * @param WC_Product|null $product Product being edited.
+     * @return string Rows markup, empty when no attribute drives variations.
+     */
+    private static function native_attribute_mirror_rows($product) {
+        if (!$product instanceof WC_Product) {
+            return '';
+        }
+        $rows = '';
+        $i    = 0;
+        foreach ($product->get_attributes() as $attribute) {
+            if (!$attribute instanceof WC_Product_Attribute || !$attribute->get_variation()) {
+                continue;
+            }
+            if ($attribute->is_taxonomy()) {
+                $taxonomy = $attribute->get_name();
+                if (!taxonomy_exists($taxonomy)) {
+                    continue;
+                }
+                $options = '';
+                foreach ((array) $attribute->get_terms() as $term) {
+                    if (!$term instanceof WP_Term) {
+                        continue;
+                    }
+                    $options .= '<option value="' . esc_attr((string) $term->term_id) . '" selected>'
+                        . esc_html(apply_filters('woocommerce_product_attribute_term_name', $term->name, $term))
+                        . '</option>';
+                }
+                $name_cell  = '<strong>' . esc_html(wc_attribute_label($taxonomy)) . '</strong>';
+                $value_cell = '<select multiple name="bpe_native_attribute_values[' . $i . '][]">' . $options . '</select>';
+            } else {
+                $taxonomy   = '';
+                $name_cell  = '<input type="text" value="' . esc_attr($attribute->get_name()) . '">';
+                $value_cell = '<textarea name="bpe_native_attribute_values[' . $i . ']">'
+                    . esc_textarea(wc_implode_text_attributes($attribute->get_options())) . '</textarea>';
+            }
+            $rows .= '<div data-taxonomy="' . esc_attr($taxonomy) . '"><div class="woocommerce_attribute_data"><table><tbody><tr>'
+                . '<td class="attribute_name">' . $name_cell . '</td><td>' . $value_cell . '</td>'
+                . '</tr></tbody></table><input type="checkbox" class="woocommerce_attribute_used_for_variations" checked></div></div>';
+            $i++;
+        }
+        return $rows;
+    }
+
+    /**
+     * The hidden attribute rows for Blocksy's swatches editor in their box, with
+     * a hash of the rows so the editor can tell after a save whether they changed.
+     * Printed outside every container the save collects, so it is never posted.
+     *
+     * @param WC_Product|null $product Product being edited.
+     * @return string
+     */
+    private static function native_attribute_mirror($product) {
+        $rows = self::native_attribute_mirror_rows($product);
+        return '<div id="bpe-native-attrs" class="brikpanel-pe-native-attrs" hidden aria-hidden="true" data-hash="'
+            . esc_attr(md5($rows)) . '">' . $rows . '</div>';
     }
 
     // =========================================================================
@@ -6429,7 +6748,7 @@ class Brikpanel_Product_Editor {
             'height'            => '',
             'category_ids'      => [],
             'brand_ids'         => [],
-            'status'            => 'publish',
+            'status'            => brikpanel_user_can_publish_products() ? 'publish' : 'pending',
             'is_variable'       => false,
             'variation_count'   => 0,
             'product_type'      => 'simple',
@@ -6951,9 +7270,12 @@ class Brikpanel_Product_Editor {
             'brand_ids'         => $this->get_product_brand_ids($product),
             // Auto-drafts are an internal transition state — surface them as
             // "publish" so the dropdown defaults to Published for brand-new
-            // products. The hidden input still submits a real WP status that
+            // products, or "pending" for someone who may only send products in
+            // for review. The hidden input still submits a real WP status that
             // the save path accepts.
-            'status'            => ($product->get_status() === 'auto-draft') ? 'publish' : $product->get_status(),
+            'status'            => ($product->get_status() === 'auto-draft')
+                ? (brikpanel_user_can_publish_products() ? 'publish' : 'pending')
+                : $product->get_status(),
             'is_variable'       => $is_variable,
             // How many variations the product ACTUALLY has in the database, which
             // is not always how many rows the table renders: WooCommerce hides a
@@ -7257,6 +7579,7 @@ class Brikpanel_Product_Editor {
         $this->promoted_attributes = [];
         $this->promoted_this_save  = 0;
         $this->promoted_axis_map   = [];
+        $this->save_status         = '';
 
         if (!current_user_can('edit_products')) {
             wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
@@ -7461,6 +7784,16 @@ class Brikpanel_Product_Editor {
         // downstream pricing/variation branches behave consistently.
         $is_variable = $treat_as_variable;
 
+        // Someone who may edit but not publish products gets WordPress's own
+        // rule (brikpanel_product_status_for_user()): publishing or scheduling
+        // becomes "pending", sent in for review. Applied before the password
+        // and schedule steps, so each of them can only keep a status the rule
+        // allowed. People who may publish are not affected.
+        $can_publish = brikpanel_user_can_publish_products();
+        if (!$can_publish) {
+            $status = brikpanel_product_status_for_user($status, $product_id);
+        }
+
         // "password" is a virtual status — the real WP status is "publish"
         // with a non-empty post_password.
         if ($status === 'password') {
@@ -7474,6 +7807,12 @@ class Brikpanel_Product_Editor {
             $post_password = '';
         }
 
+        // WordPress drops a password posted by someone who may not publish:
+        // the stored one stays, whatever the status.
+        if (!$can_publish) {
+            $post_password = $product_id ? (string) get_post_field('post_password', $product_id) : '';
+        }
+
         // Scheduled publishing (opt-in). "future" is a real WP status where the
         // publish is deferred to a chosen moment via WP-Cron. Gate on the setting
         // so a disabled feature can never leave a product stuck unpublished; a
@@ -7483,7 +7822,19 @@ class Brikpanel_Product_Editor {
         // matching WordPress core's own behaviour.
         // Parse the single publish-date field once. The datetime-local value is
         // site-local; interpret it in the site timezone and keep the UTC stamp.
-        $raw_date   = sanitize_text_field(wp_unslash($_POST['publish_date'] ?? ''));
+        if ($can_publish) {
+            $raw_date = sanitize_text_field(wp_unslash($_POST['publish_date'] ?? ''));
+        } else {
+            // No date of their own for someone who may not publish (the editor
+            // shows them no date control, like WordPress): the stored date is
+            // used, so the steps below leave it, and a schedule a store manager
+            // set, as they are. Not an empty date: that would publish a
+            // scheduled product at once.
+            $stored_date = $product_id && 'auto-draft' !== get_post_status($product_id)
+                ? (string) get_post_field('post_date', $product_id)
+                : '';
+            $raw_date = ('' !== $stored_date && 0 !== strpos($stored_date, '0000-00-00')) ? $stored_date : '';
+        }
         $chosen_ts  = 0;
         if ($raw_date !== '') {
             $dt = date_create($raw_date, wp_timezone());
@@ -7548,9 +7899,12 @@ class Brikpanel_Product_Editor {
             }
         }
 
-        if (!in_array($status, ['draft', 'publish', 'private', 'future'], true)) {
+        // "pending" (Pending review) is kept: a plain Save on a product that
+        // waits for review used to turn it into a draft.
+        if (!in_array($status, ['draft', 'pending', 'publish', 'private', 'future'], true)) {
             $status = 'draft';
         }
+        $this->save_status = $status;
 
         // Variations orphaned by a variable -> simple conversion. They are
         // collected here but NOT deleted until the parent has actually been
@@ -8605,6 +8959,11 @@ class Brikpanel_Product_Editor {
             // moment anything changes it — after "Clear all" the warning would
             // still promise to destroy variations that are already gone.
             'variation_count' => $final_product ? count($final_product->get_children()) : 0,
+            // The status as saved, which can differ from the one asked for:
+            // "pending" for someone who may not publish, "future" for a date
+            // ahead. The editor's live flag, button and status control follow
+            // it. "password" is the menu's name for a protected, published one.
+            'status'     => self::saved_status_for_editor($saved_id),
         ];
 
         // The videos as stored now, so the editor shows what the theme will
@@ -8660,6 +9019,17 @@ class Brikpanel_Product_Editor {
             // Same extras filter as the initial render so integrations surface
             // their per-variation fields on freshly generated/saved rows too.
             $response['variation_extras'] = apply_filters('brikpanel_pe_variation_extras', $fresh_extras, $final_product, $variation_ids, 'saved');
+        }
+
+        // Blocksy's swatches editor works from the hidden attribute rows
+        // (native_attribute_mirror_rows()). Values created by this save only
+        // have term ids now, so hand back fresh rows; the editor swaps them in
+        // when the hash changed and asks Blocksy to read them again. Asked for
+        // only by a page that carries the rows. Outside the variable branch:
+        // variable-like types (variable subscriptions) vary too.
+        if (!empty($_POST['native_attr_mirror']) && $final_product) {
+            $mirror_rows = self::native_attribute_mirror_rows($final_product);
+            $response['native_attr_mirror'] = ['html' => $mirror_rows, 'hash' => md5($mirror_rows)];
         }
 
         $this->send_clean_json(true, $response);
@@ -9491,9 +9861,13 @@ class Brikpanel_Product_Editor {
         //     half-finished draft is a manual cleanup later. `password` is a
         //     virtual status the outer handler converts to publish +
         //     post_password (see ~line 2233).
+        // The status this save actually writes counts too: a "publish" from
+        // someone who may only send products in for review is saved as
+        // pending, which is not going live (ajax_save_product() sets it).
         $current_status = sanitize_key($post_data['status'] ?? 'draft');
         $auto_global = get_option('brikpanel_pe_auto_global_attributes', 'yes') === 'yes'
-            && in_array($current_status, ['publish', 'private', 'password'], true);
+            && in_array($current_status, ['publish', 'private', 'password'], true)
+            && ('' === $this->save_status || in_array($this->save_status, ['publish', 'private', 'future'], true));
 
         // Maps the variation's old custom slug (e.g. `kleur`) to the new
         // taxonomy (`pa_kleur`) once an attribute is promoted. We rewrite
@@ -10475,6 +10849,12 @@ class Brikpanel_Product_Editor {
             wp_send_json_error(['message' => __('Product not found.', 'brikpanel')]);
         }
 
+        // This product, not just products in general: a role that may edit its
+        // own products must not reprice or restock someone else's.
+        if (!current_user_can('edit_post', $product_id)) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+        }
+
         switch ($field) {
             case 'price':
                 $product->set_regular_price(wc_format_decimal($value));
@@ -10526,11 +10906,28 @@ class Brikpanel_Product_Editor {
         return $hidden;
     }
 
+    /**
+     * A saved product's status in the editor's terms: "password" for a
+     * published product with a password, as the status menu names it.
+     *
+     * @param int $product_id Product ID.
+     * @return string
+     */
+    private static function saved_status_for_editor($product_id) {
+        $status = (string) get_post_status($product_id);
+        if ('publish' === $status && '' !== (string) get_post_field('post_password', $product_id)) {
+            return 'password';
+        }
+        return $status;
+    }
+
     public function render_column($column, $post_id) {
         if ($column === 'product_status') {
-            $status = get_post_status($post_id);
-            $label  = $status === 'publish' ? __('Published', 'brikpanel') : __('Draft', 'brikpanel');
-            $class  = $status === 'publish' ? 'published' : 'draft';
+            // Every status by its own name: this column used to call anything
+            // that was not published a draft (pending, private, scheduled).
+            $status = (string) get_post_status($post_id);
+            $label  = brikpanel_product_status_label($status);
+            $class  = $status === 'publish' ? 'published' : sanitize_html_class($status);
             echo '<span class="brikpanel-pe-list-status brikpanel-pe-list-status--' . esc_attr($class) . '">' . esc_html($label) . '</span>';
         }
 

@@ -315,7 +315,10 @@ function brikpanel_narrow_deps( $parts, $type = 'script' ) {
 // CUSTOM DASHBOARD PAGE ASSETS
 // =============================================================================
 function brikpanel_enqueue_custom_dashboard_assets($hook) {
-    if ('admin_page_brikpanel-dashboard' !== $hook) {
+    // The page sits under WordPress's Dashboard menu (dashboard_page_…) and keeps
+    // its old name (admin_page_…) for some addresses, so only the end is
+    // compared (includes/brikpanel-screen-menu.php).
+    if (!str_ends_with((string) $hook, '_page_brikpanel-dashboard')) {
         return;
     }
 
@@ -324,8 +327,8 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
     // WP core dashboard.js + site-health.js target widgets by id selector
     // (e.g. `#dashboard_primary div.inside`) and use the JS global `pagenow`
     // for AJAX refresh calls. On our custom admin page `pagenow` resolves to
-    // `admin_page_brikpanel-dashboard`, which server-side ajax handlers
-    // reject. We override it to the string `dashboard` **before** dashboard.js
+    // the page's own screen name (dashboard_page_brikpanel-dashboard), which
+    // server-side ajax handlers reject. We override it to the string `dashboard` **before** dashboard.js
     // runs so ajaxPopulateWidgets() / quickPressLoad() / site-health init all
     // work unchanged.
     $embedded_widgets = (array) get_option('brikpanel_dashboard_wp_widgets', []);
@@ -711,6 +714,26 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'seg_loyal'          => __('Loyal', 'brikpanel'),
             'seg_attention'      => __('Needs attention', 'brikpanel'),
             'seg_risk'           => __('At risk', 'brikpanel'),
+            // The Products and pages window (render_pages_window()): the whole
+            // list of Best sellers, Most viewed pages or Most added to cart.
+            /* translators: %s: number of pages, already formatted (e.g. 20). */
+            'pages_view_all'     => brikpanel_js_plural(_n_noop('View all %s page', 'View all %s pages', 'brikpanel')),
+            /* translators: %s: number of products, already formatted (e.g. 20). */
+            'products_view_all'  => brikpanel_js_plural(_n_noop('View all %s product', 'View all %s products', 'brikpanel')),
+            /* translators: %s: number of pages, already formatted (e.g. 20). */
+            'pages_count'        => brikpanel_js_plural(_n_noop('%s page', '%s pages', 'brikpanel')),
+            /* translators: %s: number of products, already formatted (e.g. 20). */
+            'products_count'     => brikpanel_js_plural(_n_noop('%s product', '%s products', 'brikpanel')),
+            'list_title_sold'    => __('Best sellers', 'brikpanel'),
+            'list_title_viewed'  => __('Most viewed pages', 'brikpanel'),
+            'list_title_cart'    => __('Most added to cart', 'brikpanel'),
+            'search_pages'       => __('Search pages', 'brikpanel'),
+            'search_products'    => __('Search products', 'brikpanel'),
+            /* translators: 1: the date range, e.g. "Last 30 days"; 2: number of pages, e.g. "20 pages". */
+            'pages_sub'          => __('%1$s · %2$s', 'brikpanel'),
+            'pages_no_match'     => __('No matches found.', 'brikpanel'),
+            'pages_error'        => __('Something went wrong. Please try again.', 'brikpanel'),
+            'pages_loading'      => __('Loading...', 'brikpanel'),
         ],
     ]);
 }
@@ -1582,8 +1605,9 @@ function brikpanel_enqueue_woo_assets($hook) {
         ]);
     }
 
-    // Products List (AJAX)
-    if ('admin_page_brikpanel-products' === $hook && get_option('brikpanel_modern_products_list', 'yes') === 'yes') {
+    // Products List (AJAX). Screen name compared by its end: the page sits under
+    // the Products menu (includes/brikpanel-screen-menu.php).
+    if (str_ends_with((string) $hook, '_page_brikpanel-products') && get_option('brikpanel_modern_products_list', 'yes') === 'yes') {
         // Quick-edit drawer's "Digital product" section uses the WP media
         // library to attach downloadable files, same as the product editor.
         wp_enqueue_media();
@@ -1635,6 +1659,9 @@ function brikpanel_enqueue_woo_assets($hook) {
             // "Low stock" is the store's own threshold everywhere (WooCommerce >
             // Settings > Products > Inventory), the same one the Low stock filter uses.
             'low_stock_amount'   => max( 0, (int) get_option('woocommerce_notify_low_stock_amount', 2) ),
+            // '0' for someone who may only send products in for review: no
+            // Publish in the bulk bar, and a status badge that is not a toggle.
+            'can_publish'        => function_exists('brikpanel_user_can_publish_products') && !brikpanel_user_can_publish_products() ? '0' : '1',
             'i18n'     => [
                 'no_products'         => __('No products found.', 'brikpanel'),
                 'error'               => __('An error occurred. Please try again.', 'brikpanel'),
@@ -1645,6 +1672,8 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'scheduled'           => __('Scheduled', 'brikpanel'),
                 'draft'               => __('Draft', 'brikpanel'),
                 'private_status'      => __('Private', 'brikpanel'),
+                /* translators: product status: sent in for review, waiting for a store manager to publish it. */
+                'pending'             => _x('Pending review', 'product status', 'brikpanel'),
                 'trashed'             => __('Trash', 'brikpanel'),
                 'trashed_tab'         => __('Trash', 'brikpanel'),
                 'variable'            => __('Variable', 'brikpanel'),
@@ -1672,6 +1701,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'confirm_bulk_delete_perm' => brikpanel_js_plural(_n_noop('Are you sure you want to permanently delete %s product? This cannot be undone.', 'Are you sure you want to permanently delete %s products? This cannot be undone.', 'brikpanel')),
                 'confirm_bulk_delete_perm_2' => __('FINAL WARNING: This will permanently delete the selected products. Are you absolutely sure?', 'brikpanel'),
                 'click_to_toggle'     => __('Click to toggle status', 'brikpanel'),
+                'click_to_publish'    => __('Click to publish', 'brikpanel'),
                 'product_id'          => __('Product ID', 'brikpanel'),
                 'mark_featured'       => __('Mark as featured', 'brikpanel'),
                 'unmark_featured'     => __('Featured. Click to remove.', 'brikpanel'),
@@ -1778,8 +1808,9 @@ function brikpanel_enqueue_woo_assets($hook) {
         ]);
     }
 
-    // Simplified Product Editor
-    if ('admin_page_brikpanel-product-editor' === $hook && get_option('brikpanel_simple_product_editor', 'yes') === 'yes') {
+    // Simplified Product Editor. Screen name compared by its end: the page sits
+    // under the Products menu (includes/brikpanel-screen-menu.php).
+    if (str_ends_with((string) $hook, '_page_brikpanel-product-editor') && get_option('brikpanel_simple_product_editor', 'yes') === 'yes') {
         // Run the screen-spoof + asset bootstrap whenever EITHER:
         //   - the admin picked at least one 3rd-party metabox in settings, OR
         //   - a supported SEO plugin (Yoast, Rank Math, AIOSEO, SEOPress) is
@@ -1810,6 +1841,14 @@ function brikpanel_enqueue_woo_assets($hook) {
         // switches auto surfacing off there gets no re-fire here either.
         $auto_wc_tabs = get_option('brikpanel_pe_wc_tabs_auto', 'no') === 'yes'
             && apply_filters('brikpanel_pe_auto_surface_thirdparty', true, 'product');
+        // Whenever the "Additional product data" card renders at all (any
+        // picked section, WooCommerce's own tabs included, or the
+        // multi-currency price block), it also carries every other plugin's
+        // product-data panel, hidden, so their stored values survive the save
+        // (Brikpanel_Product_Editor::capture_wc_product_data_fields()). Those
+        // panels print inline scripts that need their plugin's assets.
+        $wc_card_renders = !empty((array) get_option('brikpanel_pe_wc_tabs_selected', []))
+            || (class_exists('Brikpanel_Product_Editor') && Brikpanel_Product_Editor::multicurrency_card_active());
         $auto_seo = class_exists('Brikpanel_Product_Editor')
             ? Brikpanel_Product_Editor::get_active_seo_plugin()
             : null;
@@ -1865,7 +1904,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                 )));
             }
         }
-        if (!empty($selected_metaboxes) || !empty($selected_wc_tabs) || $auto_wc_tabs) {
+        if (!empty($selected_metaboxes) || !empty($selected_wc_tabs) || $auto_wc_tabs || $wc_card_renders) {
             // Spoof screen + post globals as if we were on /wp-admin/post.php
             // so SEO plugins (Yoast, Rank Math, AIOSEO, SEOPress) register
             // their metabox + enqueue scripts the way they do natively.
@@ -2306,6 +2345,9 @@ function brikpanel_enqueue_woo_assets($hook) {
             // Whether future-dating a live product promotes it to a scheduled
             // publish. Drives the header's "Publish"/"Schedule" button label.
             'scheduling_enabled' => get_option('brikpanel_pe_enable_scheduling', 'yes') === 'yes' ? '1' : '0',
+            // '0' for someone who may only send products in for review: the
+            // primary button then reads "Submit for review" for that status.
+            'can_publish' => function_exists('brikpanel_user_can_publish_products') && !brikpanel_user_can_publish_products() ? '0' : '1',
             // Input names of any active cost-of-goods plugin's own cost field.
             // Rendering WooCommerce's Product data panels inline drags those
             // inputs into our form next to BrikPanel's Cost field, so the JS
@@ -2433,6 +2475,8 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'publish'          => __('Publish', 'brikpanel'),
                 'save'             => __('Save', 'brikpanel'),
                 'schedule'         => __('Schedule', 'brikpanel'),
+                // The primary button of someone who may not publish, on "Pending review".
+                'submit_review'    => __('Submit for review', 'brikpanel'),
                 /* translators: shown as the publish date of a not-yet-dated product */
                 'immediately'      => __('Immediately', 'brikpanel'),
                 'schedule_start'   => __('Schedule start', 'brikpanel'),
@@ -2653,8 +2697,11 @@ function brikpanel_enqueue_woo_assets($hook) {
         ]);
     }
 
-    // Coupons List (AJAX)
-    if ('admin_page_brikpanel-coupons' === $hook && get_option('brikpanel_modern_coupons', 'yes') === 'yes') {
+    // Coupons List (AJAX). Screen name compared by its end: the page sits under
+    // the coupons menu, Marketing on current WooCommerce, whose screen names
+    // start with the menu title in the person's language
+    // (includes/brikpanel-screen-menu.php).
+    if (str_ends_with((string) $hook, '_page_brikpanel-coupons') && get_option('brikpanel_modern_coupons', 'yes') === 'yes') {
         // filemtime-based version so any edit to the coupons assets busts the
         // browser cache together (falls back to the plugin version).
         $cp_css_ver = @filemtime( BRIKPANEL_PATH . 'front-end/coupons/brikpanel-coupons.css' ) ?: BRIKPANEL_VERSION;
@@ -2730,8 +2777,9 @@ function brikpanel_enqueue_woo_assets($hook) {
         ]);
     }
 
-    // Cart Share builder (admin)
-    if ('admin_page_brikpanel-cart-share' === $hook
+    // Cart Share builder (admin). Screen name compared by its end: the page sits
+    // under WooCommerce's menu (includes/brikpanel-screen-menu.php).
+    if (str_ends_with((string) $hook, '_page_brikpanel-cart-share')
         && class_exists('Brikpanel_Cart_Share')
         && Brikpanel_Cart_Share::is_enabled()) {
 
@@ -2872,6 +2920,17 @@ function brikpanel_admin_body_class( $classes ) {
     $shell = brikpanel_shell_kind();
     if ( '' !== $shell ) {
         $classes .= ' brikpanel-shell brikpanel-shell--' . $shell;
+    }
+
+    // A class that does not follow the screen's name. WordPress's own body class
+    // is the screen name, which starts with the parent menu, and these screens
+    // sit under a menu since 3.3.33 (includes/brikpanel-screen-menu.php).
+    $brikpanel_screen_classes = array(
+        'brikpanel-products' => 'brikpanel-screen-products',
+        'brikpanel-coupons'  => 'brikpanel-screen-coupons',
+    );
+    if ( isset( $GLOBALS['plugin_page'] ) && is_string( $GLOBALS['plugin_page'] ) && isset( $brikpanel_screen_classes[ $GLOBALS['plugin_page'] ] ) ) {
+        $classes .= ' ' . $brikpanel_screen_classes[ $GLOBALS['plugin_page'] ];
     }
 
     $is_order_edit = null !== brikpanel_order_screen_context();

@@ -4057,7 +4057,7 @@ class Brikpanel_Cart_Abandonment {
 
 			<?php if ( ! $collection_on ) : ?>
 				<div class="brikpanel-cartab-card brikpanel-cartab-disabled-note">
-					<?php esc_html_e( 'Email collection is currently turned off, so no new emails are being captured. You can re-enable it in the settings.', 'brikpanel' ); ?>
+					<?php esc_html_e( 'Email collection is turned off, so no new emails are being captured and the email popup does not show, even while its switch above is on. You can turn collection back on in the settings.', 'brikpanel' ); ?>
 				</div>
 			<?php endif; ?>
 
@@ -4700,7 +4700,8 @@ class Brikpanel_Cart_Abandonment {
 	}
 
 	public function settings_title_map( $map ) {
-		$map['brk_cartab_title'] = 'cart-abandonment';
+		$map['brk_cartab_title']       = 'cart-abandonment';
+		$map['brk_cartab_popup_title'] = 'cart-abandonment';
 		return $map;
 	}
 
@@ -5108,9 +5109,11 @@ class Brikpanel_Cart_Abandonment {
 			'id'    => 'brk_cartab_title',
 			'desc'  => __( 'Collect customer emails from the checkout page and an optional signup popup, so abandoned carts can be followed up. Collected emails are listed on the Abandoned Carts page.', 'brikpanel' ),
 		];
+		// The master switch: unticked, the constructor registers nothing for
+		// the storefront, so the text says that the whole feature stops.
 		$fields[] = [
 			'title'   => __( 'Email collection', 'brikpanel' ),
-			'desc'    => __( 'Capture emails typed at checkout (and from the popup) together with a cart snapshot', 'brikpanel' ),
+			'desc'    => __( 'When on, emails typed at checkout and in the popup are saved with a cart snapshot. When off, the whole cart abandonment feature stops: nothing is added to your store pages, the popup does not show and no background task runs.', 'brikpanel' ),
 			'id'      => 'brikpanel_cartab_enabled',
 			'type'    => 'checkbox',
 			'default' => 'yes',
@@ -5147,6 +5150,19 @@ class Brikpanel_Cart_Abandonment {
 			'type'        => 'textarea',
 			'placeholder' => __( 'Hi {customer_name}, this is {store_name}. You left a few items in your cart - can I help you finish the order? {recovery_url}', 'brikpanel' ),
 			'css'         => 'width:340px;height:90px;',
+		];
+		$fields[] = [
+			'type' => 'sectionend',
+			'id'   => 'brk_cartab_title',
+		];
+
+		// The popup gets a card of its own: its settings no longer read as
+		// part of the collection switch, and the card says what they depend on.
+		$fields[] = [
+			'title' => __( 'Email popup', 'brikpanel' ),
+			'type'  => 'title',
+			'id'    => 'brk_cartab_popup_title',
+			'desc'  => __( 'A signup popup that asks store visitors for their email, with an optional discount coupon. It only shows while Email collection above is on.', 'brikpanel' ),
 		];
 		$fields[] = [
 			'title'   => __( 'Email popup', 'brikpanel' ),
@@ -5274,7 +5290,7 @@ class Brikpanel_Cart_Abandonment {
 		];
 		$fields[] = [
 			'type' => 'sectionend',
-			'id'   => 'brk_cartab_title',
+			'id'   => 'brk_cartab_popup_title',
 		];
 		return $fields;
 	}

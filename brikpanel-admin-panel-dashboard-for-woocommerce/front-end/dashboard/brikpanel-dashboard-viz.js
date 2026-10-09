@@ -921,15 +921,20 @@
     // A tab row (role tablist, buttons role tab, panels hidden): click, the
     // arrow keys (reversed in RTL), Home and End; one tab in the Tab order.
     // Tabs that share one panel (the sales chart's metrics) only switch.
+    // onChange(key, byUser) runs on every switch; byUser is false when the
+    // returned select(key) switched from code. A tab the card hides (no box
+    // on screen) is skipped by the keys but still has its panel hidden.
     function tabs(root, onChange) {
         var list = root.querySelector('[role="tablist"]');
-        if (!list || list.__bpDvTabs) {
-            return;
+        if (!list) {
+            return null;
         }
-        list.__bpDvTabs = true;
+        if (list.__bpDvTabs) {
+            return list.__bpDvTabs;
+        }
         var btns = function () { return Array.prototype.slice.call(list.querySelectorAll('[role="tab"]')); };
 
-        function select(btn, focus) {
+        function select(btn, focus, byUser) {
             var all = btns();
             var keep = btn.getAttribute('aria-controls');
             all.forEach(function (b) {
@@ -950,9 +955,19 @@
                 btn.focus();
             }
             if (onChange) {
-                onChange(btn.getAttribute('data-bp-dv-tab'));
+                onChange(btn.getAttribute('data-bp-dv-tab'), byUser !== false);
             }
         }
+
+        var api = {
+            select: function (key) {
+                var b = btns().filter(function (x) { return x.getAttribute('data-bp-dv-tab') === key; })[0];
+                if (b && b.getAttribute('aria-selected') !== 'true') {
+                    select(b, false, false);
+                }
+            }
+        };
+        list.__bpDvTabs = api;
 
         list.addEventListener('click', function (e) {
             var b = e.target.closest && e.target.closest('[role="tab"]');
@@ -961,7 +976,7 @@
             }
         });
         list.addEventListener('keydown', function (e) {
-            var all = btns();
+            var all = btns().filter(function (b) { return b.getClientRects().length > 0; });
             var at = all.indexOf(document.activeElement);
             if (at < 0) {
                 return;
@@ -982,6 +997,7 @@
                 select(all[to], true);
             }
         });
+        return api;
     }
 
     /* ------------------------------------------------------------ motion */

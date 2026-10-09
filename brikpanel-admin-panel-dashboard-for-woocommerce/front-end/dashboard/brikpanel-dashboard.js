@@ -137,6 +137,7 @@
         initCopySummary();
         initExportButton();
         initRowLinks();
+        initPagesWindow();
         initProfitBreakdownToggle();
         initAddExpense();
         initRemoveExpense();
@@ -2308,6 +2309,7 @@
             card.querySelectorAll('[data-bp-dv-view]').forEach(function (panel) {
                 drawProductPanel(panel, views[panel.getAttribute('data-bp-dv-view')]);
             });
+            updateProductsFoot(card);
             if (allowPlay !== false) {
                 schedulePlay(card, function () { playProductBars(card); });
             }
@@ -2326,26 +2328,264 @@
         var ul = document.createElement('ul');
         ul.className = 'bp-dv-plist';
         rows.forEach(function (r, i) {
-            var val = Number(r[view.val]) || 0;
-            var li = document.createElement('li');
-            li.className = 'bp-dv-prow';
-            if (r.url) {
-                li.className += ' brikpanel-dash-row-link';
-                li.setAttribute('data-href', r.url);
-                li.setAttribute('tabindex', '0');
-                li.setAttribute('role', 'link');
-            }
-            var name = String(r[view.name] || '');
-            li.innerHTML =
-                '<span class="bp-dv-rank">' + (i + 1) + '</span>' +
-                '<span class="bp-dv-ptile" aria-hidden="true">' + escapeHtml(monogram(name)) + '</span>' +
-                '<span class="bp-dv-pmain"><span class="bp-dv-pname" dir="auto">' + escapeHtml(name) + '</span>' +
-                '<span class="bp-dv-pbar"><i style="width:' + (val / max * 100).toFixed(1) + '%"></i></span></span>' +
-                '<span class="bp-dv-pval"><b>' + escapeHtml(formatNumber(val)) + '</b><span>' + escapeHtml(BF ? BF.plural(view.unit, val) : '') + '</span></span>';
-            ul.appendChild(li);
+            ul.appendChild(productRow(String(r[view.name] || ''), Number(r[view.val]) || 0, max, view.unit, r.url, i + 1, ''));
         });
         panel.textContent = '';
         panel.appendChild(ul);
+    }
+
+    // One row of a Products list (and of the Most viewed pages window): rank,
+    // initials, name with its bar, the figure. A row with an address opens it
+    // (initRowLinks()). rank '' leaves the rank column empty; type is a small
+    // second word after the name (Product, Page, Category).
+    function productRow(name, val, max, unit, url, rank, type) {
+        var li = document.createElement('li');
+        li.className = 'bp-dv-prow';
+        if (url) {
+            li.className += ' brikpanel-dash-row-link';
+            li.setAttribute('data-href', url);
+            li.setAttribute('tabindex', '0');
+            li.setAttribute('role', 'link');
+        }
+        var nameHtml = '<span class="bp-dv-pname" dir="auto">' + escapeHtml(name) + '</span>';
+        if (type) {
+            nameHtml = '<span class="bp-dv-pline">' + nameHtml + '<span class="bp-dv-ptype" dir="auto">' + escapeHtml(type) + '</span></span>';
+        }
+        li.innerHTML =
+            '<span class="bp-dv-rank">' + escapeHtml(rank === '' ? '' : formatNumber(rank)) + '</span>' +
+            '<span class="bp-dv-ptile" aria-hidden="true">' + escapeHtml(monogram(name)) + '</span>' +
+            '<span class="bp-dv-pmain">' + nameHtml +
+            '<span class="bp-dv-pbar"><i style="width:' + Math.min(100, val / Math.max(1, max) * 100).toFixed(1) + '%"></i></span></span>' +
+            '<span class="bp-dv-pval"><b>' + escapeHtml(formatNumber(val)) + '</b><span>' + escapeHtml(BF ? BF.plural(unit, val) : '') + '</span></span>';
+        return li;
+    }
+
+    // The three lists of the Products and pages card, as the payload and the
+    // window name them: its rows, the period's count, the "View all" text.
+    var PRODUCT_LISTS = {
+        sold: { rows: 'top_products', total: 'top_products_total', viewAll: 'products_view_all', count: 'products_count', title: 'list_title_sold', search: 'search_products', unit: 'unit_sold' },
+        viewed: { rows: 'most_viewed', total: 'most_viewed_total', viewAll: 'pages_view_all', count: 'pages_count', title: 'list_title_viewed', search: 'search_pages', unit: 'unit_views' },
+        cart: { rows: 'most_cart', total: 'most_cart_total', viewAll: 'products_view_all', count: 'products_count', title: 'list_title_cart', search: 'search_products', unit: 'unit_adds' }
+    };
+
+    // The card's foot follows its open tab: "View all N products" (or pages)
+    // once the period has more than the card lists; it opens the window with
+    // that tab's whole list (initPagesWindow()).
+    function updateProductsFoot(card) {
+        var viewAllBtn = card.querySelector('.bp-dv-pages-open');
+        if (!viewAllBtn) return;
+        var on = card.querySelector('[role="tab"][aria-selected="true"]');
+        var view = on ? on.getAttribute('data-bp-dv-tab') : String(card.getAttribute('data-views') || '').split(' ')[0];
+        var list = PRODUCT_LISTS[view];
+        if (!list) {
+            viewAllBtn.hidden = true;
+            return;
+        }
+        var total = lastData ? Number(lastData[list.total]) || 0 : 0;
+        var shown = lastData && Array.isArray(lastData[list.rows]) ? lastData[list.rows].length : 0;
+        var label = viewAllBtn.querySelector('[data-bp-dv-slot="pages-label"]');
+        if (label) label.textContent = BF ? BF.count(i18n[list.viewAll], total) : String(total);
+        viewAllBtn.setAttribute('data-bp-dv-list', view);
+        viewAllBtn.hidden = !document.getElementById('bp-dv-pages') || total <= shown;
+    }
+
+    // ------------------------------------------------------------------ list window
+
+    // The whole list of the Products and pages card's open tab (Best sellers,
+    // Most viewed pages or Most added to cart) for the period, opened from the
+    // card's "View all" button (Brikpanel_Dashboard::render_pages_window()).
+    // The browser's own dialog keeps it above the top bar, keeps the keyboard
+    // in it and closes it on Esc; rows open their page like the card's rows
+    // (initRowLinks()). It asks for the dates on screen, so it matches the
+    // card even after midnight, and loads again once those dates change.
+    function initPagesWindow() {
+        var dlg = document.getElementById('bp-dv-pages');
+        if (!dlg || typeof dlg.showModal !== 'function') return;
+        var list = dvSlot(dlg, 'pages-list');
+        var note = dvSlot(dlg, 'pages-note');
+        var moreBtn = dvSlot(dlg, 'pages-more');
+        var input = dvSlot(dlg, 'pages-q');
+        var sub = dvSlot(dlg, 'pages-sub');
+        var title = dlg.querySelector('.bp-dv-pages-title');
+        var closeBtn = dlg.querySelector('[data-bp-dv-pages-close]');
+        if (!list || !note || !moreBtn || !input || !sub) return;
+        var st = { list: 'viewed', opener: null, period: null, search: '', next: 0, total: null, top: 0, count: 0, keys: {}, seq: 0, ctl: null };
+        var timer = 0;
+        var downOnBackdrop = false;
+
+        function setNote(text) {
+            note.textContent = text || '';
+            note.hidden = !text;
+        }
+
+        function setSub() {
+            var label = st.period && st.period.label ? String(st.period.label) : '';
+            var count = st.total !== null && BF ? BF.count(i18n[PRODUCT_LISTS[st.list].count], st.total) : '';
+            sub.textContent = label && count && BF ? BF.format(i18n.pages_sub, [label, count]) : (label || count);
+        }
+
+        function load(reset) {
+            if (st.ctl) st.ctl.abort();
+            var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            st.ctl = ctl;
+            var seq = ++st.seq;
+            if (reset) {
+                st.next = 0;
+                st.count = 0;
+                st.keys = {};
+                st.total = null;
+                list.textContent = '';
+                moreBtn.hidden = true;
+                setNote(i18n.pages_loading);
+                setSub();
+            }
+            moreBtn.disabled = true;
+            var p = st.period || {};
+            var fd = new FormData();
+            fd.append('action', 'brikpanel_dash_list');
+            fd.append('security', CFG.nonce);
+            fd.append('list', st.list);
+            if (p.from_iso && p.to_iso) {
+                fd.append('range', 'custom');
+                fd.append('start_date', p.from_iso);
+                fd.append('end_date', p.to_iso);
+            } else {
+                fd.append('range', currentRange);
+                if (currentRange === 'custom') {
+                    fd.append('start_date', customStartDate);
+                    fd.append('end_date', customEndDate);
+                }
+            }
+            fd.append('search', st.search);
+            fd.append('offset', String(st.next));
+            fetch(CFG.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin', signal: ctl ? ctl.signal : undefined })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (seq !== st.seq) return;
+                    st.ctl = null;
+                    moreBtn.disabled = false;
+                    if (!res || !res.success || !res.data) {
+                        setNote(i18n.pages_error);
+                        return;
+                    }
+                    var data = res.data;
+                    var rows = Array.isArray(data.rows) ? data.rows : [];
+                    if (data.total !== null && data.total !== undefined) st.total = Number(data.total) || 0;
+                    // The bars measure against the list's first row of the period.
+                    if (!st.top && !st.search && rows.length) st.top = Number(rows[0].value) || 0;
+                    var unit = i18n[PRODUCT_LISTS[st.list].unit];
+                    var frag = document.createDocumentFragment();
+                    rows.forEach(function (r) {
+                        var key = String(r.key || '');
+                        if (!key || st.keys[key]) return;
+                        st.keys[key] = true;
+                        st.count++;
+                        var value = Number(r.value) || 0;
+                        frag.appendChild(productRow(String(r.title || ''), value, st.top || value, unit, r.url, st.search ? '' : st.count, String(r.type || '')));
+                    });
+                    list.appendChild(frag);
+                    st.next = Number(data.next) || st.next + rows.length;
+                    moreBtn.hidden = !data.has_more;
+                    setNote(st.count ? '' : (st.search ? i18n.pages_no_match : (st.list === 'sold' ? emptyReason('orders', 'site') : emptyReason('visits')).text));
+                    setSub();
+                })
+                .catch(function (err) {
+                    if (err && err.name === 'AbortError') return;
+                    if (seq !== st.seq) return;
+                    st.ctl = null;
+                    moreBtn.disabled = false;
+                    setNote(i18n.pages_error);
+                });
+        }
+
+        // Ctrl/Cmd+K would open the search palette behind the window (the
+        // palette listens in the capture phase, brikpanel-search.js).
+        function swallowSearch(e) {
+            if (dlg.open && (e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }
+
+        function open(opener) {
+            var p = lastData && lastData.period ? lastData.period : null;
+            var kind = opener.getAttribute('data-bp-dv-list');
+            kind = PRODUCT_LISTS[kind] ? kind : 'viewed';
+            var same = kind === st.list && st.period && p && st.period.from_iso === p.from_iso && st.period.to_iso === p.to_iso;
+            st.opener = opener;
+            st.period = p;
+            st.list = kind;
+            if (title) title.textContent = i18n[PRODUCT_LISTS[kind].title] || '';
+            input.placeholder = i18n[PRODUCT_LISTS[kind].search] || '';
+            input.setAttribute('aria-label', input.placeholder);
+            if (!same || !st.count) {
+                st.search = '';
+                st.top = 0;
+                input.value = '';
+                load(true);
+            }
+            document.documentElement.classList.add('bp-dv-pages-lock');
+            window.addEventListener('keydown', swallowSearch, true);
+            try {
+                dlg.showModal();
+            } catch (err) {
+                dlg.setAttribute('open', '');
+            }
+            // The search box takes the keyboard; on a phone the keyboard would
+            // cover the list, so the window opens on its close button there.
+            if (!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) input.focus();
+        }
+
+        function close() {
+            if (dlg.open) dlg.close();
+        }
+
+        dlg.addEventListener('close', function () {
+            document.documentElement.classList.remove('bp-dv-pages-lock');
+            window.removeEventListener('keydown', swallowSearch, true);
+            if (st.opener && document.contains(st.opener)) st.opener.focus();
+        });
+        // A click on the dialog itself is a click on the backdrop. It has to
+        // start there too, so a text selection that ends outside keeps it open.
+        dlg.addEventListener('pointerdown', function (e) { downOnBackdrop = e.target === dlg; });
+        dlg.addEventListener('click', function (e) {
+            if (e.target === dlg && downOnBackdrop) close();
+            downOnBackdrop = false;
+        });
+        // Esc closes the window at once, also from a search box with text in
+        // it (where the browser would first only clear the box).
+        dlg.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !e.defaultPrevented) {
+                e.preventDefault();
+                close();
+            }
+        });
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        moreBtn.addEventListener('click', function () { load(false); });
+        var runSearch = function () {
+            clearTimeout(timer);
+            var v = input.value.trim();
+            if (v === st.search) return;
+            st.search = v;
+            load(true);
+        };
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(runSearch, 300);
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                runSearch();
+            }
+        });
+        document.addEventListener('click', function (e) {
+            var b = e.target.closest && e.target.closest('.bp-dv-pages-open');
+            if (b) {
+                e.preventDefault();
+                open(b);
+            }
+        });
     }
 
     function playProductBars(card) {
@@ -2498,6 +2738,8 @@
             stripRow(dvSlot(panel, 'dev-orders'), groups(d.order_devices), emptyReason('orders', 'site'));
         } else if (view === 'sources') {
             drawSources(panel, d.sources, d.top_referrers);
+            // Shown as a third column on a wide card only (fitVisitors()).
+            drawCampaigns(dvSlot(panel, 'campaigns-col'), d.top_campaigns);
         } else if (view === 'campaigns') {
             drawCampaigns(dvSlot(panel, 'campaigns'), d.top_campaigns);
         }
@@ -2521,12 +2763,16 @@
                 .sort(function (a, b) { return b.n - a.n; });
             var max = rows[0].n;
             chEl.innerHTML = '<ul class="bp-dv-srcs">' + rows.map(function (r) {
-                return '<li><span class="bp-dv-src-name">' + escapeHtml(sourceChannelLabel(r.key)) + '</span>' +
+                // The name is cut with "…" on a narrow column; the title keeps it whole.
+                var label = sourceChannelLabel(r.key);
+                return '<li><span class="bp-dv-src-name" title="' + escapeAttr(label) + '">' + escapeHtml(label) + '</span>' +
                     '<span class="bp-dv-sbar"><i style="width:' + (r.n / max * 100).toFixed(1) + '%"></i></span>' +
                     '<span class="bp-dv-spct"><bdi>' + escapeHtml(fmtPct(r.n / total * 100, 0)) + '</bdi></span></li>';
             }).join('') + '</ul>';
             if (refWrap) refWrap.hidden = false;
         }
+        var grid = panel.querySelector('.bp-dv-src2');
+        if (grid && refWrap) grid.classList.toggle('is-noref', !!refWrap.hidden);
         if (!refEl) return;
         var list = Array.isArray(referrers) ? referrers.slice(0, 5) : [];
         if (!list.length) {
@@ -2796,9 +3042,16 @@
     // ------------------------------------------------------------------ tabs + resizing
 
     function initDvTabs() {
+        // Each card opens on the tab this user opened last time (printed by
+        // the server); the sales chart starts on that metric.
+        var salesOn = document.querySelector('[data-bp-dv="sales"] [role="tab"][aria-selected="true"]');
+        if (salesOn) {
+            var sk = salesOn.getAttribute('data-bp-dv-tab');
+            salesMetric = sk === 'o' || sk === 'aov' ? sk : 'r';
+        }
         if (!V) return;
         dvCards('sales').forEach(function (card) {
-            V.tabs(card, function (key) {
+            V.tabs(card, function (key, byUser) {
                 salesMetric = key === 'o' || key === 'aov' ? key : 'r';
                 // Every sales card shows the same metric.
                 dvCards('sales').forEach(function (other) {
@@ -2808,6 +3061,7 @@
                         b.tabIndex = on ? 0 : -1;
                     });
                 });
+                if (byUser) saveTab('sales', salesMetric);
                 if (!lastData) return;
                 var was = playNext;
                 playNext = true;
@@ -2816,16 +3070,56 @@
             });
         });
         dvCards('products').forEach(function (card) {
-            V.tabs(card, function () { playProductBars(card); });
+            V.tabs(card, function (key, byUser) {
+                playProductBars(card);
+                updateProductsFoot(card);
+                if (byUser) saveTab('products', key);
+            });
         });
         dvCards('visitors').forEach(function (card) {
-            V.tabs(card, function () {
+            V.tabs(card, function (key, byUser) {
                 var panel = Array.prototype.filter.call(card.querySelectorAll('[data-bp-dv-view]'), function (p) { return !p.hidden; })[0];
                 if (panel && lastData) drawVisitorsPanel(panel, lastData);
                 playVisitorsPanel(card);
+                if (byUser) saveTab('visitors', key);
             });
         });
     }
+
+    // The tab a user opens is remembered for them (Brikpanel_Dashboard::
+    // save_tab_preferences(), per user and per site), so the card opens on it
+    // next time. Sent a moment after the click, one request at a time; a
+    // choice still waiting when the page closes goes out with keepalive.
+    var tabsPending = {};
+    var tabsTimer = 0;
+    var tabsBusy = false;
+
+    function saveTab(card, key) {
+        tabsPending[card] = key;
+        clearTimeout(tabsTimer);
+        tabsTimer = setTimeout(function () { flushTabs(false); }, 400);
+    }
+
+    function flushTabs(leaving) {
+        clearTimeout(tabsTimer);
+        var cards = Object.keys(tabsPending);
+        if (!cards.length || (tabsBusy && !leaving)) return;
+        var fd = new FormData();
+        fd.append('action', 'brikpanel_dash_save_tab');
+        fd.append('security', CFG.nonce);
+        cards.forEach(function (c) { fd.append('tabs[' + c + ']', tabsPending[c]); });
+        tabsPending = {};
+        tabsBusy = true;
+        var done = function () {
+            tabsBusy = false;
+            if (Object.keys(tabsPending).length) flushTabs(false);
+        };
+        // The answer is not read: a refused save (a user BrikPanel's access
+        // rules keep on the classic dashboard) simply leaves the old tab.
+        fetch(CFG.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin', keepalive: !!leaving }).then(done, done);
+    }
+
+    window.addEventListener('pagehide', function () { flushTabs(true); });
 
     // Breakpoints by the space the dashboard and each card really have (the
     // admin menu takes 160 to 220px of the window). Classes written by
@@ -2843,6 +3137,24 @@
     function applySteps(el, steps) {
         var w = contentWidth(el);
         steps.forEach(function (st) { el.classList.toggle(st[1], w <= st[0]); });
+    }
+
+    // A Visitors card this wide (the same 740px the page decides with before
+    // its first paint, render_box_visitors()) shows the campaigns as a third
+    // column of Sources and drops the Top campaigns tab; a narrower card keeps
+    // the tab, so the card is never taller than before. A card open on Top
+    // campaigns then shows Sources, without saving that as the user's choice.
+    var SRC3_MIN = 740;
+
+    function fitVisitors(card) {
+        var wide = contentWidth(card) >= SRC3_MIN;
+        if (card.classList.contains('is-src3') === wide) return;
+        card.classList.toggle('is-src3', wide);
+        var on = card.querySelector('[role="tab"][aria-selected="true"]');
+        if (wide && V && on && on.getAttribute('data-bp-dv-tab') === 'campaigns') {
+            var api = V.tabs(card);
+            if (api) api.select('sources');
+        }
     }
 
     // A store card too narrow for its small line hides it.
@@ -2900,6 +3212,7 @@
         var root = document.getElementById('brikpanel-dashboard');
         if (root) applySteps(root, ROOT_STEPS);
         document.querySelectorAll('.bp-dv-card').forEach(function (card) { applySteps(card, CARD_STEPS); });
+        dvCards('visitors').forEach(fitVisitors);
         sizeKpis();
         if (!V) return;
         if (root) V.watchWidth(root, function () { applySteps(root, ROOT_STEPS); });
@@ -2919,6 +3232,7 @@
             var kind = card.getAttribute('data-bp-dv');
             V.watchWidth(card, function () {
                 applySteps(card, CARD_STEPS);
+                if (kind === 'visitors') fitVisitors(card);
                 if (!redraw[kind] || (!lastData && kind !== 'live')) return;
                 V.tip.hide();
                 try { redraw[kind](card); } catch (err) { if (window.console) window.console.error(err); }

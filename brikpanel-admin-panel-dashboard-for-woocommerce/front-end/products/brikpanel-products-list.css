@@ -1460,6 +1460,9 @@ html:has(.brikpanel-pl-bulk-bar:not([hidden])) body {
     border-radius: 1rem;
     font-size: 0.75rem;
     font-weight: 550;
+    /* A badge stays on one line ("Pending review" broke in two in a narrow
+       column); the table's fit check stacks the rows when it no longer fits. */
+    white-space: nowrap;
     cursor: pointer;
     transition: all 0.15s;
     user-select: none;
@@ -1491,8 +1494,23 @@ html:has(.brikpanel-pl-bulk-bar:not([hidden])) body {
     color: #1d4ed8;
 }
 
+/* Pending review: the dashboard's amber for "waiting" (6.2:1). */
+:is(.brikpanel-pl-status-badge, .brikpanel-pl-row-meta-status).pending {
+    background: #fff1d6;
+    color: #7a5200;
+}
+
 .brikpanel-pl-status-badge:hover {
     box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* Not a toggle (Trash, or a badge the viewer may not publish from). */
+.brikpanel-pl-status-badge.brikpanel-pl-status-static {
+    cursor: default;
+}
+
+.brikpanel-pl-status-badge.brikpanel-pl-status-static:hover {
+    box-shadow: none;
 }
 
 .brikpanel-pl-status-saving {
@@ -2369,8 +2387,8 @@ body.rtl .brikpanel-pl-page-btn svg {
    container, so the page scroll stays where the sidebar can reach it. The
    drawer is position:fixed and so is not clipped by this. Same reasoning as
    the `html { overflow-x: clip }` rule in brikpanel-orders.css. */
-body.admin_page_brikpanel-products,
-html:has(body.admin_page_brikpanel-products) {
+body.brikpanel-screen-products,
+html:has(body.brikpanel-screen-products) {
     overflow-x: clip;
 }
 
@@ -2382,11 +2400,11 @@ html:has(body.admin_page_brikpanel-products) {
    named: WordPress core and WooCommerce still emit the legacy `error` class
    alongside `notice` (`<div id="woocommerce_errors" class="error notice">`),
    so guarding only `.notice-error` swallowed those with no trace. */
-body.admin_page_brikpanel-products .screen-meta-links,
-body.admin_page_brikpanel-products .notice:not(.brikpanel-notice):not(.notice-error):not(.error),
-body.admin_page_brikpanel-products .updated:not(.brikpanel-notice):not(.notice-error):not(.error),
-body.admin_page_brikpanel-products .update-nag,
-body.admin_page_brikpanel-products #screen-meta {
+body.brikpanel-screen-products .screen-meta-links,
+body.brikpanel-screen-products .notice:not(.brikpanel-notice):not(.notice-error):not(.error),
+body.brikpanel-screen-products .updated:not(.brikpanel-notice):not(.notice-error):not(.error),
+body.brikpanel-screen-products .update-nag,
+body.brikpanel-screen-products #screen-meta {
     display: none !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -2394,7 +2412,7 @@ body.admin_page_brikpanel-products #screen-meta {
     border: 0 !important;
 }
 /* Body background */
-body.admin_page_brikpanel-products #wpbody-content {
+body.brikpanel-screen-products #wpbody-content {
     padding-bottom: 2rem;
     margin: 0 !important;
 }
@@ -4644,6 +4662,11 @@ tr.brikpanel-pl-row-placeholder td {
     .brikpanel-pl-m-status.scheduled {
         background: #e6effd;
         color: #1d4ed8;
+    }
+
+    .brikpanel-pl-m-status.pending {
+        background: #fff1d6;
+        color: #7a5200;
     }
 
     .brikpanel-pl-m-status.trashed {

@@ -448,6 +448,12 @@ function brikpanel_nav_page_rows( $refresh = false ) {
 		$add( brikpanel_nav_row_target( $slug, '' ), $state );
 		if ( ! empty( $s[ $slug ] ) && is_array( $s[ $slug ] ) ) {
 			foreach ( $s[ $slug ] as $child ) {
+				// A BrikPanel screen kept in the menu for access plugins only is
+				// judged by the screens it replaces, as before it had a row
+				// (includes/brikpanel-screen-menu.php).
+				if ( function_exists( 'brikpanel_is_menu_only_row' ) && brikpanel_is_menu_only_row( $child ) ) {
+					continue;
+				}
 				// A hidden custom link is only a link: its target keeps its own rows.
 				if ( is_array( $child ) && isset( $child[2] ) && is_scalar( $child[2] ) && ! ( function_exists( 'brikpanel_nav_customizer_extract_meta' ) && brikpanel_nav_customizer_extract_meta( $child ) ) ) {
 					$add( brikpanel_nav_row_target( (string) $child[2], $slug ), $state );

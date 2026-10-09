@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.32
+Stable tag: 3.3.33
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -497,7 +497,7 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
-= 3.3.32 (2026-10-07) =
+= 3.3.33 (2026-10-07) =
 * New: **Arrange the dashboard box by box.** Setting: Dashboard → "Dashboard sections" now lists every box on its own, such as Recent orders, Order rates and the Conversion funnel, so you can move or hide each one. Boxes joined by a line sit side by side, and a new "Customize" link on the dashboard's date line opens the list. Layouts you saved before look the same.
 * New: **Product weights on the order screen.** The order's Items tab shows each product's weight, such as "0.12 kg × 3 = 0.36 kg", and a "Total weight" line under the totals, with a note when a product that ships has no weight. Orders without weighted products look as before.
 * New: **The products list on phones works like an app.** Each row shows the image, name, price and a stock dot, a tap opens the product, and coming back keeps your place. Filters, sorting, quick edit and row actions open from the bottom of the screen, "Select" or a long press picks several products, more load as you scroll, and Undo brings back a trashed product.

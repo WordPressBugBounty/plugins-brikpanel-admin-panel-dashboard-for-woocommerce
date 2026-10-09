@@ -2,7 +2,7 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
-= 3.3.32 (2026-10-07) =
+= 3.3.33 (2026-10-07) =
 * New: **Arrange the dashboard box by box.** Setting: Dashboard → "Dashboard sections" now lists every box on its own, such as Recent orders, Order rates and the Conversion funnel, so you can move or hide each one. Boxes joined by a line sit side by side, and a new "Customize" link on the dashboard's date line opens the list. Layouts you saved before look the same.
 * New: **Product weights on the order screen.** The order's Items tab shows each product's weight, such as "0.12 kg × 3 = 0.36 kg", and a "Total weight" line under the totals, with a note when a product that ships has no weight. Orders without weighted products look as before.
 * New: **The products list on phones works like an app.** Each row shows the image, name, price and a stock dot, a tap opens the product, and coming back keeps your place. Filters, sorting, quick edit and row actions open from the bottom of the screen, "Select" or a long press picks several products, more load as you scroll, and Undo brings back a trashed product.

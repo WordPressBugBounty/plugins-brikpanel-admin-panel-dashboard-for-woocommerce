@@ -9,6 +9,11 @@
     var PE = brikpanelPE || {};
     var productData = window.brikpanelProductData || {};
 
+    // False for someone who may edit but not publish products: the page
+    // offers them Draft and Pending review, and the button reads "Submit for
+    // review" on the latter (the save applies WordPress's own rule too).
+    var canPublishProducts = PE.can_publish !== '0';
+
     // `imagesReady` stays false until the gallery has been hydrated from the
     // saved product. Until then a save must stay silent about images rather
     // than claim there are none — see the payload builder in saveProduct().
@@ -104,6 +109,8 @@
         initBackorderNotify();
         initLinkedProducts();
         initThirdPartyTabLazyLoad();
+        initThirdPartyTabTypes();
+        initBlocksySwatchesBridge();
         initWcDatawrapAnchor();
         initNativeLabelBridge();
         initThirdPartyHint();
@@ -241,7 +248,13 @@
        classes the plugin listens on; firing a click here triggers the lazy
        render. The panel itself stays visible via CSS regardless. */
     function initThirdPartyTabLazyLoad() {
-        var $sims = $('.brikpanel-pe-wc-tabsim');
+        // Not for sections that are only on the page so their values survive
+        // the save ([data-bp-unpicked]): WooCommerce never opens a tab the
+        // merchant did not open, and every plugin handles that unloaded state
+        // on save. Loading them would also fire their scripted changes as edits.
+        var $sims = $('.brikpanel-pe-wc-tabsim').filter(function () {
+            return !$(this).closest('[data-bp-unpicked]').length;
+        });
         if (!$sims.length) return;
         $sims.each(function () {
             // Trigger handlers bound to the <li> (WC's `.{key}_tab`) and the
@@ -249,6 +262,162 @@
             // href and scroll the page to the anchor.
             $(this).find('li').addBack().trigger('click');
         });
+    }
+
+    /* WooCommerce shows a plugin's product-data tab only for the product types
+       its `show_if_*` / `hide_if_*` classes allow: Blocksy's Swatches tab is for
+       variable products only. The server prints each section shown or hidden for
+       the stored type (data-wc-tab-class carries those classes); this keeps it in
+       step while the merchant switches the type here. Same rule as
+       Brikpanel_Product_Editor::wc_tab_shown_for(), keep the two in step. A
+       hidden section still posts its fields. With no section left on screen the
+       whole card goes, by inline display, which is what the phone layout reads. */
+    function initThirdPartyTabTypes() {
+        var card = document.querySelector('.brikpanel-pe-wc-fields');
+        if (!card) return;
+        var groups = [].slice.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group[data-wc-tab-class]:not([data-bp-unpicked])'));
+        if (!groups.length) return;
+
+        function isVariableType(t) {
+            return t === 'variable' || t.indexOf('variable-') === 0 || t.indexOf('variable_') === 0;
+        }
+        function context() {
+            var $pt = $('#bpe-product-type');
+            var type = ($pt.length && $pt.val()) ? String($pt.val()) : '';
+            if (!type) {
+                var stored = String(productData.product_type || 'simple');
+                type = $('#bpe-var-toggle').is(':checked') ? 'variable' : (isVariableType(stored) ? 'simple' : stored);
+            }
+            // Virtual and downloadable are per variation on variable products,
+            // and WooCommerce clears them on grouped and external ones.
+            var flags = !isVariableType(type) && type !== 'grouped' && type !== 'external';
+            var digital = flags && $('#bpe-digital-toggle').is(':checked');
+            return { type: type, digital: digital, virtual: flags && ($('#bpe-virtual-toggle').is(':checked') || digital) };
+        }
+        function shown(classes, c) {
+            var shows = classes.filter(function (x) { return x.indexOf('show_if_') === 0; });
+            var on = !shows.length
+                || shows.indexOf('show_if_' + c.type) !== -1
+                || (c.virtual && shows.indexOf('show_if_virtual') !== -1)
+                || (c.digital && shows.indexOf('show_if_downloadable') !== -1);
+            if (classes.indexOf('hide_if_' + c.type) !== -1
+                || (c.virtual && classes.indexOf('hide_if_virtual') !== -1)
+                || (c.digital && classes.indexOf('hide_if_downloadable') !== -1)) {
+                on = false;
+            }
+            return on;
+        }
+        function sync() {
+            var c = context();
+            groups.forEach(function (g) {
+                g.hidden = !shown(String(g.getAttribute('data-wc-tab-class') || '').split(/\s+/).filter(Boolean), c);
+            });
+            var any = [].some.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group'), function (g) {
+                return !g.hidden && !g.hasAttribute('data-bp-unpicked') && g.style.display !== 'none';
+            });
+            card.style.display = any ? '' : 'none';
+            remountSwatchesIfShown();
+            phoneSummaries();
+        }
+        $(document).on('change', '#bpe-var-toggle, #bpe-product-type, #bpe-virtual-toggle, #bpe-digital-toggle', sync);
+        sync();
+    }
+
+    /* Blocksy's swatches editor (Blocksy Companion Pro) is a React app that
+       Blocksy mounts into its own panel a second after load. It keeps the whole
+       swatch setup in one hidden field, `ct-woo-attributes-list`, which the save
+       forwards with the card's other fields. The server prints a hidden copy of
+       the product's attributes (#bpe-native-attrs) for it to read, because this
+       editor has no WooCommerce Attributes panel.
+       - Its controls (type select, tooltip buttons, the media picker) fire no
+         event this page hears, so an observer compares the field with what was
+         loaded and marks the product unsaved.
+       - A save can create attribute values (new term ids): the server hands back
+         fresh rows and Blocksy is asked to read them again.
+       - On a slow page Blocksy can look before its panel is parsed and never
+         mount, so it is asked once more after load.
+       - If the field is gone at save time (Blocksy's app crashed), the save
+         sends the loaded value, so Blocksy does not read the gap as "delete". */
+    var swatches = { panel: null, loaded: null, baseline: null, pendingRemount: false };
+
+    function swatchesValue() {
+        var input = swatches.panel && swatches.panel.querySelector('[name="ct-woo-attributes-list"]');
+        return input ? input.value : null;
+    }
+
+    // Blocksy stores `[]` for "none" and re-encodes `\/` as `/`: compare the data.
+    function swatchesNorm(raw) {
+        if (raw === null || raw === undefined) return null;
+        try {
+            var v = JSON.parse(raw || '{}');
+            return JSON.stringify(v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+        } catch (e) {
+            return String(raw);
+        }
+    }
+
+    function initBlocksySwatchesBridge() {
+        var panel = document.querySelector('.brikpanel-pe-wc-fields #ct_product_variation_swatches');
+        if (!panel) return;
+        swatches.panel = panel;
+        swatches.loaded = swatchesValue();
+        swatches.baseline = swatchesNorm(swatches.loaded);
+        if (typeof MutationObserver !== 'undefined') {
+            var timer = 0;
+            new MutationObserver(function () {
+                if (timer) return;
+                timer = setTimeout(function () {
+                    timer = 0;
+                    var now = swatchesValue();
+                    if (now !== null && swatches.baseline !== null && swatchesNorm(now) !== swatches.baseline) state.dirty = true;
+                }, 60);
+            }).observe(panel, { subtree: true, childList: true, attributes: true });
+        }
+        var retry = function () {
+            setTimeout(function () {
+                var input = document.getElementById('ct-woo-attributes-list');
+                if (input && input.type !== 'hidden') $(document.body).trigger('woocommerce_attributes_saved');
+            }, 1200);
+        };
+        if (document.readyState === 'complete') { retry(); } else { $(window).on('load', retry); }
+    }
+
+    // Called with the save payload; returns the swatch value being sent.
+    function swatchesBeforeSend(data) {
+        if (document.getElementById('bpe-native-attrs')) data.native_attr_mirror = 1;
+        if (!swatches.panel) return null;
+        if (!data.hasOwnProperty('ct-woo-attributes-list') && swatches.loaded !== null) {
+            data['ct-woo-attributes-list'] = swatches.loaded;
+        }
+        return data.hasOwnProperty('ct-woo-attributes-list') ? String(data['ct-woo-attributes-list']) : null;
+    }
+
+    function afterSwatchesSave(resp, sent) {
+        if (swatches.panel && sent !== null) {
+            swatches.loaded = sent;
+            swatches.baseline = swatchesNorm(sent);
+            var now = swatchesValue();
+            // Changed again while the save was in flight: still unsaved.
+            if (now !== null && swatchesNorm(now) !== swatches.baseline) state.dirty = true;
+        }
+        var box = document.getElementById('bpe-native-attrs');
+        var mirror = resp && resp.native_attr_mirror;
+        if (!box || !mirror || typeof mirror.html !== 'string' || box.getAttribute('data-hash') === String(mirror.hash)) return;
+        box.innerHTML = mirror.html; // Built and escaped server-side.
+        box.setAttribute('data-hash', String(mirror.hash));
+        swatches.pendingRemount = true;
+        remountSwatchesIfShown();
+    }
+
+    // Blocksy rebuilds its editor from the attribute rows on this WooCommerce
+    // event. Held while the section is hidden; a type change that shows it
+    // calls this again.
+    function remountSwatchesIfShown() {
+        if (!swatches.pendingRemount || !swatches.panel) return;
+        var group = $(swatches.panel).closest('.brikpanel-pe-wc-tab-group')[0];
+        if (group && (group.hidden || group.hasAttribute('data-bp-unpicked'))) return;
+        swatches.pendingRemount = false;
+        $(document.body).trigger('woocommerce_attributes_saved');
     }
 
     /* Hidden copies of WooCommerce's native price/stock/weight labels
@@ -659,6 +828,9 @@
             // A scripted event has no originalEvent (jQuery .trigger()) or is
             // untrusted (dispatchEvent); a real edit is always trusted.
             if (wcFieldsBooting && (!e.originalEvent || !e.originalEvent.isTrusted)) return;
+            // A section kept only for its values cannot be edited: whatever its
+            // own scripts do there is not the merchant's change.
+            if ($(e.target).closest('[data-bp-unpicked]').length) return;
             state.dirty = true;
         });
         // Password field lives in the header — track it separately
@@ -840,9 +1012,38 @@
             || (schedulingOn && (status === 'publish') && pubDateIsFuture());
         if (willSchedule) {
             $pub.text(PE.i18n.schedule || 'Schedule');
+        } else if (!canPublishProducts) {
+            // Someone who may not publish: the label follows the chosen status
+            // (the server prints the same at load), not the captured baseline,
+            // which would keep "Submit for review" after a switch to Draft.
+            if (status === 'pending') {
+                $pub.text(PE.i18n.submit_review);
+            } else if (status === 'publish' || status === 'private' || status === 'password') {
+                $pub.text(PE.i18n.update);
+            } else {
+                $pub.text(PE.i18n.save);
+            }
         } else {
             $pub.text($pub.data('origLabel'));
         }
+    }
+
+    /* Point the header's status control at `v` without marking the form
+       dirty: after a save whose stored status differs from the one chosen
+       (someone who may not publish asked to publish, a date ahead made it
+       Scheduled). Only for a status the menu lists. */
+    function syncHeaderStatus(v) {
+        var $wrap = $('.brikpanel-pe-status-wrap');
+        var $li = $wrap.find('li[role="option"][data-value="' + v + '"]'); // i18n-ignore: selector fragment
+        if (!$wrap.length || !$li.length) return;
+        $wrap.attr('data-status', v);
+        $wrap.find('li[role="option"]').removeClass('is-active');
+        $li.addClass('is-active');
+        $('#bpe-status-trigger .brikpanel-pe-status-trigger-label').text($li.find('strong').text());
+        $('#bpe-password-wrap').toggleClass('is-visible', v === 'password');
+        // The phone bar listens to this change (phoneSyncStatus()); the header
+        // sits outside the fields the dirty watcher covers.
+        $('#bpe-status').val(v).trigger('change');
     }
 
     /* Custom Visibility dropdown (replaces the old <select>) */
@@ -2028,7 +2229,10 @@
     function renderedThirdPartyBoxes() {
         var ids = [];
         // Panels sit in per-tab groups inside the product-data card.
+        // Sections kept only for their values ([data-bp-unpicked]) do not count:
+        // the merchant never saw them, so a theme's handler stays detached.
         $('.brikpanel-pe-wc-fields').find('.brikpanel-pe-wc-panel[id], .panel[id]').each(function () {
+            if ($(this).closest('[data-bp-unpicked]').length) return;
             if (ids.indexOf(this.id) === -1) ids.push(this.id);
         });
         $('.brikpanel-pe-metaboxes-wrap .postbox[id]').each(function () { ids.push(this.id); });
@@ -5819,9 +6023,23 @@
 
         // Everything EXCEPT the per-variation extras, which need re-indexing
         // and therefore get their own pass immediately below.
-        $('.brikpanel-pe-metaboxes-wrap :input[name], .brikpanel-pe-wc-fields :input[name], .brikpanel-pe-ext-card :input[name], #acf-form-data :input[name]').each(function () {
+        // Sections kept on the page only so their values survive the save
+        // ([data-bp-unpicked]) go last, and a name already taken from a shown
+        // section is not read again from them: a stale hidden copy must never
+        // overwrite what the merchant just edited.
+        var $named = $('.brikpanel-pe-metaboxes-wrap :input[name], .brikpanel-pe-wc-fields :input[name], .brikpanel-pe-ext-card :input[name], #acf-form-data :input[name]');
+        var $keptOnly = $named.filter(function () { return !!$(this).closest('[data-bp-unpicked]').length; });
+        var shownNames = {};
+        $named.not($keptOnly).each(function () {
             var $el = $(this), name = $el.attr('name');
             if (!name) return;
+            shownNames[name] = true;
+            if (($el.is(':checkbox') || $el.is(':radio')) && !$el.is(':checked')) return;
+            collectNamedInput(name, readInputValue($el));
+        });
+        $keptOnly.each(function () {
+            var $el = $(this), name = $el.attr('name');
+            if (!name || shownNames[name]) return;
             if (($el.is(':checkbox') || $el.is(':radio')) && !$el.is(':checked')) return;
             collectNamedInput(name, readInputValue($el));
         });
@@ -6084,6 +6302,10 @@
             state.lastSubmittedVariations = [];
         }
 
+        // Blocksy swatches: ask for fresh attribute rows, never send a gap
+        // (see initBlocksySwatchesBridge()).
+        var sentSwatches = swatchesBeforeSend(data);
+
         // Build FormData so bracketed repeat keys (`field[0]`, `field[1]`…)
         // from third-party variation fields stay intact. $.post uses jQuery's
         // param serializer which can't emit the same key twice or our nested
@@ -6108,6 +6330,7 @@
             state.saving = false; $pub.prop('disabled', false).text(op);
             if (r.success) {
                 state.dirty = false;
+                afterSwatchesSave(r.data, sentSwatches);
                 // Before the variation rows are redrawn, so their video
                 // buttons already show what was stored.
                 syncVideosFromServer(r.data.videos, videoSent);
@@ -6148,10 +6371,20 @@
                     // generated it from the title when left blank) so the field
                     // shows the real permalink without a reload.
                     if (typeof r.data.slug !== 'undefined') { $('#bpe-slug').val(r.data.slug); }
+                    // The status the server saved, which can differ from the one
+                    // chosen: "pending" for someone who may not publish, and a
+                    // date ahead makes it Scheduled. What follows goes by it,
+                    // and the header's status control is pointed at it.
+                    var saved = (typeof r.data.status === 'string' && r.data.status) ? r.data.status : status;
+                    if (saved !== status) {
+                        syncHeaderStatus(saved);
+                        updatePublishLabel(saved);
+                    }
+                    var savedLive = saved === 'publish' || saved === 'private' || saved === 'password';
                     // Keep the auto-save gate in sync: a product becomes live
                     // once saved as publish/private/password, and reverts when
                     // saved back to draft.
-                    $('#bpe-product-id').data('live', (status === 'publish' || status === 'private' || status === 'password') ? 1 : 0);
+                    $('#bpe-product-id').data('live', savedLive ? 1 : 0);
                     var newUrl = PE.admin_url + 'admin.php?page=brikpanel-product-editor&product_id=' + r.data.product_id;
                     // The entry's state is kept: on a phone it says which page
                     // is open, and the back gesture closes that page.
@@ -6168,7 +6401,7 @@
                     // Duplicate is available as soon as the product has an ID
                     // (draft, publish, private — all valid).
                     $dup.attr('data-id', r.data.product_id).data('id', r.data.product_id).prop('hidden', false);
-                    if (status === 'publish' || status === 'private' || status === 'password') {
+                    if (savedLive) {
                         $pub.text(PE.i18n.update || 'Update');
                         // The label a Scheduled status switches back to.
                         $pub.data('origLabel', PE.i18n.update || 'Update');
@@ -6177,6 +6410,10 @@
                             $('#bpe-view-product').attr('href', viewUrl).prop('hidden', false);
                         }
                         $('#bpe-add-new').prop('hidden', false);
+                    } else {
+                        // Nothing to view on the storefront (draft, pending,
+                        // scheduled), as when the page loads with that status.
+                        $('#bpe-view-product').prop('hidden', true);
                     }
                     $('#bpe-header-overflow').prop('hidden', false);
                     // A new product becomes an existing one with this save.
@@ -7249,6 +7486,8 @@
         pw.type = 'text';
         pw.autocomplete = 'off';
         pw.value = $pw.val() || '';
+        // Read-only like the header's field for someone who may not publish.
+        pw.readOnly = !!$pw.prop('readonly');
         pw.addEventListener('input', function () { $pw.val(pw.value).trigger('input'); });
         var pwBox = field(phT('ph_password'), pw, 'bpe-ph-password');
 

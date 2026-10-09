@@ -324,6 +324,8 @@ function brikpanel_export_core_table() {
 	foreach ( [
 		'brikpanel_sidebar_hidden',
 		'brikpanel_dash_range',
+		// The tab this admin last opened in each dashboard card (3.3.33).
+		'brikpanel_dash_tabs',
 		// The products list's last sort (3.3.29), like the dashboard range.
 		'brikpanel_products_sort',
 		// The new-store guide this admin closed on the dashboard.

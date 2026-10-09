@@ -194,8 +194,12 @@ function brikpanel_nav_relocate_wc_submenus( &$menu, &$submenu ) {
 			$slug = $sub_item[2];
 			$temp = $submenu_items[ $sub_key ];
 
-			// Keep under WooCommerce — leave slug untouched.
-			if ( in_array( $slug, $skip_slugs, true ) ) {
+			// Keep under WooCommerce — leave slug untouched. So does a BrikPanel
+			// screen kept in the menu for access plugins only
+			// (includes/brikpanel-screen-menu.php): moved into "More" it would
+			// also pass for the Cart share row below.
+			if ( in_array( $slug, $skip_slugs, true )
+				|| ( function_exists( 'brikpanel_is_menu_only_row' ) && brikpanel_is_menu_only_row( $sub_item ) ) ) {
 				continue;
 			}
 
@@ -345,6 +349,13 @@ function brikpanel_nav_resolve_submenu_rows( $rows ) {
 		// A row without a slug has no destination: printed, it was an empty
 		// link, and as a parent's link target it raised an undefined-key warning.
 		if ( ! is_array( $row ) || ! isset( $row[2] ) || ! is_scalar( $row[2] ) || '' === (string) $row[2] ) {
+			continue;
+		}
+
+		// A BrikPanel screen kept in the menu for access plugins only
+		// (includes/brikpanel-screen-menu.php) is neither listed nor the
+		// parent's link.
+		if ( function_exists( 'brikpanel_is_menu_only_row' ) && brikpanel_is_menu_only_row( $row ) ) {
 			continue;
 		}
 
@@ -1144,6 +1155,12 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 			// it after: it gets the BrikPanel analytics icon and opens on its reports.
 			$brikpanel_analytics_slug = brikpanel_nav_wc_analytics_slug( $menu );
 
+			// On a BrikPanel screen, the sidebar row the screen stands for (All
+			// Products for the product list, Cart share in "More"). The group
+			// holding it opens, wherever the sidebar placed it
+			// (includes/brikpanel-screen-menu.php).
+			$brikpanel_screen_row = function_exists( 'brikpanel_screen_menu_current_row' ) ? brikpanel_screen_menu_current_row() : null;
+
 			// Loop through each top-level menu and build HTML.
 			foreach ( $menu as $key => $item ) {
 				// Third-party plugins can leave a non-array (scalar) entry in the
@@ -1330,6 +1347,17 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 
 		$viewing_dashboard_page = $item_slug === 'index.php' && $page === 'brikpanel-dashboard';
 
+		// A BrikPanel screen opens the group that lists the row it stands for.
+		$viewing_screen_row = false;
+		if ( null !== $brikpanel_screen_row ) {
+			foreach ( $submenu_items as $brikpanel_listed_row ) {
+				if ( is_array( $brikpanel_listed_row ) && isset( $brikpanel_listed_row[2] ) && $brikpanel_screen_row === (string) $brikpanel_listed_row[2] ) {
+					$viewing_screen_row = true;
+					break;
+				}
+			}
+		}
+
 		// Menü aktiflik durumu
 		if (
 			($parent_file && $item_slug === $parent_file) ||
@@ -1339,7 +1367,8 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 			$viewing_analytics_page ||
 			$viewing_marketing_page ||
 			$viewing_more_page ||
-			$viewing_dashboard_page
+			$viewing_dashboard_page ||
+			$viewing_screen_row
 		) {
 			if (!empty($submenu_items)) {
 				$class[] = 'brikpanel-has-open-submenu';

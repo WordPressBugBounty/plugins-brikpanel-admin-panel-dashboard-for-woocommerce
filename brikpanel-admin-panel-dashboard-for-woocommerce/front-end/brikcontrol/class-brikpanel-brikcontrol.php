@@ -144,17 +144,16 @@ class Brikpanel_BrikControl {
     // PAGE REGISTRATION
     // =========================================================================
 
+    /**
+     * Registers Store Health under WooCommerce's menu, as a row only access
+     * plugins see (includes/brikpanel-screen-menu.php).
+     */
     public function register_page() {
-        $hook = add_submenu_page(
-            '',
-            __( 'Store Health', 'brikpanel' ),
-            '',
-            'manage_woocommerce',
-            self::PAGE_SLUG,
-            [ $this, 'render_page' ]
-        );
+        $hooks = function_exists( 'brikpanel_add_screen_page' )
+            ? brikpanel_add_screen_page( 'woocommerce', __( 'Store Health', 'brikpanel' ), 'manage_woocommerce', self::PAGE_SLUG, [ $this, 'render_page' ] )
+            : array_filter( [ add_submenu_page( '', __( 'Store Health', 'brikpanel' ), '', 'manage_woocommerce', self::PAGE_SLUG, [ $this, 'render_page' ] ) ] );
 
-        if ( $hook ) {
+        foreach ( $hooks as $hook ) {
             add_action( 'load-' . $hook, [ $this, 'on_page_load' ] );
         }
     }

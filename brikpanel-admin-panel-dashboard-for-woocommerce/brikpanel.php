@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.32
+ * Version: 3.3.33
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.32');
+define('BRIKPANEL_VERSION', '3.3.33');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -347,6 +347,8 @@ add_action( 'wp_delete_site', function ( $old_site ) {
     // Dashboard "new store" guide dismissal
     // (front-end/dashboard/brikpanel-dashboard.php), stored the same way.
     delete_metadata( 'user', 0, $brikpanel_blog_prefix . 'brikpanel_new_store_guide_dismissed', '', true );
+    // Dashboard: the tab each person last opened in a card, stored the same way.
+    delete_metadata( 'user', 0, $brikpanel_blog_prefix . 'brikpanel_dash_tabs', '', true );
     // Phone notifications: the stamp of what this person's phone can do
     // (front-end/push/brikpanel-push-admin.php), stored the same way.
     delete_metadata( 'user', 0, $brikpanel_blog_prefix . 'brikpanel_push_phone', '', true );
@@ -1349,6 +1351,15 @@ brikpanel_require('includes/brikpanel-access-control.php');
 // Also the one place other screens ask before linking to a module's page.
 // =============================================================================
 brikpanel_require('includes/brikpanel-module-pages.php');
+
+// =============================================================================
+// SCREENS IN WORDPRESS'S MENU
+//
+// BrikPanel's own screens sit under the menu they belong to as rows only access
+// plugins (Advanced Access Manager and the like) see, so those plugins can list
+// and manage them (wp.org, excellira, 2026-10-08).
+// =============================================================================
+brikpanel_require('includes/brikpanel-screen-menu.php');
 
 // =============================================================================
 // THIRD-PARTY COMPATIBILITY: ASE (Admin and Site Enhancements) bridge
