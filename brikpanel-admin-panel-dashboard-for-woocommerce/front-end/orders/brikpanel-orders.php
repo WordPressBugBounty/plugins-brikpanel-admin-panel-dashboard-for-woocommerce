@@ -483,6 +483,13 @@ function brikpanel_settings_fields() {
             'default' => 'yes',
         ],
         [
+            'name'    => __('New products are virtual', 'brikpanel'),
+            'id'      => 'brikpanel_pe_new_products_virtual',
+            'type'    => 'checkbox',
+            'desc'    => __('In the product editor, every new product starts with "Virtual (no shipping)" switched on. Switch it off on a product that ships.', 'brikpanel'),
+            'default' => 'no',
+        ],
+        [
             'name'    => __('Auto-include ACF field groups', 'brikpanel'),
             'id'      => 'brikpanel_pe_acf_auto',
             'type'    => 'checkbox',
@@ -665,7 +672,11 @@ function brikpanel_settings_fields() {
             'default'  => function_exists('brikpanel_dashboard_profit_field_labels') ? array_keys(brikpanel_dashboard_profit_field_labels()) : [],
         ],
         // Was the "Exclude tax from Revenue and Expenses" checkbox: 'no' and
-        // 'yes' keep their meaning, so nobody's dashboard changes on update.
+        // 'yes' keep their meaning. The default moved from 'no' to 'yes' in
+        // 3.3.34, and every store moved with it once
+        // (brikpanel_apply_profit_tax_default()); this default must match the
+        // fallback in brikpanel_profit_tax_mode(), or a store without a row
+        // would see one choice here and get the other on the dashboard.
         [
             'name'     => __('Tax in the Profit section', 'brikpanel'),
             'id'       => 'brikpanel_profit_exclude_tax',
@@ -677,7 +688,7 @@ function brikpanel_settings_fields() {
                 'yes'     => __('Taken out of Revenue and Expenses', 'brikpanel'),
                 'revenue' => __('Kept in Revenue (not in Expenses)', 'brikpanel'),
             ],
-            'default'  => 'no',
+            'default'  => 'yes',
         ],
         [
             'type' => 'sectionend',

@@ -64,6 +64,8 @@ function brikpanel_prime_keys_always() {
 
 		// Module gates read at file scope.
 		'brikpanel_brikcontrol_enabled',
+		// Read by the cron registration on every request (3.3.34).
+		'brikpanel_bot_traffic_nightly',
 		'brikpanel_gs_module_enabled',
 		'brikpanel_ads_module_enabled',
 		'brikpanel_cartab_enabled',
@@ -130,6 +132,7 @@ function brikpanel_prime_keys_always() {
 		'brikpanel_db_version',
 		'brikpanel_cogs_default_applied',
 		'brikpanel_shipping_cost_default_applied',
+		'brikpanel_profit_tax_default_applied',
 		'brikpanel_cartab_failed_recovery_repair_done',
 		'brikpanel_cartab_zeroed_repair_done',
 		'brikpanel_cos_legacy_migrated',
@@ -219,8 +222,9 @@ function brikpanel_prime_keys_admin() {
 		// same admin-only paths as the shipping-cost gate above.
 		'brikpanel_payment_fees_enabled',
 
-		// Profit: takes tax out of Revenue and Expenses on the dashboard, and
-		// joins the dashboard transient key. Same admin-only paths as above.
+		// Profit: where tax sits on the dashboard (Inside Expenses, taken out
+		// of Revenue and Expenses, or kept in Revenue), and part of the
+		// dashboard transient key. Same admin-only paths as above.
 		'brikpanel_profit_exclude_tax',
 
 		// Dashboard widget access + layout.

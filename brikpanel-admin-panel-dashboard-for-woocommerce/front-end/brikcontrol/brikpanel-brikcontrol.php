@@ -101,6 +101,21 @@ function brikpanel_brikcontrol_register_settings_field( $fields ) {
             'desc'    => __( 'When on, the Store Health page, topbar shield and daily background scans are active. When off, the entire module is dormant: no menu item, no topbar icon, and no scheduled scans.', 'brikpanel' ),
             'default' => 'yes',
         ],
+        // Owner decision (11 Oct 2026, wp.org request "bot traffic cleanup
+        // flags my real paid traffic"): the nightly cleanup can be switched
+        // off, on by default as before. Read by
+        // Brikpanel_BrikControl_Bot_Traffic_Check::nightly_enabled().
+        [
+            'name'    => __( 'Clean up bot traffic every night', 'brikpanel' ),
+            'id'      => 'brikpanel_bot_traffic_nightly',
+            'type'    => 'checkbox',
+            'desc'    => brikpanel_safe_sprintf(
+                /* translators: %s: label of the Store Health cleanup button, "Clean up bot traffic". */
+                __( 'When on, Store Health lowers the past days that bots inflated every night, and you can undo it. When off, bot traffic is only listed on the Store Health page until you click "%s".', 'brikpanel' ),
+                __( 'Clean up bot traffic', 'brikpanel' )
+            ),
+            'default' => 'yes',
+        ],
         [
             'type' => 'sectionend',
             'id'   => 'brk_brikcontrol_title',

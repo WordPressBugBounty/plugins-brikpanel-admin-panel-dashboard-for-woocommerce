@@ -109,6 +109,16 @@ class Brikpanel_Product_Editor {
      */
     private $save_status = '';
 
+    /**
+     * The product's own Virtual flag as stored before this save wrote anything
+     * (null outside a save, or for a product that had no row yet). A new
+     * variation takes it when the "Digital product" section is hidden and no
+     * existing variation stays to follow (see save_variations()).
+     *
+     * @var bool|null
+     */
+    private $save_parent_virtual = null;
+
     public function __construct() {
         // Always register the page slug so WordPress doesn't throw a permission error
         // when someone navigates to the URL while the editor is disabled.
@@ -456,6 +466,13 @@ class Brikpanel_Product_Editor {
                 && function_exists('get_default_post_to_edit') && current_user_can('edit_products')) {
                 $draft = get_default_post_to_edit('product', true);
                 if ($draft && !is_wp_error($draft) && !empty($draft->ID)) {
+                    // "New products are virtual" (Products settings). The editor
+                    // reads the Virtual switch from the product, so the draft
+                    // itself starts virtual; switching it off before the first
+                    // save makes the product physical as usual.
+                    if ($this->new_product_starts_virtual()) {
+                        update_post_meta((int) $draft->ID, '_virtual', 'yes');
+                    }
                     wp_safe_redirect(admin_url('admin.php?page=brikpanel-product-editor&product_id=' . (int) $draft->ID));
                     exit;
                 }
@@ -2934,6 +2951,23 @@ class Brikpanel_Product_Editor {
          */
         $visible = apply_filters('brikpanel_editor_visible_sections', $visible, $product_id);
         return is_array($visible) ? array_values($visible) : $default;
+    }
+
+    /**
+     * Whether a new product opens with "Virtual (no shipping)" switched on:
+     * the "New products are virtual" setting (WooCommerce → Settings →
+     * BrikPanel → Products) is on and the editor shows the switch. With the
+     * "Digital product" section hidden there is no switch to turn it off on a
+     * product that ships, so the setting stays out of the way.
+     *
+     * Called only while a new product is being opened, never on every admin
+     * request: the setting is read here and nowhere else.
+     *
+     * @return bool
+     */
+    private function new_product_starts_virtual() {
+        return 'yes' === get_option('brikpanel_pe_new_products_virtual', 'no')
+            && in_array('digital', $this->get_visible_sections(), true);
     }
 
     /**
@@ -6759,7 +6793,9 @@ class Brikpanel_Product_Editor {
             'seo_title'         => '',
             'seo_description'   => '',
             'is_downloadable'   => false,
-            'is_virtual'        => false,
+            // A new product with no draft row behind it (its creation failed):
+            // same start as one that has a draft, see handle_redirects().
+            'is_virtual'        => $this->new_product_starts_virtual(),
             'downloads'         => [],
             'tags'              => [],
             'stock_status'      => 'instock',
@@ -7050,16 +7086,31 @@ class Brikpanel_Product_Editor {
             $stock_qty = $total_stock;
         }
 
-        // Downloadable files
+        // Virtual / Digital switches and the downloadable files. A variable
+        // product keeps them on its variations: WooCommerce never counts the
+        // parent as virtual or downloadable, so the switches show what every
+        // variation has and the one file list shows the files they all share.
+        // When their files differ the list opens empty, and the save leaves
+        // each variation's own files in place (see save_variations()). Without
+        // the shared list here every save of a downloadable variable product
+        // sent an empty list back and deleted all of its files.
+        $variation_flags = $is_variable
+            ? $this->variation_flags_summary(array_map('intval', (array) $product->get_children()))
+            : null;
+        if ($is_variable) {
+            $file_objects = ($variation_flags['downloadable'] && null !== $variation_flags['downloads'])
+                ? $variation_flags['downloads']
+                : [];
+        } else {
+            $file_objects = $product->is_downloadable() ? $product->get_downloads() : [];
+        }
         $downloads = [];
-        if ($product->is_downloadable()) {
-            foreach ($product->get_downloads() as $download) {
-                $downloads[] = [
-                    'id'   => $download->get_id(),
-                    'name' => $download->get_name(),
-                    'file' => $download->get_file(),
-                ];
-            }
+        foreach ($file_objects as $download) {
+            $downloads[] = [
+                'id'   => $download->get_id(),
+                'name' => $download->get_name(),
+                'file' => $download->get_file(),
+            ];
         }
 
         // SEO data — read from whichever plugin has populated meta, first
@@ -7314,13 +7365,16 @@ class Brikpanel_Product_Editor {
                 }
                 return '';
             })(),
-            // WC's variable product data store does not persist parent-level
-            // `_virtual` / `_downloadable` meta — they're always read as false
-            // on the parent. Derive the toggle state from the variations so
-            // re-opening a variable product surfaces the real per-variation
-            // state in the editor.
-            'is_downloadable'   => $is_variable ? $this->variations_all_have_flag($product, 'is_downloadable') : $product->is_downloadable(),
-            'is_virtual'        => $is_variable ? $this->variations_all_have_flag($product, 'is_virtual')      : $product->is_virtual(),
+            // WC_Product_Variable reports Virtual and Downloadable as false
+            // whatever is stored, so for a variable product the switches come
+            // from its variations (see $variation_flags above). One with no
+            // variations yet shows its own stored Virtual flag, which is where
+            // "New products are virtual" leaves it: otherwise saving a variable
+            // product before adding its variations would turn the switch off.
+            'is_downloadable'   => $is_variable ? $variation_flags['downloadable'] : $product->is_downloadable(),
+            'is_virtual'        => $is_variable
+                ? ($product->get_children() ? $variation_flags['virtual'] : 'yes' === get_post_meta($pid, '_virtual', true))
+                : $product->is_virtual(),
             'downloads'         => $downloads,
             'gallery'           => $gallery,
             'tags'              => $tag_names,
@@ -7367,26 +7421,56 @@ class Brikpanel_Product_Editor {
     }
 
     /**
-     * Returns true only when every variation of a variable product reports
-     * the requested flag (`is_virtual` or `is_downloadable`). Used to derive
-     * the apparent parent-level toggle state because WC does not persist
-     * these flags on variable parents.
+     * What the given variations have in common, the way the editor's single
+     * Virtual and Digital switches and its one file list show a variable
+     * product: `virtual` / `downloadable` are true only when every variation
+     * has them, and `downloads` is the file list they all share (null when
+     * the lists differ or not all of them are downloadable). An empty list of
+     * IDs, or one that is not a variation, answers false / false / null.
+     * One pass, reading the variations from the meta cache when primed.
      *
-     * @param WC_Product $product Variable parent product.
-     * @param string     $method  Method name to invoke on each variation.
+     * @param int[] $child_ids Variation IDs.
+     * @return array{virtual: bool, downloadable: bool, downloads: WC_Product_Download[]|null}
      */
-    private function variations_all_have_flag($product, $method) {
-        $children = $product->get_children();
-        if (empty($children)) {
-            return false;
+    private function variation_flags_summary(array $child_ids) {
+        $none = ['virtual' => false, 'downloadable' => false, 'downloads' => null];
+        if (empty($child_ids)) {
+            return $none;
         }
-        foreach ($children as $child_id) {
-            $child = wc_get_product($child_id);
-            if (!$child || !$child->$method()) {
-                return false;
+        $all_virtual      = true;
+        $all_downloadable = true;
+        $shared           = null;
+        $shared_files     = null;
+        foreach ($child_ids as $child_id) {
+            $child = wc_get_product((int) $child_id);
+            if (!$child || !$child->is_type('variation')) {
+                return $none;
+            }
+            $all_virtual = $all_virtual && $child->is_virtual();
+            if (!$all_downloadable) {
+                continue;
+            }
+            if (!$child->is_downloadable()) {
+                $all_downloadable = false;
+                continue;
+            }
+            $downloads = array_values($child->get_downloads());
+            $files     = array_map(static function ($download) {
+                return (string) $download->get_file();
+            }, $downloads);
+            sort($files);
+            if (null === $shared_files) {
+                $shared_files = $files;
+                $shared       = $downloads;
+            } elseif ($files !== $shared_files) {
+                $shared = null;
             }
         }
-        return true;
+        return [
+            'virtual'      => $all_virtual,
+            'downloadable' => $all_downloadable,
+            'downloads'    => $all_downloadable ? $shared : null,
+        ];
     }
 
     /**
@@ -7580,6 +7664,7 @@ class Brikpanel_Product_Editor {
         $this->promoted_this_save  = 0;
         $this->promoted_axis_map   = [];
         $this->save_status         = '';
+        $this->save_parent_virtual = null;
 
         if (!current_user_can('edit_products')) {
             wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
@@ -7923,6 +8008,13 @@ class Brikpanel_Product_Editor {
                 $this->send_clean_json(false, ['message' => __('Product not found.', 'brikpanel')]);
             }
 
+            // The stored Virtual flag, read before anything below writes: other
+            // plugins' save handlers run during the parent save, and
+            // WooCommerce stores a variable parent's flag as "no" the moment
+            // anything touches it. Read raw because WC_Product_Variable
+            // reports false whatever is stored.
+            $this->save_parent_virtual = 'yes' === get_post_meta($product_id, '_virtual', true);
+
             // Any variable-family → non-variable transition: wipe orphan variations.
             $was_variable = function_exists('brikpanel_is_variable_product_type')
                 ? brikpanel_is_variable_product_type($existing->get_type())
@@ -8246,32 +8338,40 @@ class Brikpanel_Product_Editor {
         // A standard eBook needs both on. WC stores both flags on the parent;
         // for variable products we also propagate to every variation below so
         // the storefront (which reads per-variation flags) stays consistent.
-        $is_downloadable = !empty($_POST['is_downloadable']);
-        $is_virtual      = !empty($_POST['is_virtual']) || $is_downloadable;
-        $product->set_downloadable($is_downloadable);
-        $product->set_virtual($is_virtual);
-        if ($is_downloadable) {
-            $downloads_json = isset($_POST['downloads']) ? wp_unslash($_POST['downloads']) : '[]';
-            $downloads_data = json_decode($downloads_json, true);
-            $download_objects = [];
-            if (is_array($downloads_data)) {
-                foreach ($downloads_data as $d) {
-                    $file = esc_url_raw($d['file'] ?? '');
-                    $name = sanitize_text_field($d['name'] ?? '');
-                    if (!$file) continue;
-                    $download = new WC_Product_Download();
-                    $dl_id = !empty($d['id']) ? sanitize_text_field($d['id']) : wp_generate_uuid4();
-                    $download->set_id($dl_id);
-                    $download->set_name($name ?: basename($file));
-                    $download->set_file($file);
-                    $download_objects[] = $download;
+        //
+        // Written only when the editor sent them, which it does while the
+        // "Digital product" section is on screen. With the section hidden the
+        // switches are not there to read, and taking the missing keys as "off"
+        // turned every virtual product physical (shipping charged again) and
+        // deleted its download files on each save.
+        if (array_key_exists('is_virtual', $_POST) || array_key_exists('is_downloadable', $_POST)) {
+            $is_downloadable = !empty($_POST['is_downloadable']);
+            $is_virtual      = !empty($_POST['is_virtual']) || $is_downloadable;
+            $product->set_downloadable($is_downloadable);
+            $product->set_virtual($is_virtual);
+            if ($is_downloadable) {
+                $downloads_json = isset($_POST['downloads']) ? wp_unslash($_POST['downloads']) : '[]';
+                $downloads_data = json_decode($downloads_json, true);
+                $download_objects = [];
+                if (is_array($downloads_data)) {
+                    foreach ($downloads_data as $d) {
+                        $file = esc_url_raw($d['file'] ?? '');
+                        $name = sanitize_text_field($d['name'] ?? '');
+                        if (!$file) continue;
+                        $download = new WC_Product_Download();
+                        $dl_id = !empty($d['id']) ? sanitize_text_field($d['id']) : wp_generate_uuid4();
+                        $download->set_id($dl_id);
+                        $download->set_name($name ?: basename($file));
+                        $download->set_file($file);
+                        $download_objects[] = $download;
+                    }
                 }
+                $product->set_downloads($download_objects);
+                $product->set_download_limit(-1); // unlimited
+                $product->set_download_expiry(-1); // never expires
+            } else {
+                $product->set_downloads([]);
             }
-            $product->set_downloads($download_objects);
-            $product->set_download_limit(-1); // unlimited
-            $product->set_download_expiry(-1); // never expires
-        } else {
-            $product->set_downloads([]);
         }
 
         // COGS — saved to _brikpanel_cogs for BrikPanel reports (and mirrored
@@ -10161,10 +10261,18 @@ class Brikpanel_Product_Editor {
         // every variation below so the storefront (which reads per-variation
         // flags for shipping / download delivery) stays in sync with the
         // editor's parent-level toggle.
+        //
+        // Only when the editor sent them. With the "Digital product" section
+        // hidden the switches are not on screen and the keys are absent: each
+        // variation keeps its own flags and files, and a new variation takes
+        // what the variations that stay have in common ($new_row_flags,
+        // resolved on the first new row).
+        $flags_sent = array_key_exists('is_virtual', $post_data) || array_key_exists('is_downloadable', $post_data);
         $parent_is_downloadable = !empty($post_data['is_downloadable']);
         $parent_is_virtual      = !empty($post_data['is_virtual']) || $parent_is_downloadable;
         $parent_download_objects = [];
-        if ($parent_is_downloadable) {
+        $new_row_flags = null;
+        if ($flags_sent && $parent_is_downloadable) {
             $downloads_json = isset($post_data['downloads']) ? wp_unslash($post_data['downloads']) : '[]';
             $downloads_data = json_decode($downloads_json, true);
             if (is_array($downloads_data)) {
@@ -10181,6 +10289,11 @@ class Brikpanel_Product_Editor {
                 }
             }
         }
+        // The editor's one file list holds the files every variation shares
+        // (see get_product_data()). Variations whose files differ open with an
+        // empty list, so Digital on with an empty list chooses nothing: each
+        // existing variation keeps its own files.
+        $keep_variation_files = $flags_sent && $parent_is_downloadable && empty($parent_download_objects);
 
         // Track submitted variation IDs. `$loop_index` mirrors WC's own
         // variation-metabox loop counter — 3rd-party per-variation save
@@ -10439,14 +10552,49 @@ class Brikpanel_Product_Editor {
             // The storefront reads per-variation flags (shipping calc, download
             // delivery) so the parent prop alone is not enough — without this,
             // a variable "yoga session" still asks for shipping at checkout.
-            $variation->set_virtual($parent_is_virtual);
-            $variation->set_downloadable($parent_is_downloadable);
-            if ($parent_is_downloadable) {
-                $variation->set_downloads($parent_download_objects);
-                $variation->set_download_limit(-1);
-                $variation->set_download_expiry(-1);
-            } else {
-                $variation->set_downloads([]);
+            $is_new_row = 0 === (int) $variation->get_id();
+            if ($flags_sent) {
+                $variation->set_virtual($parent_is_virtual);
+                $variation->set_downloadable($parent_is_downloadable);
+                if (!$parent_is_downloadable) {
+                    $variation->set_downloads([]);
+                } elseif ($is_new_row || !$keep_variation_files) {
+                    $variation->set_downloads($parent_download_objects);
+                    $variation->set_download_limit(-1);
+                    $variation->set_download_expiry(-1);
+                }
+            } elseif ($is_new_row) {
+                if (null === $new_row_flags) {
+                    // The variations that stay: posted with their ID and still
+                    // children of this product (a row left out is deleted below).
+                    $posted_ids = [];
+                    foreach ($variations_data as $posted_row) {
+                        $posted_id = is_array($posted_row) ? intval($posted_row['id'] ?? 0) : 0;
+                        if ($posted_id > 0) {
+                            $posted_ids[] = $posted_id;
+                        }
+                    }
+                    $staying = array_values(array_intersect($existing_child_ids, $posted_ids));
+                    $new_row_flags = $staying
+                        ? $this->variation_flags_summary($staying)
+                        : [
+                            // None to follow (a brand-new product, or one just
+                            // turned variable): the product's own flag, as
+                            // stored before this save wrote anything.
+                            'virtual'      => null !== $this->save_parent_virtual
+                                ? $this->save_parent_virtual
+                                : 'yes' === get_post_meta($product->get_id(), '_virtual', true),
+                            'downloadable' => false,
+                            'downloads'    => null,
+                        ];
+                }
+                $variation->set_virtual($new_row_flags['virtual']);
+                if ($new_row_flags['downloadable'] && null !== $new_row_flags['downloads']) {
+                    $variation->set_downloadable(true);
+                    $variation->set_downloads($new_row_flags['downloads']);
+                    $variation->set_download_limit(-1);
+                    $variation->set_download_expiry(-1);
+                }
             }
 
             // Images: first = WC thumbnail, rest = custom gallery meta.

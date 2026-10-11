@@ -588,6 +588,28 @@
     padding: 0.625rem 0.5rem;
 }
 
+/* Row buttons in the sample tables (3.3.34): "Real day", "Unmark". At the
+   row's end in table mode; on a line of their own once the rows stack. */
+.brikpanel-bc-largest-table .brikpanel-bc-sample-cell {
+    text-align: end;
+    white-space: nowrap;
+}
+
+.brikpanel-bc-details .brikpanel-bc-largest-table.is-stacked .brikpanel-bc-sample-cell {
+    text-align: start;
+}
+
+/* What a row button did, under the card's lists; out of the layout while empty. */
+.brikpanel-bc-card .brikpanel-bc-sample-result {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: #616161;
+}
+
+.brikpanel-bc-card .brikpanel-bc-sample-result:empty {
+    display: none;
+}
+
 /* Card footer */
 .brikpanel-bc-card-foot {
     margin-top: 0.875rem;

@@ -478,7 +478,13 @@ function brikpanel_human_proof_rollout() {
     /** This action is documented in includes/brikpanel-consent.php */
     do_action( 'brikpanel_flush_page_cache' );
 
-    if ( class_exists( 'Brikpanel_Cron' ) && Brikpanel_Cron::is_available() ) {
+    // Only while the nightly cleanup is switched on (Store Health settings,
+    // 3.3.34): when it is off, the job stands down in this very request, and
+    // scheduling it here as well would break stand_down()'s rule.
+    $nightly = class_exists( 'Brikpanel_BrikControl_Bot_Traffic_Check' )
+        ? Brikpanel_BrikControl_Bot_Traffic_Check::nightly_enabled()
+        : 'yes' === get_option( 'brikpanel_bot_traffic_nightly', 'yes' );
+    if ( $nightly && class_exists( 'Brikpanel_Cron' ) && Brikpanel_Cron::is_available() ) {
         Brikpanel_Cron::schedule_single( time() + 15 * MINUTE_IN_SECONDS, 'brikpanel_bot_traffic_autoclean', [], [ 'unique' => true ] );
     }
 }

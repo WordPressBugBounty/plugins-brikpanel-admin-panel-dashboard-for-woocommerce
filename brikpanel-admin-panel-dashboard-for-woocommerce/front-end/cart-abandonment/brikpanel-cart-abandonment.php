@@ -59,6 +59,25 @@ class Brikpanel_Cart_Abandonment {
 	const ORDER_VISITOR_META = '_brikpanel_cartab_vid';
 
 	/**
+	 * Order meta: the cart this order was paid from has been dealt with, either
+	 * by WooCommerce emptying it or by settle_paid_cart(). Written once; an order
+	 * carrying it is never armed again. See settle_paid_cart().
+	 */
+	const ORDER_SETTLED_META = '_brikpanel_cart_settled';
+
+	/** User meta prefix (the blog id is appended): a customer's paid orders whose cart still has to be settled. */
+	const SETTLE_USER_META = '_brikpanel_cart_settle_';
+
+	/** Transient prefix holding the same list for a guest, keyed by browser id. */
+	const SETTLE_TRANSIENT = 'brikpanel_cart_settle_';
+
+	/** WC session slot: per cart line, when the shopper added to it and how much was there just before. */
+	const TOUCH_SESSION = 'brikpanel_cartab_touch';
+
+	/** Most orders one shopper can have waiting to be settled; older ones drop off. */
+	const SETTLE_MAX_ORDERS = 20;
+
+	/**
 	 * Orders already credited this request. woocommerce_order_status_changed
 	 * can fire several times for one order in a single save.
 	 *
@@ -150,6 +169,14 @@ class Brikpanel_Cart_Abandonment {
 		add_action( 'woocommerce_before_delete_order',                [ $this, 'on_order_deleted' ] );
 		add_action( 'woocommerce_before_trash_order',                 [ $this, 'on_order_deleted' ] );
 		add_action( 'before_delete_post',                             [ $this, 'on_legacy_order_deleted' ] );
+
+		// Paid items the shopper never came back for: take them out of the cart
+		// the way the thank-you page would have. See settle_paid_cart().
+		add_action( 'woocommerce_cart_loaded_from_session',        [ $this, 'settle_paid_cart' ], 20 );
+		add_action( 'woocommerce_cart_emptied',                    [ $this, 'on_cart_emptied' ] );
+		add_action( 'woocommerce_add_to_cart',                     [ $this, 'note_add_touch' ], 30, 3 );
+		add_action( 'woocommerce_cart_item_restored',              [ $this, 'note_restore_touch' ] );
+		add_action( 'woocommerce_after_cart_item_quantity_update', [ $this, 'note_quantity_touch' ], 10, 3 );
 	}
 
 	// =========================================================================
@@ -2586,6 +2613,7 @@ class Brikpanel_Cart_Abandonment {
 		}
 		$this->recovered_this_request[ $order_id ] = true;
 		$this->mark_recovered( $order );
+		$this->arm_paid_cart_settle( $order instanceof WC_Order ? $order : $order_id );
 	}
 
 	/**
@@ -2863,6 +2891,465 @@ class Brikpanel_Cart_Abandonment {
 		// Rows that never merged (already recovered, or belonging to nobody
 		// open) still need reporting back to the caller.
 		return array_values( array_unique( array_merge( $survivors, array_diff( $ids, $drop ) ) ) );
+	}
+
+	// =========================================================================
+	// Paid cart settlement
+	// =========================================================================
+
+	/**
+	 * Take the paid items out of a cart whose owner never came back for them.
+	 *
+	 * WooCommerce empties the cart after a payment only from the shopper's own
+	 * browser: on the thank-you page, or (classic checkout only) on the next
+	 * page view in the same session through order_awaiting_payment. A shopper
+	 * who pays on the bank's page (PayTR iframe, 3-D Secure) and closes the tab
+	 * gets neither. The paid items stay in the session cart, and for a customer
+	 * with an account in the saved cart as well, which WooCommerce merges back
+	 * on every request whose session holds no cart: after a logout, or once the
+	 * session has expired. mirror_cart() then opens a fresh row for a basket
+	 * that was paid for, it turns "Abandoned" an hour later, and an outreach
+	 * provider emails the customer about items they already own.
+	 * just_repurchased() only ever covered the first six hours of that.
+	 *
+	 * This finishes the thank-you page's job on the shopper's next request.
+	 * Every rule is there so it can never take out something the shopper
+	 * still wants:
+	 *  - only orders from the store's own checkout, armed when the order first
+	 *    becomes a sale (arm_paid_cart_settle());
+	 *  - only the shopper the order belongs to: the account, or for a guest
+	 *    the browser id stamped on the order at checkout;
+	 *  - only the order's own lines, matched on product and variation, up to
+	 *    the quantity paid; everything else in the cart is left alone;
+	 *  - never what the shopper added, topped up or restored after the order
+	 *    was created (touch_cart_line());
+	 *  - once per order, and not at all once WooCommerce has emptied the cart
+	 *    itself (on_cart_emptied()).
+	 *
+	 * Runs right after WooCommerce has merged the saved cart and before it
+	 * writes the session back (WC_Cart_Session::get_cart_from_session()), so
+	 * what is taken out here is what gets stored.
+	 *
+	 * @param WC_Cart $cart Cart just loaded from the session.
+	 */
+	public function settle_paid_cart( $cart ) {
+		if ( ! $cart instanceof WC_Cart || $cart->is_empty() ) {
+			return;
+		}
+		if ( ( is_admin() && ! wp_doing_ajax() ) || self::is_staff() ) {
+			return;
+		}
+
+		$user_id = get_current_user_id();
+		$visitor = '';
+		if ( ! $user_id ) {
+			// A guest has no saved cart: the paid items can only still be in
+			// the very session that went through checkout, which
+			// stamp_checkout_visitor() marked. Any other guest is done here
+			// without a single query.
+			if ( ! WC()->session || ! WC()->session->get( 'brikpanel_cartab_order_pending' ) ) {
+				return;
+			}
+			$visitor = self::existing_visitor_id();
+		}
+
+		$armed = self::armed_orders( $user_id, $visitor );
+		if ( ! $armed ) {
+			return;
+		}
+
+		$touched = self::cart_touches();
+		$changed = false;
+		$pending = [];
+
+		foreach ( $armed as $order_id ) {
+			$order = wc_get_order( $order_id );
+			if ( ! self::settles_cart( $order ) ) {
+				continue; // Gone, no longer a sale, or already settled: forget it.
+			}
+
+			list( $took, $seen ) = self::take_paid_lines( $cart, $order, $touched );
+			$changed             = $changed || $took;
+
+			// The saved cart is a second copy, and it can be the only one still
+			// holding the paid lines: wc_empty_cart() clears the session cart but
+			// keeps it. While that is so, stay armed; WooCommerce merges it back
+			// on the next request whose session holds no cart, and the lines
+			// are taken out then.
+			if ( ! $seen && $user_id && self::saved_cart_holds_order( $user_id, $order ) ) {
+				$pending[] = (int) $order_id;
+				continue;
+			}
+			self::release_paid_order( $cart, $order, $took );
+			self::mark_settled( $order );
+		}
+
+		if ( $pending !== $armed ) {
+			self::store_armed_orders( $user_id, $visitor, $pending );
+		}
+
+		if ( $changed ) {
+			$cart->calculate_totals();
+		}
+	}
+
+	/**
+	 * Remove one order's paid lines from the cart.
+	 *
+	 * @param WC_Cart              $cart
+	 * @param WC_Order             $order
+	 * @param array<string,int>    $touched Cart item key => when the shopper last added, increased or restored it.
+	 * @return array{0:bool,1:bool} Whether anything was taken out, and whether the
+	 *                              cart held any of the order's lines at all.
+	 */
+	private static function take_paid_lines( $cart, $order, array $touched ) {
+		$created = $order->get_date_created() ? $order->get_date_created()->getTimestamp() : 0;
+		$took    = false;
+		$seen    = false;
+
+		foreach ( $order->get_items() as $item ) {
+			if ( ! $item instanceof WC_Order_Item_Product ) {
+				continue;
+			}
+			$product_id   = (int) $item->get_product_id();
+			$variation_id = (int) $item->get_variation_id();
+			$remaining    = (float) $item->get_quantity();
+			if ( $product_id <= 0 || $remaining <= 0 ) {
+				continue;
+			}
+
+			// A copy of the contents, so removing lines below cannot upset the loop.
+			foreach ( $cart->get_cart() as $key => $line ) {
+				if ( $remaining <= 0 ) {
+					break;
+				}
+				if ( (int) ( $line['product_id'] ?? 0 ) !== $product_id || (int) ( $line['variation_id'] ?? 0 ) !== $variation_id ) {
+					continue;
+				}
+				$seen = true;
+
+				// Only what was already in the line when the order was placed
+				// can be the paid leftover. Whatever the shopper added, topped up
+				// or restored after that is a new purchase in the making and
+				// stays. No creation date, no way to tell: leave the line alone.
+				$line_qty  = (float) ( $line['quantity'] ?? 0 );
+				$paid_part = $created ? self::quantity_before_order( $touched, $key, $created, $line_qty ) : 0.0;
+				$take      = min( $paid_part, $remaining );
+				if ( $take <= 0 ) {
+					continue;
+				}
+				if ( $take >= $line_qty ) {
+					$cart->remove_cart_item( $key );
+				} else {
+					$cart->set_quantity( $key, $line_qty - $take, false );
+				}
+				$remaining -= $take;
+				$took       = true;
+			}
+		}
+
+		return [ $took, $seen ];
+	}
+
+	/**
+	 * The rest of what the thank-you page does for a paid order.
+	 *
+	 * The session stops waiting for the order. WooCommerce's own after-payment
+	 * check (wc_clear_cart_after_payment) empties the WHOLE cart on the first
+	 * page view once that order is paid; left armed after the paid lines are
+	 * already out, it would wipe whatever the shopper has put in since.
+	 *
+	 * When the paid lines were taken out, the order's coupons come off the cart
+	 * too, as they would have on the thank-you page. A spent single-use code
+	 * left applied would greet the next basket with a usage-limit error.
+	 *
+	 * @param WC_Cart  $cart
+	 * @param WC_Order $order
+	 * @param bool     $took Whether paid lines were taken out of the cart.
+	 */
+	private static function release_paid_order( $cart, $order, $took ) {
+		if ( WC()->session && (int) WC()->session->get( 'order_awaiting_payment' ) === (int) $order->get_id() ) {
+			WC()->session->set( 'order_awaiting_payment', null );
+		}
+		if ( ! $took ) {
+			return;
+		}
+		foreach ( $order->get_coupon_codes() as $code ) {
+			if ( $cart->has_discount( $code ) ) {
+				$cart->remove_coupon( $code );
+			}
+		}
+	}
+
+	/**
+	 * Arm the cart settlement for an order that has just become a sale.
+	 *
+	 * Only orders from the store's own checkout qualify: an order an admin
+	 * keyed in, a subscription renewal or a REST import was never built from
+	 * this shopper's cart, so there is nothing in it to settle.
+	 *
+	 * @param WC_Order|int $order
+	 */
+	private function arm_paid_cart_settle( $order ) {
+		if ( ! $order instanceof WC_Order ) {
+			$order = wc_get_order( $order );
+		}
+		if ( ! self::settles_cart( $order ) ) {
+			return;
+		}
+
+		$user_id = (int) $order->get_customer_id();
+		$visitor = $user_id ? '' : self::order_visitor_id( $order );
+		if ( ! $user_id && '' === $visitor ) {
+			return; // No account and no browser id: nothing to find the cart by.
+		}
+
+		$armed   = self::armed_orders( $user_id, $visitor );
+		$armed[] = (int) $order->get_id();
+		self::store_armed_orders( $user_id, $visitor, $armed );
+	}
+
+	/**
+	 * WooCommerce emptied the shopper's cart itself (thank-you page, cash on
+	 * delivery, bank transfer, or the shopper emptying it), so the paid lines
+	 * are gone and the armed orders are settled as they stand. That is also what
+	 * keeps a bank transfer that is marked paid days later from touching
+	 * whatever the shopper has put in the cart since.
+	 *
+	 * For a customer with an account the saved cart is checked too:
+	 * wc_empty_cart() keeps it, and as long as it still holds the paid lines the
+	 * order stays armed for the request that merges them back.
+	 *
+	 * @param bool $clear_persistent_cart Passed since WooCommerce 9.7; not relied on.
+	 */
+	public function on_cart_emptied( $clear_persistent_cart = true ) {
+		if ( self::is_staff() ) {
+			return;
+		}
+		$user_id = get_current_user_id();
+		$visitor = $user_id ? '' : self::existing_visitor_id();
+		$armed   = self::armed_orders( $user_id, $visitor );
+		if ( ! $armed ) {
+			return;
+		}
+
+		$pending = [];
+		foreach ( $armed as $order_id ) {
+			$order = wc_get_order( $order_id );
+			if ( ! self::settles_cart( $order ) ) {
+				continue;
+			}
+			if ( $user_id && self::saved_cart_holds_order( $user_id, $order ) ) {
+				$pending[] = (int) $order_id;
+				continue;
+			}
+			self::mark_settled( $order );
+		}
+		self::store_armed_orders( $user_id, $visitor, $pending );
+	}
+
+	/**
+	 * The shopper added a product. On a line that was already in the cart this
+	 * is a top-up, and what was there before it is the line minus the amount
+	 * just added.
+	 *
+	 * @param string    $cart_item_key
+	 * @param int       $product_id Unused.
+	 * @param int|float $quantity   Amount added.
+	 */
+	public function note_add_touch( $cart_item_key, $product_id = 0, $quantity = 0 ) {
+		$cart_item_key = (string) $cart_item_key;
+		$line          = ( function_exists( 'WC' ) && WC()->cart ) ? WC()->cart->get_cart_item( $cart_item_key ) : [];
+		$before        = max( 0, (float) ( $line['quantity'] ?? 0 ) - (float) $quantity );
+		self::touch_cart_line( $cart_item_key, $before );
+	}
+
+	/**
+	 * The shopper brought back a line they had removed: nothing of it was in the
+	 * cart a moment ago.
+	 *
+	 * @param string $cart_item_key
+	 */
+	public function note_restore_touch( $cart_item_key ) {
+		self::touch_cart_line( (string) $cart_item_key, 0 );
+	}
+
+	/**
+	 * The shopper changed a quantity. Only an increase counts: a lower number is
+	 * not a new purchase in the making, and settle_paid_cart() lowers quantities
+	 * itself.
+	 *
+	 * @param string    $cart_item_key
+	 * @param int|float $quantity
+	 * @param int|float $old_quantity
+	 */
+	public function note_quantity_touch( $cart_item_key, $quantity, $old_quantity ) {
+		if ( (float) $quantity > (float) $old_quantity ) {
+			self::touch_cart_line( (string) $cart_item_key, (float) $old_quantity );
+		}
+	}
+
+	/**
+	 * Remember that the shopper put more of a line into the cart, and how much
+	 * of it was there just before. settle_paid_cart() reads the first such
+	 * record after an order to know how much of the line is the paid leftover:
+	 * at most what was there before the shopper started adding again.
+	 *
+	 * @param string    $key    Cart item key.
+	 * @param int|float $before Quantity of the line just before this addition.
+	 */
+	private static function touch_cart_line( $key, $before ) {
+		if ( '' === $key || ! function_exists( 'WC' ) || ! WC()->session ) {
+			return;
+		}
+		$touched   = self::cart_touches();
+		$entries   = ( isset( $touched[ $key ] ) && is_array( $touched[ $key ] ) ) ? $touched[ $key ] : [];
+		$entries[] = [ time(), (float) $before ];
+		// A handful per line is plenty: only the first one after the latest
+		// order is ever read.
+		$touched[ $key ] = array_slice( $entries, -5 );
+		// Bounded: only lines still in the cart are worth remembering.
+		if ( WC()->cart ) {
+			$touched = array_intersect_key( $touched, WC()->cart->get_cart() + [ $key => true ] );
+		}
+		WC()->session->set( self::TOUCH_SESSION, array_slice( $touched, -100, null, true ) );
+	}
+
+	/** @return array<string,array<int,array{0:int,1:float}>> Cart item key => [ [ when, quantity before ], ... ]. */
+	private static function cart_touches() {
+		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+			return [];
+		}
+		$touched = WC()->session->get( self::TOUCH_SESSION );
+		return is_array( $touched ) ? $touched : [];
+	}
+
+	/**
+	 * How much of a cart line was already there when the order was placed, as
+	 * far as the touch records can tell: the "before" quantity of the first
+	 * addition after the order, or the whole line when the shopper has not
+	 * added to it since.
+	 *
+	 * @param array     $touched  See cart_touches().
+	 * @param string    $key      Cart item key.
+	 * @param int       $created  Order creation time (unix).
+	 * @param int|float $line_qty Current quantity of the line.
+	 * @return float
+	 */
+	private static function quantity_before_order( array $touched, $key, $created, $line_qty ) {
+		if ( isset( $touched[ $key ] ) && ! is_array( $touched[ $key ] ) ) {
+			return 0.0; // Unreadable record: assume the shopper's own, keep the line.
+		}
+		$entries = isset( $touched[ $key ] ) ? $touched[ $key ] : [];
+		foreach ( $entries as $entry ) {
+			if ( ! is_array( $entry ) ) {
+				return 0.0; // Unreadable record: assume the shopper's own, keep the line.
+			}
+			if ( (int) ( $entry[0] ?? 0 ) >= (int) $created ) {
+				return min( (float) $line_qty, max( 0.0, (float) ( $entry[1] ?? 0 ) ) );
+			}
+		}
+		return (float) $line_qty;
+	}
+
+	/**
+	 * Whether this order's cart is one the settlement may act on: a sale from
+	 * the store's own checkout that has not been settled yet.
+	 *
+	 * @param WC_Order|false|null $order
+	 * @return bool
+	 */
+	private static function settles_cart( $order ) {
+		return $order instanceof WC_Order
+			&& 'shop_order' === $order->get_type()
+			&& in_array( (string) $order->get_created_via(), [ 'checkout', 'store-api' ], true )
+			&& ! in_array( (string) $order->get_status(), self::non_sale_statuses(), true )
+			&& ! $order->get_meta( self::ORDER_SETTLED_META );
+	}
+
+	/**
+	 * @param WC_Order $order
+	 */
+	private static function mark_settled( $order ) {
+		$order->update_meta_data( self::ORDER_SETTLED_META, time() );
+		// Meta only, for the reason stamp_checkout_visitor() gives.
+		$order->save_meta_data();
+	}
+
+	/**
+	 * Whether the customer's saved cart still holds any of this order's lines.
+	 *
+	 * @param int      $user_id
+	 * @param WC_Order $order
+	 * @return bool
+	 */
+	private static function saved_cart_holds_order( $user_id, $order ) {
+		$saved = get_user_meta( $user_id, '_woocommerce_persistent_cart_' . get_current_blog_id(), true );
+		$lines = ( is_array( $saved ) && isset( $saved['cart'] ) && is_array( $saved['cart'] ) ) ? $saved['cart'] : [];
+		if ( ! $lines ) {
+			return false;
+		}
+
+		$paid = [];
+		foreach ( $order->get_items() as $item ) {
+			if ( $item instanceof WC_Order_Item_Product ) {
+				$paid[ (int) $item->get_product_id() . ':' . (int) $item->get_variation_id() ] = true;
+			}
+		}
+		foreach ( $lines as $line ) {
+			if ( is_array( $line ) && isset( $paid[ (int) ( $line['product_id'] ?? 0 ) . ':' . (int) ( $line['variation_id'] ?? 0 ) ] ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Orders armed for one shopper: an account, or a guest's browser id.
+	 *
+	 * @param int    $user_id
+	 * @param string $visitor
+	 * @return int[]
+	 */
+	private static function armed_orders( $user_id, $visitor ) {
+		if ( $user_id ) {
+			$ids = get_user_meta( $user_id, self::SETTLE_USER_META . get_current_blog_id(), true );
+		} elseif ( '' !== $visitor ) {
+			$ids = get_transient( self::SETTLE_TRANSIENT . md5( $visitor ) );
+		} else {
+			return [];
+		}
+		return is_array( $ids ) ? array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) ) : [];
+	}
+
+	/**
+	 * @param int    $user_id
+	 * @param string $visitor
+	 * @param int[]  $ids
+	 */
+	private static function store_armed_orders( $user_id, $visitor, array $ids ) {
+		$ids = array_slice( array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) ), -self::SETTLE_MAX_ORDERS );
+
+		if ( $user_id ) {
+			$key = self::SETTLE_USER_META . get_current_blog_id();
+			if ( $ids ) {
+				update_user_meta( $user_id, $key, $ids );
+			} else {
+				delete_user_meta( $user_id, $key );
+			}
+			return;
+		}
+		if ( '' === $visitor ) {
+			return;
+		}
+		// A guest's cart only lives as long as the guest session (two days by
+		// default), so a week is plenty and the record cleans itself up.
+		$key = self::SETTLE_TRANSIENT . md5( $visitor );
+		if ( $ids ) {
+			set_transient( $key, $ids, WEEK_IN_SECONDS );
+		} else {
+			delete_transient( $key );
+		}
 	}
 
 	// =========================================================================

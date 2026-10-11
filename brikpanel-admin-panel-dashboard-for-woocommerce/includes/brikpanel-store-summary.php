@@ -3038,9 +3038,10 @@ class Brikpanel_Store_Summary {
 	 *
 	 * Bases match the headline so the columns reconcile: revenue uses the KPI
 	 * status set with multi-currency conversion (as brikpanel_get_total_revenue
-	 * does), refunds are attributed to the PARENT order's month (as
-	 * brikpanel_profit_returns does, not the refund's own date), and COGS
-	 * resolves cost from the product exactly as brikpanel_profit_cogs does.
+	 * does), refunds are attributed to the PARENT order's month and converted
+	 * with the parent's rate (as brikpanel_profit_returns does, not the
+	 * refund's own date), and COGS resolves cost from the product exactly as
+	 * brikpanel_profit_cogs does.
 	 *
 	 * @return array<string, array{rev:float,ref:float,cogs:float,ads:float,exp:float}>
 	 */
@@ -3092,24 +3093,33 @@ class Brikpanel_Store_Summary {
 		}
 
 		// --- Refunds (bucketed by the parent order's month) ------------------
-		$pred = $this->paid_order_predicate( 'o' );
+		// In the store currency like the revenue above: a refund is in its
+		// parent's currency, so it takes the parent's rate.
+		$pred   = $this->paid_order_predicate( 'o' );
+		$fx_key = brikpanel_profit_fx_meta_key();
 		if ( $is_hpos ) {
-			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.date_created_gmt' ) . " AS ym, COALESCE(SUM(ABS(r.total_amount)),0) AS v
+			$f   = brikpanel_profit_fx_factor_sql( 'bpfx', 'o.total_amount' );
+			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.date_created_gmt' ) . " AS ym, COALESCE(SUM(ABS(r.total_amount) * {$f}),0) AS v
 					FROM {$wpdb->prefix}wc_orders r
 					INNER JOIN {$wpdb->prefix}wc_orders o ON o.id = r.parent_order_id
+					LEFT JOIN {$wpdb->prefix}wc_orders_meta bpfx ON bpfx.order_id = o.id AND bpfx.meta_key = %s AND " . brikpanel_sql_first_meta_guard( 'order', 'bpfx' ) . "
 					WHERE r.type='shop_order_refund' AND {$pred['where']}
 					  AND {$pred['date_col']} >= %s AND {$pred['date_col']} <= %s
 					GROUP BY ym";
 		} else {
-			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.post_date_gmt' ) . " AS ym, COALESCE(SUM(CAST(IFNULL(ra.meta_value,'0') AS DECIMAL(20,4))),0) AS v
+			$f   = brikpanel_profit_fx_factor_sql( 'bpfx', "CAST(COALESCE(tot.meta_value, '0') AS DECIMAL(20,4))" );
+			$sql = "SELECT " . brikpanel_month_bucket_sql( 'o.post_date_gmt' ) . " AS ym, COALESCE(SUM(CAST(IFNULL(ra.meta_value,'0') AS DECIMAL(20,4)) * {$f}),0) AS v
 					FROM {$wpdb->posts} r
 					INNER JOIN {$wpdb->posts} o ON o.ID = r.post_parent
 					LEFT JOIN {$wpdb->postmeta} ra ON ra.post_id = r.ID AND ra.meta_key='_refund_amount' AND " . brikpanel_sql_first_meta_guard( 'post', 'ra' ) . "
+					LEFT JOIN {$wpdb->postmeta} tot ON tot.post_id = o.ID AND tot.meta_key='_order_total' AND " . brikpanel_sql_first_meta_guard( 'post', 'tot' ) . "
+					LEFT JOIN {$wpdb->postmeta} bpfx ON bpfx.post_id = o.ID AND bpfx.meta_key = %s AND " . brikpanel_sql_first_meta_guard( 'post', 'bpfx' ) . "
 					WHERE r.post_type='shop_order_refund' AND {$pred['where']}
 					  AND {$pred['date_col']} >= %s AND {$pred['date_col']} <= %s
 					GROUP BY ym";
 		}
-		$args = array_merge( $pred['args'], [ $w['start_gmt'], $w['end_gmt'] ] );
+		// The meta key's placeholder sits in a JOIN, ahead of the WHERE's.
+		$args = array_merge( [ $fx_key ], $pred['args'], [ $w['start_gmt'], $w['end_gmt'] ] );
 		foreach ( $this->fold_to_months( $wpdb->get_results( $wpdb->prepare( $sql, $args ) ), [ 'v' ] ) as $r ) { // phpcs:ignore
 			if ( isset( $axis[ $r->ym ] ) ) { $axis[ $r->ym ]['ref'] = (float) $r->v; }
 		}
@@ -3180,7 +3190,7 @@ class Brikpanel_Store_Summary {
 
 		$lines   = [];
 		$lines[] = '## ' . __( 'Profitability (last 12 months)', 'brikpanel' );
-		$lines[] = '*' . __( 'These are the same figures the BrikPanel Dashboard profit card shows. Net = Revenue − Refunds − Cost of goods − every tracked cost (advertising, tax, payment fees, shipping cost, recorded expenses, percentage and per-order costs).', 'brikpanel' ) . '*';
+		$lines[] = '*' . __( 'Built from the same data as the BrikPanel Dashboard profit card. Tax is counted here as a cost, so revenue and the margins below include tax and can differ from the card. Net = Revenue − Refunds − Cost of goods − every tracked cost (advertising, tax, payment fees, shipping cost, recorded expenses, percentage and per-order costs).', 'brikpanel' ) . '*';
 		$lines[] = '';
 		$lines[] = '- **' . __( 'Gross sales', 'brikpanel' ) . ':** ' . $this->money( $revenue );
 		$lines[] = '- **' . __( 'Refunds', 'brikpanel' ) . ':** ' . $this->money( $returns );

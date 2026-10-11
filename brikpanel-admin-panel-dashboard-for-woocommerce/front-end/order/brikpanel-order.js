@@ -1181,6 +1181,7 @@
 			stickyObserver.observe(card);
 			if (header) stickyObserver.observe(header);
 		}
+		watchColumnPopups(sideCol);
 
 		/* Narrow screens show each item as a small card; each value keeps the
 		   column name from the table header as its label. WooCommerce rebuilds
@@ -1216,6 +1217,144 @@
 				});
 			}).observe(panels.items, { childList: true, subtree: true });
 		}
+	}
+
+	/* ============================================================
+	   OTHER PLUGINS' POP-UPS IN THE RIGHT COLUMN
+	   ------------------------------------------------------------
+	   Some plugins print their pop-up inside their own box rather than at
+	   the end of the page: Advanced Shipment Tracking's "Add Tracking Info"
+	   panel is `position: fixed; z-index: 1000000`, with a backdrop it adds
+	   to <body>. The right column follows the page with `position: sticky`,
+	   and a sticky box paints everything inside it as one layer, so whatever
+	   its z-index such a pop-up was drawn under its own backdrop, under the
+	   tabs card and under the order header. The column's boxes also clip
+	   their rounded corners, which cut off a drop-down or menu that opens
+	   past a box's edge.
+	   So the column is watched. While anything in it shows as a pop-up, the
+	   column is held exactly where it is with relative positioning, which
+	   paints no layer of its own, and follows the page again once the pop-up
+	   is gone. A box whose own drop-down reaches past its edge stops clipping
+	   while that is open (.bp-box-spill in brikpanel-order-tabs.css).
+	   ============================================================ */
+	// Never a pop-up, and often hundreds of nodes (a carrier list's options).
+	var POPUP_SKIP_TAGS = { SELECT: 1, OPTION: 1, OPTGROUP: 1, SCRIPT: 1, STYLE: 1, TEMPLATE: 1, NOSCRIPT: 1, TEXTAREA: 1, IFRAME: 1, CANVAS: 1, VIDEO: 1, AUDIO: 1, svg: 1 };
+
+	function watchColumnPopups(column) {
+		if (!('MutationObserver' in window) || typeof document.createTreeWalker !== 'function') return;
+		var held = false;
+		var spilled = [];
+		var pending = false;
+		var last = 0;
+
+		// A transition or a one-off animation, not a spinner that turns forever.
+		function finite(animation) {
+			var timing = animation.effect && typeof animation.effect.getComputedTiming === 'function' ? animation.effect.getComputedTiming() : null;
+			return !timing || timing.endTime !== Infinity;
+		}
+
+		// On screen, or on its way in or out: a panel sliding in starts off
+		// screen and a fade starts invisible, so a running transition counts.
+		function showing(el, cs) {
+			var r = el.getBoundingClientRect();
+			if (r.width < 1 || r.height < 1) return false;
+			if (typeof el.getAnimations === 'function' && el.getAnimations().some(finite)) return true;
+			if (cs.visibility !== 'visible' || parseFloat(cs.opacity) === 0) return false;
+			return r.right > 0 && r.bottom > 0 && r.left < window.innerWidth && r.top < window.innerHeight;
+		}
+
+		function pastEdge(el, box) {
+			var r = el.getBoundingClientRect();
+			var b = box.getBoundingClientRect();
+			return r.left < b.left - 1 || r.right > b.right + 1 || r.top < b.top - 1 || r.bottom > b.bottom + 1;
+		}
+
+		// AfterShip draws its box, pop-up included, inside an open shadow root,
+		// which neither a tree walk nor an observer of the page reaches.
+		var shadows = [];
+
+		function evaluate() {
+			pending = false;
+			last = Date.now();
+			var popup = false;
+			var spill = [];
+			function walk(root, hostBox) {
+				var walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+					acceptNode: function (el) {
+						if (POPUP_SKIP_TAGS[el.tagName]) return NodeFilter.FILTER_REJECT;
+						var cs = window.getComputedStyle(el);
+						if (cs.display === 'none') return NodeFilter.FILTER_REJECT;
+						if (cs.position === 'fixed') {
+							if (showing(el, cs)) popup = true;
+							return NodeFilter.FILTER_REJECT;
+						}
+						var box = hostBox || el.closest('#side-sortables > .postbox');
+						if (cs.position === 'absolute' && box && spill.indexOf(box) === -1 && showing(el, cs) && pastEdge(el, box)) {
+							spill.push(box);
+							return NodeFilter.FILTER_REJECT;
+						}
+						if (el.shadowRoot) {
+							if (shadows.indexOf(el.shadowRoot) === -1) {
+								shadows.push(el.shadowRoot);
+								inner.observe(el.shadowRoot, INNER_OPTIONS);
+							}
+							walk(el.shadowRoot, box);
+						}
+						return NodeFilter.FILTER_SKIP;
+					}
+				});
+				// acceptNode does the work; nothing is ever accepted.
+				while (walker.nextNode()) { /* empty */ }
+			}
+			walk(column, null);
+
+			if (popup && !held && window.getComputedStyle(column).position === 'sticky') {
+				var stuck = column.getBoundingClientRect().top;
+				column.style.position = 'relative';
+				column.style.top = '0px';
+				column.style.top = (stuck - column.getBoundingClientRect().top) + 'px';
+				held = true;
+			} else if (!popup && held) {
+				column.style.position = '';
+				column.style.top = '';
+				held = false;
+			}
+			spilled.forEach(function (box) {
+				if (spill.indexOf(box) === -1) box.classList.remove('bp-box-spill');
+			});
+			spill.forEach(function (box) { box.classList.add('bp-box-spill'); });
+			spilled = spill;
+			// Only this function's own writes are queued now; they need no look.
+			inner.takeRecords();
+		}
+
+		// At most every 50ms: a box that redraws itself all the time must not
+		// cost a scan on every frame.
+		function schedule() {
+			if (pending) return;
+			pending = true;
+			var wait = 50 - (Date.now() - last);
+			if (wait > 0) {
+				window.setTimeout(function () { window.requestAnimationFrame(evaluate); }, wait);
+			} else {
+				window.requestAnimationFrame(evaluate);
+			}
+		}
+
+		var INNER_OPTIONS = { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open'] };
+		var inner = new MutationObserver(schedule);
+		inner.observe(column, INNER_OPTIONS);
+		// Pop-ups opened by a class or a scroll lock on the page itself.
+		var outer = new MutationObserver(schedule);
+		outer.observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] });
+		outer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+		// A checkbox or focus can open a pop-up without changing an attribute,
+		// and a panel sliding in is only on screen once its transition ends.
+		['click', 'change', 'focusin', 'transitionend', 'animationend'].forEach(function (type) {
+			column.addEventListener(type, schedule, true);
+		});
+		window.addEventListener('resize', schedule);
+		schedule();
 	}
 
 	function orderTotalHtmlNode() {

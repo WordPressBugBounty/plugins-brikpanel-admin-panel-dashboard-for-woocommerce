@@ -20,9 +20,15 @@
 /* Re-publish the topbar height on a higher-specificity selector than :root so
    a sibling plugin that defines --bp-topbar-height on its own :root (same
    specificity, cascade decides by load order) can never clobber it and squish
-   the topbar. html.brikpanel-has-topbar (0,1,1) always beats :root (0,1,0). */
+   the topbar. html.brikpanel-has-topbar (0,1,1) always beats :root (0,1,0).
+   WordPress publishes its own bar's height (32px, 46px on phones) for what has
+   to start below the bar: WooCommerce's order fulfillment drawer, WooCommerce
+   Shipping's label window, a sticky Marketplace header, the page's
+   scroll-padding-top. This bar replaces WordPress's and is taller, so that value
+   is this bar's height too; otherwise those started 20px under the bar. */
 html.brikpanel-has-topbar {
     --bp-topbar-height: 52px;
+    --wp-admin--admin-bar--height: var(--bp-topbar-height);
 }
 
 /* ---- Push core admin layout below our fixed topbar ---- */

@@ -5908,13 +5908,18 @@
         // Virtual / Digital / downloads — flags are independent on the wire.
         // The server treats `is_downloadable=1` as implying virtual too, but
         // we send the explicit toggle state so the data round-trips back to
-        // the editor identically on next load.
-        data.is_virtual      = $('#bpe-virtual-toggle').is(':checked') ? 1 : 0;
-        data.is_downloadable = $('#bpe-digital-toggle').is(':checked') ? 1 : 0;
-        if (data.is_downloadable) {
-            data.downloads = JSON.stringify(state.downloads);
-        } else {
-            data.downloads = '[]';
+        // the editor identically on next load. Sent only while their card is
+        // on the page: with the "Digital product" section hidden the switches
+        // are absent, and an absent switch read as "off" turned every virtual
+        // product physical and deleted its files on save (autosave included).
+        if ($('#bpe-virtual-toggle').length) {
+            data.is_virtual      = $('#bpe-virtual-toggle').is(':checked') ? 1 : 0;
+            data.is_downloadable = $('#bpe-digital-toggle').is(':checked') ? 1 : 0;
+            if (data.is_downloadable) {
+                data.downloads = JSON.stringify(state.downloads);
+            } else {
+                data.downloads = '[]';
+            }
         }
 
         // Speak about images only once the gallery has been hydrated. Sending

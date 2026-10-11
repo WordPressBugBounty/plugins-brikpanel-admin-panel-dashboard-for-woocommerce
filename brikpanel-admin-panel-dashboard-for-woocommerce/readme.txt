@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.33
+Stable tag: 3.3.34
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -497,6 +497,24 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.34 (2026-10-11) =
+* Tweak: **Tax is taken out of Revenue and Expenses by default.** In the Profit section, Revenue is now shown without tax and Expenses hold only real costs, so Revenue minus Cost of goods minus Expenses is Net profit. Stores that kept tax inside Expenses switch once; Setting: Dashboard → "Tax in the Profit section" changes it back. Net profit is the same with every choice.
+* Fix: **Refunded tax is counted once.** A refund that included tax took that tax off Net profit twice.
+* Fix: **Shipping tax on HPOS stores.** On stores that use WooCommerce's order tables, Tax in the Profit section now includes the tax on shipping.
+* Fix: **Tax and refunds in other currencies.** On multi-currency stores, tax, refunds and coupons in the Profit section are converted to the store currency, like revenue.
+* Fix: **Ad and campaign days are no longer treated as bot traffic.** When at least half of a day's extra visitors came from your ads, social sites, email or campaign links, Store Health and the nightly cleanup leave the day alone, and a day partly from ads is left for you to decide. If an earlier cleanup lowered such a day, the card says so, and "Undo last correction" puts it back.
+* New: **Mark a day as real.** Each day in the Bot traffic list has a "Real day" button: the card, the "Clean up bot traffic" button and the nightly cleanup then leave all of that day's figures alone. "Unmark" puts the day back in the check.
+* New: **Switch off the nightly bot cleanup.** Setting: Store Health → "Clean up bot traffic every night", on by default. When it is off, bot traffic is only listed on the Store Health page until you click "Clean up bot traffic".
+* Fix: **A lowered day is not lowered again.** A day an earlier cleanup lowered is no longer measured against its lowered visitor count, so later nights no longer remove its page views.
+* New: **New products can start as virtual.** Setting: Products → "New products are virtual", off by default. When it is on, a new product in the BrikPanel editor starts with "Virtual (no shipping)" switched on, for simple and variable products.
+* Fix: **A hidden Digital product section no longer clears Virtual and downloads.** With "Digital product (downloadable)" hidden in Visible editor sections, every save, autosave included, switched off Virtual and Downloadable and removed the download files, on simple products and on every variation. They are now left as they are.
+* Fix: **Downloadable variable products keep their files.** The editor showed them an empty file list, and saving removed every variation's files. The list now shows the files the variations share, and an empty list leaves each variation's own files alone.
+* Fix: **Other plugins' popups on the order screen.** Advanced Shipment Tracking's "Add Tracking Info" panel and AfterShip's "Add Tracking Number" window opened behind their own overlay and could not be closed. Popups from the boxes in the side column now open on top, and their dropdowns and color pickers are no longer cut off.
+* Fix: **Popups on the orders and products lists keep your place.** Opening a popup, such as a tracking panel, Thickbox or the media library, no longer throws the list back to the top.
+* Fix: **WooCommerce Shipping's label window and WooCommerce's order fulfillment drawer** no longer open under the BrikPanel top bar.
+* Fix: **The Email popup on phones.** The offer image no longer covers the close button, the popup is the same size on every theme (themes with a smaller base font size, such as OceanWP, shrank it), and the floating tab's close button now shows on touch screens.
+* Fix: **Paid items no longer come back as an abandoned cart.** When a customer paid on the bank's page and never returned to the thank-you page, the paid items stayed in their cart and reappeared as a new abandoned cart. BrikPanel now takes them out of the cart on the customer's next visit, as the thank-you page would have; anything added after the order stays.
+
 = 3.3.33 (2026-10-07) =
 * New: **Arrange the dashboard box by box.** Setting: Dashboard → "Dashboard sections" now lists every box on its own, such as Recent orders, Order rates and the Conversion funnel, so you can move or hide each one. Boxes joined by a line sit side by side, and a new "Customize" link on the dashboard's date line opens the list. Layouts you saved before look the same.
 * New: **Product weights on the order screen.** The order's Items tab shows each product's weight, such as "0.12 kg × 3 = 0.36 kg", and a "Total weight" line under the totals, with a note when a product that ships has no weight. Orders without weighted products look as before.
@@ -550,8 +568,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **A failed or cancelled Google or Meta sign-in is explained.** The message now appears on the right card in plain words, instead of a raw code like "access_denied" or no message at all.
 * Fix: **Error messages are no longer hidden by Cloudflare or nginx.** Google Sheets and Ad Platforms errors reach the screen as written, so you no longer see "click Sync now again" under Connect or "Unexpected token '<'".
 * Tweak: **The Google Sheets page opens fast before you connect.** It no longer asks brksoft.com for settings it does not need yet. On sites that cannot reach brksoft.com, the page took about 20 seconds to open.
-
-= 3.3.26 (2026-09-29) =
-* New: **WhatsApp follow-up message.** Setting: Orders → "Message per order status" → "Follow-up message", one per status, empty by default. The first WhatsApp press on an order opens the status message; later presses open the follow-up ("Send follow-up") until the order's status changes.
-* Fix: **WhatsApp buttons follow a status change right away.** After changing the status from the list badge or the tracking number window, they no longer open the old status's message until the page is reloaded.
-* Tweak: **The Share cart button looks like your theme's buttons.** It now takes the same style as the other cart buttons, such as "Apply coupon", in both the classic and the block cart.

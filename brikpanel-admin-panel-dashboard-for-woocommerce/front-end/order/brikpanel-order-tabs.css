@@ -1659,6 +1659,18 @@ body.bp-order-tabs {
 	white-space: normal;
 }
 
+/* A box clips its rounded corners, which would cut off the plugin's own
+   drop-down or menu where it opens past the box's edge. While one does,
+   brikpanel-order.js (watchColumnPopups) marks the box and it stops clipping;
+   the header keeps the corners round meanwhile. */
+.brikpanel-modern-edit #side-sortables > .postbox.bp-box-spill {
+	overflow: visible;
+}
+
+.brikpanel-modern-edit #side-sortables > .postbox.bp-box-spill > .postbox-header {
+	border-radius: calc(.75rem - 1px) calc(.75rem - 1px) 0 0;
+}
+
 /* ---- Order header: status colours as on the orders list, quiet focus ---- */
 .brikpanel-order-header__status-badge.status--processing::before,
 .brikpanel-status-dropdown__item[data-status="processing"]::before { background: #1a8917; }

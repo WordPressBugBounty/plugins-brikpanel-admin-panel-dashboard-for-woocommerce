@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.33
+ * Version: 3.3.34
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.33');
+define('BRIKPANEL_VERSION', '3.3.34');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -1911,6 +1911,49 @@ function brikpanel_enable_payment_fees_default() {
 }
 
 /**
+ * Take tax out of Revenue and Expenses in the dashboard Profit section by
+ * default ("Tax in the Profit section", stored 'yes').
+ *
+ * Until 3.3.33 the default was "Inside Expenses": tax was one of the Expenses,
+ * so Expenses looked bigger than what the store spends, and every share of
+ * revenue, the margin included, was measured against revenue with tax. Taken
+ * out, Revenue − Cost of goods − Expenses is Net profit and the margin is
+ * measured against the money the store keeps.
+ *
+ * Unlike the shipping and payment-fee defaults above, this one also moves a
+ * store holding 'no': 'no' was the old default, written by any save of the
+ * Dashboard settings section, so it says nothing about a choice (the owner
+ * decided on 11 October 2026 that every store moves once). 'yes' and 'revenue'
+ * are choices and stay. The one-shot marker makes this run once per site
+ * whatever route brought it here, so a merchant who picks "Inside Expenses"
+ * afterwards keeps it.
+ *
+ * The same release changed how Tax itself is counted (shipping tax on HPOS,
+ * the tax refunds gave back, other currencies), so the shared data version is
+ * bumped for every store, not only for those whose setting moved (the
+ * dashboard's _tx key segment covers those). Bumped directly: the
+ * once-per-request guard in brikpanel_bust_data_caches() would skip every site
+ * after the first in a network-activation loop.
+ */
+function brikpanel_apply_profit_tax_default() {
+    if (get_option('brikpanel_profit_tax_default_applied') === 'yes') {
+        return;
+    }
+    $current = get_option('brikpanel_profit_exclude_tax', false);
+    if (false === $current) {
+        // Not autoloaded: only the dashboard reads it, and the admin prime
+        // list (includes/brikpanel-option-prime.php) already carries it.
+        add_option('brikpanel_profit_exclude_tax', 'yes', '', false);
+    } elseif ('yes' !== $current && 'revenue' !== $current) {
+        update_option('brikpanel_profit_exclude_tax', 'yes');
+    }
+    if (function_exists('brikpanel_bump_data_cache_ver')) {
+        brikpanel_bump_data_cache_ver();
+    }
+    update_option('brikpanel_profit_tax_default_applied', 'yes', false);
+}
+
+/**
  * Whether BrikPanel has never been set up on the current site.
  *
  * A missing brikpanel_db_version alone does not prove it. The stamp arrived in
@@ -1951,6 +1994,7 @@ function brikpanel_provision_site() {
     brikpanel_enable_cogs_default();
     brikpanel_enable_shipping_cost_default();
     brikpanel_enable_payment_fees_default();
+    brikpanel_apply_profit_tax_default();
     // Stores that already had WooCommerce's native Cost of Goods populated
     // before installing BrikPanel need the catch-up pass here too: stamping
     // db_version below makes brikpanel_maybe_upgrade_db() return early on
@@ -2056,6 +2100,14 @@ add_action('plugins_loaded', 'brikpanel_enable_cogs_default', 20);
  * written, and a cron or REST request applying it first is perfectly fine.
  */
 add_action('plugins_loaded', 'brikpanel_enable_shipping_cost_default', 20);
+
+/**
+ * The same path brings the "Tax in the Profit section" default to existing
+ * installs on upgrade, for the same reason. The marker is primed on every
+ * request (brikpanel_prime_keys_always()), so once it is written this costs
+ * nothing.
+ */
+add_action('plugins_loaded', 'brikpanel_apply_profit_tax_default', 20);
 
 /**
  * Safety net for the native COGS backfill. The version-transition path in

@@ -244,6 +244,7 @@ function brikpanel_export_core_table() {
 		'brikpanel_meta_fanout_refresh_done',
 		'brikpanel_native_cogs_backfilled',
 		'brikpanel_payment_fees_default_applied',
+		'brikpanel_profit_tax_default_applied',
 		'brikpanel_shipping_cost_default_applied',
 		'brikpanel_var_stock_fix_cursor',
 		'brikpanel_var_stock_fix_done',
@@ -296,6 +297,8 @@ function brikpanel_export_core_table() {
 		'brikpanel_bot_traffic_auto',
 		'brikpanel_bot_traffic_applied',
 		'brikpanel_bot_traffic_kept',
+		// Days the merchant marked as real traffic (3.3.34).
+		'brikpanel_bot_traffic_real_days',
 		// Person check (3.3.30): when this site started it, and the cloud
 		// address rule's daily tally and pause.
 		'brikpanel_human_proof_since',

@@ -2,6 +2,24 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.34 (2026-10-11) =
+* Tweak: **Tax is taken out of Revenue and Expenses by default.** In the Profit section, Revenue is now shown without tax and Expenses hold only real costs, so Revenue minus Cost of goods minus Expenses is Net profit. Stores that kept tax inside Expenses switch once; Setting: Dashboard → "Tax in the Profit section" changes it back. Net profit is the same with every choice.
+* Fix: **Refunded tax is counted once.** A refund that included tax took that tax off Net profit twice.
+* Fix: **Shipping tax on HPOS stores.** On stores that use WooCommerce's order tables, Tax in the Profit section now includes the tax on shipping.
+* Fix: **Tax and refunds in other currencies.** On multi-currency stores, tax, refunds and coupons in the Profit section are converted to the store currency, like revenue.
+* Fix: **Ad and campaign days are no longer treated as bot traffic.** When at least half of a day's extra visitors came from your ads, social sites, email or campaign links, Store Health and the nightly cleanup leave the day alone, and a day partly from ads is left for you to decide. If an earlier cleanup lowered such a day, the card says so, and "Undo last correction" puts it back.
+* New: **Mark a day as real.** Each day in the Bot traffic list has a "Real day" button: the card, the "Clean up bot traffic" button and the nightly cleanup then leave all of that day's figures alone. "Unmark" puts the day back in the check.
+* New: **Switch off the nightly bot cleanup.** Setting: Store Health → "Clean up bot traffic every night", on by default. When it is off, bot traffic is only listed on the Store Health page until you click "Clean up bot traffic".
+* Fix: **A lowered day is not lowered again.** A day an earlier cleanup lowered is no longer measured against its lowered visitor count, so later nights no longer remove its page views.
+* New: **New products can start as virtual.** Setting: Products → "New products are virtual", off by default. When it is on, a new product in the BrikPanel editor starts with "Virtual (no shipping)" switched on, for simple and variable products.
+* Fix: **A hidden Digital product section no longer clears Virtual and downloads.** With "Digital product (downloadable)" hidden in Visible editor sections, every save, autosave included, switched off Virtual and Downloadable and removed the download files, on simple products and on every variation. They are now left as they are.
+* Fix: **Downloadable variable products keep their files.** The editor showed them an empty file list, and saving removed every variation's files. The list now shows the files the variations share, and an empty list leaves each variation's own files alone.
+* Fix: **Other plugins' popups on the order screen.** Advanced Shipment Tracking's "Add Tracking Info" panel and AfterShip's "Add Tracking Number" window opened behind their own overlay and could not be closed. Popups from the boxes in the side column now open on top, and their dropdowns and color pickers are no longer cut off.
+* Fix: **Popups on the orders and products lists keep your place.** Opening a popup, such as a tracking panel, Thickbox or the media library, no longer throws the list back to the top.
+* Fix: **WooCommerce Shipping's label window and WooCommerce's order fulfillment drawer** no longer open under the BrikPanel top bar.
+* Fix: **The Email popup on phones.** The offer image no longer covers the close button, the popup is the same size on every theme (themes with a smaller base font size, such as OceanWP, shrank it), and the floating tab's close button now shows on touch screens.
+* Fix: **Paid items no longer come back as an abandoned cart.** When a customer paid on the bank's page and never returned to the thank-you page, the paid items stayed in their cart and reappeared as a new abandoned cart. BrikPanel now takes them out of the cart on the customer's next visit, as the thank-you page would have; anything added after the order stays.
+
 = 3.3.33 (2026-10-07) =
 * New: **Arrange the dashboard box by box.** Setting: Dashboard → "Dashboard sections" now lists every box on its own, such as Recent orders, Order rates and the Conversion funnel, so you can move or hide each one. Boxes joined by a line sit side by side, and a new "Customize" link on the dashboard's date line opens the list. Layouts you saved before look the same.
 * New: **Product weights on the order screen.** The order's Items tab shows each product's weight, such as "0.12 kg × 3 = 0.36 kg", and a "Total weight" line under the totals, with a note when a product that ships has no weight. Orders without weighted products look as before.

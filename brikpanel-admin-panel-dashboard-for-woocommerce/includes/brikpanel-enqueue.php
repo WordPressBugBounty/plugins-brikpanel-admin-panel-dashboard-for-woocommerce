@@ -139,6 +139,10 @@ function brikpanel_fit_row_dep() {
  *   screens that load it (the products list and editor, 2026-10-06);
  * - `brikpanel_snack`: the message strip at the bottom of a phone screen, with
  *   an Undo button when the screen gives one.
+ * - `brikpanel_scroll_lock`: on the screens that clip <html> sideways (the
+ *   orders and products lists), a pop-up's `body { overflow: hidden }` keeps
+ *   the page where it was instead of throwing it back to the top (Advanced
+ *   Shipment Tracking's tracking panel on the orders list, 2026-10-11).
  *
  * @return void
  */
@@ -154,7 +158,7 @@ function brikpanel_register_narrow_assets() {
     if ( wp_style_is( 'brikpanel_ui', 'registered' ) ) {
         return;
     }
-    foreach ( [ 'scroll_strip' => 'scroll-strip', 'overflow' => 'overflow', 'tiles' => 'tiles', 'tip' => 'tip', 'ui' => 'ui', 'sheet' => 'sheet', 'snack' => 'snack' ] as $handle => $file ) {
+    foreach ( [ 'scroll_strip' => 'scroll-strip', 'overflow' => 'overflow', 'tiles' => 'tiles', 'tip' => 'tip', 'ui' => 'ui', 'sheet' => 'sheet', 'snack' => 'snack', 'scroll_lock' => 'scroll-lock' ] as $handle => $file ) {
         $js  = 'front-end/shared/brikpanel-' . $file . '.js';
         $css = 'front-end/shared/brikpanel-' . $file . '.css';
         if ( file_exists( BRIKPANEL_PATH . $js ) ) {
@@ -1379,7 +1383,8 @@ function brikpanel_enqueue_woo_assets($hook) {
             wp_enqueue_script(
                 'brikpanel_orders_scripts',
                 BRIKPANEL_URL . 'front-end/orders/brikpanel-orders.js',
-                array_merge( ['jquery', 'wc-enhanced-select'], brikpanel_narrow_deps( [ 'scroll_strip', 'format' ] ) ),
+                // scroll_lock: this screen clips <html> (brikpanel-orders.css).
+                array_merge( ['jquery', 'wc-enhanced-select'], brikpanel_narrow_deps( [ 'scroll_strip', 'format', 'scroll_lock' ] ) ),
                 $orders_js_ver,
                 true
             );
@@ -1387,7 +1392,7 @@ function brikpanel_enqueue_woo_assets($hook) {
             wp_enqueue_style(
                 'brikpanel_orders_styles',
                 BRIKPANEL_URL . 'front-end/orders/brikpanel-orders.css',
-                array_merge( ['woocommerce_admin_styles'], brikpanel_narrow_dep( 'scroll_strip', 'style' ) ),
+                array_merge( ['woocommerce_admin_styles'], brikpanel_narrow_deps( [ 'scroll_strip', 'scroll_lock' ], 'style' ) ),
                 $orders_css_ver
             );
 
@@ -1625,7 +1630,7 @@ function brikpanel_enqueue_woo_assets($hook) {
         wp_enqueue_style(
             'brikpanel_products_list_styles',
             BRIKPANEL_URL . 'front-end/products/brikpanel-products-list.css',
-            brikpanel_narrow_deps( [ 'overflow', 'scroll_strip', 'ui', 'sheet', 'snack' ], 'style' ),
+            brikpanel_narrow_deps( [ 'overflow', 'scroll_strip', 'ui', 'sheet', 'snack', 'scroll_lock' ], 'style' ),
             $pl_css_ver
         );
 
@@ -1634,7 +1639,8 @@ function brikpanel_enqueue_woo_assets($hook) {
             BRIKPANEL_URL . 'front-end/products/brikpanel-products-list.js',
             // fit_table: the rows stack into cards when the table does not fit its card.
             // sheet and snack load first: the list reads them when it starts.
-            array_merge( ['jquery', 'jquery-ui-sortable'], brikpanel_fit_row_dep(), brikpanel_fit_table_dep(), brikpanel_narrow_deps( [ 'overflow', 'scroll_strip', 'tip', 'format', 'sheet', 'snack' ] ) ),
+            // scroll_lock: this screen clips <html> (brikpanel-products-list.css).
+            array_merge( ['jquery', 'jquery-ui-sortable'], brikpanel_fit_row_dep(), brikpanel_fit_table_dep(), brikpanel_narrow_deps( [ 'overflow', 'scroll_strip', 'tip', 'format', 'sheet', 'snack', 'scroll_lock' ] ) ),
             $pl_js_ver,
             true
         );

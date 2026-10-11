@@ -1831,7 +1831,7 @@ class Brikpanel_Dashboard {
         $returns_on    = ! $has_pref || brikpanel_dashboard_profit_field_enabled( 'returns' );
         // "Tax in the Profit section" (Settings, Dashboard): inside Expenses,
         // taken out of Revenue and Expenses, or kept in Revenue.
-        $tax_mode       = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'expenses';
+        $tax_mode       = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'excluded';
         $tax_in_revenue = 'revenue' === $tax_mode;
 
         // Revenue is paid orders for the period, optionally net of refunds, with
@@ -3372,15 +3372,39 @@ class Brikpanel_Dashboard {
     private function build_profit_block( $revenue, $start_gmt, $end_gmt, $start_local, $end_local, $exclude_marketplace = false ) {
         $s = brikpanel_profit_snapshot( $revenue, $start_gmt, $end_gmt, $start_local, $end_local, $exclude_marketplace );
 
-        // "Tax in the Profit section" (Settings, Dashboard). Inside Expenses
-        // (default): Revenue is what customers paid, tax included, and the tax
-        // is one of the Expenses lines. Taken out: Revenue is shown without the
-        // tax and Expenses no longer carries it. Kept in Revenue: Revenue keeps
-        // the tax and names the amount under its figure, Expenses drop it and
-        // Net profit takes it off. Net profit comes out the same in all three.
-        $tax_mode       = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'expenses';
+        // "Tax in the Profit section" (Settings, Dashboard). Taken out
+        // (default): Revenue is shown without the tax and Expenses do not carry
+        // it. Inside Expenses: Revenue is what customers paid, tax included,
+        // and the tax is one of the Expenses lines. Kept in Revenue: Revenue
+        // keeps the tax and names the amount under its figure, Expenses drop it
+        // and Net profit takes it off. Net profit comes out the same in all three.
+        $tax_mode       = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'excluded';
         $tax_excluded   = 'excluded' === $tax_mode;
         $tax_in_revenue = 'revenue' === $tax_mode;
+
+        // Per-field display preferences (BrikPanel ▸ Settings ▸ Dashboard).
+        // Returns is the only toggle that also changes the math: because it
+        // nets the Revenue top line (which must reconcile with Total Sales),
+        // hiding it would otherwise leave an unexplained gap, so turning it off
+        // means "ignore returns entirely". Cost of goods and Expenses always
+        // feed Net profit (they only affect the Net card, never the shared
+        // Revenue line); their toggle is display-only so the Net figure can
+        // never be quietly overstated by hiding a card.
+        $returns_on  = ! function_exists( 'brikpanel_dashboard_profit_field_enabled' ) || brikpanel_dashboard_profit_field_enabled( 'returns' );
+        $coupons_on  = function_exists( 'brikpanel_dashboard_profit_field_enabled' ) && brikpanel_dashboard_profit_field_enabled( 'coupons' );
+
+        // The snapshot's tax is net of the tax refunds gave back, because its
+        // Revenue is net of those refunds. Ignoring returns keeps Revenue gross,
+        // so the tax shown is the tax charged; Expenses carry the snapshot's net
+        // tax, so the difference joins them as well, and the Tax line in the
+        // Expenses list shows the same figure as the card works with.
+        $tax     = (float) ( $s['tax_raw'] ?? 0 );
+        $tax_gap = 0.0;
+        if ( ! $returns_on ) {
+            $tax_gross = (float) ( $s['tax_gross_raw'] ?? $tax );
+            $tax_gap   = $tax_gross - $tax;
+            $tax       = $tax_gross;
+        }
 
         // Expenses breakdown. External costs (ad spend, tax) keep their fixed
         // translated labels; manual expenses are listed by their OWN category
@@ -3420,7 +3444,7 @@ class Brikpanel_Dashboard {
         $bp_key = class_exists( 'Brikpanel_Expenses' ) ? Brikpanel_Expenses::BUILTIN_PARENT_PREFIX : '__brikpanel:';
         $flat   = [];
         foreach ( $fixed_labels as $key => $label ) {
-            $amount = (float) ( $s['breakdown'][ $key ] ?? 0 );
+            $amount = 'tax' === $key ? $tax : (float) ( $s['breakdown'][ $key ] ?? 0 );
             if ( $amount <= 0 ) {
                 continue; // hide empty components to keep the card clean
             }
@@ -3582,23 +3606,12 @@ class Brikpanel_Dashboard {
 
         $breakdown = self::nest_expense_lines( $flat );
 
-        // Per-field display preferences (BrikPanel ▸ Settings ▸ Dashboard).
-        // Returns is the only toggle that also changes the math: because it
-        // nets the Revenue top line (which must reconcile with Total Sales),
-        // hiding it would otherwise leave an unexplained gap, so turning it off
-        // means "ignore returns entirely". Cost of goods and Expenses always
-        // feed Net profit (they only affect the Net card, never the shared
-        // Revenue line); their toggle is display-only so the Net figure can
-        // never be quietly overstated by hiding a card.
-        $returns_on  = ! function_exists( 'brikpanel_dashboard_profit_field_enabled' ) || brikpanel_dashboard_profit_field_enabled( 'returns' );
-        $coupons_on  = function_exists( 'brikpanel_dashboard_profit_field_enabled' ) && brikpanel_dashboard_profit_field_enabled( 'coupons' );
-
         $gross    = (float) $s['revenue_raw'];
         $returns  = (float) $s['returns_raw'];
         $coupons  = (float) $s['coupons_raw'];
         $cogs     = (float) $s['cogs_raw'];
-        $expenses = (float) $s['expenses_total_raw'];
-        $tax      = (float) ( $s['tax_raw'] ?? 0 );
+        // $tax and $tax_gap were settled above, next to the Returns preference.
+        $expenses = (float) $s['expenses_total_raw'] + $tax_gap;
 
         $rev_raw = $returns_on ? ( $gross - $returns ) : $gross; // figure shown on the Revenue card
         if ( $tax_excluded ) {
@@ -3892,8 +3905,15 @@ class Brikpanel_Dashboard {
         // share of revenue, so it is part of the identity for the same reason:
         // e (inside Expenses), x (taken out), r (kept in Revenue).
         $tax_keys    = [ 'expenses' => 'e', 'excluded' => 'x', 'revenue' => 'r' ];
-        $tax_mode    = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'expenses';
-        $tax_for_key = $tax_keys[ $tax_mode ] ?? 'e';
+        $tax_mode    = function_exists( 'brikpanel_profit_tax_mode' ) ? brikpanel_profit_tax_mode() : 'excluded';
+        $tax_for_key = $tax_keys[ $tax_mode ] ?? 'x';
+        // The Returns field of "Profit section fields" decides whether Revenue
+        // and Tax are net of refunds, and the Coupons field whether the Revenue
+        // list carries a coupons line: both change the payload, not just the
+        // view, so they join the identity for the reason spelled out above.
+        $fields_for_key = function_exists( 'brikpanel_dashboard_profit_field_enabled' )
+            ? ( brikpanel_dashboard_profit_field_enabled( 'returns' ) ? 'r' : '' ) . ( brikpanel_dashboard_profit_field_enabled( 'coupons' ) ? 'c' : '' )
+            : 'r';
         // The payload carries text in the requesting admin's language (month
         // names in the Recent Orders dates and chart labels, "Guest"), so
         // admins who use different languages must not share one copy.
@@ -3908,7 +3928,7 @@ class Brikpanel_Dashboard {
         // Most viewed pages lists only pages a shopper can open, and the three
         // Products and pages lists carry their counts (most_viewed_total,
         // top_products_total, most_cart_total).
-        $cache_key = 'bp_dash_g3_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_' . $locale_for_key;
+        $cache_key = 'bp_dash_g3_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $this->with_tracking_state( $this->with_today( $cached ) ) );
