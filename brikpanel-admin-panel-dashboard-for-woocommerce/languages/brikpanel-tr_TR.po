@@ -17068,3 +17068,90 @@ msgstr "Gerçek gün: %s"
 #, php-format
 msgid "On %s the store counted more add-to-carts than visitors, which bots usually cause. Mark the whole day as real anyway?"
 msgstr "%s günü mağaza ziyaretçiden fazla sepete ekleme saydı; bunu genelde botlar yapar. Yine de bütün günü gerçek olarak işaretlemek istiyor musunuz?"
+
+#. translators: %s: total amount of the new orders, e.g. $122.00.
+#: front-end/sound/brikpanel-sound.php:188
+#, php-format
+msgid "Total %s"
+msgstr "Toplam %s"
+
+#: front-end/sound/brikpanel-sound.php:189
+msgid "View orders"
+msgstr "Siparişleri görüntüle"
+
+msgctxt "stock that variations take from the product"
+msgid "Shared"
+msgstr "Ortak"
+
+msgid "Shared stock"
+msgstr "Ortak stok"
+
+msgid "All variations sell from one quantity instead of each having its own."
+msgstr "Tüm varyasyonlar, her birinin kendi stoğu yerine tek bir miktardan satılır."
+
+msgid "Generate variation SKUs"
+msgstr "Varyasyon SKU'larını oluştur"
+
+msgid "Use the shared stock"
+msgstr "Ortak stoğu kullan"
+
+msgid "Use the shared stock for every variation"
+msgstr "Tüm varyasyonlar için ortak stoğu kullan"
+
+msgid "Add the product SKU first."
+msgstr "Önce ürünün SKU'sunu girin."
+
+msgid "Every variation already has a SKU."
+msgstr "Her varyasyonun zaten bir SKU'su var."
+
+msgid "Uses the product's shared stock. Change it on the product."
+msgstr "Ürünün ortak stoğunu kullanıyor. Ürün üzerinden değiştirin."
+
+#, php-format
+msgid "%s variation SKU added"
+msgid_plural "%s variation SKUs added"
+msgstr[0] "%s varyasyon SKU'su eklendi"
+msgstr[1] "%s varyasyon SKU'su eklendi"
+
+#: front-end/sound/brikpanel-sound.php:306
+msgid "Skip marketplace orders"
+msgstr "Pazaryeri siparişlerinde bildirim gösterme"
+
+#: front-end/sound/brikpanel-sound.php:309
+msgid "Orders that BrikMarket brings in from marketplaces such as Trendyol, Hepsiburada or Amazon do not trigger a new order alert, so orders placed on your own store stand out."
+msgstr "BrikMarket'in Trendyol, Hepsiburada, Amazon gibi pazaryerlerinden getirdiği siparişler için yeni sipariş bildirimi gösterilmez; böylece kendi mağazanızdan gelen siparişler öne çıkar."
+
+#: includes/brikpanel-enqueue.php:2480
+msgid "Alt text"
+msgstr "Alternatif metin"
+
+#: includes/brikpanel-enqueue.php:2481
+msgctxt "short button on a product image that opens its alt text"
+msgid "ALT"
+msgstr "ALT"
+
+#. translators: %s: the image's alt text.
+#: includes/brikpanel-enqueue.php:2483
+#, php-format
+msgid "Alt text: %s"
+msgstr "Alternatif metin: %s"
+
+#: includes/brikpanel-enqueue.php:2484
+msgid "You cannot change this alt text because the image belongs to another user."
+msgstr "Görsel başka bir kullanıcıya ait olduğu için bu alternatif metni değiştiremezsiniz."
+
+#: front-end/products/brikpanel-product-editor.php:7999
+msgid "An alt text was not saved because its image is no longer part of this product."
+msgstr "Görseli artık bu ürüne ait olmadığı için bir alternatif metin kaydedilmedi."
+
+#: front-end/products/brikpanel-product-editor.php:8001
+msgid "An alt text was not saved because you are not allowed to edit that image."
+msgstr "O görseli düzenleme izniniz olmadığı için bir alternatif metin kaydedilmedi."
+
+#: front-end/products/brikpanel-product-editor.php:8003
+msgid "Alt text changes were not saved because too many were sent at once. Save again with fewer changes."
+msgstr "Aynı anda çok fazla değişiklik gönderildiği için alternatif metin değişiklikleri kaydedilmedi. Daha az değişiklikle tekrar kaydedin."
+
+#: front-end/products/brikpanel-product-editor.php:8005
+msgid "The product was saved, but its alt text changes could not be stored. Try saving again."
+msgstr "Ürün kaydedildi, ancak alternatif metin değişiklikleri saklanamadı. Tekrar kaydetmeyi deneyin."

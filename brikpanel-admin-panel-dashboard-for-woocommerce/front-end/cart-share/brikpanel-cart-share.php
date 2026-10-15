@@ -464,8 +464,10 @@ class Brikpanel_Cart_Share {
             wp_send_json_error( [ 'message' => __( 'This product has no variations.', 'brikpanel' ) ] );
         }
 
+        // Only variations that can be bought: a switched-off (private) one
+        // cannot go into a cart, so a link to it would not work.
         $variations = [];
-        foreach ( $product->get_children() as $variation_id ) {
+        foreach ( brikpanel_variation_ids( $product, array( 'publish' ) ) as $variation_id ) {
             $variation = wc_get_product( $variation_id );
             if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
                 continue;

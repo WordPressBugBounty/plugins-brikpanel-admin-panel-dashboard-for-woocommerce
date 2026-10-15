@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.34
+ * Version: 3.3.35
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.34');
+define('BRIKPANEL_VERSION', '3.3.35');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -3328,9 +3328,10 @@ function brikpanel_unify_cogs_to_native() {
  * with a quantity of 0, which pins the parent to `outofstock`. Because
  * WC_Product_Variable::sync() trusts a parent that manages its own stock, the
  * whole product keeps reporting out of stock even when its variations carry
- * real stock. BrikPanel never manages stock at the parent level for variable
- * products (the inventory card is hidden — each variation owns its stock), so
- * this state is always a bug.
+ * real stock. That state is a bug only when no variation sells from the
+ * product's quantity: WooCommerce's shared stock (the product counts stock and
+ * variations without a count of their own follow it) is a real setting, which
+ * BrikPanel's "Shared stock" switch edits, and is never touched here.
  *
  * This walks every variable product whose parent is managing stock AND is
  * marked out of stock AND has at least one in-stock variation — the exact
@@ -3401,11 +3402,12 @@ function brikpanel_fix_variable_parent_stock() {
             continue;
         }
 
-        // Inspect the variations once: does any manage its own stock, and is
-        // any currently in stock?
+        // Inspect the variations once: does any manage its own stock, does
+        // any sell from the product's shared stock, and is any in stock?
         $has_self_managed_child = false;
+        $has_following_child    = false;
         $has_instock_child      = false;
-        foreach ($product->get_children() as $cid) {
+        foreach (brikpanel_variation_ids($product) as $cid) {
             $child = wc_get_product($cid);
             if (!$child) {
                 continue;
@@ -3414,13 +3416,19 @@ function brikpanel_fix_variable_parent_stock() {
             // 'parent' appears only in view context when inheriting).
             if (true === $child->get_manage_stock('edit')) {
                 $has_self_managed_child = true;
+            } else {
+                $has_following_child = true;
             }
             if ($child->is_in_stock()) {
                 $has_instock_child = true;
             }
-            if ($has_self_managed_child && $has_instock_child) {
-                break;
-            }
+        }
+
+        // A variation sells from the product's quantity: that is shared
+        // stock, sold out or not, and clearing it would leave those
+        // variations counting nothing (unlimited).
+        if ($has_following_child) {
+            continue;
         }
 
         $parent_qty = $product->get_stock_quantity('edit');

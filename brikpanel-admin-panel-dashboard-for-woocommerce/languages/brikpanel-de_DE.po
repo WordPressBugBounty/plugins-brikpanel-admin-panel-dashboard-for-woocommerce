@@ -17066,3 +17066,90 @@ msgstr "Echter Tag: %s"
 #, php-format
 msgid "On %s the store counted more add-to-carts than visitors, which bots usually cause. Mark the whole day as real anyway?"
 msgstr "Am %s zählte der Shop mehr Warenkorb-Hinzufügungen als Besucher, was meist Bots verursachen. Den ganzen Tag trotzdem als echt markieren?"
+
+#. translators: %s: total amount of the new orders, e.g. $122.00.
+#: front-end/sound/brikpanel-sound.php:188
+#, php-format
+msgid "Total %s"
+msgstr "Gesamt %s"
+
+#: front-end/sound/brikpanel-sound.php:189
+msgid "View orders"
+msgstr "Bestellungen ansehen"
+
+msgctxt "stock that variations take from the product"
+msgid "Shared"
+msgstr "Gemeinsam"
+
+msgid "Shared stock"
+msgstr "Gemeinsamer Bestand"
+
+msgid "All variations sell from one quantity instead of each having its own."
+msgstr "Alle Variationen werden aus einer gemeinsamen Menge verkauft, statt jeweils aus einer eigenen."
+
+msgid "Generate variation SKUs"
+msgstr "Varianten-SKUs generieren"
+
+msgid "Use the shared stock"
+msgstr "Gemeinsamen Bestand verwenden"
+
+msgid "Use the shared stock for every variation"
+msgstr "Gemeinsamen Bestand für jede Variation verwenden"
+
+msgid "Add the product SKU first."
+msgstr "Geben Sie zuerst die SKU des Produkts ein."
+
+msgid "Every variation already has a SKU."
+msgstr "Jede Variation hat bereits eine SKU."
+
+msgid "Uses the product's shared stock. Change it on the product."
+msgstr "Verwendet den gemeinsamen Bestand des Produkts. Ändern Sie ihn am Produkt."
+
+#, php-format
+msgid "%s variation SKU added"
+msgid_plural "%s variation SKUs added"
+msgstr[0] "%s Varianten-SKU hinzugefügt"
+msgstr[1] "%s Varianten-SKUs hinzugefügt"
+
+#: front-end/sound/brikpanel-sound.php:306
+msgid "Skip marketplace orders"
+msgstr "Bestellungen von Marktplätzen überspringen"
+
+#: front-end/sound/brikpanel-sound.php:309
+msgid "Orders that BrikMarket brings in from marketplaces such as Trendyol, Hepsiburada or Amazon do not trigger a new order alert, so orders placed on your own store stand out."
+msgstr "Bestellungen, die BrikMarket von Marktplätzen wie Trendyol, Hepsiburada oder Amazon übernimmt, lösen keine Benachrichtigung über eine neue Bestellung aus. So fallen Bestellungen aus Ihrem eigenen Shop auf."
+
+#: includes/brikpanel-enqueue.php:2480
+msgid "Alt text"
+msgstr "Alt-Text"
+
+#: includes/brikpanel-enqueue.php:2481
+msgctxt "short button on a product image that opens its alt text"
+msgid "ALT"
+msgstr "ALT"
+
+#. translators: %s: the image's alt text.
+#: includes/brikpanel-enqueue.php:2483
+#, php-format
+msgid "Alt text: %s"
+msgstr "Alt-Text: %s"
+
+#: includes/brikpanel-enqueue.php:2484
+msgid "You cannot change this alt text because the image belongs to another user."
+msgstr "Sie können diesen Alt-Text nicht ändern, weil das Bild einem anderen Benutzer gehört."
+
+#: front-end/products/brikpanel-product-editor.php:7999
+msgid "An alt text was not saved because its image is no longer part of this product."
+msgstr "Ein Alt-Text wurde nicht gespeichert, weil sein Bild nicht mehr zu diesem Produkt gehört."
+
+#: front-end/products/brikpanel-product-editor.php:8001
+msgid "An alt text was not saved because you are not allowed to edit that image."
+msgstr "Ein Alt-Text wurde nicht gespeichert, weil Sie dieses Bild nicht bearbeiten dürfen."
+
+#: front-end/products/brikpanel-product-editor.php:8003
+msgid "Alt text changes were not saved because too many were sent at once. Save again with fewer changes."
+msgstr "Die Alt-Text-Änderungen wurden nicht gespeichert, weil zu viele auf einmal gesendet wurden. Speichern Sie erneut mit weniger Änderungen."
+
+#: front-end/products/brikpanel-product-editor.php:8005
+msgid "The product was saved, but its alt text changes could not be stored. Try saving again."
+msgstr "Das Produkt wurde gespeichert, aber die Alt-Text-Änderungen konnten nicht übernommen werden. Speichern Sie bitte erneut."

@@ -19,6 +19,13 @@
     // than claim there are none — see the payload builder in saveProduct().
     var state = { images: [], imagesReady: false, saving: false, dirty: false, varTemplate: null, varAttributes: [], variations: [], downloads: [], tags: [], linked: { upsells: [], cross_sells: [] }, varCustomStarted: false, defaultAttributes: {}, lastSubmittedVariations: [] };
 
+    /* WooCommerce's shared stock: the product counts one quantity and every
+       variation that counts nothing of its own sells from it. A row that does
+       not count its stock is then "Shared" instead of "Unlimited" (the same
+       WooCommerce setting; the product decides which). The "Shared stock"
+       switch drives it; the rows read only this flag. */
+    state.sharedStock = productData.shared_stock === true;
+
     /* Every variation field that is backed by a control in the table, i.e. the
        ones a merchant can still be typing into while a save is in flight. Used
        to tell a genuine in-flight edit apart from the server's echo. */
@@ -92,6 +99,7 @@
         initFeaturedStar();
         initToggles();
         initImages();
+        watchMediaAlts();
         initProductVideo();
         initCharCounter();
         initPriceInputs();
@@ -584,41 +592,142 @@
         });
     }
 
-    /* "Track quantity" toggle for simple products. When on, the merchant
-       enters a quantity + backorder rule and WooCommerce derives the stock
-       status; when off, they pick an in/out/backorder status directly. The
-       two field sets are mutually exclusive, mirroring WC's native tab. */
+    /* The Inventory card. A simple product: "Track quantity" switches
+       between a counted quantity + backorder rule (WooCommerce derives the
+       status) and a status picked directly, mirroring WC's native tab. A
+       variable product: "Shared stock" decides whether the variations sell
+       from one product-level quantity (WooCommerce's shared stock); there is
+       no manual status at product level then, and the SKU box gets the
+       "Generate variation SKUs" button. A variable product whose variation
+       rows are switched off in settings shows its SKU only
+       (data-bpe-sku-only): the switch would decide stock for rows nobody can
+       see. The toggle rows and the button use `hidden`, the three fields
+       jQuery's toggle(), never both on one element (rule B3). */
+    function syncInventoryCard() {
+        var $card = $('#bpe-inventory-card');
+        if (!$card.length) return;
+        var skuOnly = $card.attr('data-bpe-sku-only') === '1';
+        var isVar = !skuOnly && isVariableOn();
+        var on = skuOnly ? false
+            : (isVar ? $('#bpe-shared-stock').is(':checked') : $('#bpe-manage-stock').is(':checked'));
+        $('#bpe-manage-stock-row').prop('hidden', skuOnly || isVar);
+        $('#bpe-shared-stock-row').prop('hidden', !isVar);
+        $('#bpe-stock-qty-field, #bpe-backorders-field').toggle(on);
+        $('#bpe-stock-status-field').toggle(!skuOnly && !isVar && !on);
+        // The "Backorder behavior" radio collapse refines a manual "On
+        // backorder" status, so it belongs to a simple product with tracking
+        // off; with tracking on backorders come from the dropdown.
+        $('#bpe-backorder-notify').toggleClass('open', !skuOnly && !isVar && !on && $('#bpe-stock-status').val() === 'onbackorder');
+        $('#bpe-gen-var-skus').prop('hidden', !isVar || !(state.variations && state.variations.length));
+    }
+
     function initManageStock() {
-        var $toggle = $('#bpe-manage-stock');
-        if (!$toggle.length) return;
-        function sync() {
-            var on = $toggle.is(':checked');
-            $('#bpe-stock-qty-field, #bpe-backorders-field').toggle(on);
-            $('#bpe-stock-status-field').toggle(!on);
-            // The "Backorder behavior" radio collapse belongs to the
-            // tracking-off flow (it refines a manual "On backorder" status).
-            // While tracking is on, backorders are set via the dropdown, so
-            // keep the collapse closed to avoid a duplicate control.
-            $('#bpe-backorder-notify').toggleClass('open', !on && $('#bpe-stock-status').val() === 'onbackorder');
+        if (!$('#bpe-inventory-card').length) return;
+        $('#bpe-manage-stock').on('change', function () { syncInventoryCard(); state.dirty = true; });
+        $('#bpe-shared-stock').on('change', function () { onSharedStockToggle(this.checked); });
+        $('#bpe-gen-var-skus').on('click', generateVariationSkus);
+        // A variation without a SKU of its own uses the product's: its box
+        // shows that one as the grey hint, kept current while it is typed.
+        $('#bpe-sku').on('input', function () {
+            $('#bpe-var-table-body .var-sku').attr('placeholder', $(this).val() || '');
+        });
+        syncInventoryCard();
+    }
+
+    /* "Generate variation SKUs": every variation without a SKU of its own
+       gets one built from the product's SKU and its options (TEE-S, TEE-M),
+       the way new variations used to get one automatically. Options that give
+       no text (another alphabet, "Any") or a clash get a number instead, so
+       no two codes match each other or the product's, which WooCommerce would
+       reject. Variations that have a SKU keep it. */
+    function generateVariationSkus() {
+        var t = PE.i18n || {};
+        var base = $.trim($('#bpe-sku').val() || '');
+        if (!base) { showToast(t.need_parent_sku || '', 'error'); return; }
+        if (!state.variations || !state.variations.length) return;
+        if ($('#bpe-var-table-body tr.var-main-row').length) {
+            captureVarTableInputs();
+            captureVarExtraInputs();
         }
-        $toggle.on('change', function () { sync(); state.dirty = true; });
-        sync();
+        var taken = {};
+        taken[base.toLowerCase()] = true;
+        state.variations.forEach(function (v) {
+            if (v && $.trim(v.sku || '') !== '') { taken[String(v.sku).toLowerCase()] = true; }
+        });
+        var added = 0;
+        state.variations.forEach(function (v, i) {
+            if (!v || $.trim(v.sku || '') !== '') return;
+            var parts = [base];
+            Object.keys(v.attributes || {}).forEach(function (k) {
+                var part = slugify(v.attributes[k] || '');
+                if (part) { parts.push(part); }
+            });
+            var code = parts.join('-').toUpperCase();
+            if (parts.length === 1 || taken[code.toLowerCase()]) {
+                var n = i + 1;
+                code = (base + '-' + n).toUpperCase();
+                while (taken[code.toLowerCase()]) { n++; code = (base + '-' + n).toUpperCase(); }
+            }
+            taken[code.toLowerCase()] = true;
+            v.sku = code;
+            added++;
+        });
+        if (!added) { showToast(t.skus_all_set || '', 'success'); return; }
+        renderVarTable();
+        state.dirty = true;
+        showToast(countText(t.skus_added, added), 'success');
     }
 
     /* Backorder notification — opt-in via setting. The collapse opens
        only when the simple-product stock status is "On backorder". */
     function initBackorderNotify() {
-        var $collapse = $('#bpe-backorder-notify');
-        if (!$collapse.length) return;
-        var $sel = $('#bpe-stock-status');
-        function sync() {
-            // Never open while stock tracking is on — backorders are picked
-            // via the "Allow backorders?" dropdown in that mode.
-            if ($('#bpe-manage-stock').is(':checked')) { $collapse.removeClass('open'); return; }
-            $collapse.toggleClass('open', $sel.val() === 'onbackorder');
+        if (!$('#bpe-backorder-notify').length) return;
+        $('#bpe-stock-status').on('change', syncInventoryCard);
+    }
+
+    /* The "Shared stock" switch. On: every variation sells from the product's
+       quantity, so every row stops counting its own (it reads "Shared"); what
+       each row had is kept so switching off again before Update gives it
+       back. Off: a row that was counted, Unlimited or set by hand returns to
+       that; a row with nothing kept becomes counted at 0, never Unlimited by
+       accident (new variations start the same way, 3.3.30). The quantity a
+       row had stays in its hidden box. */
+    function onSharedStockToggle(on) {
+        on = !!on;
+        if ($('#bpe-var-table-body tr.var-main-row').length) {
+            captureVarTableInputs();
+            captureVarExtraInputs();
         }
-        $sel.on('change', sync);
-        sync();
+        (state.variations || []).forEach(function (v) {
+            if (!v) return;
+            if (on) {
+                if (!v._preShared) {
+                    v._preShared = { counts: !!v.manage_stock, status: v.stock_status || 'instock', backorders: v.backorders || 'no' };
+                }
+                v.manage_stock = false;
+                return;
+            }
+            if (v.manage_stock) { delete v._preShared; return; }
+            var pre = v._preShared;
+            if (pre && !pre.counts) {
+                v.stock_status = pre.status;
+            } else {
+                v.manage_stock = true;
+                v.backorders = pre ? pre.backorders : 'no';
+                if (v.stock_quantity === '' || v.stock_quantity === null || v.stock_quantity === undefined) {
+                    v.stock_quantity = '0';
+                }
+            }
+            delete v._preShared;
+        });
+        state.sharedStock = on;
+        $('#bpe-var-card').toggleClass('bpe-var-shared-on', on);
+        resetBulkStock();
+        if (state.variations && state.variations.length && $('#bpe-var-table-body').length) {
+            renderVarTable();
+        }
+        syncInventoryCard();
+        state.dirty = true;
     }
 
     /* Sale schedule date pickers (flatpickr) */
@@ -1299,10 +1408,12 @@
         bindToggle('#bpe-seo-toggle', '#bpe-seo-section');
         bindToggle('#bpe-digital-toggle', '#bpe-digital-section');
 
-        // Hide the parent pricing + inventory cards whenever the variations
+        // Hide the parent pricing + GTIN cards whenever the variations
         // toggle is on — each variation row already carries its own price,
-        // sale schedule, stock qty, stock status and SKU, so the top-level
-        // fields are dead inputs in that mode and must not block submit.
+        // sale schedule and barcode, so the top-level fields are dead inputs
+        // in that mode and must not block submit. The Inventory card stays: on
+        // a variable product it holds the product's own SKU and WooCommerce's
+        // shared stock (syncInventoryCard() swaps its fields).
         // The unified attribute editor stays visible for both product types:
         // a simple product treats every attribute as a spec, while a variable
         // product splits them by each row's "Use for variations" switch (Size,
@@ -1311,7 +1422,8 @@
         // "Variable product" is on.
         function syncVariableMode() {
             var isVar = $('#bpe-var-toggle').is(':checked');
-            $('#bpe-pricing-card, #bpe-inventory-card, #bpe-gtin-card').toggle(!isVar);
+            $('#bpe-pricing-card, #bpe-gtin-card').toggle(!isVar);
+            syncInventoryCard();
             $('#bpe-var-card').toggleClass('bpe-variable-on', isVar);
             $('#bpe-var-build').toggle(isVar);
             // The table only makes sense once variations have been generated.
@@ -1482,12 +1594,43 @@
     }
 
     /* Images */
+    // True while a tile is being dragged, and through the click that ends the
+    // drag: that click must not open the image's alt text.
+    var galleryDragging = false;
+
     function initImages() {
         $('#bpe-gallery').sortable({
             items: '.brikpanel-pe-gallery-item', tolerance: 'pointer', cursor: 'grabbing',
             placeholder: 'brikpanel-pe-gallery-item ui-sortable-placeholder',
+            // A click that wobbles a pixel or two is still a click (it opens
+            // the image's alt text); a drag starts past that.
+            distance: 6,
+            start: function () { galleryDragging = true; },
+            // The click that ends a drag comes before any timer runs. jQuery
+            // UI's own guard against it does not help: it is bound directly on
+            // the gallery, and the tile handler below is delegated, so it runs first.
+            stop: function () { window.setTimeout(function () { galleryDragging = false; }, 0); },
             update: syncImageOrder
         });
+        $('#bpe-gallery').on('click', '.brikpanel-pe-gallery-item', galleryTileClick);
+    }
+
+    // A click on an image tile: on a phone its actions as a sheet, elsewhere
+    // its alt text. The tile's own buttons do their own thing, except the ALT
+    // one, which is the keyboard's way to the same alt text.
+    function galleryTileClick(e) {
+        if (galleryDragging || this.classList.contains('is-uploading')) return;
+        var $btn = $(e.target).closest('button');
+        if ($btn.length && !$btn.hasClass('brikpanel-pe-gallery-item-alt')) return;
+        if (PH.built) {
+            phoneImageTap.call(this, e);
+            return;
+        }
+        var id = parseInt($(this).attr('data-id'), 10);
+        var img = null;
+        state.images.forEach(function (i) { if (i.id === id) img = i; });
+        // Focus comes back to the tile's ALT button: the tile itself takes none.
+        if (img) openAltEditor([img], $btn.length ? $btn[0] : (this.querySelector('.brikpanel-pe-gallery-item-alt') || this));
     }
 
     function openMediaLibrary() {
@@ -1496,7 +1639,10 @@
         frame.on('close', disableClickToToggle);
         frame.on('select', function () {
             frame.state().get('selection').toJSON().forEach(function (att) {
-                addImage(att.id, (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url, att.alt,
+                // Every picked image, also one already in the gallery: its alt
+                // text may have been edited in this same window.
+                knowAlt(att.id, att.alt, mediaCanEdit(att));
+                addImage(att.id, (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url,
                     (att.sizes && att.sizes.medium) ? att.sizes.medium.url : att.url);
             });
         });
@@ -1619,10 +1765,14 @@
             fd.append('action', 'brikpanel_upload_image');
             fd.append('security', PE.nonce);
             fd.append('file', file);
-            $.ajax({ url: PE.ajax_url, type: 'POST', data: fd, processData: false, contentType: false,
+            // global: false, as for the save below.
+            $.ajax({ url: PE.ajax_url, type: 'POST', data: fd, processData: false, contentType: false, global: false,
                 success: function (r) {
                     $('#' + placeholderId).remove();
-                    if (r.success) addImage(r.data.id, r.data.url);
+                    if (r.success) {
+                        knowAlt(r.data.id, r.data.alt, r.data.editable);
+                        addImage(r.data.id, r.data.url, r.data.url_m);
+                    }
                 },
                 error: function () { $('#' + placeholderId).remove(); }
             });
@@ -1804,12 +1954,11 @@
         refreshProductRow();
     }
 
-    // `alt` is carried purely so the SEO analysers can read the featured
-    // image the way they would on the native editor; it is never saved here.
-    // `urlM`: the medium size, which the phone layout shows for the featured image.
-    function addImage(id, url, alt, urlM) {
+    // `urlM`: the medium size, which the phone layout shows for the featured
+    // image. The image's alt text lives in `alts` (see "Alt text" below).
+    function addImage(id, url, urlM) {
         if (state.images.some(function (i) { return i.id === id; })) return;
-        state.images.push({ id: id, url: url, url_m: urlM || '', alt: alt ? String(alt) : '' });
+        state.images.push({ id: id, url: url, url_m: urlM || '' });
         renderGallery();
         state.dirty = true;
     }
@@ -1832,6 +1981,13 @@
             $item.append($rm);
             var vb = videoButtonHtml(img.id, idx === 0 ? 'featured' : 'gallery', 'brikpanel-pe-gallery-item-video', false);
             if (vb) $(vb).appendTo($item).on('click', onVideoButtonClick);
+            // The keyboard's way to the image's alt text (a click on the tile
+            // opens it too, see galleryTileClick()). A button: it never starts a drag.
+            var alt = document.createElement('button');
+            alt.type = 'button';
+            alt.className = 'brikpanel-pe-gallery-item-alt';
+            paintAltPill(alt, img.id);
+            $item.append(alt);
             $g.append($item);
         });
         $g.sortable('refresh');
@@ -1850,6 +2006,475 @@
         state.images = o;
         renderGallery();
         state.dirty = true;
+    }
+
+    // ---- Alt text -----------------------------------------------------------
+    // WordPress keeps one alt text per image, shown wherever the image is
+    // used, so it is held here by image id rather than on the gallery or
+    // variation rows: an image that is both a gallery tile and a variation's
+    // image has one text. `alts` is what the boxes show, `altStored` what the
+    // server last confirmed (an image is unsaved while the two differ),
+    // `altLocked` the images this person may not edit (WordPress's own rule),
+    // `altDraft` what a box held when it closed without Done or Cancel.
+    // Saved with the product: collectAltPayload() and syncAltsFromServer().
+    var alts = {};
+    var altStored = {};
+    var altLocked = {};
+    var altDraft = {};
+    // The most one save carries (ALT_MAX_* on the server, which refuses
+    // more); whatever is left waits for the next save.
+    var ALT_MAX_ENTRIES = 500;
+    var ALT_MAX_BYTES = 60000;
+    var ALT_CHECK_SVG = '<svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m2.5 6.5 2.5 2.5 4.5-5.5"/></svg>';
+    var altBoxSeq = 0;
+    var $altDlg = null;
+    var altDlgOpener = null;
+
+    function altOf(id) {
+        var t = alts[id];
+        return t === undefined ? '' : t;
+    }
+
+    function altIsDirty(id) {
+        if (alts[id] === undefined) return false;
+        return alts[id] !== (altStored[id] === undefined ? '' : altStored[id]);
+    }
+
+    // WordPress's "may edit this image", as its media window gives it.
+    function mediaCanEdit(att) {
+        return !!(att && att.nonces && att.nonces.update);
+    }
+
+    // A text the server holds, learned from the page, a media window, an
+    // upload or a save. An image with an unsaved edit here keeps the edit.
+    function knowAlt(id, text, editable) {
+        id = parseInt(id, 10);
+        if (!id) return;
+        if (editable === false) {
+            altLocked[id] = true;
+        } else if (editable === true) {
+            delete altLocked[id];
+        }
+        if (text === undefined || text === null) return;
+        var pending = altIsDirty(id);
+        altStored[id] = String(text);
+        if (!pending) {
+            alts[id] = altStored[id];
+            refreshAltViews(id);
+        }
+    }
+
+    function knowImageAlts(images) {
+        (images || []).forEach(function (img) {
+            if (img && img.id) knowAlt(img.id, img.alt, img.editable);
+        });
+    }
+
+    // The browser's half of the server's cleaning (wp_strip_all_tags() with
+    // line breaks): one line, single spaces, none at the ends. Tags are left
+    // to the server; its answer replaces this text after the save.
+    function cleanAlt(text) {
+        return String(text === undefined || text === null ? '' : text).replace(/[\r\n\t ]+/g, ' ').trim();
+    }
+
+    // Typed in a box: the image's text until the product is saved.
+    function setAlt(id, text) {
+        id = parseInt(id, 10);
+        if (!id || altLocked[id]) return;
+        var t = cleanAlt(text);
+        if (alts[id] === t) return;
+        alts[id] = t;
+        if (altIsDirty(id)) state.dirty = true;
+        refreshAltViews(id);
+    }
+
+    // Everything on the page that shows an image's alt text.
+    function refreshAltViews(id) {
+        $('#bpe-gallery .brikpanel-pe-gallery-item[data-id="' + id + '"] .brikpanel-pe-gallery-item-alt').each(function () { // i18n-ignore: CSS selector, not user-facing text
+            paintAltPill(this, id);
+        });
+        $('#bpe-var-table-body .var-alt-btn').each(function () {
+            var v = state.variations[parseInt($(this).attr('data-idx'), 10)];
+            if (v && (v.images || []).some(function (img) { return img && parseInt(img.id, 10) === id; })) {
+                paintVarAltBtn(this, v.images);
+            }
+        });
+        // The featured image's text is one the SEO analysers read.
+        if (state.images.length && state.images[0].id === id && seoScheduleSync) seoScheduleSync();
+    }
+
+    // The ALT button on a gallery tile: its name says the text (or that there
+    // is none), and a tick shows there is one, not the colour alone.
+    function paintAltPill(btn, id) {
+        var t = altOf(id);
+        var label = PE.i18n.alt_text_is.replace('%s', t !== '' ? t : PE.i18n.ph_not_set);
+        btn.innerHTML = (t !== '' ? ALT_CHECK_SVG : '') + '<span>' + esc(PE.i18n.alt_pill) + '</span>'; // Static markup, escaped text.
+        btn.classList.toggle('is-set', t !== '');
+        btn.setAttribute('aria-label', label);
+        btn.title = label;
+    }
+
+    // A variation's "Alt text" field: the first image's text, or "Not set".
+    function varAltText(images) {
+        return (images && images[0]) ? altOf(parseInt(images[0].id, 10)) : '';
+    }
+
+    function varAltButtonInner(images) {
+        var t = varAltText(images);
+        return '<span class="var-alt-text' + (t !== '' ? '' : ' is-empty') + '" dir="auto">' + esc(t !== '' ? t : PE.i18n.ph_not_set) + '</span>';
+    }
+
+    function paintVarAltBtn(btn, images) {
+        var t = varAltText(images);
+        btn.innerHTML = varAltButtonInner(images); // Escaped text.
+        btn.setAttribute('aria-label', PE.i18n.alt_text_is.replace('%s', t !== '' ? t : PE.i18n.ph_not_set));
+    }
+
+    // The field follows the variation's images: shown while it has one.
+    function syncVarAltField(idx) {
+        var v = state.variations[idx];
+        var imgs = (v && v.images) || [];
+        var $btn = $('#bpe-var-table-body tr.var-details-row[data-idx="' + idx + '"] .var-alt-btn'); // i18n-ignore: CSS selector, not user-facing text
+        if (!$btn.length) return;
+        $btn.closest('.var-alt-field').prop('hidden', !imgs.length);
+        paintVarAltBtn($btn[0], imgs);
+    }
+
+    // One row per image (a variation can have several): its picture, its box,
+    // and a note where this person may not edit it. Built afresh each time;
+    // the phone sheet and the window show the same form. The box is three
+    // lines tall, as WordPress's own, so a sentence and the hint fit on a
+    // phone, but it holds one line: Enter moves to the next box, and on the
+    // last one it is Done (not while an input method is still composing a
+    // word: Persian, Japanese...); a pasted line break becomes a space.
+    function altForm(list, onDone) {
+        var t = PE.i18n;
+        var form = phMake('div', 'brikpanel-pe-alt-form');
+        list.forEach(function (img, i) {
+            var id = parseInt(img.id, 10);
+            var row = phMake('div', 'brikpanel-pe-alt-row');
+            var pic = phMake('img', 'brikpanel-pe-alt-thumb');
+            pic.setAttribute('src', img.url || '');
+            pic.setAttribute('alt', '');
+            var field = phMake('div', 'brikpanel-field brikpanel-pe-alt-field');
+            var boxId = 'bpe-alt-box-' + (++altBoxSeq);
+            var label = phMake('label', '', t.image_alt);
+            label.setAttribute('for', boxId);
+            var box = phMake('textarea', 'brikpanel-control brikpanel-pe-alt-input');
+            box.rows = 3;
+            box.id = boxId;
+            box.setAttribute('data-att', String(id));
+            box.setAttribute('dir', 'auto');
+            box.setAttribute('autocomplete', 'off');
+            box.setAttribute('enterkeyhint', i < list.length - 1 ? 'next' : 'done');
+            box.placeholder = t.image_alt_ph;
+            box.value = altDraft[id] !== undefined ? altDraft[id] : altOf(id);
+            box.addEventListener('input', function () {
+                if (/[\r\n]/.test(box.value)) box.value = box.value.replace(/[\r\n]+/g, ' ');
+            });
+            field.appendChild(label);
+            field.appendChild(box);
+            if (altLocked[id]) {
+                box.readOnly = true;
+                var note = phMake('p', 'brikpanel-pe-alt-note', t.alt_locked);
+                note.id = boxId + '-note';
+                box.setAttribute('aria-describedby', note.id);
+                field.appendChild(note);
+            }
+            row.appendChild(pic);
+            row.appendChild(field);
+            form.appendChild(row);
+        });
+        form.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+            var boxes = $(form).find('.brikpanel-pe-alt-input').toArray();
+            var at = boxes.indexOf(e.target);
+            if (at < 0) return;
+            e.preventDefault();
+            if (at < boxes.length - 1) {
+                boxes[at + 1].focus();
+            } else {
+                onDone();
+            }
+        });
+        return form;
+    }
+
+    function altEditableIn(list) {
+        return list.some(function (img) { return !altLocked[parseInt(img.id, 10)]; });
+    }
+
+    // Done: each box's text becomes its image's text, until the save.
+    function altApply(form) {
+        $(form).find('.brikpanel-pe-alt-input').each(function () {
+            var id = parseInt(this.getAttribute('data-att'), 10);
+            delete altDraft[id];
+            if (!this.readOnly) setAlt(id, this.value);
+        });
+    }
+
+    // Cancel: what was typed is dropped.
+    function altForget(form) {
+        $(form).find('.brikpanel-pe-alt-input').each(function () {
+            delete altDraft[parseInt(this.getAttribute('data-att'), 10)];
+        });
+    }
+
+    // Closed some other way (dragged down, the back gesture, the screen
+    // growing past phone width): what was typed waits for the next opening.
+    function altKeepDraft(form) {
+        $(form).find('.brikpanel-pe-alt-input').each(function () {
+            if (this.readOnly) return;
+            var id = parseInt(this.getAttribute('data-att'), 10);
+            if (cleanAlt(this.value) !== altOf(id)) {
+                altDraft[id] = this.value;
+            } else {
+                delete altDraft[id];
+            }
+        });
+    }
+
+    // The alt text of one or more images: a sheet on a phone (WordPress's
+    // media window shows no alt text there), a window elsewhere.
+    function openAltEditor(images, opener) {
+        var list = (images || []).filter(function (img) { return img && parseInt(img.id, 10) > 0; });
+        if (!list.length) return;
+        var S = phSheet();
+        if (PH.built && S) {
+            openAltSheet(list, opener, S);
+        } else {
+            openAltDialog(list, opener);
+        }
+    }
+
+    function openAltSheet(list, opener, S) {
+        var t = PE.i18n;
+        var how = '';
+        var sheet = null;
+        var finish = function (kind) {
+            how = kind;
+            if (sheet) sheet.close();
+        };
+        var form = altForm(list, function () { finish('done'); });
+        var cancel = phMake('button', 'brikpanel-btn brikpanel-btn--secondary brikpanel-sheet__btn', t.link_cancel);
+        cancel.type = 'button';
+        cancel.addEventListener('click', function () { finish('cancel'); });
+        var foot = [cancel];
+        if (altEditableIn(list)) {
+            var done = phMake('button', 'brikpanel-btn brikpanel-btn--primary brikpanel-sheet__btn', t.ph_done);
+            done.type = 'button';
+            done.addEventListener('click', function () { finish('done'); });
+            foot.push(done);
+        }
+        var boxes = $(form).find('.brikpanel-pe-alt-input').not('[readonly]');
+        sheet = S.open({
+            title: t.alt_text,
+            body: form,
+            foot: foot,
+            className: 'brikpanel-pe-altsheet',
+            returnFocus: opener || null,
+            onClose: function () {
+                if (how === 'done') {
+                    altApply(form);
+                } else if (how === 'cancel') {
+                    altForget(form);
+                } else {
+                    altKeepDraft(form);
+                }
+            }
+        });
+        // A single box is what the sheet is for, so it takes the focus; with
+        // several the sheet keeps it, so the keyboard stays down. Only once the
+        // sheet shows: it turns visible on the next frame, and a hidden box
+        // cannot take the focus.
+        if (boxes.length === 1 && list.length === 1) {
+            window.setTimeout(function () {
+                if (form.parentNode) phFocus(boxes[0]);
+            }, 60);
+        }
+    }
+
+    function buildAltDialog() {
+        if ($altDlg) return $altDlg;
+        var t = PE.i18n;
+        // Rides on the .brikpanel-pe-linkdlg window (backdrop, box, actions).
+        $altDlg = $('<div id="bpe-alt-dialog" class="brikpanel-pe-linkdlg brikpanel-pe-altdlg" hidden>' +
+            '<div class="brikpanel-pe-linkdlg-backdrop"></div>' +
+            '<div class="brikpanel-pe-linkdlg-box" role="dialog" aria-modal="true" aria-labelledby="bpe-altdlg-title">' +
+                '<h3 class="brikpanel-pe-linkdlg-title" id="bpe-altdlg-title">' + esc(t.alt_text) + '</h3>' +
+                '<div class="brikpanel-pe-altdlg-body"></div>' +
+                '<div class="brikpanel-pe-linkdlg-actions">' +
+                    '<button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-pe-altdlg-cancel">' + esc(t.link_cancel) + '</button>' +
+                    '<button type="button" class="brikpanel-btn brikpanel-btn--primary brikpanel-pe-altdlg-done">' + esc(t.ph_done) + '</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>').appendTo('body');
+        $altDlg.find('.brikpanel-pe-altdlg-cancel, .brikpanel-pe-linkdlg-backdrop').on('click', function () { closeAltDialog(false); });
+        $altDlg.find('.brikpanel-pe-altdlg-done').on('click', function () { closeAltDialog(true); });
+        $altDlg.on('keydown', function (e) {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                e.preventDefault();
+                closeAltDialog(false);
+                return;
+            }
+            if (e.key === 'Tab') altDlgTrapFocus(e);
+        });
+        return $altDlg;
+    }
+
+    // Tab and Shift+Tab stay inside the window while it is open.
+    function altDlgTrapFocus(e) {
+        var $f = $altDlg.find('.brikpanel-pe-linkdlg-box').find('button, input, textarea, [tabindex]:not([tabindex="-1"])').filter(function () {
+            return !this.disabled && !this.hidden && this.offsetParent !== null;
+        });
+        if (!$f.length) return;
+        var first = $f[0], last = $f[$f.length - 1], active = document.activeElement;
+        if (!$.contains($altDlg[0], active)) {
+            e.preventDefault();
+            first.focus();
+        } else if (e.shiftKey && active === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && active === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+
+    function openAltDialog(list, opener) {
+        var $d = buildAltDialog();
+        altDlgOpener = opener || null;
+        var form = altForm(list, function () { closeAltDialog(true); });
+        $d.find('.brikpanel-pe-altdlg-body').empty().append(form);
+        $d.find('.brikpanel-pe-altdlg-done').prop('hidden', !altEditableIn(list));
+        $d.prop('hidden', false);
+        var first = $(form).find('.brikpanel-pe-alt-input').not('[readonly]')[0] || $d.find('.brikpanel-pe-altdlg-cancel')[0];
+        if (first) first.focus();
+    }
+
+    function closeAltDialog(apply) {
+        if (!$altDlg || $altDlg.prop('hidden')) return;
+        var form = $altDlg.find('.brikpanel-pe-alt-form')[0];
+        if (form) {
+            if (apply) {
+                altApply(form);
+            } else {
+                altForget(form);
+            }
+        }
+        $altDlg.prop('hidden', true);
+        $altDlg.find('.brikpanel-pe-altdlg-body').empty();
+        var opener = altDlgOpener;
+        altDlgOpener = null;
+        // The gallery may have been redrawn meanwhile: the same tile's button.
+        if (opener && !document.body.contains(opener)) {
+            var tileId = $(opener).closest('[data-id]').attr('data-id');
+            opener = tileId ? $('#bpe-gallery .brikpanel-pe-gallery-item[data-id="' + tileId + '"] .brikpanel-pe-gallery-item-alt')[0] : null; // i18n-ignore: CSS selector, not user-facing text
+        }
+        if (opener && typeof opener.focus === 'function') opener.focus();
+    }
+
+    // WordPress's media window saves an alt text the moment it is typed there,
+    // on its own copy of the image. What it holds for an image this editor
+    // knows becomes the stored text here too; an unsaved edit here still wins
+    // on the next save.
+    function mediaAttachments() {
+        try {
+            return (window.wp && wp.media && wp.media.model && wp.media.model.Attachments && wp.media.model.Attachments.all) || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function watchMediaAlts() {
+        var all = mediaAttachments();
+        if (!all || typeof all.on !== 'function') return;
+        all.on('change:alt', function (model) {
+            if (!model || !model.id || !model.has('alt')) return;
+            if (alts[model.id] === undefined && altStored[model.id] === undefined) return;
+            knowAlt(model.id, model.get('alt'));
+        });
+    }
+
+    // After a save, WordPress's copy shows the stored text as well.
+    function syncMediaAlt(id, text) {
+        var all = mediaAttachments();
+        var m = (all && typeof all.get === 'function') ? all.get(id) : null;
+        if (m && m.has('alt') && m.get('alt') !== text) m.set('alt', text);
+    }
+
+    // The images a save speaks for: the gallery, and the variations' images
+    // only while the product stays variable.
+    function altTargets(isVar) {
+        var ids = {};
+        state.images.forEach(function (img) { ids[img.id] = true; });
+        if (isVar) {
+            (state.variations || []).forEach(function (v) {
+                ((v && v.images) || []).forEach(function (img) {
+                    if (img && img.id) ids[parseInt(img.id, 10)] = true;
+                });
+            });
+        }
+        return ids;
+    }
+
+    function utf8Length(s) {
+        try {
+            return new TextEncoder().encode(s).length;
+        } catch (e) {
+            return s.length * 3;
+        }
+    }
+
+    // The alt texts edited since the last save, for images this save speaks
+    // for and this person may edit. Returns what was sent, so the reply can
+    // tell an edit made during the save from the one it confirms.
+    function collectAltPayload(data, isVar) {
+        if (!state.imagesReady) return null;
+        var targets = altTargets(isVar), map = {}, n = 0, bytes = 2;
+        Object.keys(alts).forEach(function (key) {
+            var id = parseInt(key, 10);
+            if (!targets[id] || altLocked[id] || !altIsDirty(id) || n >= ALT_MAX_ENTRIES) return;
+            var add = utf8Length(JSON.stringify(String(id)) + ':' + JSON.stringify(alts[id]) + ',');
+            if (bytes + add > ALT_MAX_BYTES) return;
+            map[id] = alts[id];
+            bytes += add;
+            n++;
+        });
+        if (!n) return null;
+        data.bpe_image_alts = JSON.stringify(map);
+        return map;
+    }
+
+    // Adopts the alt texts as stored by the save. One typed again while the
+    // save was out stays unsaved for the next one. A reply without them (the
+    // server could not store them; it said so in a warning) leaves them
+    // unsaved too.
+    function syncAltsFromServer(stored, sent, isVar) {
+        if (sent && stored && typeof stored === 'object') {
+            Object.keys(sent).forEach(function (key) {
+                var id = parseInt(key, 10);
+                var editedSince = alts[id] !== sent[key];
+                // An image gone from the site has nothing left to save.
+                altStored[id] = Object.prototype.hasOwnProperty.call(stored, key) ? String(stored[key]) : sent[key];
+                syncMediaAlt(id, altStored[id]);
+                if (!editedSince) alts[id] = altStored[id];
+                refreshAltViews(id);
+            });
+        }
+        // Edits no save can carry any more (the image left the product, or may
+        // not be edited) go back to the stored text; else the editor would stay
+        // unsaved for good and a live product would auto-save every minute.
+        var targets = altTargets(isVar);
+        Object.keys(alts).forEach(function (key) {
+            var id = parseInt(key, 10);
+            if (altIsDirty(id) && (!targets[id] || altLocked[id])) {
+                alts[id] = altStored[id] === undefined ? '' : altStored[id];
+                delete altDraft[id];
+                refreshAltViews(id);
+            }
+        });
+        if (Object.keys(alts).some(function (key) { return altIsDirty(parseInt(key, 10)); })) state.dirty = true;
     }
 
     // ---- Video dialog ----------------------------------------------------
@@ -3441,7 +4066,7 @@
         updateVarStartView();
     }
 
-    function createTagGroup(name, defaults, taxonomy) {
+    function createTagGroup(name, defaults, taxonomy, key) {
         var taxAttr = taxonomy ? ' data-attr-taxonomy="' + esc(taxonomy) + '"' : '';
         var $group = $('<div class="brikpanel-pe-tag-group" data-attr-name="' + esc(name) + '"' + taxAttr + '>');
         $group.append('<label>' + esc(name) + '</label>');
@@ -3460,8 +4085,17 @@
         var attrOrderby = 'menu_order';
         globalAttrs.forEach(function (a) {
             var hit = taxonomy ? (a.taxonomy === taxonomy) : (a.name === name || a.taxonomy === name || a.slug === name);
-            if (hit) { availableTerms = (a.terms || []).slice(); attrOrderby = a.orderby || 'menu_order'; }
+            if (hit) {
+                availableTerms = (a.terms || []).slice();
+                attrOrderby = a.orderby || 'menu_order';
+                // A row picked as a global attribute is keyed the way
+                // WooCommerce keys it (only a taxonomy row: a typed name that
+                // merely matches a global stays a custom attribute).
+                if (taxonomy && !key && a.key) { key = a.key; }
+            }
         });
+        // WooCommerce's key, so attrAxisKey() never has to guess it.
+        if (key) { $group.attr('data-attr-key', String(key)); }
 
         var $suggestions = $('<div class="brikpanel-pe-tag-suggestions brikpanel-pe-attr-term-suggestions">');
 
@@ -3835,9 +4469,9 @@
 
        `showOnPage` defaults to true when omitted, matching WooCommerce's own
        default for a freshly added attribute. */
-    function createAttrRow(name, defaults, taxonomy, useForVar, showOnPage) {
+    function createAttrRow(name, defaults, taxonomy, useForVar, showOnPage, key) {
         var $row = $('<div class="brikpanel-pe-attr-row">');
-        var $group = createTagGroup(name, defaults || [], taxonomy);
+        var $group = createTagGroup(name, defaults || [], taxonomy, key);
 
         var $controls = $('<span class="brikpanel-pe-attr-row-controls">');
 
@@ -3903,6 +4537,8 @@
                 name: name,
                 values: vals,
                 taxonomy: $g.attr('data-attr-taxonomy') || '',
+                // WooCommerce's key, when the server gave the row one.
+                key: $g.attr('data-attr-key') || '',
                 useVar: $g.find('.brikpanel-pe-usevar-check').is(':checked'),
                 showOnPage: $g.find('.brikpanel-pe-showpage-check').is(':checked'),
                 $el: $g
@@ -3916,9 +4552,17 @@
     /* Effective axis key for a row — must match genCombinations()/the server so
        two rows that resolve to the same key (e.g. "Size" and "Size ") collapse
        to one axis here instead of silently clobbering each other in the
-       cartesian product. */
+       cartesian product.
+       A row the server described carries WooCommerce's own key (`key`), the
+       one its variations are stored under; it wins, because the browser
+       cannot always derive it (`pa_вид` is stored as `pa_%d0%b2%d0%b8%d0%b4`).
+       Otherwise a taxonomy row takes the taxonomy the way WooCommerce keys it,
+       and a typed row its name (nameAxisKey(): never empty for a real name). */
     function attrAxisKey(r) {
-        return r.taxonomy ? r.taxonomy.toLowerCase() : slugify(r.name);
+        if (!r) return '';
+        if (r.key) return String(r.key);
+        if (r.taxonomy) return wpTitleKey(r.taxonomy);
+        return nameAxisKey(r.name);
     }
 
     function collectVariationAttributes() {
@@ -3953,7 +4597,7 @@
         function add(list) {
             (list || []).forEach(function (a) {
                 if (!a || !a.name) return;
-                var key = attrAxisKey({ name: a.name, taxonomy: a.taxonomy || '' });
+                var key = attrAxisKey({ name: a.name, taxonomy: a.taxonomy || '', key: a.key || '' });
                 if (!key) return;
                 if (!map[key]) map[key] = a.name;
                 // Second, looser index. WordPress's sanitize_title drops
@@ -3990,7 +4634,7 @@
             // let a caller naming a whole table hand the same map to every row.
             if (!labels) labels = variationAxisLabels();
             var key = String(k).toLowerCase();
-            var label = labels[key] || labels[key.replace(/-/g, '')] || key.replace(/^pa_/, '');
+            var label = labels[key] || labels[key.replace(/-/g, '')] || readableKey(key).replace(/^pa_/, '');
             // Function replacement, not a string: a label containing $& or $1
             // would otherwise be read as a replacement pattern.
             parts.push((PE.i18n.variation_any_value || 'Any %s').replace('%s', function () { return label; }));
@@ -4126,7 +4770,7 @@
         captureVarTableInputs();
         captureVarExtraInputs();
         state.varAttributes = attrs;
-        var combos = genCombinations(state.varAttributes), baseSKU = $('#bpe-sku').val() || '';
+        var combos = genCombinations(state.varAttributes);
         // Guard the cartesian explosion: a handful of attributes with many
         // values each can produce thousands of rows that freeze the tab (and
         // the server caps the save anyway). Refuse and tell the user to trim.
@@ -4154,7 +4798,7 @@
         combos.forEach(function (combo) {
             var k = comboKey(combo);
             if (k in slotOf) { claimed[slotOf[k]] = true; return; }
-            appended.push(makeVarRow(combo, findExVar(combo), baseSKU));
+            appended.push(makeVarRow(combo, findExVar(combo)));
         });
 
         // Rows the cartesian product no longer produces, because the merchant
@@ -4363,24 +5007,28 @@
 
     /* One variation row for a cartesian combination, carrying over whatever an
        already-existing variation with the same combination holds. */
-    function makeVarRow(combo, ex, baseSKU) {
-        var sp = [baseSKU];
-        Object.keys(combo).forEach(function (k) { sp.push(slugify(combo[k])); });
+    function makeVarRow(combo, ex) {
+        // A new variation follows the product's shared stock when the product
+        // has one; otherwise it counts its stock from a visible 0, the way
+        // Shopify starts a new variant (∞ next to the box makes one Unlimited).
+        // Existing ones keep whatever was saved.
+        var newCounts = !state.sharedStock;
         return { id: ex ? ex.id : 0, attributes: combo, name: varDisplayName({ attributes: combo }),
             regular_price: ex ? ex.regular_price : '', sale_price: ex ? ex.sale_price : '',
-            // New variations count their stock and start at a visible 0, the
-            // way Shopify starts a new variant; ∞ next to the box makes one
-            // Unlimited. Existing ones keep whatever was saved.
-            stock_quantity: ex ? (ex.stock_quantity !== null ? ex.stock_quantity : '') : '0',
+            stock_quantity: ex ? (ex.stock_quantity !== null ? ex.stock_quantity : '') : (newCounts ? '0' : ''),
             stock_status: ex ? (ex.stock_status || 'instock') : 'instock',
-            manage_stock: ex ? !!ex.manage_stock : true,
+            manage_stock: ex ? !!ex.manage_stock : newCounts,
             // New variations are Active by default (matches WooCommerce);
             // regenerating keeps whatever active state an existing row had.
             enabled: ex ? (ex.enabled === undefined ? true : !!ex.enabled) : true,
             backorders: ex ? (ex.backorders || 'no') : 'no',
             sale_from: ex ? (ex.sale_from || '') : '',
             sale_to:   ex ? (ex.sale_to   || '') : '',
-            sku: ex ? ex.sku : sp.filter(Boolean).join('-').toUpperCase(),
+            // No SKU of its own: until it gets one (typed, or "Generate
+            // variation SKUs") it uses the product's, as in WooCommerce. One
+            // was made up from the product SKU and the options here, which a
+            // shop keeping one SKU per design had to clear by hand.
+            sku: ex ? ex.sku : '',
             global_unique_id: ex ? (ex.global_unique_id || '') : '',
             tax_class: ex ? (ex.tax_class !== undefined && ex.tax_class !== null ? ex.tax_class : 'parent') : 'parent',
             shipping_class: ex ? (ex.shipping_class !== undefined && ex.shipping_class !== null ? ex.shipping_class : '') : '',
@@ -4415,7 +5063,8 @@
             manual: true,
             name: varDisplayName({ attributes: combo }),
             regular_price: '', sale_price: '', sale_from: '', sale_to: '',
-            stock_quantity: '0', stock_status: 'instock', manage_stock: true,
+            // Follows the shared stock when the product has one, else counts from 0.
+            stock_quantity: state.sharedStock ? '' : '0', stock_status: 'instock', manage_stock: !state.sharedStock,
             enabled: true, backorders: 'no', sku: '', global_unique_id: '',
             tax_class: 'parent', shipping_class: '', images: [],
             cogs_value: '', vendor_id: 0, vendor_sku: ''
@@ -4610,9 +5259,10 @@
 
     function genCombinations(attrs) {
         return attrs.reduce(function (combos, attr) {
-            // Taxonomy attributes must key on their taxonomy slug (e.g. `pa_renk`)
-            // so the variation's attribute keys match WC's internal lookup.
-            var slug = attr.taxonomy ? attr.taxonomy : slugify(attr.name);
+            // The same key as every other axis lookup (attrAxisKey()): a taxonomy
+            // keys on WooCommerce's spelling of it (e.g. `pa_renk`), a typed name
+            // on nameAxisKey(), so generated rows line up with the loaded ones.
+            var slug = attrAxisKey(attr);
             if (!combos.length) return attr.values.map(function (v) { var o = {}; o[slug] = v; return o; });
             var r = [];
             combos.forEach(function (c) { attr.values.forEach(function (v) { var n = $.extend({}, c); n[slug] = v; r.push(n); }); });
@@ -4675,11 +5325,20 @@
        label (type "Kleur", get back an attribute labelled "Colour"), so the
        rows cannot be matched up by name.
 
+       `axisKeys` maps every posted axis key to the key the axis was saved
+       under. Most are the same. The others are rows the editor keyed by a
+       guess the server had to correct: a name typed outside ASCII ("Размер"),
+       punctuation WordPress drops ("Men's Size" is stored as `mens-size`), a
+       transliteration plugin. Those rows take the saved key (rekeyAxis()), or
+       the next Generate would not recognise their variations and the default
+       selection would read blank and be wiped by the next save.
+
        Must run BEFORE adoptSavedVariations(): that reads the axis keys out of
        the live DOM to name the rows and to reset the "regenerate" baseline. */
-    function adoptSavedAttributes(savedAttrs, savedGlobals, promotedAxes, silent) {
+    function adoptSavedAttributes(savedAttrs, savedGlobals, promotedAxes, silent, axisKeys) {
         promotedAxes = promotedAxes || {};
-        if (!Object.keys(promotedAxes).length) return;
+        axisKeys = axisKeys || {};
+        if (!Object.keys(promotedAxes).length && !Object.keys(axisKeys).length) return;
 
         // The saved rows carry the canonical term names and the resolved
         // default, both of which may differ in case from what was typed.
@@ -4695,10 +5354,21 @@
         var touched = false;
 
         variationAttrRowElements().forEach(function ($g) {
-            if ($g.attr('data-attr-taxonomy')) return;   // already global
-            var oldKey = attrAxisKey({ name: $g.attr('data-attr-name'), taxonomy: '' });
-            var taxonomy = promotedAxes[oldKey];
-            if (!taxonomy) return;
+            var oldKey = attrAxisKey({
+                name: $g.attr('data-attr-name'),
+                taxonomy: $g.attr('data-attr-taxonomy') || '',
+                key: $g.attr('data-attr-key') || ''
+            });
+            // Only a row that was not global yet can have been promoted.
+            var taxonomy = $g.attr('data-attr-taxonomy') ? '' : promotedAxes[oldKey];
+            if (!taxonomy) {
+                var savedKey = axisKeys[oldKey] ? String(axisKeys[oldKey]) : '';
+                if (savedKey && savedKey !== oldKey) {
+                    rekeyAxis($g, oldKey, savedKey, false);
+                    touched = true;
+                }
+                return;
+            }
 
             var saved = byTaxonomy[String(taxonomy).toLowerCase()];
             touched = true;
@@ -4708,9 +5378,13 @@
             // attribute the term's canonical name ("Zwart") can differ from
             // what was typed ("zwart"), and renderDefaultFormValues() drops a
             // selection that does not match one of the row's values verbatim.
-            var newKey = String(taxonomy).toLowerCase();
+            var newKey = (saved && saved.key) ? String(saved.key)
+                : (axisKeys[oldKey] ? String(axisKeys[oldKey]) : wpTitleKey(taxonomy));
             delete state.defaultAttributes[oldKey];
             if (saved && saved['default']) { state.defaultAttributes[newKey] = saved['default']; }
+            // The variation rows in state and the dropdowns on the page follow
+            // too: an auto-save does not take the server's rows over.
+            rekeyAxis($g, oldKey, newKey, true);
 
             if (silent || !saved) {
                 // Background auto-save: never rebuild the DOM under the
@@ -4732,7 +5406,7 @@
             // replacing the row makes the post-save DOM identical to a reload.
             var $row = $g.closest('.brikpanel-pe-attr-row');
             if (!$row.length) { $g.attr('data-attr-taxonomy', taxonomy); return; }
-            $row.replaceWith(createAttrRow(saved.name, saved.values || [], saved.taxonomy, true, saved.visible !== false));
+            $row.replaceWith(createAttrRow(saved.name, saved.values || [], saved.taxonomy, true, saved.visible !== false, newKey));
         });
 
         if (!touched) return;
@@ -4740,6 +5414,38 @@
             state.varSignature = variationAttrSignature();
             refreshVarStaleHint();
         }
+    }
+
+    /* Move one axis from the key the editor used to the key the server saved
+       it under: the row itself, the Default Form Values selection (unless the
+       caller already set it), the variation rows in state and the per-axis
+       dropdowns already on the page. Each variation keeps its attribute order,
+       which is the order its name is read in. Elements are matched with
+       filter(), not a selector string: a key may hold `%`. */
+    function rekeyAxis($g, oldKey, newKey, keepDefaults) {
+        if (!newKey || newKey === oldKey) return;
+        var has = Object.prototype.hasOwnProperty;
+        if ($g && $g.length) { $g.attr('data-attr-key', newKey); }
+        var defaults = state.defaultAttributes || {};
+        if (!keepDefaults && has.call(defaults, oldKey)) {
+            if (!has.call(defaults, newKey)) { defaults[newKey] = defaults[oldKey]; }
+            delete defaults[oldKey];
+        }
+        (state.variations || []).forEach(function (v) {
+            if (!v || !v.attributes || !has.call(v.attributes, oldKey)) return;
+            var renamed = {};
+            Object.keys(v.attributes).forEach(function (k) {
+                if (k !== oldKey) { renamed[k] = v.attributes[k]; return; }
+                if (!has.call(v.attributes, newKey)) { renamed[newKey] = v.attributes[k]; }
+            });
+            v.attributes = renamed;
+        });
+        $('#bpe-var-table-body .var-attr-select').filter(function () {
+            return $(this).attr('data-axis') === oldKey;
+        }).attr('data-axis', newKey);
+        $('#bpe-var-defaults-row .bpe-var-default').filter(function () {
+            return $(this).attr('data-key') === oldKey;
+        }).attr('data-key', newKey);
     }
 
     /* After a successful save the server's variation list is authoritative:
@@ -4754,6 +5460,9 @@
         if (!Array.isArray(savedVars)) return;
         productData.variation_extras = extras || {};
         productData.variations = savedVars;
+        // The images' alt texts as stored, also on a silent save (an image
+        // with an edit made since keeps the edit).
+        savedVars.forEach(function (v) { knowImageAlts(v && v.images); });
         // Everything the payload carried is now persisted, and the server just
         // echoed freshly-rendered extras HTML whose loop indices match the list
         // above. Drop the local snapshot rather than replaying it: its keys
@@ -4778,7 +5487,21 @@
         // Background auto-save runs behind the user's back — never disturb the
         // live table/state mid-edit. The fresh productData is enough for the
         // next manual render to be correct.
-        if (silent) return;
+        if (silent) {
+            // One thing does change: a counted box this save wrote is now what
+            // the server holds, so it becomes the box's opening value. Else
+            // the next save writes the same number again and undoes an order
+            // placed in between. A box sent unchanged keeps its opening value
+            // (the server kept the stored stock).
+            var liveRows = state.variations || [];
+            (state.lastSubmittedVariations || []).forEach(function (sv, i) {
+                var lv = liveRows[i];
+                if (!sv || !lv || !sv.id || String(lv.id) !== String(sv.id) || !sv.manage_stock) return;
+                if (String(sv.stock_quantity) === String(sv.stock_original)) return;
+                lv._stockOriginal = String(sv.stock_quantity);
+            });
+            return;
+        }
         // A save is not instant, and on a busy store with dozens of variations
         // it can take seconds — long enough for the merchant to keep filling in
         // the next rows. Anything they changed AFTER the payload went out is
@@ -4797,6 +5520,9 @@
             // the product's children in its own order, which need not match the
             // order they were submitted in, and pairing the wrong rows would
             // move a merchant's edit onto a different variation.
+            // The stock this row now has on the server: what an unchanged box
+            // compares against on the next save (orders may lower it meanwhile).
+            merged._stockOriginal = v.manage_stock ? (v.stock_quantity === null || v.stock_quantity === undefined ? '' : String(v.stock_quantity)) : '';
             if (!lv || !sv) return merged;
             if (sv.id && v.id && String(sv.id) !== String(v.id)) return merged;
             // A details panel the merchant had open stays open after the save.
@@ -4808,6 +5534,15 @@
                 if (lv[key] === undefined) return;
                 if (!varFieldSame(lv[key], sv[key])) { merged[key] = lv[key]; }
             });
+            // The stock fields belong together: a row switched between
+            // counting and not counting while the save was out keeps its whole
+            // live stock state, or it would mix the server's "not counted"
+            // (no quantity) with the merchant's new count.
+            if (lv.manage_stock !== undefined && !varFieldSame(lv.manage_stock, sv.manage_stock)) {
+                ['manage_stock', 'stock_quantity', 'stock_status', 'backorders'].forEach(function (key) {
+                    if (lv[key] !== undefined) { merged[key] = lv[key]; }
+                });
+            }
             return merged;
         }));
         // The freshly-saved table matches the current attribute rows, so reset
@@ -4924,12 +5659,24 @@
         return $b.length ? ($b.val() || 'no') : ((v && v.backorders) || 'no');
     }
 
-    // The word an uncounted row shows in its box.
-    function syncVarStockStatus($main) {
+    /* The word an uncounted row shows in its box: "Shared" while the product
+       shares its stock (the row sells from it), otherwise Unlimited or the
+       manual status kept in the row's details. */
+    function varFreeWord(status) {
         var t = PE.i18n || {};
+        if (state.sharedStock) return t.var_shared || '';
+        return (status === 'outofstock' ? t.out_of_stock : (status === 'onbackorder' ? t.on_backorder : t.var_unlimited)) || '';
+    }
+
+    // The label of the button beside the box (∞, or the link while shared).
+    function varModeToggleLabel() {
+        var t = PE.i18n || {};
+        return (state.sharedStock ? t.var_shared_toggle : t.var_unlimited_toggle) || '';
+    }
+
+    function syncVarStockStatus($main) {
         var status = varRowScope($main).find('.var-stock-status').val() || 'instock';
-        var word = status === 'outofstock' ? t.out_of_stock : (status === 'onbackorder' ? t.on_backorder : t.var_unlimited);
-        $main.find('.var-stock-free-text').text(word || '');
+        $main.find('.var-stock-free-text').text(varFreeWord(status));
     }
 
     /* Switch a row between counting and not counting. Until the product is
@@ -4947,9 +5694,24 @@
         $qty.prop('hidden', !counts);
         if (counts && $.trim($qty.val() || '') === '') { $qty.val('0'); }
         $scope.find('.var-stock-when-out').prop('hidden', !counts);
-        $scope.find('.var-stock-state').prop('hidden', counts);
+        // A row that follows the shared stock has no status of its own: the
+        // product's is copied down to it.
+        $scope.find('.var-stock-state').prop('hidden', counts || state.sharedStock);
         syncVarStockStatus($main);
         if (counts && focus) { $qty.trigger('focus').trigger('select'); }
+    }
+
+    /* Every row's stock word and button label, after the product's shared
+       stock changed without the table being drawn again. */
+    function relabelVarStockRows() {
+        var label = varModeToggleLabel();
+        $('#bpe-var-table-body tr.var-main-row').each(function () {
+            var $main = $(this);
+            $main.find('.var-stock-inf').attr({ 'aria-label': label, title: label });
+            varRowScope($main).find('.var-stock-state').prop('hidden', varRowCounts($main) || state.sharedStock);
+            syncVarStockStatus($main);
+        });
+        resetBulkStock();
     }
 
     // Whether anything behind ▾ holds a value, so a closed row still says so.
@@ -5106,7 +5868,14 @@
         var chevronSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg>';
         var clearSvg = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
         var moreSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg>';
-        var infSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg>';
+        // ∞, or a link while the product shares its stock: both are drawn,
+        // CSS shows the one that fits (.bpe-var-shared-on on the card).
+        var infSvg = '<svg class="bpe-ico-inf" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg>' +
+            '<svg class="bpe-ico-link" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+        var modeLabel = varModeToggleLabel();
+        // A variation with no SKU of its own uses the product's: shown as the
+        // grey hint in its box, as in WooCommerce's own variation panel.
+        var parentSku = ($('#bpe-sku').length ? $('#bpe-sku').val() : productData.parent_sku) || '';
         // `cls` names a field the stock mode swaps in and out; `off` starts it
         // hidden (the shown one depends on whether the row counts its stock).
         var detailField = function (label, control, cls, off) {
@@ -5190,12 +5959,16 @@
             // One box: the quantity, or (∞ pressed) the word for a row that is
             // not counted. That word is a button: clicking it is how a merchant
             // goes back to typing a number.
-            var freeWord = varStatus === 'outofstock' ? t.out_of_stock : (varStatus === 'onbackorder' ? t.on_backorder : t.var_unlimited);
+            var freeWord = varFreeWord(varStatus);
+            // The quantity this row opened with (or was last saved with): an
+            // unchanged box leaves the stored stock alone on save, since
+            // orders may have lowered it in the meantime.
+            if (v._stockOriginal === undefined) { v._stockOriginal = varManage ? ('' + stk) : ''; }
             var stockTd = '<td class="var-stock-cell" data-bp-label="' + esc(t.var_stock) + '">' +
                 '<span class="var-stock-box' + (varManage ? '' : ' is-unlimited') + '" data-manage="' + (varManage ? '1' : '0') + '">' +
                 '<input type="number" class="var-stock" value="' + esc('' + stk) + '" min="0" placeholder="0" aria-label="' + esc(t.var_stock_qty) + '"' + (varManage ? '' : ' hidden') + '>' +
                 '<button type="button" class="var-stock-free" title="' + esc(t.var_track_stock) + '"' + (varManage ? ' hidden' : '') + '><span class="var-stock-free-text">' + esc(freeWord) + '</span></button>' +
-                '<button type="button" class="brikpanel-pe-inf-btn var-stock-inf" aria-pressed="' + (varManage ? 'false' : 'true') + '" aria-label="' + esc(t.var_unlimited_toggle) + '" title="' + esc(t.var_unlimited_toggle) + '">' + infSvg + '</button>' +
+                '<button type="button" class="brikpanel-pe-inf-btn var-stock-inf" aria-pressed="' + (varManage ? 'false' : 'true') + '" aria-label="' + esc(modeLabel) + '" title="' + esc(modeLabel) + '">' + infSvg + '</button>' +
                 '</span></td>';
             var cogsTd = hasCogs ? '<td class="var-num-cell" data-bp-label="' + esc(t.cogs) + '"><input type="text" class="var-cogs" value="' + esc(cogsv) + '" data-price="1" placeholder="0' + sep + '00" aria-label="' + esc(t.cogs) + '"></td>' : '';
             var deleteTd = '<td class="var-delete-cell"><button type="button" class="var-delete-btn" data-idx="' + idx + '" aria-label="' + esc(t.delete_variation) + '" title="' + esc(t.delete_variation) + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg></button></td>';
@@ -5212,7 +5985,7 @@
             // moved fields, and kept [hidden] while closed.
             var fields = dateField('var-sale-from', t.var_sale_start, v.sale_from) +
                 dateField('var-sale-to', t.var_sale_end, v.sale_to) +
-                detailField(t.var_sku, '<input type="text" class="var-sku" value="' + esc(v.sku || '') + '">');
+                detailField(t.var_sku, '<input type="text" class="var-sku" value="' + esc(v.sku || '') + '" placeholder="' + esc(parentSku) + '">');
             // The stock rule. A counted row picks what happens at 0, with the
             // simple product's "Allow backorders?" choices. An uncounted row
             // keeps WooCommerce's manual status instead, which its box shows
@@ -5226,7 +5999,8 @@
             }
             backOpts += '<option value="yes"' + (backVal === 'yes' ? ' selected' : '') + '>' + esc(t.backorders_yes) + '</option>';
             fields += detailField(t.backorders_label, '<select class="var-backorders">' + backOpts + '</select>', 'var-stock-when-out', !varManage);
-            fields += detailField(t.var_stock_status, '<select class="var-stock-status">' + statusOpts + '</select>', 'var-stock-state', varManage);
+            // A row that follows the shared stock takes the product's status.
+            fields += detailField(t.var_stock_status, '<select class="var-stock-status">' + statusOpts + '</select>', 'var-stock-state', varManage || state.sharedStock);
             if (hasGtin) {
                 fields += detailField(t.var_gtin, '<input type="text" class="var-gtin" value="' + esc(v.global_unique_id || '') + '" inputmode="numeric" autocomplete="off">');
             }
@@ -5260,6 +6034,13 @@
                 }
                 fields += detailField(t.var_supplier, '<select class="var-vendor brikpanel-pe-vendor-select">' + vendorOptsHtml + '</select>');
             }
+            // The alt text of the variation's images: the image itself opens
+            // the picker, and WordPress's media window offers no alt text on a
+            // phone, nor one per image when a variation has several.
+            var vImgs = v.images || [];
+            var vAlt = varAltText(vImgs);
+            fields += detailField(t.alt_text, '<button type="button" class="var-alt-btn" data-idx="' + idx + '" aria-label="' +
+                esc(t.alt_text_is.replace('%s', vAlt !== '' ? vAlt : t.ph_not_set)) + '">' + varAltButtonInner(vImgs) + '</button>', 'var-alt-field', !vImgs.length);
             var moreToggle = hasExtra
                 ? '<div class="brikpanel-pe-var-details-more"><button type="button" class="var-extras-toggle" data-idx="' + idx + '" aria-expanded="false" aria-controls="' + extrasId + '">' + moreSvg + esc(t.var_other_fields) + '</button></div>'
                 : '';
@@ -5292,6 +6073,11 @@
         $tb.find('.var-image-btn').on('click', function () { openVarImagePicker($(this).data('idx')); });
         $tb.find('.var-image-remove').on('click', function (e) { e.stopPropagation(); removeVarImage($(this).data('idx')); });
         $tb.find('.var-image-video').on('click', onVideoButtonClick);
+        $tb.find('.var-alt-btn').on('click', function (e) {
+            e.preventDefault();
+            var v = state.variations[parseInt($(this).attr('data-idx'), 10)];
+            if (v) openAltEditor(v.images, this);
+        });
         // Keyboard reordering: focus a drag handle, then arrow up/down. Gives
         // the sortable a non-pointer equivalent without adding two buttons to
         // every row.
@@ -5415,6 +6201,8 @@
         // Driven from here rather than from each caller because every path
         // that changes the row count ends in a render.
         $('#bpe-clear-vars').prop('hidden', !state.variations.length);
+        // Same for "Generate variation SKUs" in the Inventory card.
+        syncInventoryCard();
 
         syncVarExpandAll();
         refitVarTable();
@@ -5524,6 +6312,7 @@
         state.variations[idx].images = [];
         $('#bpe-var-table-body .var-image-wrap[data-idx="' + idx + '"]').replaceWith(buildVarImageCell([], idx));
         bindVarImageCell(idx);
+        syncVarAltField(idx);
         state.dirty = true;
     }
 
@@ -5560,6 +6349,7 @@
         frame.on('select', function () {
             var attachments = frame.state().get('selection').toJSON();
             var newImages = attachments.map(function (att) {
+                knowAlt(att.id, att.alt, mediaCanEdit(att));
                 return {
                     id: att.id,
                     url: (att.sizes && att.sizes.thumbnail) ? att.sizes.thumbnail.url : att.url
@@ -5570,6 +6360,7 @@
             // Re-render just this cell, then rebind its picker + remove handlers.
             $('#bpe-var-table-body .var-image-wrap[data-idx="' + idx + '"]').replaceWith(buildVarImageCell(newImages, idx));
             bindVarImageCell(idx);
+            syncVarAltField(idx);
             state.dirty = true;
         });
 
@@ -5584,13 +6375,21 @@
         if (price) $('#bpe-var-table-body .var-price').val(price);
         if (salePrice) $('#bpe-var-table-body .var-sale-price').val(salePrice);
         if (unlimited) {
-            // ∞ in the strip: every variation sells without counting.
+            // ∞ in the strip: every variation sells without counting. While
+            // the product shares its stock the same button is the link: every
+            // variation sells from the shared quantity.
             $('#bpe-var-table-body tr.var-main-row').each(function () {
                 var $row = $(this);
                 varRowScope($row).find('.var-stock-status').val('instock');
                 setVarStockMode($row, false, false);
                 markVarDetailsDot($row);
             });
+        } else if (stock !== '' && state.sharedStock) {
+            // With shared stock the variations sell from one quantity: the
+            // number is that quantity. Writing it into every row would give
+            // each size its own copy of it (7 sizes × 40 = 280).
+            var $shared = $('#bpe-stock');
+            if ($shared.length) { $shared.val(stock); }
         } else if (stock !== '') {
             // A bulk quantity means the merchant counts stock, so every row
             // switches to counting with that number.
@@ -5617,16 +6416,33 @@
     }
 
     /* ∞ beside the strip's Stock box. Pressed, Apply makes every variation
-       Unlimited, so the number box steps aside and says so. */
+       Unlimited, so the number box steps aside and says so. While the product
+       shares its stock it is the link: pressed, Apply makes every variation
+       sell from the shared quantity ("Shared"). */
     function toggleBulkUnlimited() {
         var $btn = $('#bpe-bulk-stock-inf');
         var on = $btn.attr('aria-pressed') !== 'true';
         var $qty = $('#bpe-bulk-stock');
         var t = PE.i18n || {};
+        var pressedWord = state.sharedStock ? t.var_shared : t.var_unlimited;
         $btn.attr('aria-pressed', on ? 'true' : 'false');
         if (on) { $qty.val(''); }
-        $qty.prop('disabled', on).attr('placeholder', on ? (t.var_unlimited || '') : ($qty.attr('data-placeholder') || ''));
+        $qty.prop('disabled', on).attr('placeholder', on ? (pressedWord || '') : ($qty.attr('data-placeholder') || ''));
         $btn.closest('.brikpanel-pe-var-bulk-stock').toggleClass('is-unlimited', on);
+    }
+
+    /* The strip's stock box after the "Shared stock" switch flips: released,
+       and its button labelled for what pressing it now means. */
+    function resetBulkStock() {
+        var $btn = $('#bpe-bulk-stock-inf');
+        if (!$btn.length) return;
+        var t = PE.i18n || {};
+        var $qty = $('#bpe-bulk-stock');
+        var label = state.sharedStock ? t.var_bulk_shared : t.var_bulk_unlimited;
+        $btn.attr('aria-pressed', 'false');
+        if (label) { $btn.attr({ 'aria-label': label, title: label }); }
+        $qty.prop('disabled', false).attr('placeholder', $qty.attr('data-placeholder') || '');
+        $btn.closest('.brikpanel-pe-var-bulk-stock').removeClass('is-unlimited');
     }
 
     /* Validation — only enforces required fields that are actually visible.
@@ -5722,8 +6538,14 @@
             && (state.variations.length > 0 || state.keepVariableEmpty === true);
         var sep = PE.decimal_sep || ',';
         var data = { action: 'brikpanel_save_product', security: PE.nonce,
-            product_id: $('#bpe-product-id').val() || 0, status: status, name: name,
-            sku: $('#bpe-sku').val() };
+            product_id: $('#bpe-product-id').val() || 0, status: status, name: name };
+        // The Inventory card's keys go only when the card is on the page: with
+        // it switched off in settings an absent box read as "no SKU, tracking
+        // off, in stock" and wiped the product's SKU and stock tracking.
+        var $invCard = $('#bpe-inventory-card');
+        if ($invCard.length) {
+            data.sku = $('#bpe-sku').val();
+        }
         // Same rule the other opt-in sections follow: send the key only when the
         // control is actually on the page. With the variations section switched
         // off the toggle is a permanently-unchecked stand-in, so posting
@@ -5832,23 +6654,42 @@
             data.sale_from  = $('#bpe-sale-from').val() || '';
             data.sale_to    = $('#bpe-sale-to').val()   || '';
         }
-        // "Track quantity" toggle is the explicit manage_stock source. When
-        // on we send quantity + backorder rule and let WC derive the status;
-        // when off we send the directly-chosen status instead.
-        var manageStock = $('#bpe-manage-stock').is(':checked');
-        data.manage_stock = manageStock ? 1 : 0;
-        if (manageStock) {
-            data.stock_quantity = $('#bpe-stock').val();
-            data.backorders = $('#bpe-backorders').val() || 'no';
-        } else {
-            data.stock_status = $('#bpe-stock-status').val() || 'instock';
-            // Backorder mode — only sent when the merchant turned on the
-            // "Notify customer" sub-option *and* the status is "On backorder".
-            // Falls through to the legacy yes/no mapping on the server otherwise.
-            if (data.stock_status === 'onbackorder') {
-                var $backRadio = $('input[name="backorders"]:checked');
-                if ($backRadio.length) {
-                    data.backorders = $backRadio.val() === 'notify' ? 'notify' : 'yes';
+        // The quantity the stock box opened with: an unchanged box keeps the
+        // stored stock, which orders may have lowered since (this autosaves
+        // every minute too).
+        var stockOriginal = $('#bpe-stock').attr('data-original');
+        if ($invCard.length && $invCard.attr('data-bpe-sku-only') !== '1') {
+            if (isVariableOn()) {
+                // Variable product (the toggle, so also one with no variations
+                // yet): WooCommerce's shared stock, from the "Shared stock" switch.
+                var shared = $('#bpe-shared-stock').is(':checked');
+                data.shared_stock = shared ? 1 : 0;
+                if (shared) {
+                    data.stock_quantity = $('#bpe-stock').val();
+                    data.stock_quantity_original = stockOriginal === undefined ? '' : stockOriginal;
+                    data.backorders = $('#bpe-backorders').val() || 'no';
+                }
+            } else {
+                // "Track quantity" toggle is the explicit manage_stock source. When
+                // on we send quantity + backorder rule and let WC derive the status;
+                // when off we send the directly-chosen status instead.
+                var manageStock = $('#bpe-manage-stock').is(':checked');
+                data.manage_stock = manageStock ? 1 : 0;
+                if (manageStock) {
+                    data.stock_quantity = $('#bpe-stock').val();
+                    data.stock_quantity_original = stockOriginal === undefined ? '' : stockOriginal;
+                    data.backorders = $('#bpe-backorders').val() || 'no';
+                } else {
+                    data.stock_status = $('#bpe-stock-status').val() || 'instock';
+                    // Backorder mode — only sent when the merchant turned on the
+                    // "Notify customer" sub-option *and* the status is "On backorder".
+                    // Falls through to the legacy yes/no mapping on the server otherwise.
+                    if (data.stock_status === 'onbackorder') {
+                        var $backRadio = $('input[name="backorders"]:checked');
+                        if ($backRadio.length) {
+                            data.backorders = $backRadio.val() === 'notify' ? 'notify' : 'yes';
+                        }
+                    }
                 }
             }
         }
@@ -5934,6 +6775,9 @@
         // Product videos the merchant edited (plus the list of third-party
         // boxes on this form, which the theme save guards need either way).
         var videoSent = collectVideoPayload(data);
+        // Alt texts edited since the last save (before the third-party fields
+        // below, whose bracketed names could otherwise reuse the key).
+        var altSent = collectAltPayload(data, isVar);
 
         var cats = []; $('input[name="category_ids[]"]:checked').each(function () { cats.push($(this).val()); });
         data.category_ids = cats.join(',');
@@ -6278,6 +7122,8 @@
                     sale_to:   pickVar('.var-sale-to', v.sale_to),
                     manage_stock: varManageStock ? 1 : 0,
                     stock_quantity: $mainRow.find('.var-stock').val(),
+                    // What the box opened with: unchanged, the stored stock stays.
+                    stock_original: (v._stockOriginal === undefined || v._stockOriginal === null) ? '' : String(v._stockOriginal),
                     stock_status: varStockStatus,
                     sku: pickVar('.var-sku', v.sku),
                     image_ids: (v.images || []).map(function(img) { return img.id; }) };
@@ -6330,7 +7176,13 @@
         });
         _extraPairs.forEach(function (pair) { fd.append(pair[0], pair[1]); });
 
-        $.ajax({ url: PE.ajax_url, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json' })
+        // global: false keeps this request away from other plugins' page-wide
+        // jQuery AJAX listeners. Several load on every admin screen and read
+        // the request body as text (variation swatches plugins check
+        // `options.data.indexOf('action=add-tag')` on ajaxComplete); a FormData
+        // body has no indexOf, so they threw on every save, which also stopped
+        // the listeners after them. Nothing on this screen listens for it.
+        $.ajax({ url: PE.ajax_url, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json', global: false })
         .done(function (r) {
             state.saving = false; $pub.prop('disabled', false).text(op);
             if (r.success) {
@@ -6339,6 +7191,7 @@
                 // Before the variation rows are redrawn, so their video
                 // buttons already show what was stored.
                 syncVideosFromServer(r.data.videos, videoSent);
+                syncAltsFromServer(r.data.image_alts, altSent, isVar);
                 showToast(r.data.message + ' \u2713', 'success');
                 // Surface non-fatal save warnings (e.g. a duplicate SKU/GTIN
                 // that WooCommerce rejected). The product saved, but these
@@ -6368,8 +7221,28 @@
                 if (typeof r.data.variation_count === 'number') {
                     productData.variation_count = r.data.variation_count;
                 }
-                adoptSavedAttributes(r.data.attributes, r.data.global_attributes, r.data.promoted_axes, silent);
+                adoptSavedAttributes(r.data.attributes, r.data.global_attributes, r.data.promoted_axes, silent, r.data.axis_keys);
                 if (r.data.variations) { adoptSavedVariations(r.data.variations, r.data.variation_extras || {}, silent); }
+                // The Inventory card's quantity as stored now: an unchanged box
+                // kept a quantity orders may have lowered since the page opened.
+                // A box the merchant typed into while the save was out keeps
+                // what they typed.
+                if (r.data.stock && typeof r.data.stock === 'object') {
+                    var $stockBox = $('#bpe-stock');
+                    var sentQty = (data.stock_quantity === undefined) ? $stockBox.val() : String(data.stock_quantity);
+                    if ($stockBox.length && $stockBox.val() === sentQty) {
+                        var savedQty = (r.data.stock.qty === null || r.data.stock.qty === undefined) ? '' : String(parseInt(r.data.stock.qty, 10));
+                        if (r.data.stock.manage) { $stockBox.val(savedQty); }
+                        $stockBox.attr('data-original', r.data.stock.manage ? savedQty : '');
+                    }
+                }
+                // Without the Inventory card on the page the rows follow what
+                // the product now does (a leftover nobody followed was cleared).
+                if (!$('#bpe-shared-stock').length && typeof r.data.shared_stock === 'boolean' && r.data.shared_stock !== state.sharedStock) {
+                    state.sharedStock = r.data.shared_stock;
+                    $('#bpe-var-card').toggleClass('bpe-var-shared-on', state.sharedStock);
+                    relabelVarStockRows();
+                }
                 if (r.data.product_id) {
                     $('#bpe-product-id').val(r.data.product_id);
                     // Reflect the final slug (WP may have de-duplicated it or
@@ -6569,8 +7442,11 @@
             state.imagesReady = true;
             return;
         }
+        // Alt texts first: the tiles and the variation rows show them.
+        knowImageAlts(productData.gallery);
+        (productData.variations || []).forEach(function (v) { knowImageAlts(v && v.images); });
         if (productData.gallery && productData.gallery.length) {
-            productData.gallery.forEach(function (i) { state.images.push({ id: i.id, url: i.url, url_m: i.url_m || '', alt: i.alt ? String(i.alt) : '' }); });
+            productData.gallery.forEach(function (i) { state.images.push({ id: i.id, url: i.url, url_m: i.url_m || '' }); });
             renderGallery();
         }
         // From here the gallery mirrors the saved product, so a save is
@@ -6594,12 +7470,12 @@
         if ($aList.length) {
             if (productData.is_variable && productData.attributes && productData.attributes.length) {
                 productData.attributes.forEach(function (attr) {
-                    $aList.append(createAttrRow(attr.name, attr.values || [], attr.taxonomy || '', true, attr.visible !== false));
+                    $aList.append(createAttrRow(attr.name, attr.values || [], attr.taxonomy || '', true, attr.visible !== false, attr.key || ''));
                 });
             }
             if (productData.non_variation_attributes && productData.non_variation_attributes.length) {
                 productData.non_variation_attributes.forEach(function (attr) {
-                    $aList.append(createAttrRow(attr.name, attr.values || [], attr.taxonomy || '', false, attr.visible !== false));
+                    $aList.append(createAttrRow(attr.name, attr.values || [], attr.taxonomy || '', false, attr.visible !== false, attr.key || ''));
                 });
             }
         }
@@ -6620,7 +7496,7 @@
             state.defaultAttributes = {};
             productData.attributes.forEach(function (a) {
                 if (a && a['default']) {
-                    state.defaultAttributes[attrAxisKey({ name: a.name, taxonomy: a.taxonomy })] = a['default'];
+                    state.defaultAttributes[attrAxisKey(a)] = a['default'];
                 }
             });
             state.variations = applyVarDisplayNames(productData.variations || []);
@@ -6834,7 +7710,10 @@
         function pushFeaturedImage() {
             try {
                 var img = (state.images && state.images.length) ? state.images[0] : null;
-                var key = img && img.url ? img.url + '\n' + (img.alt || '') : '';
+                // The alt text as typed here, saved or not (the analysers grade
+                // the product as it will be).
+                var alt = img ? altOf(img.id) : '';
+                var key = img && img.url ? img.url + '\n' + alt : '';
                 if (key === lastThumbnail) return; // unchanged — do not retrigger
                 var collector = window.rankMathEditor
                     && rankMathEditor.assessor
@@ -6842,7 +7721,7 @@
                 if (!collector || typeof collector.assessThumbnail !== 'function') return;
                 lastThumbnail = key;
                 if (!key) return;
-                collector.assessThumbnail({ src: img.url, alt: img.alt || '' });
+                collector.assessThumbnail({ src: img.url, alt: alt });
             } catch (e) {}
         }
 
@@ -7040,11 +7919,70 @@
         return v;
     }
 
-    function slugify(t) {
+    /* Accents stripped, Turkish letters folded, lowercased: the first half of
+       slugify(), split out so nameAxisKey() can tell whether a name folds to
+       plain ASCII. slugify()'s own output must not change: the variation SKU
+       generator builds on it. */
+    function slugFold(t) {
         return t.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/\u0131/g, 'i').replace(/\u015f/g, 's').replace(/\u00e7/g, 'c')
             .replace(/\u011f/g, 'g').replace(/\u00f6/g, 'o').replace(/\u00fc/g, 'u')
-            .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            .toLowerCase();
+    }
+
+    function slugify(t) {
+        return slugFold(t).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    /* WordPress's sanitize_title() as far as the browser can follow it, which
+       is how WooCommerce keys an attribute: lowercase, spaces, dots, slashes and
+       dashes become "-", other ASCII punctuation goes, anything outside ASCII
+       is percent-encoded with lowercase hex (`pa_вид` -> `pa_%d0%b2%d0%b8%d0%b4`),
+       200 characters at most. The server's accent rules and filters (a
+       transliteration plugin) are out of reach here, so a key built from a
+       typed name is a stand-in: the save reply says what the axis was really
+       saved under (axis_keys) and adoptSavedAttributes() takes it over. */
+    function wpTitleKey(t) {
+        var s = String(t === null || t === undefined ? '' : t);
+        try { s = s.normalize('NFC'); } catch (e) { /* keep as typed */ }
+        s = s.replace(/<[^>]*>/g, '').toLowerCase();
+        var out = '';
+        var chars = Array.from(s);
+        for (var i = 0; i < chars.length; i++) {
+            var ch = chars[i];
+            var piece;
+            if (/[a-z0-9_-]/.test(ch)) {
+                piece = ch;
+            } else if (/[\s.\/\u00a0\u2013\u2014]/.test(ch)) {
+                piece = '-';
+            } else if (ch.charCodeAt(0) < 128 || /[\u00ad\u200b-\u200d\u2018\u2019\u201c\u201d\u00ab\u00bb\u2039\u203a]/.test(ch)) {
+                piece = '';
+            } else {
+                piece = encodeURIComponent(ch).toLowerCase();
+            }
+            if (out.length + piece.length > 200) break;
+            out += piece;
+        }
+        return out.replace(/-+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    /* The key of an attribute typed by name. A name that folds to plain ASCII
+       ("Size", "Beden", "Kumaş Türü") keeps the slugify() key it always had;
+       any other ("Размер", "Μέγεθος", "尺寸", "Размер EU") gets wpTitleKey(),
+       never the empty or shared key slugify() gives it: an empty key made the
+       editor leave the attribute out of the save, and the server removed it
+       from the product. */
+    function nameAxisKey(name) {
+        var text = String(name === null || name === undefined ? '' : name);
+        var slug = slugify(text);
+        if (slug && /^[\x00-\x7f]*$/.test(slugFold(text))) return slug;
+        return wpTitleKey(text);
+    }
+
+    /* A key for showing to a person: `pa_%d0%b2%d0%b8%d0%b4` reads as `pa_вид`. */
+    function readableKey(key) {
+        var s = String(key || '');
+        try { return decodeURIComponent(s); } catch (e) { return s; }
     }
 
     // Text node → innerHTML escapes &, < and > only. That is enough between
@@ -7129,7 +8067,9 @@
         link: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M8.6 11.4a3 3 0 0 0 4.2 0l2.4-2.4a3 3 0 0 0-4.2-4.2l-1 1"/><path d="M11.4 8.6a3 3 0 0 0-4.2 0L4.8 11a3 3 0 0 0 4.2 4.2l1-1"/></svg>',
         sliders: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M3.5 6h8M14.5 6h2M3.5 14h2M8.5 14h8"/><circle cx="13" cy="6" r="1.7"/><circle cx="7" cy="14" r="1.7"/></svg>',
         globe: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6.5"/><path d="M3.5 10h13M10 3.5c1.8 1.9 2.6 4 2.6 6.5S11.8 14.6 10 16.5C8.2 14.6 7.4 12.5 7.4 10S8.2 5.4 10 3.5Z"/></svg>',
-        plug: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7.5 3.5v3.5M12.5 3.5v3.5M5.5 7h9v2.5a4.5 4.5 0 0 1-9 0V7ZM10 14v2.5"/></svg>'
+        plug: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7.5 3.5v3.5M12.5 3.5v3.5M5.5 7h9v2.5a4.5 4.5 0 0 1-9 0V7ZM10 14v2.5"/></svg>',
+        // A picture with a line of text under it: the image's alt text.
+        alt: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.5" y="3.5" width="13" height="9.5" rx="1.5"/><path d="m5.5 11.5 3-3 2.5 2.5 1.5-1.5 2 2"/><path d="M4.5 16.5h11"/></svg>'
     };
     // BrikPanel's own cards a phone gathers into pages. The name, images,
     // variations (with the attributes), price, cost and stock stay on the
@@ -7243,8 +8183,8 @@
             }, 0);
         });
 
-        // A tap on an image tile: its actions as a sheet.
-        $('#bpe-gallery').on('click', '.brikpanel-pe-gallery-item', phoneImageTap);
+        // A tap on an image tile shows its actions as a sheet: galleryTileClick()
+        // (bound with the gallery in initImages()) hands it to phoneImageTap().
         // A tap on a variation row opens its page; what is typed there keeps
         // the row's one-line summary current.
         $('#bpe-var-table-body').on('click', 'tr.var-main-row', phoneVarRowTap);
@@ -7661,6 +8601,15 @@
                 }
             });
         }
+        // The image's alt text, which WordPress's media window does not show on
+        // a phone. The next sheet waits for this one to slide away.
+        var tile = this;
+        items.push({
+            label: phT('alt_text'),
+            icon: PH_ICON.alt,
+            end: altOf(id) !== '' ? '' : phT('ph_not_set'),
+            run: function () { window.setTimeout(function () { openAltEditor([img], tile); }, 300); }
+        });
         var vbtn = this.querySelector('.brikpanel-pe-gallery-item-video');
         if (vbtn) {
             items.push({ label: vbtn.getAttribute('aria-label') || vbtn.getAttribute('title') || '', icon: PH_ICON.play, run: function () { vbtn.click(); } });
@@ -8172,7 +9121,12 @@
         if (!S) { return; }
         var body = phMake('div', 'brikpanel-pe-ph-form');
         collectVariationAttributes().forEach(function (a, i) {
-            var real = document.querySelector('#bpe-var-defaults-row .bpe-var-default[data-key="' + attrAxisKey(a) + '"]');
+            // Matched by value, not a selector string: a key may hold `%`.
+            var axisKey = attrAxisKey(a);
+            var real = Array.prototype.filter.call(
+                document.querySelectorAll('#bpe-var-defaults-row .bpe-var-default'),
+                function (el) { return el.getAttribute('data-key') === axisKey; }
+            )[0];
             if (!real) { return; }
             var box = phMake('div', 'brikpanel-pe-ph-field');
             var label = phMake('label', 'brikpanel-pe-ph-label', a.name);

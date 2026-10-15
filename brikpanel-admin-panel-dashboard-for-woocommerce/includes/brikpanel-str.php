@@ -442,3 +442,121 @@ if ( ! function_exists( 'brikpanel_term_ref' ) ) {
 		return str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), wp_specialchars_decode( $name, ENT_QUOTES ) );
 	}
 }
+
+/*
+ * Product attribute keys.
+ *
+ * WooCommerce keys an attribute everywhere by sanitize_title() of its name:
+ * the parent's `_product_attributes`, each variation's `attribute_<key>` meta
+ * and `_default_attributes` (WC_Product::set_attributes(),
+ * WC_Meta_Box_Product_Data::prepare_set_attributes()). Outside ASCII that key
+ * is percent-encoded: the taxonomy `pa_вид` is keyed `pa_%d0%b2%d0%b8%d0%b4`,
+ * a custom "Размер" `%d1%80%d0%b0%d0%b7%d0%bc%d0%b5%d1%80`. The product editor
+ * compared raw taxonomy names with those keys and ran sanitize_text_field()
+ * (which deletes every `%xx` octet) over them, and every save erased such an
+ * attribute's values (support ticket, Bulgarian stores, 2026-10-14).
+ */
+
+if ( ! function_exists( 'brikpanel_attr_key' ) ) {
+	/**
+	 * WooCommerce's own key for a product attribute name, taxonomy name or
+	 * stored key.
+	 *
+	 * It is sanitize_title() as this site runs it, so a locale's accent rules
+	 * (de_DE "Größe") and a transliteration plugin hooked on sanitize_title
+	 * give the answer WooCommerce gets. An already encoded key comes back as
+	 * it is. Not cached: a filter added later in the request must still count.
+	 *
+	 * @param string $name Attribute name, taxonomy name or stored key.
+	 * @return string
+	 */
+	function brikpanel_attr_key( $name ) {
+		$name = is_scalar( $name ) ? (string) $name : '';
+
+		return '' === $name ? '' : sanitize_title( $name );
+	}
+}
+
+if ( ! function_exists( 'brikpanel_attr_key_clean' ) ) {
+	/**
+	 * A posted attribute key, made safe without changing what it means.
+	 *
+	 * A key that already has WooCommerce's shape (lowercase letters, digits,
+	 * `%`, `_`, `-`) is kept as it is, so an encoded key survives; anything
+	 * else (a raw taxonomy name such as `pa_вид`, a label) is turned into
+	 * WooCommerce's key. sanitize_key() and sanitize_text_field() must never
+	 * be used here: the first drops `%`, the second deletes `%xx` octets.
+	 *
+	 * @param mixed $raw Posted key.
+	 * @return string
+	 */
+	function brikpanel_attr_key_clean( $raw ) {
+		if ( ! is_scalar( $raw ) ) {
+			return '';
+		}
+
+		$raw = trim( (string) $raw );
+		if ( '' === $raw || strlen( $raw ) > 600 ) {
+			return '';
+		}
+
+		if ( preg_match( '/^[A-Za-z0-9%_-]+$/', $raw ) ) {
+			return strtolower( $raw );
+		}
+
+		return brikpanel_attr_key( $raw );
+	}
+}
+
+if ( ! function_exists( 'brikpanel_attr_value_clean' ) ) {
+	/**
+	 * A posted attribute value (a stored term slug or a custom value) for a
+	 * comparison against stored data.
+	 *
+	 * What sanitize_text_field() does, minus deleting `%xx` octets: a term slug
+	 * outside ASCII is stored percent-encoded and must come through intact.
+	 *
+	 * @param mixed $raw Posted value.
+	 * @return string
+	 */
+	function brikpanel_attr_value_clean( $raw ) {
+		if ( ! is_scalar( $raw ) ) {
+			return '';
+		}
+
+		$value = wp_check_invalid_utf8( (string) $raw );
+		$value = wp_strip_all_tags( $value );
+		$value = preg_replace( '/[\r\n\t ]+/', ' ', $value );
+
+		return trim( (string) $value );
+	}
+}
+
+if ( ! function_exists( 'brikpanel_attr_taxonomy_from_key' ) ) {
+	/**
+	 * The attribute taxonomy behind a WooCommerce attribute key, or '' for a
+	 * custom attribute.
+	 *
+	 * The key of a non-ASCII taxonomy is its encoded name, so taxonomy_exists()
+	 * fails on it; WooCommerce decodes it first (WC_Product_Data_Store_CPT).
+	 *
+	 * @param string $key Attribute key, with or without the `attribute_` prefix.
+	 * @return string
+	 */
+	function brikpanel_attr_taxonomy_from_key( $key ) {
+		$key = is_scalar( $key ) ? (string) $key : '';
+		if ( 0 === strpos( $key, 'attribute_' ) ) {
+			$key = substr( $key, 10 );
+		}
+		if ( 0 !== strpos( $key, 'pa_' ) ) {
+			return '';
+		}
+		if ( taxonomy_exists( $key ) ) {
+			return $key;
+		}
+
+		$decoded = urldecode( $key );
+
+		return ( $decoded !== $key && taxonomy_exists( $decoded ) ) ? $decoded : '';
+	}
+}

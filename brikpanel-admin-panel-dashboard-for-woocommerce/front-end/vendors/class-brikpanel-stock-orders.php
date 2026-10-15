@@ -874,7 +874,7 @@ class Brikpanel_Stock_Orders {
 					'cost'         => $this->resolve_existing_cost( $product ),
 				];
 			} elseif ( $product->is_type( 'variable' ) ) {
-				$children = $product->get_children();
+				$children = brikpanel_variation_ids( $product );
 				foreach ( $children as $vid ) {
 					$variation = wc_get_product( $vid );
 					if ( ! $variation ) {

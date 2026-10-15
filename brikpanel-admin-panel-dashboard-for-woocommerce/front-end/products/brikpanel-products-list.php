@@ -498,28 +498,13 @@ class Brikpanel_Products_List {
             // product's quantity as its own (get_manage_stock() is 'parent'):
             // that quantity is counted once, not once per variation (a product
             // with 10 in stock and 6 such variations showed 60). A switched-off
-            // variation (status private) is not for sale and not counted.
-            $total       = 0;
-            $uses_parent = false;
-            foreach ($product->get_children() as $cid) {
-                $v = wc_get_product($cid);
-                if (!$v || 'publish' !== $v->get_status()) continue;
-                $managed = $v->get_manage_stock();
-                if ('parent' === $managed) {
-                    $uses_parent = true;
-                } elseif ($managed) {
-                    $manage_stock = true;
-                    $total += (int) $v->get_stock_quantity();
-                }
-                if ($v->backorders_allowed()) {
-                    $backorders = true;
-                }
-            }
-            if ($uses_parent) {
-                $manage_stock = true;
-                $total += (int) $product->get_stock_quantity();
-            }
-            $qty = $manage_stock ? $total : null;
+            // variation (status private) is not for sale and not counted. The
+            // rule lives in brikpanel_variable_stock_summary(), shared with the
+            // Stock column on WooCommerce's own product list.
+            $summary      = brikpanel_variable_stock_summary($product);
+            $qty          = $summary['qty'];
+            $manage_stock = $summary['manage_stock'];
+            $backorders   = $summary['backorders'];
         } else {
             $manage_stock = (bool) $product->get_manage_stock();
             $qty          = $manage_stock ? $product->get_stock_quantity() : null;
@@ -586,7 +571,7 @@ class Brikpanel_Products_List {
         $blank_pair   = ['cogs' => $blank, 'profit' => $blank_profit, 'variation_skus' => $blank_skus];
 
         if ($product->is_type('variable')) {
-            $children = $product->get_children();
+            $children = brikpanel_variation_ids($product);
             $total    = count($children);
             if ($total === 0) {
                 return $blank_pair;
@@ -930,7 +915,7 @@ class Brikpanel_Products_List {
         $value = trim(brikpanel_wc_gtin($product));
 
         if ($value === '' && $product->is_type('variable')) {
-            $found = self::child_gtins($product->get_children());
+            $found = self::child_gtins(brikpanel_variation_ids($product));
 
             if (count($found) === 1) {
                 return ['value' => $found[0], 'tooltip' => '', 'multi' => false];
@@ -2681,8 +2666,20 @@ class Brikpanel_Products_List {
         if (!empty($raw_tax_filters)) {
             $allowed_taxonomies = get_object_taxonomies('product');
             foreach ($raw_tax_filters as $tax_slug => $term_slug) {
-                $tax_slug  = sanitize_key($tax_slug);
-                $term_slug = sanitize_title($term_slug);
+                // A taxonomy name is not a key: sanitize_key() keeps a-z0-9_-
+                // only, so an attribute created in Cyrillic (`pa_сезон`) became
+                // `pa_`, the clause was dropped and the list showed every
+                // product under the "Сезон: Лято" chip. The name is taken as
+                // sent, or decoded from WooCommerce's key (`pa_%d1%81…`), and
+                // still has to be one of the product's registered taxonomies.
+                $tax_raw  = is_scalar($tax_slug) ? trim((string) $tax_slug) : '';
+                $tax_slug = in_array($tax_raw, $allowed_taxonomies, true)
+                    ? $tax_raw
+                    : brikpanel_attr_taxonomy_from_key($tax_raw);
+                if ($tax_slug === '') {
+                    $tax_slug = sanitize_key($tax_raw);
+                }
+                $term_slug = is_scalar($term_slug) ? sanitize_title((string) $term_slug) : '';
                 if ($tax_slug === '' || $term_slug === '') {
                     continue;
                 }
@@ -2815,6 +2812,10 @@ class Brikpanel_Products_List {
         // raised by the column action itself, so anything else in the body
         // could escape and leave the global loop pointing at a stale query for
         // the rest of the request.
+        // Every row's variations in one query; the stock, cost, GTIN and
+        // count cells below read them from there.
+        brikpanel_prime_variation_ids(wp_list_pluck($query->posts, 'ID'));
+
         try {
             foreach ($query->posts as $post) {
                 $product = wc_get_product($post->ID);
@@ -2960,15 +2961,15 @@ class Brikpanel_Products_List {
                     'tag_ids'        => $tag_ids,
                     'custom_taxonomies' => (object) $custom_taxonomy_ids,
                     'type'           => $product->get_type(),
-                    // Variation count for the "Variable" badge. get_children()
-                    // was already resolved for this object by
-                    // compute_stock_info() and compute_cost_payloads() above,
-                    // and WooCommerce memoises it on the data store, so this
+                    // Variation count for the "Variable" badge. The variations
+                    // were read for the whole page before the loop
+                    // (brikpanel_prime_variation_ids()), switched-off ones
+                    // included as WooCommerce counts them, so this
                     // costs no extra query. Keyed off the class rather than
                     // the type string so third-party variable types
                     // (variable-subscription and friends) carry the number too.
                     'variation_count' => ($product instanceof WC_Product_Variable)
-                        ? count($product->get_children())
+                        ? count(brikpanel_variation_ids($product))
                         : 0,
                     'is_featured'    => $product->is_featured(),
                     'is_downloadable' => $product->is_downloadable(),
@@ -3188,16 +3189,32 @@ class Brikpanel_Products_List {
             $product->set_sale_price($sale !== '' ? wc_format_decimal($sale) : '');
         }
 
+        // A box saved with the number it opened with keeps the stored
+        // quantity: orders may have lowered it since the window opened.
+        $is_variable_product = $product->is_type('variable');
         if (isset($_POST['stock']) && $_POST['stock'] !== '') {
-            $stock = intval($_POST['stock']);
-            $product->set_manage_stock(true);
-            $product->set_stock_quantity($stock);
-            // If stock_status is not explicitly sent (e.g. inline row edit),
-            // auto-derive it from the quantity so the row badge stays consistent.
-            if (!isset($_POST['stock_status'])) {
-                $product->set_stock_status($stock > 0 ? 'instock' : 'outofstock');
+            $stock    = intval($_POST['stock']);
+            $keep_qty = brikpanel_stock_box_unchanged($product, $stock, $_POST['stock_original'] ?? null);
+            if ($is_variable_product) {
+                // A variable product's own quantity is WooCommerce's shared
+                // stock. It is written only while the product already counts
+                // it: switching counting on here would make a leftover that
+                // pins the product out of stock (3.2.17).
+                if (true === $product->get_manage_stock('edit') && !$keep_qty) {
+                    $product->set_stock_quantity($stock);
+                }
+            } else {
+                $product->set_manage_stock(true);
+                if (!$keep_qty) {
+                    $product->set_stock_quantity($stock);
+                }
+                // If stock_status is not explicitly sent (e.g. inline row edit),
+                // auto-derive it from the quantity so the row badge stays consistent.
+                if (!isset($_POST['stock_status'])) {
+                    $product->set_stock_status((int) $product->get_stock_quantity('edit') > 0 ? 'instock' : 'outofstock');
+                }
             }
-        } elseif (isset($_POST['stock']) && $_POST['stock'] === '') {
+        } elseif (isset($_POST['stock']) && $_POST['stock'] === '' && !$is_variable_product) {
             $product->set_manage_stock(false);
         }
 
@@ -3378,7 +3395,7 @@ class Brikpanel_Products_List {
                 // the shop out of sync with what the admin just clicked.
                 $targets = [$product_id];
                 if ($product->is_type('variable')) {
-                    foreach ($product->get_children() as $child_id) {
+                    foreach (brikpanel_variation_ids($product) as $child_id) {
                         $targets[] = (int) $child_id;
                     }
                 }
@@ -3478,7 +3495,7 @@ class Brikpanel_Products_List {
                 // this is belt and braces — but the two builders drifting
                 // apart is exactly what used to blank cells after an edit.
                 'variation_count' => ($product instanceof WC_Product_Variable)
-                    ? count($product->get_children())
+                    ? count(brikpanel_variation_ids($product))
                     : 0,
                 'is_downloadable' => $product->is_downloadable(),
                 'is_virtual'      => $product->is_virtual(),
@@ -3906,11 +3923,25 @@ class Brikpanel_Products_List {
                 if (!in_array($round_mode, ['nearest', 'up', 'down'], true)) {
                     $round_mode = 'nearest';
                 }
+                // The variation filter is a stored attribute key and value from
+                // ajax_get_variation_attributes(). sanitize_text_field() deleted
+                // the `%xx` octets of a non-ASCII key or term slug ("Размер",
+                // `pa_вид`), the filter came out empty, and an empty filter means
+                // every variation: a price meant for one size hit all of them.
+                $attr_key_raw = isset($_POST['attr_key']) && is_scalar($_POST['attr_key']) ? trim((string) wp_unslash($_POST['attr_key'])) : '';
+                $attr_val_raw = isset($_POST['attr_val']) && is_scalar($_POST['attr_val']) ? trim((string) wp_unslash($_POST['attr_val'])) : '';
+                $attr_key     = brikpanel_attr_key_clean($attr_key_raw);
+                $attr_val     = brikpanel_attr_value_clean($attr_val_raw);
+                // One value was asked for ("All variations" sends none). A filter
+                // that does not survive cleaning is refused, never widened.
+                if ($attr_val_raw !== '' && ($attr_key === '' || $attr_val === '')) {
+                    wp_send_json_error(['message' => __('Invalid request.', 'brikpanel')]);
+                }
                 $params = [
                     'action'     => $action,
                     'value'      => sanitize_text_field($_POST['value'] ?? ''),
-                    'attr_key'   => sanitize_text_field($_POST['attr_key'] ?? ''),
-                    'attr_val'   => sanitize_text_field($_POST['attr_val'] ?? ''),
+                    'attr_key'   => $attr_key,
+                    'attr_val'   => $attr_val,
                     'round_mode' => $round_mode,
                 ];
             }
@@ -4258,6 +4289,13 @@ class Brikpanel_Products_List {
         $is_cogs = ($action === 'set_cogs');
         $is_repair = ($action === 'repair_visibility');
         $has_attr_filter = ($attr_key !== '' && $attr_val !== '');
+        // A variation that sells from its product's shared stock has no stock
+        // of its own: setting it here gave it a separate copy of the shared
+        // number. Without a variation filter the product's own quantity is
+        // what changes (below); a filtered or directly picked variation like
+        // that is reported instead of changed.
+        $is_stock    = in_array($action, ['set_stock', 'increase_stock'], true);
+        $shared_note = __("Uses the product's shared stock. Change it on the product.", 'brikpanel');
 
         // A product_cat "remove" can strip a product's last category; those rows
         // are swept once at the end of the batch instead of checked per product.
@@ -4317,15 +4355,19 @@ class Brikpanel_Products_List {
 
                 if ($product->get_type() === 'variable') {
                     if ($is_price || $is_cogs || $has_attr_filter) {
-                        foreach ($product->get_children() as $vid) {
+                        foreach (brikpanel_variation_ids($product) as $vid) {
                             $v = wc_get_product($vid);
                             if (!$v) continue;
                             if ($has_attr_filter) {
                                 $match = false;
                                 foreach ($v->get_attributes() as $k => $vl) {
-                                    if ($k === $attr_key && $vl === $attr_val) { $match = true; break; }
+                                    if ($k === $attr_key && ($vl === $attr_val || brikpanel_attr_value_clean($vl) === $attr_val)) { $match = true; break; }
                                 }
                                 if (!$match) continue;
+                            }
+                            if ($is_stock && brikpanel_variation_follows_parent_stock($v)) {
+                                $errors[] = ['id' => (int) $vid, 'message' => $shared_note];
+                                continue;
                             }
                             $this->apply_bulk_action($v, $action, $value, $opts);
                             $v->save();
@@ -4338,7 +4380,7 @@ class Brikpanel_Products_List {
                             $product->save();
                             $processed++;
                         } else {
-                            foreach ($product->get_children() as $vid) {
+                            foreach (brikpanel_variation_ids($product) as $vid) {
                                 $v = wc_get_product($vid);
                                 if (!$v) continue;
                                 $this->apply_bulk_action($v, $action, $value, $opts);
@@ -4350,6 +4392,10 @@ class Brikpanel_Products_List {
                     }
                 } else {
                     if ($has_attr_filter) continue;
+                    if ($is_stock && $product->is_type('variation') && brikpanel_variation_follows_parent_stock($product)) {
+                        $errors[] = ['id' => (int) $pid, 'message' => $shared_note];
+                        continue;
+                    }
                     $this->apply_bulk_action($product, $action, $value, $opts);
                     $product->save();
                     $processed++;
@@ -4763,7 +4809,7 @@ class Brikpanel_Products_List {
                 if ($permanent) {
                     $product = wc_get_product($pid);
                     if ($product && $product->get_type() === 'variable') {
-                        foreach ($product->get_children() as $vid) {
+                        foreach (brikpanel_variation_ids($product) as $vid) {
                             if ($delete_imgs) {
                                 $vimg = get_post_thumbnail_id($vid);
                                 if ($vimg) wp_delete_attachment($vimg, true);
@@ -5045,17 +5091,34 @@ class Brikpanel_Products_List {
             wp_send_json_error(['message' => __('Not a variable product.', 'brikpanel')]);
         }
 
-        $variations = [];
-        foreach ($product->get_children() as $var_id) {
+        // This product, not just products in general: the same check the
+        // save handlers make before they change any of these variations.
+        if (!current_user_can('edit_post', $product_id)) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+        }
+
+        $variations  = [];
+        $any_follows = false;
+        foreach (brikpanel_variation_ids($product) as $var_id) {
             $v = wc_get_product($var_id);
             if (!$v || !$v->exists()) continue;
+
+            // A variation that sells from the product's shared stock reports
+            // the product's quantity as its own in 'view' context; the windows
+            // showed it in every row and saved it back into each (7 × 40).
+            $own_count = (true === $v->get_manage_stock('edit'));
+            $follows   = brikpanel_variation_follows_parent_stock($v);
+            if ($follows) {
+                $any_follows = true;
+            }
 
             $attrs = $v->get_attributes();
             $parts = [];
             foreach ($attrs as $key => $val) {
                 if ($val === '') { $parts[] = __('Any', 'brikpanel'); continue; }
-                $tax = str_starts_with($key, 'pa_') ? $key : 'pa_' . $key;
-                if (taxonomy_exists($tax)) {
+                // The key of a non-ASCII taxonomy is its encoded name.
+                $tax = brikpanel_attr_taxonomy_from_key(str_starts_with($key, 'pa_') ? $key : 'pa_' . $key);
+                if ($tax !== '') {
                     $term = get_term_by('slug', $val, $tax);
                     $parts[] = $term ? html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8') : $val;
                 } else {
@@ -5069,9 +5132,12 @@ class Brikpanel_Products_List {
                 'sku'           => $v->get_sku() ?? '',
                 'regular_price' => $v->get_regular_price(),
                 'sale_price'    => $v->get_sale_price(),
-                'stock'         => $v->get_manage_stock() ? $v->get_stock_quantity() : null,
+                // Its own counted quantity only; null for a row that counts
+                // nothing or follows the shared stock (see `shared`).
+                'stock'         => $own_count ? $v->get_stock_quantity('edit') : null,
                 'stock_status'  => $v->get_stock_status() ?: 'instock',
-                'manage_stock'  => $v->get_manage_stock(),
+                'manage_stock'  => $own_count,
+                'shared'        => $follows,
                 'sale_from'     => $v->get_date_on_sale_from() ? $v->get_date_on_sale_from()->date('Y-m-d') : '',
                 'sale_to'       => $v->get_date_on_sale_to()   ? $v->get_date_on_sale_to()->date('Y-m-d')   : '',
                 // Always emit as a JSON string (a bare 0 would be collapsed
@@ -5084,7 +5150,15 @@ class Brikpanel_Products_List {
             ];
         }
 
-        wp_send_json_success(['variations' => $variations]);
+        wp_send_json_success([
+            'variations' => $variations,
+            // WooCommerce's shared stock: the one quantity the following
+            // variations sell from. The windows show it once, at the top.
+            'parent'     => [
+                'shared' => $any_follows && true === $product->get_manage_stock('edit'),
+                'stock'  => $product->get_stock_quantity('edit'),
+            ],
+        ]);
     }
 
     // =========================================================================
@@ -5130,13 +5204,28 @@ class Brikpanel_Products_List {
             $v->set_date_on_sale_to(preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) ? $raw : null);
         }
 
+        // A variation that sells from the product's shared stock has no stock
+        // or status of its own to set from the list: a quantity here used to
+        // give it its own copy of the shared number (7 sizes × 40 = 280), and
+        // its status is the product's. The shared quantity is changed on the
+        // product; giving one size its own count is done in the product editor.
+        $follows_shared = brikpanel_variation_follows_parent_stock($v);
+        if ($follows_shared) {
+            unset($_POST['stock'], $_POST['stock_status']);
+        }
+
         $has_stock_qty = isset($_POST['stock']) && $_POST['stock'] !== '';
         if ($has_stock_qty) {
+            // A box saved unchanged keeps the stored quantity: orders may have
+            // lowered it since the window opened.
+            $keep_qty = brikpanel_stock_box_unchanged($v, intval($_POST['stock']), $_POST['stock_original'] ?? null);
             $v->set_manage_stock(true);
-            $v->set_stock_quantity(intval($_POST['stock']));
+            if (!$keep_qty) {
+                $v->set_stock_quantity(intval($_POST['stock']));
+            }
             if (!isset($_POST['stock_status'])) {
                 // Legacy inline edits that only touch quantity still auto-derive.
-                $v->set_stock_status(intval($_POST['stock']) > 0 ? 'instock' : 'outofstock');
+                $v->set_stock_status((int) $v->get_stock_quantity('edit') > 0 ? 'instock' : 'outofstock');
             }
         }
         if (isset($_POST['stock_status'])) {
@@ -5223,17 +5312,27 @@ class Brikpanel_Products_List {
         foreach ($ids as $pid) {
             $product = wc_get_product($pid);
             if (!$product || $product->get_type() !== 'variable') continue;
-            foreach ($product->get_children() as $var_id) {
+            // The product's own attribute names, by WooCommerce's key: a custom
+            // attribute's label is its name ("Размер"), which its encoded key
+            // (`%d1%80…`) cannot be turned back into reliably.
+            $parent_names = [];
+            foreach ($product->get_attributes() as $parent_attr_key => $parent_attr) {
+                if ($parent_attr instanceof WC_Product_Attribute) {
+                    $parent_names[$parent_attr_key] = $parent_attr->get_name();
+                }
+            }
+            foreach (brikpanel_variation_ids($product) as $var_id) {
                 $v = wc_get_product($var_id);
                 if (!$v) continue;
                 foreach ($v->get_attributes() as $key => $val) {
                     if ($val === '') continue;
-                    $tax = str_starts_with($key, 'pa_') ? $key : 'pa_' . $key;
-                    $label = wc_attribute_label($key);
+                    // The key of a non-ASCII taxonomy is its encoded name.
+                    $tax = brikpanel_attr_taxonomy_from_key(str_starts_with($key, 'pa_') ? $key : 'pa_' . $key);
+                    $label = wc_attribute_label($tax !== '' ? $tax : ($parent_names[$key] ?? $key));
                     if (!$label || $label === $key) {
-                        $label = ucfirst(str_replace(['pa_', '-', '_'], ['', ' ', ' '], $key));
+                        $label = ucfirst(str_replace(['pa_', '-', '_'], ['', ' ', ' '], urldecode($key)));
                     }
-                    if (taxonomy_exists($tax)) {
+                    if ($tax !== '') {
                         $term = get_term_by('slug', $val, $tax);
                         $display = $term ? html_entity_decode($term->name, ENT_QUOTES | ENT_HTML5, 'UTF-8') : $val;
                     } else {

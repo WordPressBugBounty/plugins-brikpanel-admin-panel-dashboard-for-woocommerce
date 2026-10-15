@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.34
+Stable tag: 3.3.35
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -497,6 +497,23 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.35 (2026-10-15) =
+* New: **Alt text for product images, also on phones.** Tap an image in the product editor and choose "Alt text"; on a computer, click the image or its ALT button. A variation's images have an "Alt text" field in its details, and the text is saved with the product.
+* New: **Shared stock for variable products.** The Inventory card has a "Shared stock" switch: turn it on and all variations sell from one quantity, as WooCommerce allows. Each variation then shows "Shared", and the stock window and Quick edit in the products list show one "Shared stock" box.
+* Fix: **Shared stock is no longer split up.** Saving the product, the stock window and Quick edit gave every variation its own copy of the shared quantity and switched shared stock off. Google Sheets no longer repeats the shared quantity on every variation row.
+* New: **Generate variation SKUs.** A button in the Inventory card gives every variation without a SKU one made from the product's SKU and its options. New variations no longer get a SKU by themselves; until they have one, they use the product's SKU, as in WooCommerce.
+* Fix: **An open screen no longer puts old stock back.** Orders keep selling while a product is open. Saving, the autosave, the stock window and Quick edit now keep the current stock when you did not change the number, so the store does not oversell.
+* New: **New orders add up in one card.** When 3 or more new orders are waiting, one card shows how many, their total, the newest three and "View orders", and one Dismiss closes them all. One or two orders show as before.
+* Fix: **A store's first order gets its popup.** On a store with no new orders yet, the first order showed no popup. Orders imported with old dates still do not show one.
+* Fix: **The new order popup with CURCY.** The amount no longer shows an extra "Currency: USD" line, and a popup dismissed in another tab no longer comes back.
+* New: **Skip marketplace orders.** Setting: Notifications → "Skip marketplace orders", off by default, shown when BrikMarket is active. Orders BrikMarket brings in from marketplaces such as Trendyol then do not trigger the new order popup or chime, so orders from your own store stand out.
+* Fix: **Attributes with non-Latin names are kept.** Attributes named in Cyrillic or another non-Latin script, such as "Размер", were removed on save, and variations of such global attributes turned to "Any". They now save, and the editor shows their values by name.
+* Fix: **Downloadable variations keep their links.** Editing the shared file list no longer breaks download links customers already have ("Invalid download link"), and download limits and expiry are kept. When only some variations are downloadable or virtual, saving no longer removes their files or shipping.
+* Fix: **Non-Latin attribute terms filter the products list.** A term's product count link on WooCommerce's attribute terms screen now lists only that term's products, and bulk edit with a non-Latin size filter changes only the matching variations.
+* Fix: **Switched-off variations with swatches plugins.** With Variation Swatches for WooCommerce and similar plugins, switched-off variations no longer go missing from the product editor, the products list, bulk actions and copies. Shared cart links offer only variations that can be bought.
+* Fix: **Swatches plugins on the product screen.** Saving no longer shows errors with the RadiusTheme and ThemeHigh swatches plugins, and Swatchly's color picker works on the BrikPanel product screen.
+* Fix: **The menu arrow keeps its size.** The arrow beside menu items with sub-pages no longer grows when a theme styles images in the admin.
+
 = 3.3.34 (2026-10-11) =
 * Tweak: **Tax is taken out of Revenue and Expenses by default.** In the Profit section, Revenue is now shown without tax and Expenses hold only real costs, so Revenue minus Cost of goods minus Expenses is Net profit. Stores that kept tax inside Expenses switch once; Setting: Dashboard → "Tax in the Profit section" changes it back. Net profit is the same with every choice.
 * Fix: **Refunded tax is counted once.** A refund that included tax took that tax off Net profit twice.
@@ -562,9 +579,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **The Segments product filter finds new orders.** It now also finds orders WooCommerce has not yet processed for analytics, and a variable product covers all its variations. "Reset" no longer sends the old status choice.
 * Fix: **Menus moved into More keep their pages.** Tools, Settings or any other menu you move into the sidebar's More menu now opens its pages under it, and the page you are on stays highlighted.
 * Fix: **The dashboard header fits when BrikMarket is active.** The date buttons and "Copy everything" no longer shrink at every width; they stay in one line on wide screens, as they do without BrikMarket.
-
-= 3.3.27 (2026-10-01) =
-* Fix: **Connect buttons explain what went wrong.** When Google Sheets, Google Ads or Meta cannot be connected because the site cannot reach brksoft.com, BrikPanel tries once more by itself, then shows the reason and what to do in a box that stays on screen, with technical details you can send to your host.
-* Fix: **A failed or cancelled Google or Meta sign-in is explained.** The message now appears on the right card in plain words, instead of a raw code like "access_denied" or no message at all.
-* Fix: **Error messages are no longer hidden by Cloudflare or nginx.** Google Sheets and Ad Platforms errors reach the screen as written, so you no longer see "click Sync now again" under Connect or "Unexpected token '<'".
-* Tweak: **The Google Sheets page opens fast before you connect.** It no longer asks brksoft.com for settings it does not need yet. On sites that cannot reach brksoft.com, the page took about 20 seconds to open.

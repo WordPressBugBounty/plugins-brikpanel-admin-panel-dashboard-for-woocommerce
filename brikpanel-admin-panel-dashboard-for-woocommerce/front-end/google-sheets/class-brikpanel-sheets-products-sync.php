@@ -1503,7 +1503,7 @@ class Brikpanel_Sheets_Products_Sync {
 				// Push the parent itself too — gives the merchant a summary
 				// row even though stock lives on variations.
 				$out[] = $product;
-				$children = $product->get_children();
+				$children = brikpanel_variation_ids( $product );
 				foreach ( $children as $child_id ) {
 					$child = wc_get_product( (int) $child_id );
 					if ( $child ) { $out[] = $child; }
@@ -1600,6 +1600,12 @@ class Brikpanel_Sheets_Products_Sync {
 				return null === $cogs ? '' : (float) $cogs;
 			case 'stock':
 				if ( ! $product->get_manage_stock() ) { return ''; }
+				// A variation that sells from the product's shared stock: the
+				// quantity lives on the product's own row. Repeating it on
+				// every size row showed it many times, and pulling those
+				// copies back let an old one overwrite the shared number. A
+				// blank cell is skipped by the pull.
+				if ( 'parent' === $product->get_manage_stock() ) { return ''; }
 				$q = $product->get_stock_quantity();
 				return $q === null ? '' : (int) $q;
 			case 'stock_status':  return (string) $product->get_stock_status();

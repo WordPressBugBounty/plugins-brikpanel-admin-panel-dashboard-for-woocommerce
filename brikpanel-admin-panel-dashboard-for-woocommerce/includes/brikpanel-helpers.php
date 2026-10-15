@@ -3399,3 +3399,251 @@ if ( ! function_exists( 'brikpanel_db_supports_window_functions' ) ) {
 		return $supported;
 	}
 }
+
+if ( ! function_exists( 'brikpanel_stock_box_unchanged' ) ) {
+	/**
+	 * Whether a stock box was saved with the quantity it opened with, so the
+	 * stored quantity has to stay. Orders keep selling while an editing screen
+	 * is open: writing the box's opening number back on save (the product
+	 * editor's 60-second autosave included) raised the stock again and let the
+	 * store oversell. WooCommerce's own editor guards the same way with
+	 * _original_stock. A box the merchant changed is still written.
+	 *
+	 * @param WC_Product $product  Product or variation, as stored before the save.
+	 * @param int        $posted   Quantity the screen sent.
+	 * @param mixed      $original The box's opening value, sent next to it; null
+	 *                             when the screen did not send one (older page).
+	 * @return bool True when the stored quantity must be kept.
+	 */
+	function brikpanel_stock_box_unchanged( $product, $posted, $original ) {
+		if ( null === $original || ! is_scalar( $original ) || ! $product instanceof WC_Product ) {
+			return false;
+		}
+		$original = trim( (string) wp_unslash( $original ) );
+		if ( '' === $original || ! is_numeric( $original ) ) {
+			return false;
+		}
+		// Tracking only now switched on: the number typed is the new stock.
+		if ( true !== $product->get_manage_stock( 'edit' ) ) {
+			return false;
+		}
+		return (int) $original === (int) $posted;
+	}
+}
+
+if ( ! function_exists( 'brikpanel_variation_follows_parent_stock' ) ) {
+	/**
+	 * Whether a variation sells from its product's shared stock (WooCommerce's
+	 * product-level stock): it counts no stock of its own while the product
+	 * does. In 'view' context WooCommerce then reports its manage_stock as
+	 * 'parent' and the product's quantity, backorder rule and SKU as its own.
+	 *
+	 * @param WC_Product $variation Variation.
+	 * @return bool
+	 */
+	function brikpanel_variation_follows_parent_stock( $variation ) {
+		return $variation instanceof WC_Product
+			&& 'parent' === $variation->get_manage_stock();
+	}
+}
+
+if ( ! class_exists( 'Brikpanel_Variation_Ids' ) ) {
+	/**
+	 * The variations of variable products, read from the posts table and kept
+	 * for the rest of the request. A variation saved, switched on or off, or
+	 * deleted drops its product's entry (clean_post_cache), so the next read
+	 * is fresh. See brikpanel_variation_ids().
+	 */
+	final class Brikpanel_Variation_Ids {
+
+		/**
+		 * Product ID => list of [variation ID, post status], in WooCommerce's
+		 * order.
+		 *
+		 * @var array<int, array<int, array{0:int, 1:string}>>
+		 */
+		private static $rows = array();
+
+		/** @var bool */
+		private static $hooked = false;
+
+		/**
+		 * The variations of one product.
+		 *
+		 * @param int $parent_id Product ID.
+		 * @return array<int, array{0:int, 1:string}>
+		 */
+		public static function rows( $parent_id ) {
+			$parent_id = (int) $parent_id;
+			if ( ! array_key_exists( $parent_id, self::$rows ) ) {
+				self::prime( array( $parent_id ) );
+			}
+			return isset( self::$rows[ $parent_id ] ) ? self::$rows[ $parent_id ] : array();
+		}
+
+		/**
+		 * Reads the variations of many products at once: a list page asks for
+		 * every row's product in one query instead of one per row.
+		 *
+		 * @param int[] $parent_ids Product IDs.
+		 */
+		public static function prime( array $parent_ids ) {
+			global $wpdb;
+			$ids = array();
+			foreach ( $parent_ids as $id ) {
+				$id = (int) $id;
+				if ( $id > 0 && ! array_key_exists( $id, self::$rows ) ) {
+					$ids[ $id ] = $id;
+				}
+			}
+			if ( ! $ids ) {
+				return;
+			}
+			if ( ! self::$hooked ) {
+				self::$hooked = true;
+				add_action( 'clean_post_cache', array( __CLASS__, 'forget' ), 10, 2 );
+			}
+			foreach ( array_chunk( array_values( $ids ), 500 ) as $chunk ) {
+				$in    = implode( ',', array_fill( 0, count( $chunk ), '%d' ) );
+				$found = $wpdb->get_results(
+					$wpdb->prepare(
+						// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in holds one %d per ID.
+						"SELECT ID, post_parent, post_status FROM {$wpdb->posts}
+						 WHERE post_type = 'product_variation'
+						   AND post_status IN ('publish', 'private')
+						   AND post_parent IN ($in)
+						 ORDER BY menu_order ASC, ID ASC",
+						$chunk
+					),
+					ARRAY_N
+				);
+				foreach ( $chunk as $id ) {
+					self::$rows[ (int) $id ] = array();
+				}
+				foreach ( (array) $found as $row ) {
+					self::$rows[ (int) $row[1] ][] = array( (int) $row[0], (string) $row[2] );
+				}
+			}
+		}
+
+		/**
+		 * clean_post_cache: a variation or product changed, its list is read
+		 * again on the next call.
+		 *
+		 * @param int     $post_id Post ID.
+		 * @param WP_Post $post    Post.
+		 */
+		public static function forget( $post_id, $post = null ) {
+			if ( ! $post instanceof WP_Post ) {
+				return;
+			}
+			if ( 'product_variation' === $post->post_type ) {
+				unset( self::$rows[ (int) $post->post_parent ] );
+			} elseif ( 'product' === $post->post_type ) {
+				unset( self::$rows[ (int) $post_id ] );
+			}
+		}
+	}
+}
+
+if ( ! function_exists( 'brikpanel_variation_ids' ) ) {
+	/**
+	 * Every variation of a variable product, switched-off (private) ones
+	 * included, in WooCommerce's order (menu order, then ID).
+	 *
+	 * Read from the posts table on purpose, not through WC_Product_Variable::
+	 * get_children(). That list runs through the woocommerce_variable_
+	 * children_args and woocommerce_get_children filters, and variation
+	 * swatches plugins use them to hide switched-off variations everywhere,
+	 * the admin included (Woo Variation Swatches keeps published ones only).
+	 * BrikPanel's screens then lost those variations: the product editor did
+	 * not show them, so they could not be switched back on, a copy of the
+	 * product left them out and a bulk price change skipped them. WooCommerce's
+	 * own variation panel reads them with a query of its own for the same reason.
+	 *
+	 * @param WC_Product|int $product  Variable product or its ID.
+	 * @param string[]       $statuses Statuses to keep: publish and private (all
+	 *                                 WooCommerce counts), or publish alone for
+	 *                                 what can be bought.
+	 * @return int[]
+	 */
+	function brikpanel_variation_ids( $product, $statuses = array( 'publish', 'private' ) ) {
+		$parent_id = $product instanceof WC_Product ? (int) $product->get_id() : (int) $product;
+		if ( $parent_id <= 0 ) {
+			return array();
+		}
+		$keep = array_flip( (array) $statuses );
+		$ids  = array();
+		foreach ( Brikpanel_Variation_Ids::rows( $parent_id ) as $row ) {
+			if ( isset( $keep[ $row[1] ] ) ) {
+				$ids[] = $row[0];
+			}
+		}
+		return $ids;
+	}
+}
+
+if ( ! function_exists( 'brikpanel_prime_variation_ids' ) ) {
+	/**
+	 * Reads the variations of many products in one query, for a list that
+	 * then asks brikpanel_variation_ids() row by row.
+	 *
+	 * @param int[] $product_ids Product IDs (simple ones are harmless).
+	 */
+	function brikpanel_prime_variation_ids( array $product_ids ) {
+		Brikpanel_Variation_Ids::prime( $product_ids );
+	}
+}
+
+if ( ! function_exists( 'brikpanel_variable_stock_summary' ) ) {
+	/**
+	 * Stock of a variable product as one number: the products list badge, the
+	 * Stock column BrikPanel puts on WooCommerce's own product list, and the
+	 * quick stock edits that must not double count read it.
+	 *
+	 * Published variations that count their own stock add their quantity. The
+	 * product's shared stock counts once, however many variations sell from it
+	 * (a product with 40 in shared stock and 7 sizes used to show 280).
+	 * Switched-off (private) variations are not for sale and do not count.
+	 *
+	 * @param WC_Product $product Variable product.
+	 * @return array{qty:int|null, manage_stock:bool, backorders:bool, uses_shared:bool, own_count:int}
+	 *               qty is null when nothing is counted; own_count is how many
+	 *               published variations count their own stock.
+	 */
+	function brikpanel_variable_stock_summary( $product ) {
+		$total        = 0;
+		$manage_stock = false;
+		$backorders   = false;
+		$uses_shared  = false;
+		$own_count    = 0;
+		foreach ( brikpanel_variation_ids( $product, array( 'publish' ) ) as $cid ) {
+			$v = wc_get_product( $cid );
+			if ( ! $v || 'publish' !== $v->get_status() ) {
+				continue;
+			}
+			$managed = $v->get_manage_stock();
+			if ( 'parent' === $managed ) {
+				$uses_shared = true;
+			} elseif ( $managed ) {
+				$manage_stock = true;
+				$own_count++;
+				$total += (int) $v->get_stock_quantity();
+			}
+			if ( $v->backorders_allowed() ) {
+				$backorders = true;
+			}
+		}
+		if ( $uses_shared ) {
+			$manage_stock = true;
+			$total       += (int) $product->get_stock_quantity();
+		}
+		return [
+			'qty'          => $manage_stock ? $total : null,
+			'manage_stock' => $manage_stock,
+			'backorders'   => $backorders,
+			'uses_shared'  => $uses_shared,
+			'own_count'    => $own_count,
+		];
+	}
+}

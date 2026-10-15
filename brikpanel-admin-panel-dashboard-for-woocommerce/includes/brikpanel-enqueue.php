@@ -1053,6 +1053,65 @@ function brikpanel_enqueue_global_assets() {
 add_action('admin_enqueue_scripts', 'brikpanel_enqueue_global_assets');
 
 /**
+ * After the product editor's second admin_enqueue_scripts pass: moves the
+ * libraries WordPress itself ships that this pass brought in (a colour picker,
+ * a date picker, and what they need) to the front of the script queue.
+ *
+ * Plugins enqueue such a library only on the product screen, so on this page
+ * it arrives in the second pass, after a script of the same plugin the first
+ * pass already queued. Printed in that order, the plugin's script runs before
+ * the library exists: Swatchly's admin.js calls wpColorPicker() as it loads
+ * and threw. On WooCommerce's own product page both come from one pass, in the
+ * plugin's own order. A core library depends on no plugin, so loading it
+ * earlier changes nothing else.
+ *
+ * @param WP_Scripts $scripts      The script registry.
+ * @param string[]   $queue_before The queue before the second pass.
+ */
+function brikpanel_front_load_core_scripts($scripts, array $queue_before) {
+    if (!$scripts instanceof WP_Scripts) {
+        return;
+    }
+    $added = array_values(array_diff($scripts->queue, $queue_before));
+    if (!$added) {
+        return;
+    }
+    $includes = includes_url();
+    $admin    = admin_url();
+    $is_core  = static function ($handle) use ($scripts, $includes, $admin) {
+        if (!isset($scripts->registered[$handle])) {
+            return false;
+        }
+        $src = (string) $scripts->registered[$handle]->src;
+        if ('' === $src) {
+            return false;
+        }
+        return 0 === strpos($src, '/wp-includes/') || 0 === strpos($src, '/wp-admin/')
+            || 0 === strpos($src, $includes) || 0 === strpos($src, $admin);
+    };
+    $front = [];
+    $seen  = [];
+    $walk  = static function ($handle) use (&$walk, &$front, &$seen, $scripts, $is_core) {
+        if (isset($seen[$handle]) || !isset($scripts->registered[$handle])) {
+            return;
+        }
+        $seen[$handle] = true;
+        foreach ((array) $scripts->registered[$handle]->deps as $dep) {
+            $walk($dep);
+        }
+        if ($is_core($handle)) {
+            $front[] = $handle;
+        }
+    };
+    foreach ($added as $handle) {
+        $walk($handle);
+    }
+    if ($front) {
+        $scripts->queue = array_values(array_unique(array_merge($front, $scripts->queue)));
+    }
+}
+
+/**
  * Detect whether an admin_enqueue_scripts callback would raise an uncatchable
  * "Cannot redeclare" fatal on a second invocation because its body declares a
  * named (non-anonymous) function in the global/function scope.
@@ -1730,6 +1789,12 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'all_variations'      => __('All products / variations', 'brikpanel'),
                 'select_attr_first'   => __('Select attribute first', 'brikpanel'),
                 'stock_by_variation'  => __('Stock by variation', 'brikpanel'),
+                // WooCommerce's shared stock in the stock window and Quick
+                // edit: the one quantity on top, and the word on each
+                // variation that sells from it.
+                'shared_stock'        => __('Shared stock', 'brikpanel'),
+                'var_shared'          => _x('Shared', 'stock that variations take from the product', 'brikpanel'),
+                'shared_stock_help'   => __('All variations sell from one quantity instead of each having its own.', 'brikpanel'),
                 'price_by_variation'  => __('Price by variation', 'brikpanel'),
                 'price_label'         => __('Price', 'brikpanel'),
                 'sale_label'          => __('Sale', 'brikpanel'),
@@ -2074,10 +2139,18 @@ function brikpanel_enqueue_woo_assets($hook) {
                 add_filter('seopress_can_enqueue_universal_metabox', $bp_seopress_suppressor, PHP_INT_MAX);
             }
 
+            $bp_queue_before = isset($GLOBALS['wp_scripts']) && $GLOBALS['wp_scripts'] instanceof WP_Scripts
+                ? $GLOBALS['wp_scripts']->queue
+                : [];
             try {
                 do_action('admin_enqueue_scripts', 'post.php');
             } catch (\Throwable $aes_fire_e) {
                 error_log('[BrikPanel] admin_enqueue_scripts re-fire halted: ' . $aes_fire_e->getMessage());
+            }
+            // Core libraries this pass brought in load before the plugin
+            // scripts that call them (see the helper).
+            if (isset($GLOBALS['wp_scripts'])) {
+                brikpanel_front_load_core_scripts($GLOBALS['wp_scripts'], $bp_queue_before);
             }
 
             if ($bp_suppress_seopress) {
@@ -2401,6 +2474,14 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'image_none'     => __('No image selected', 'brikpanel'),
                 'image_alt'      => __('Alt text (description)', 'brikpanel'),
                 'image_alt_ph'   => __('Describe the image for SEO and accessibility', 'brikpanel'),
+                // The product's own images (gallery tiles, variation details):
+                // the box that edits an image's alt text, its menu row and the
+                // small button on each tile.
+                'alt_text'       => __('Alt text', 'brikpanel'),
+                'alt_pill'       => _x('ALT', 'short button on a product image that opens its alt text', 'brikpanel'),
+                /* translators: %s: the image's alt text. */
+                'alt_text_is'    => __('Alt text: %s', 'brikpanel'),
+                'alt_locked'     => __('You cannot change this alt text because the image belongs to another user.', 'brikpanel'),
                 'image_align'    => __('Alignment', 'brikpanel'),
                 'align_none'     => __('None', 'brikpanel'),
                 'align_left'     => __('Left', 'brikpanel'),
@@ -2537,6 +2618,19 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'var_track_stock'    => __('Track stock quantity for this variation', 'brikpanel'),
                 'var_unlimited'      => _x('Unlimited', 'stock quantity that is not counted', 'brikpanel'),
                 'var_unlimited_toggle' => __('Unlimited stock (do not count)', 'brikpanel'),
+                // WooCommerce's shared stock: a row that counts nothing of its
+                // own sells from the product's one quantity. The word in its
+                // box and the label of the link beside it.
+                'var_shared'         => _x('Shared', 'stock that variations take from the product', 'brikpanel'),
+                'var_shared_toggle'  => __('Use the shared stock', 'brikpanel'),
+                // The button beside the strip's Stock box, for each meaning.
+                'var_bulk_unlimited' => __('Unlimited stock for every variation', 'brikpanel'),
+                'var_bulk_shared'    => __('Use the shared stock for every variation', 'brikpanel'),
+                // "Generate variation SKUs" in the Inventory card.
+                'need_parent_sku'    => __('Add the product SKU first.', 'brikpanel'),
+                /* translators: %s: number of variations that got a SKU. */
+                'skus_added'         => brikpanel_js_plural(_n_noop('%s variation SKU added', '%s variation SKUs added', 'brikpanel')),
+                'skus_all_set'       => __('Every variation already has a SKU.', 'brikpanel'),
                 // The counted row's rule at 0, same words as the simple
                 // product's Inventory card.
                 'backorders_label'   => __('Allow backorders?', 'brikpanel'),

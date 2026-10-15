@@ -100,6 +100,18 @@ class Brikpanel_Product_Editor {
     private $promoted_axis_map = [];
 
     /**
+     * Every axis key the client posted, mapped to the key the axis was saved
+     * under (WooCommerce's own, brikpanel_attr_key()). Sent back as
+     * `axis_keys` so the editor re-keys rows whose key it could only guess:
+     * a name typed outside ASCII, punctuation that sanitize_title() drops,
+     * a transliteration plugin. Pairs on the client's own key, like
+     * promoted_axis_map.
+     *
+     * @var array<string,string>
+     */
+    private $axis_key_map = [];
+
+    /**
      * The status this save writes, after the publish permission and the
      * schedule rules ('' outside a save). save_variations() reads it: a
      * "publish" from someone who may only send products in for review is
@@ -1036,6 +1048,13 @@ class Brikpanel_Product_Editor {
             // For variable products the parent has no real backorder state,
             // so JS simply hides the parent radio in that case.
             'parent_backorders'    => (string) $data['backorders'],
+            // WooCommerce's shared stock: the variations sell from the
+            // product's one quantity. The variation rows read this, so it is
+            // known even when the Inventory card is switched off in settings.
+            'shared_stock'         => !empty($data['shared_stock']),
+            // The product's own SKU: the grey hint in a variation SKU box
+            // that has none of its own (the variation then uses this one).
+            'parent_sku'           => (string) $data['sku'],
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
         // HEX flags above neutralise any literal `</script>`, `&`, quotes that
         // could otherwise break out of the inline <script> below. The payload
@@ -1762,7 +1781,7 @@ class Brikpanel_Product_Editor {
                      stay as plain product specs (Brand, Material…). A variable
                      product can carry BOTH at once; a simple product treats every
                      attribute as a spec. The card is always visible. -->
-                <div class="brikpanel-pe-card brikpanel-pe-card-wide<?php echo $data['is_variable'] ? ' bpe-variable-on' : ''; ?>" id="bpe-var-card">
+                <div class="brikpanel-pe-card brikpanel-pe-card-wide<?php echo $data['is_variable'] ? ' bpe-variable-on' : ''; ?><?php echo !empty($data['shared_stock']) ? ' bpe-var-shared-on' : ''; ?>" id="bpe-var-card">
 
                     <?php if ($bpe_show_var) : ?>
                     <div class="brikpanel-pe-var-head" id="bpe-var-toggle-row">
@@ -1903,6 +1922,12 @@ class Brikpanel_Product_Editor {
                             $bpe_ph_sale  = _x('Sale', 'short placeholder for the bulk sale price field', 'brikpanel');
                             $bpe_ph_stock = __('Stock', 'brikpanel');
                             $bpe_ph_unlimited = _x('Unlimited', 'stock quantity that is not counted', 'brikpanel');
+                            // With shared stock the pressed button means "every variation
+                            // sells from the product's quantity", and the box says so.
+                            $bpe_ph_shared = _x('Shared', 'stock that variations take from the product', 'brikpanel');
+                            $bpe_bulk_inf_label = !empty($data['shared_stock'])
+                                ? __('Use the shared stock for every variation', 'brikpanel')
+                                : __('Unlimited stock for every variation', 'brikpanel');
                             $bpe_ph_w = static function ($text) {
                                 $len = brikpanel_strlen($text);
                                 return max(4, min(12, (int) $len));
@@ -1926,9 +1951,9 @@ class Brikpanel_Product_Editor {
                                               // variation Unlimited. Pressing it swaps the "Stock"
                                               // placeholder for "Unlimited", so the box is sized for the
                                               // longer of the two. ?>
-                                        <div class="brikpanel-pe-input-group small brikpanel-pe-var-bulk-item brikpanel-pe-var-bulk-stock" style="--bpe-ph:<?php echo (int) max($bpe_ph_w($bpe_ph_stock), $bpe_ph_w($bpe_ph_unlimited)); ?>">
+                                        <div class="brikpanel-pe-input-group small brikpanel-pe-var-bulk-item brikpanel-pe-var-bulk-stock" style="--bpe-ph:<?php echo (int) max($bpe_ph_w($bpe_ph_stock), $bpe_ph_w($bpe_ph_unlimited), $bpe_ph_w($bpe_ph_shared)); ?>">
                                             <input type="number" id="bpe-bulk-stock" min="0" placeholder="<?php echo esc_attr($bpe_ph_stock); ?>" data-placeholder="<?php echo esc_attr($bpe_ph_stock); ?>" aria-label="<?php esc_attr_e('Stock', 'brikpanel'); ?>" title="<?php esc_attr_e('Stock quantity for every variation', 'brikpanel'); ?>">
-                                            <button type="button" class="brikpanel-pe-inf-btn" id="bpe-bulk-stock-inf" aria-pressed="false" aria-label="<?php esc_attr_e('Unlimited stock for every variation', 'brikpanel'); ?>" title="<?php esc_attr_e('Unlimited stock for every variation', 'brikpanel'); ?>"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg></button>
+                                            <button type="button" class="brikpanel-pe-inf-btn" id="bpe-bulk-stock-inf" aria-pressed="false" aria-label="<?php echo esc_attr($bpe_bulk_inf_label); ?>" title="<?php echo esc_attr($bpe_bulk_inf_label); ?>"><svg class="bpe-ico-inf" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></svg><svg class="bpe-ico-link" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
                                         </div>
                                         <select id="bpe-bulk-active" class="brikpanel-pe-select small brikpanel-pe-var-bulk-item" aria-label="<?php esc_attr_e('Active', 'brikpanel'); ?>" title="<?php esc_attr_e('Active state for every variation', 'brikpanel'); ?>">
                                             <option value=""><?php esc_html_e('No change', 'brikpanel'); ?></option>
@@ -2122,41 +2147,70 @@ class Brikpanel_Product_Editor {
                 <?php $section_html['cogs'] = ob_get_clean(); endif; ?>
 
                 <?php if (in_array('inventory', $visible, true)) : ob_start(); ?>
-                <!-- Inventory (hidden when the product has variations — each
-                     variation carries its own stock + SKU) -->
-                <?php $bp_manage = !empty($data['manage_stock']); ?>
-                <div class="brikpanel-pe-card" id="bpe-inventory-card">
+                <!-- Inventory. A simple product tracks its quantity here. A
+                     variable product shows the "Shared stock" switch instead
+                     (WooCommerce's product-level stock the variations sell
+                     from) and its own SKU; each variation keeps its own stock
+                     and SKU in the variation table. -->
+                <?php
+                $bp_manage = !empty($data['manage_stock']);
+                $bp_shared = !empty($data['shared_stock']);
+                // A variable product whose variation rows are switched off in
+                // settings: without the rows on the page, the shared switch
+                // would decide stock for variations nobody can see, so the
+                // card shows the SKU only (the JS keeps it that way).
+                $bp_inv_sku_only = !empty($data['is_variable']) && !in_array('variations', $visible, true);
+                $bp_inv_var_mode = !empty($data['is_variable']) && !$bp_inv_sku_only;
+                $bp_inv_on       = $bp_inv_sku_only ? false : ($bp_inv_var_mode ? $bp_shared : $bp_manage);
+                ?>
+                <div class="brikpanel-pe-card" id="bpe-inventory-card"<?php echo $bp_inv_sku_only ? ' data-bpe-sku-only="1"' : ''; ?>>
                     <!-- Track quantity (manage stock). When on, the merchant
                          enters a quantity and WooCommerce derives the stock
                          status; when off, the status is picked directly. This
                          mirrors WooCommerce's native Inventory tab and avoids
                          the "managed + qty 0 can't be in stock" trap. -->
-                    <div class="brikpanel-pe-toggle-row" id="bpe-manage-stock-row">
+                    <div class="brikpanel-pe-toggle-row" id="bpe-manage-stock-row"<?php echo ($bp_inv_var_mode || $bp_inv_sku_only) ? ' hidden' : ''; ?>>
                         <span class="brikpanel-pe-toggle-label">
-                            <?php esc_html_e('Track quantity', 'brikpanel'); ?>
-                            <small class="brikpanel-pe-toggle-help"><?php esc_html_e('Manage stock at product level. Turn off to simply mark the product in or out of stock.', 'brikpanel'); ?></small>
+                            <span id="bpe-manage-stock-title"><?php esc_html_e('Track quantity', 'brikpanel'); ?></span>
+                            <small class="brikpanel-pe-toggle-help" id="bpe-manage-stock-help"><?php esc_html_e('Manage stock at product level. Turn off to simply mark the product in or out of stock.', 'brikpanel'); ?></small>
                         </span>
                         <label class="brikpanel-pe-switch">
-                            <input type="checkbox" id="bpe-manage-stock" <?php checked($bp_manage); ?>>
+                            <input type="checkbox" id="bpe-manage-stock" aria-labelledby="bpe-manage-stock-title" aria-describedby="bpe-manage-stock-help" <?php checked($bp_manage); ?>>
+                            <span class="brikpanel-pe-slider"></span>
+                        </label>
+                    </div>
+                    <!-- Shared stock (variable products): every variation that
+                         does not count its own stock sells from this one
+                         quantity. A switch of its own, so turning a product
+                         simple and back never mixes it up with "Track quantity". -->
+                    <div class="brikpanel-pe-toggle-row" id="bpe-shared-stock-row"<?php echo $bp_inv_var_mode ? '' : ' hidden'; ?>>
+                        <span class="brikpanel-pe-toggle-label">
+                            <span id="bpe-shared-stock-title"><?php esc_html_e('Shared stock', 'brikpanel'); ?></span>
+                            <small class="brikpanel-pe-toggle-help" id="bpe-shared-stock-help"><?php esc_html_e('All variations sell from one quantity instead of each having its own.', 'brikpanel'); ?></small>
+                        </span>
+                        <label class="brikpanel-pe-switch">
+                            <input type="checkbox" id="bpe-shared-stock" aria-labelledby="bpe-shared-stock-title" aria-describedby="bpe-shared-stock-help" <?php checked($bp_shared); ?>>
                             <span class="brikpanel-pe-slider"></span>
                         </label>
                     </div>
                     <div class="brikpanel-pe-row brikpanel-pe-row-3">
-                        <div class="brikpanel-pe-field" id="bpe-stock-qty-field"<?php echo $bp_manage ? '' : ' style="display:none"'; ?>>
+                        <div class="brikpanel-pe-field" id="bpe-stock-qty-field"<?php echo $bp_inv_on ? '' : ' style="display:none"'; ?>>
                             <label for="bpe-stock"><?php esc_html_e('Stock quantity', 'brikpanel'); ?></label>
-                            <input type="number" id="bpe-stock" value="<?php echo esc_attr($data['stock_quantity']); ?>" min="0" placeholder="0">
+                            <input type="number" id="bpe-stock" value="<?php echo esc_attr($data['stock_quantity']); ?>" data-original="<?php echo esc_attr($data['stock_quantity']); ?>" min="0" placeholder="0">
                         </div>
-                        <div class="brikpanel-pe-field" id="bpe-backorders-field"<?php echo $bp_manage ? '' : ' style="display:none"'; ?>>
+                        <div class="brikpanel-pe-field" id="bpe-backorders-field"<?php echo $bp_inv_on ? '' : ' style="display:none"'; ?>>
                             <label for="bpe-backorders"><?php esc_html_e('Allow backorders?', 'brikpanel'); ?></label>
                             <select id="bpe-backorders" class="brikpanel-pe-select">
                                 <option value="no" <?php selected($data['backorders'], 'no'); ?>><?php esc_html_e('Do not allow', 'brikpanel'); ?></option>
-                                <?php if ($backorder_notify_on) : ?>
+                                <?php // A stored "notify" is offered even with the option off,
+                                      // or the first save would quietly turn it into "Do not allow". ?>
+                                <?php if ($backorder_notify_on || 'notify' === $data['backorders']) : ?>
                                 <option value="notify" <?php selected($data['backorders'], 'notify'); ?>><?php esc_html_e('Allow, but notify customer', 'brikpanel'); ?></option>
                                 <?php endif; ?>
                                 <option value="yes" <?php selected($data['backorders'], 'yes'); ?>><?php esc_html_e('Allow', 'brikpanel'); ?></option>
                             </select>
                         </div>
-                        <div class="brikpanel-pe-field" id="bpe-stock-status-field"<?php echo $bp_manage ? ' style="display:none"' : ''; ?>>
+                        <div class="brikpanel-pe-field" id="bpe-stock-status-field"<?php echo ($bp_inv_on || $bp_inv_var_mode || $bp_inv_sku_only) ? ' style="display:none"' : ''; ?>>
                             <label for="bpe-stock-status"><?php esc_html_e('Stock status', 'brikpanel'); ?></label>
                             <select id="bpe-stock-status" class="brikpanel-pe-select">
                                 <option value="instock" <?php selected($data['stock_status'], 'instock'); ?>><?php esc_html_e('In stock', 'brikpanel'); ?></option>
@@ -2170,6 +2224,11 @@ class Brikpanel_Product_Editor {
                                 <span class="brikpanel-pe-tooltip" data-bp-tip="top" tabindex="0" role="button" aria-expanded="false" aria-label="<?php esc_attr_e('More information', 'brikpanel'); ?>" aria-describedby="bpe-tip-sku">?<span class="brikpanel-pe-tooltip-tip brikpanel-tip" id="bpe-tip-sku" role="tooltip"><?php esc_html_e('Important for marketplace synchronization. Should match your Trendyol/Hepsiburada product code.', 'brikpanel'); ?></span></span>
                             </label>
                             <input type="text" id="bpe-sku" value="<?php echo esc_attr($data['sku']); ?>" placeholder="<?php esc_attr_e('e.g.: TSH-001', 'brikpanel'); ?>">
+                            <?php // Variable products: gives every variation without a SKU of
+                                  // its own one built from this SKU and its options. New
+                                  // variations no longer get one automatically; until then they
+                                  // use the product's SKU, as in WooCommerce. ?>
+                            <button type="button" id="bpe-gen-var-skus" class="brikpanel-btn brikpanel-btn--secondary bpe-gen-var-skus" hidden><?php esc_html_e('Generate variation SKUs', 'brikpanel'); ?></button>
                         </div>
                     </div>
                     <?php if ($backorder_notify_on) :
@@ -6242,9 +6301,11 @@ class Brikpanel_Product_Editor {
         );
         clean_post_cache($product_id);
 
-        // A variable product never manages stock at the parent level here, and
-        // a leftover `_manage_stock = yes` would make sync() keep the parent's
-        // own status instead of deriving it from the (now empty) children.
+        // With every variation gone, product-level stock would make sync()
+        // keep the product's own status instead of deriving it (out of stock)
+        // from the empty list. A product that used shared stock gets it back
+        // with its next save: the editor still holds the "Shared stock"
+        // switch and quantity, and the rows it adds follow them.
         $variable = $product instanceof WC_Product_Variable
             ? $product
             : new WC_Product_Variable($product_id);
@@ -6801,6 +6862,7 @@ class Brikpanel_Product_Editor {
             'stock_status'      => 'instock',
             'backorders'        => 'no',
             'manage_stock'      => false,
+            'shared_stock'      => false,
             'cogs_value'        => '',
             'sale_from'         => '',
             'sale_to'           => '',
@@ -6835,25 +6897,30 @@ class Brikpanel_Product_Editor {
         // the shape of whichever theme or plugin plays them.
         $gallery = [];
         $image_id = $product->get_image_id();
-        // Alt text travels with each image so the SEO analysers can assess the
-        // featured image the way they do on the native editor, where they read
-        // it straight out of the featured-image metabox we do not render.
+        // Alt text travels with each image: the merchant edits it here (it is
+        // the image's own text, saved by save_image_alts()), and the SEO
+        // analysers assess the featured image the way they do on the native
+        // editor, where they read it out of the featured-image metabox we do
+        // not render. `editable`: whether this person may change that image,
+        // the same rule as WordPress's own media window.
         // `url_m`: the medium size, for the phone layout, which draws the
         // first image (the featured one) as a large tile.
         if ($image_id) {
             $gallery[] = [
-                'id'    => (int) $image_id,
-                'url'   => wp_get_attachment_image_url($image_id, 'thumbnail'),
-                'url_m' => wp_get_attachment_image_url($image_id, 'medium'),
-                'alt'   => (string) get_post_meta((int) $image_id, '_wp_attachment_image_alt', true),
+                'id'       => (int) $image_id,
+                'url'      => wp_get_attachment_image_url($image_id, 'thumbnail'),
+                'url_m'    => wp_get_attachment_image_url($image_id, 'medium'),
+                'alt'      => (string) get_post_meta((int) $image_id, '_wp_attachment_image_alt', true),
+                'editable' => current_user_can('edit_post', (int) $image_id),
             ];
         }
         foreach ($product->get_gallery_image_ids() as $gid) {
             $gallery[] = [
-                'id'    => (int) $gid,
-                'url'   => wp_get_attachment_image_url($gid, 'thumbnail'),
-                'url_m' => wp_get_attachment_image_url($gid, 'medium'),
-                'alt'   => (string) get_post_meta((int) $gid, '_wp_attachment_image_alt', true),
+                'id'       => (int) $gid,
+                'url'      => wp_get_attachment_image_url($gid, 'thumbnail'),
+                'url_m'    => wp_get_attachment_image_url($gid, 'medium'),
+                'alt'      => (string) get_post_meta((int) $gid, '_wp_attachment_image_alt', true),
+                'editable' => current_user_can('edit_post', (int) $gid),
             ];
         }
 
@@ -6862,6 +6929,9 @@ class Brikpanel_Product_Editor {
         $non_variation_attributes  = [];
         $variations_data           = [];
         $is_variable               = $product->is_type('variable');
+        // Whether any variation leaves its stock to the product (WooCommerce's
+        // shared, product-level stock). Read below with the variations.
+        $any_follows_parent        = false;
 
         // Build a normalized {name, values, taxonomy, visible} record for any
         // WC_Product_Attribute, resolving taxonomy term slugs/ids to display
@@ -6902,6 +6972,13 @@ class Brikpanel_Product_Editor {
                 'name'     => $display_name,
                 'values'   => $values,
                 'taxonomy' => $taxonomy,
+                // The key WooCommerce stores this attribute under, which is the
+                // key every variation below uses. The editor keys its rows with
+                // it instead of deriving one: its own slug comes out empty for a
+                // name with no Latin letters ("Размер"), which dropped the
+                // attribute on save, and differs from WooCommerce's for a
+                // non-ASCII taxonomy (`pa_вид` is keyed `pa_%d0%b2%d0%b8%d0%b4`).
+                'key'      => brikpanel_attr_key($attr_name),
                 // WooCommerce's own "Visible on the product page" flag: it
                 // decides whether the attribute shows up in the storefront's
                 // Additional information table. The editor used to ignore it
@@ -6937,10 +7014,18 @@ class Brikpanel_Product_Editor {
                 $record = $build_attr_record($attr);
                 $attr_name = $attr->get_name();
                 $is_tax = $attr->is_taxonomy() || (is_string($attr_name) && strpos($attr_name, 'pa_') === 0 && taxonomy_exists($attr_name));
-                // WC keys default_attributes by the taxonomy for global attrs,
-                // or by sanitize_title() of the label for custom ones.
-                $def_key = $is_tax ? $attr_name : sanitize_title($attr_name);
-                $def_raw = isset($default_attributes[$def_key]) ? $default_attributes[$def_key] : '';
+                // WC keys default_attributes by sanitize_title() of the
+                // attribute's name, taxonomy or label alike. Releases up to
+                // 3.3.34 wrote a taxonomy's default under the raw taxonomy name,
+                // which differs for a non-ASCII one, so that spelling is read too.
+                $def_key = $record['key'];
+                if (isset($default_attributes[$def_key])) {
+                    $def_raw = $default_attributes[$def_key];
+                } elseif ($is_tax && isset($default_attributes[$attr_name])) {
+                    $def_raw = $default_attributes[$attr_name];
+                } else {
+                    $def_raw = '';
+                }
                 $def_name = '';
                 if ($def_raw !== '') {
                     if ($is_tax) {
@@ -6954,7 +7039,7 @@ class Brikpanel_Product_Editor {
                 $attributes_data[] = $record;
             }
 
-            foreach ($product->get_children() as $child_id) {
+            foreach (brikpanel_variation_ids($product) as $child_id) {
                 $variation = wc_get_product($child_id);
                 if (!$variation) continue;
 
@@ -6969,10 +7054,14 @@ class Brikpanel_Product_Editor {
                 // rewritten by an importer or ERP reports no attributes at all
                 // while the values are still on disk. The editor showed blank
                 // rows, and saving that emptiness back deleted them for good.
+                // The key of a non-ASCII taxonomy is its encoded name, so the
+                // taxonomy is looked up through brikpanel_attr_taxonomy_from_key();
+                // the editor showed such values as "%d0%ba…" slugs before.
                 $var_attrs = [];
                 foreach ($this->read_variation_attribute_meta($variation->get_id()) as $key => $val) {
-                    if (strpos($key, 'pa_') === 0 && $val !== '' && taxonomy_exists($key)) {
-                        $term = get_term_by('slug', $val, $key);
+                    $val_tax = $val !== '' ? brikpanel_attr_taxonomy_from_key($key) : '';
+                    if ($val_tax !== '') {
+                        $term = get_term_by('slug', $val, $val_tax);
                         $var_attrs[$key] = $term ? brikpanel_term_ref($term->name) : $val;
                     } else {
                         $var_attrs[$key] = $val;
@@ -6986,12 +7075,16 @@ class Brikpanel_Product_Editor {
                 // clearing a variation image (own id -> 0) would silently show the parent
                 // image again on reload, so the "Remove image" control looked like it
                 // never saved. Same reasoning as the shipping-class read below.
+                // Each image carries its alt text and whether this person may
+                // change it, as the product's own images do (see $gallery).
                 $var_images = [];
                 $var_image_id = $variation->get_image_id('edit');
                 if ($var_image_id) {
                     $var_images[] = [
-                        'id'  => (int) $var_image_id,
-                        'url' => wp_get_attachment_image_url($var_image_id, 'thumbnail'),
+                        'id'       => (int) $var_image_id,
+                        'url'      => wp_get_attachment_image_url($var_image_id, 'thumbnail'),
+                        'alt'      => (string) get_post_meta((int) $var_image_id, '_wp_attachment_image_alt', true),
+                        'editable' => current_user_can('edit_post', (int) $var_image_id),
                     ];
                 }
                 if (get_option('brikpanel_variation_gallery_enabled', 'yes') === 'yes') {
@@ -7001,8 +7094,10 @@ class Brikpanel_Product_Editor {
                             $gid = (int) $gid;
                             if ($gid) {
                                 $var_images[] = [
-                                    'id'  => $gid,
-                                    'url' => wp_get_attachment_image_url($gid, 'thumbnail'),
+                                    'id'       => $gid,
+                                    'url'      => wp_get_attachment_image_url($gid, 'thumbnail'),
+                                    'alt'      => (string) get_post_meta($gid, '_wp_attachment_image_alt', true),
+                                    'editable' => current_user_can('edit_post', $gid),
                                 ];
                             }
                         }
@@ -7026,6 +7121,22 @@ class Brikpanel_Product_Editor {
                     }
                 }
 
+                // Stock, backorders and SKU are read in 'edit' context, the
+                // variation's OWN values. In 'view' context a variation that
+                // leaves its stock to the product (WooCommerce's shared,
+                // product-level stock) reports get_manage_stock() === 'parent'
+                // plus the product's quantity, backorder rule and SKU. The
+                // editor took those for the variation's own, showed the shared
+                // 40 in every row and saved it back into each of them (7 × 40),
+                // and posted the product's SKU into every row, which WooCommerce
+                // rejects as a duplicate on each save. Whether such a row counts
+                // nothing (Unlimited) or follows the shared stock is decided by
+                // the product (shared_stock below), exactly as in WooCommerce.
+                $var_manage = (true === $variation->get_manage_stock('edit'));
+                if (!$var_manage) {
+                    $any_follows_parent = true;
+                }
+
                 $variations_data[] = [
                     'id'             => $variation->get_id(),
                     // WC stores the "Active/Enabled" state as the variation's
@@ -7038,12 +7149,15 @@ class Brikpanel_Product_Editor {
                     'attributes'     => $var_attrs,
                     'regular_price'  => $variation->get_regular_price(),
                     'sale_price'     => $variation->get_sale_price(),
-                    'stock_quantity' => $variation->get_stock_quantity(),
-                    // Per-variation stock management flag. Drives the row's
-                    // "Track" checkbox; when off the variation uses a direct
-                    // in/out/backorder status instead of a tracked quantity.
-                    'manage_stock'   => (bool) $variation->get_manage_stock(),
-                    'sku'            => $variation->get_sku() ?? '',
+                    // Only a counted row has a quantity of its own. A row that
+                    // follows the product keeps an old _stock value WooCommerce
+                    // never clears; sending it would bring that stale number
+                    // back the moment the row is given its own count again.
+                    'stock_quantity' => $var_manage ? $variation->get_stock_quantity('edit') : null,
+                    // Per-variation stock management flag: true only when the
+                    // variation counts its own stock.
+                    'manage_stock'   => $var_manage,
+                    'sku'            => (string) $variation->get_sku('edit'),
                     'global_unique_id' => brikpanel_wc_gtin($variation),
                     'tax_class'      => (string) $variation->get_tax_class('edit'),
                     'shipping_class' => $var_ship_class,
@@ -7053,7 +7167,7 @@ class Brikpanel_Product_Editor {
                     // WC stores three backorder values: no / yes / notify.
                     // Pass the raw value so the editor can roundtrip it
                     // when the "Notify customer" sub-control is enabled.
-                    'backorders'     => $variation->get_backorders() ?: 'no',
+                    'backorders'     => $variation->get_backorders('edit') ?: 'no',
                     'sale_from'      => $variation->get_date_on_sale_from() ? $variation->get_date_on_sale_from()->date('Y-m-d') : '',
                     'sale_to'        => $variation->get_date_on_sale_to()   ? $variation->get_date_on_sale_to()->date('Y-m-d')   : '',
                     // Per-variation vendor override. 0 means "inherit from
@@ -7064,10 +7178,14 @@ class Brikpanel_Product_Editor {
             }
         }
 
-        // For variable products, derive price/stock from variations
+        // For variable products, derive the price from the variations. The
+        // stock box shows the product's OWN quantity: on a variable product
+        // that is the shared stock its variations sell from. It used to fall
+        // back to the sum of the variations' stock, which only made sense while
+        // the Inventory card stayed hidden for variable products.
         $regular_price = $product->get_regular_price();
         $sale_price    = $product->get_sale_price();
-        $stock_qty     = $product->get_stock_quantity();
+        $stock_qty     = $product->get_stock_quantity('edit');
 
         if ($is_variable && $regular_price === '') {
             $prices = $product->get_variation_prices(true);
@@ -7075,16 +7193,16 @@ class Brikpanel_Product_Editor {
                 $regular_price = min($prices['regular_price']);
             }
         }
-        if ($is_variable && $stock_qty === null) {
-            $total_stock = 0;
-            foreach ($product->get_children() as $child_id) {
-                $child = wc_get_product($child_id);
-                if ($child && $child->get_manage_stock()) {
-                    $total_stock += (int) $child->get_stock_quantity();
-                }
-            }
-            $stock_qty = $total_stock;
-        }
+
+        // WooCommerce's shared stock: the product counts stock and its
+        // variations sell from that one quantity. On when the product tracks
+        // stock and either has no variations yet or at least one of them
+        // (published or switched off) leaves its stock to the product. A
+        // product that tracks stock while every variation counts its own is a
+        // leftover (the 3.2.17 trap) and shows as off; saving clears it.
+        $shared_stock = $is_variable
+            && true === $product->get_manage_stock('edit')
+            && (empty($variations_data) || $any_follows_parent);
 
         // Virtual / Digital switches and the downloadable files. A variable
         // product keeps them on its variations: WooCommerce never counts the
@@ -7095,7 +7213,7 @@ class Brikpanel_Product_Editor {
         // the shared list here every save of a downloadable variable product
         // sent an empty list back and deleted all of its files.
         $variation_flags = $is_variable
-            ? $this->variation_flags_summary(array_map('intval', (array) $product->get_children()))
+            ? $this->variation_flags_summary(brikpanel_variation_ids($product))
             : null;
         if ($is_variable) {
             $file_objects = ($variation_flags['downloadable'] && null !== $variation_flags['downloads'])
@@ -7336,7 +7454,7 @@ class Brikpanel_Product_Editor {
             // conversion deletes them, and that warning has to count the real
             // children or it would silently say "0" on exactly the products that
             // stand to lose the most.
-            'variation_count'   => count($product->get_children()),
+            'variation_count'   => count(brikpanel_variation_ids($product)),
             'product_type'      => (string) $product->get_type(),
             'attributes'        => $attributes_data,
             'non_variation_attributes' => $non_variation_attributes,
@@ -7373,7 +7491,7 @@ class Brikpanel_Product_Editor {
             // product before adding its variations would turn the switch off.
             'is_downloadable'   => $is_variable ? $variation_flags['downloadable'] : $product->is_downloadable(),
             'is_virtual'        => $is_variable
-                ? ($product->get_children() ? $variation_flags['virtual'] : 'yes' === get_post_meta($pid, '_virtual', true))
+                ? (brikpanel_variation_ids($product) ? $variation_flags['virtual'] : 'yes' === get_post_meta($pid, '_virtual', true))
                 : $product->is_virtual(),
             'downloads'         => $downloads,
             'gallery'           => $gallery,
@@ -7384,9 +7502,13 @@ class Brikpanel_Product_Editor {
             // merchant picks an in/out/backorder status directly instead of
             // a quantity (mirrors WooCommerce's native Inventory tab).
             'manage_stock'      => (bool) $product->get_manage_stock(),
+            // Variable products only: the variations sell from the product's
+            // one quantity (see $shared_stock above). Drives the "Shared stock"
+            // switch and the "Shared" word in the variation rows.
+            'shared_stock'      => $shared_stock,
             // Same as variations — keep the raw `no/yes/notify` so the
             // editor's optional "Notify customer" radio survives a save.
-            'backorders'        => $product->get_backorders() ?: 'no',
+            'backorders'        => $product->get_backorders('edit') ?: 'no',
             'cogs_value'        => brikpanel_product_cogs_raw($product->get_id()),
             'sale_from'         => $product->get_date_on_sale_from() ? $product->get_date_on_sale_from()->date('Y-m-d') : '',
             'sale_to'           => $product->get_date_on_sale_to()   ? $product->get_date_on_sale_to()->date('Y-m-d')   : '',
@@ -7471,6 +7593,90 @@ class Brikpanel_Product_Editor {
             'downloadable' => $all_downloadable,
             'downloads'    => $all_downloadable ? $shared : null,
         ];
+    }
+
+    /**
+     * A downloadable file's identity for comparing lists: the URL the way the
+     * save cleans a posted one (esc_url_raw()), or the stored text when it is
+     * not a URL (a server path or a storage shortcode).
+     *
+     * @param string $file Stored or posted file.
+     * @return string
+     */
+    private function download_file_key($file) {
+        $file = trim((string) $file);
+        $url  = esc_url_raw($file);
+        return $url !== '' ? $url : $file;
+    }
+
+    /**
+     * Whether a posted file list is the list the editor showed: same files,
+     * same names, any order. Names are compared the way the save cleans a
+     * posted one, so a list sent back untouched reads as unchanged.
+     *
+     * @param WC_Product_Download[] $posted Posted list.
+     * @param WC_Product_Download[] $shown  List the editor opened with.
+     * @return bool
+     */
+    private function same_download_files(array $posted, array $shown) {
+        $signature = function (array $downloads) {
+            $out = [];
+            foreach ($downloads as $download) {
+                if ($download instanceof WC_Product_Download) {
+                    $out[] = $this->download_file_key($download->get_file()) . "\0" . sanitize_text_field((string) $download->get_name());
+                }
+            }
+            sort($out);
+            return $out;
+        };
+        return $signature($posted) === $signature($shown);
+    }
+
+    /**
+     * One variation's download objects from the editor's file list.
+     *
+     * A file the variation already has keeps the variation's own object, so
+     * its download ID stays: WooCommerce gives each variation its own IDs and
+     * a buyer's download link points at that ID. A file it lacks is a copy
+     * with a new ID, the way WooCommerce's own editor adds one. With $merge
+     * every file the variation has stays and only missing ones are added.
+     * Always copies: one object shared by several variations is not safe.
+     *
+     * @param WC_Product_Download[] $listed Files from the editor's list.
+     * @param mixed                 $own    The variation's current downloads.
+     * @param bool                  $merge  Keep the variation's own files too.
+     * @return WC_Product_Download[]
+     */
+    private function download_copies(array $listed, $own, $merge) {
+        $own_by_file = [];
+        $out = [];
+        foreach ((is_array($own) ? $own : []) as $own_download) {
+            if (!$own_download instanceof WC_Product_Download) {
+                continue;
+            }
+            $own_by_file[$this->download_file_key($own_download->get_file())] = $own_download;
+            if ($merge) {
+                $out[] = clone $own_download;
+            }
+        }
+        foreach ($listed as $download) {
+            if (!$download instanceof WC_Product_Download) {
+                continue;
+            }
+            $file_key = $this->download_file_key($download->get_file());
+            if (isset($own_by_file[$file_key])) {
+                if ($merge) {
+                    continue;
+                }
+                $copy = clone $own_by_file[$file_key];
+                $copy->set_name($download->get_name());
+            } else {
+                $copy = clone $download;
+                $copy->set_id(wp_generate_uuid4());
+            }
+            $out[] = $copy;
+        }
+        return $out;
     }
 
     /**
@@ -7653,6 +7859,153 @@ class Brikpanel_Product_Editor {
         }
     }
 
+    // Alt texts the editor sends with a save (save_image_alts()): the most one
+    // save carries. The editor holds back anything past these for the next save.
+    const ALT_MAX_BYTES   = 65536;
+    const ALT_MAX_ENTRIES = 500;
+
+    /**
+     * Every image the product shows: the featured image, the gallery and, on a
+     * variable product, each variation's image plus its extra images when
+     * variation galleries are on (as get_product_data() reads them). Read in
+     * 'edit' context after the save, so it is the set now stored.
+     *
+     * @param WC_Product $product Product.
+     * @return array<int, true> Attachment ids as keys.
+     */
+    private function product_image_ids($product) {
+        $ids      = [];
+        $featured = (int) $product->get_image_id('edit');
+        if ($featured) {
+            $ids[$featured] = true;
+        }
+        foreach ((array) $product->get_gallery_image_ids('edit') as $gid) {
+            $gid = (int) $gid;
+            if ($gid) {
+                $ids[$gid] = true;
+            }
+        }
+        if ($product->is_type('variable')) {
+            $children = brikpanel_variation_ids($product);
+            if ($children) {
+                update_meta_cache('post', $children);
+                $galleries = get_option('brikpanel_variation_gallery_enabled', 'yes') === 'yes';
+                foreach ($children as $child) {
+                    $thumb = (int) get_post_meta($child, '_thumbnail_id', true);
+                    if ($thumb) {
+                        $ids[$thumb] = true;
+                    }
+                    $extra = $galleries ? get_post_meta($child, '_brikpanel_variation_gallery', true) : [];
+                    foreach (is_array($extra) ? $extra : [] as $gid) {
+                        $gid = (int) $gid;
+                        if ($gid) {
+                            $ids[$gid] = true;
+                        }
+                    }
+                }
+            }
+        }
+        return $ids;
+    }
+
+    /**
+     * Writes the alt texts the editor sent (`bpe_image_alts`, a JSON object of
+     * attachment id => text) onto those images. WordPress keeps one alt text
+     * per image, so this is the image's own text wherever it is shown. The
+     * rules are those of WordPress's media window (wp_ajax_save_attachment()):
+     * the person must be allowed to edit that image, and the text is cleaned
+     * with wp_strip_all_tags(). Images the saved product does not show are left
+     * alone, since the editor only edits its own. Never through
+     * wp_update_post(): this request's $_POST carries the product's fields,
+     * and save_post handlers would write them onto the image.
+     *
+     * @param int $product_id Saved product.
+     * @return array<int, string>|null Stored text of every sent image that is
+     *                                 an attachment; null when none was sent.
+     */
+    private function save_image_alts($product_id) {
+        if (!isset($_POST['bpe_image_alts'])) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- ajax_save_product() verified the nonce.
+            return null;
+        }
+        $out = [];
+        $raw = $_POST['bpe_image_alts']; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON, every value is checked below.
+        if (!is_string($raw)) {
+            return $out;
+        }
+        $json = wp_unslash($raw);
+        if (strlen($json) > self::ALT_MAX_BYTES) {
+            $this->save_warnings[] = self::alt_reason_message('too_large');
+            return $out;
+        }
+        // An object of id => text and nothing deeper: a list or a nested value
+        // is not something the editor sends.
+        $changes = json_decode($json, false, 2);
+        if (!is_object($changes)) {
+            return $out;
+        }
+        $changes = get_object_vars($changes);
+        if (count($changes) > self::ALT_MAX_ENTRIES) {
+            $this->save_warnings[] = self::alt_reason_message('too_large');
+            return $out;
+        }
+        // Keys are image ids written plainly: "-12" or "12abc" is not 12.
+        $wanted = [];
+        foreach ($changes as $key => $text) {
+            $key = (string) $key;
+            if (is_string($text) && preg_match('/^[1-9][0-9]{0,18}$/', $key)) {
+                $wanted[(int) $key] = $text;
+            }
+        }
+        if (!$wanted) {
+            return $out;
+        }
+        _prime_post_caches(array_keys($wanted), false, true);
+        $product = wc_get_product($product_id);
+        $own     = $product ? $this->product_image_ids($product) : [];
+        $reasons = [];
+        foreach ($wanted as $id => $text) {
+            $post = get_post($id);
+            if (!$post || $post->post_type !== 'attachment') {
+                continue;
+            }
+            $stored = (string) get_post_meta($id, '_wp_attachment_image_alt', true);
+            if (!isset($own[$id]) || !wp_attachment_is_image($post)) {
+                $reasons['not_in_product'] = true;
+            } elseif (!current_user_can('edit_post', $id)) {
+                $reasons['locked'] = true;
+            } else {
+                $alt = wp_strip_all_tags($text, true);
+                if ($alt !== $stored) {
+                    update_post_meta($id, '_wp_attachment_image_alt', wp_slash($alt));
+                    $stored = (string) get_post_meta($id, '_wp_attachment_image_alt', true);
+                }
+            }
+            $out[$id] = $stored;
+        }
+        foreach (array_keys($reasons) as $code) {
+            $this->save_warnings[] = self::alt_reason_message($code);
+        }
+        return $out;
+    }
+
+    /**
+     * A save warning for alt text that was not stored.
+     *
+     * @param string $code not_in_product, locked, too_large or failed.
+     * @return string
+     */
+    private static function alt_reason_message($code) {
+        switch ($code) {
+            case 'not_in_product':
+                return __('An alt text was not saved because its image is no longer part of this product.', 'brikpanel');
+            case 'locked':
+                return __('An alt text was not saved because you are not allowed to edit that image.', 'brikpanel');
+            case 'too_large':
+                return __('Alt text changes were not saved because too many were sent at once. Save again with fewer changes.', 'brikpanel');
+        }
+        return __('The product was saved, but its alt text changes could not be stored. Try saving again.', 'brikpanel');
+    }
+
     public function ajax_save_product() {
         check_ajax_referer('brikpanel_product_editor_nonce', 'security');
 
@@ -7663,6 +8016,7 @@ class Brikpanel_Product_Editor {
         $this->promoted_attributes = [];
         $this->promoted_this_save  = 0;
         $this->promoted_axis_map   = [];
+        $this->axis_key_map        = [];
         $this->save_status         = '';
         $this->save_parent_virtual = null;
 
@@ -8041,7 +8395,7 @@ class Brikpanel_Product_Editor {
                 // a type the merchant picked by hand, and overriding that would
                 // make the control silently not work — a worse bug than the one
                 // being fixed. An explicit choice always wins.
-                $existing_children = (array) $existing->get_children();
+                $existing_children = brikpanel_variation_ids($existing);
                 $variations_loaded = array_key_exists('variations_loaded', $_POST)
                     ? (int) $_POST['variations_loaded']
                     : -1;
@@ -8165,6 +8519,11 @@ class Brikpanel_Product_Editor {
         // Stock. The "Track quantity" toggle is the explicit source of truth
         // for manage_stock — we no longer infer it from whether a quantity
         // was typed. WC supports three backorder values: no / yes / notify.
+        //
+        // Every key is written only when the editor sent it: with the
+        // Inventory card switched off in settings none of its controls are on
+        // the page, and an absent key used to read as "tracking off, in stock,
+        // no SKU" (field test B6, the same rule as GTIN and COGS below).
         $manage_stock = !empty($_POST['manage_stock']);
         $stock = isset($_POST['stock_quantity']) && $_POST['stock_quantity'] !== '' ? intval($_POST['stock_quantity']) : 0;
         $stock_status = sanitize_key($_POST['stock_status'] ?? 'instock');
@@ -8172,8 +8531,40 @@ class Brikpanel_Product_Editor {
             $stock_status = 'instock';
         }
         $backorders_raw = sanitize_key($_POST['backorders'] ?? '');
-        if (!$is_variable) {
-            if ($manage_stock) {
+        // Orders keep selling while the editor is open, and the editor (its
+        // 60-second autosave too) used to write back the quantity the page
+        // opened with, raising the stock again. The box's opening value comes
+        // along: an unchanged box leaves the stored quantity alone, as
+        // WooCommerce's own editor does with _original_stock.
+        $keep_stored_qty = brikpanel_stock_box_unchanged($product, $stock, $_POST['stock_quantity_original'] ?? null);
+        if ($is_variable) {
+            // WooCommerce's shared stock: the product counts one quantity
+            // that every variation without a count of its own sells from.
+            // Sent only while the "Shared stock" switch is on the page with
+            // the variation rows; otherwise the product's setting stays as it
+            // is (save_variations() still clears a leftover nobody follows).
+            if (isset($_POST['shared_stock'])) {
+                if (!empty($_POST['shared_stock'])) {
+                    $product->set_manage_stock(true);
+                    if (!$keep_stored_qty) {
+                        $product->set_stock_quantity($stock);
+                    }
+                    $product->set_backorders(in_array($backorders_raw, ['yes', 'notify'], true) ? $backorders_raw : 'no');
+                } else {
+                    $product->set_manage_stock(false);
+                }
+            }
+        } elseif (isset($_POST['manage_stock']) || isset($_POST['shared_stock'])) {
+            // A product with the variation switch on but no variations yet
+            // saves as simple; the switch on the page was "Shared stock", and
+            // no status box was on the page to read.
+            $from_shared_switch = !isset($_POST['manage_stock']);
+            if ($from_shared_switch) {
+                $manage_stock = !empty($_POST['shared_stock']);
+            }
+            if (!$manage_stock && $from_shared_switch) {
+                $product->set_manage_stock(false);
+            } elseif ($manage_stock) {
                 // Tracking on: merchant sets quantity + backorders, WC derives
                 // the stock status from them (qty>0 → in stock, qty<=0 with
                 // backorders → on backorder, else out of stock). We do NOT
@@ -8181,7 +8572,9 @@ class Brikpanel_Product_Editor {
                 // "managed + qty 0 stuck out of stock" trap.
                 $backorders_value = in_array($backorders_raw, ['yes', 'notify'], true) ? $backorders_raw : 'no';
                 $product->set_manage_stock(true);
-                $product->set_stock_quantity($stock);
+                if (!$keep_stored_qty) {
+                    $product->set_stock_quantity($stock);
+                }
                 $product->set_backorders($backorders_value);
             } else {
                 // Tracking off: status is chosen directly. Backorders only
@@ -8195,22 +8588,24 @@ class Brikpanel_Product_Editor {
             }
         }
 
-        // SKU
-        $sku = sanitize_text_field($_POST['sku'] ?? '');
-        try {
-            $product->set_sku($sku);
-        } catch (\Exception $e) {
-            // WooCommerce throws WC_Data_Exception here when the SKU is a
-            // duplicate (or otherwise invalid). The rest of the product still
-            // saves fine, so we keep going — but silently swallowing this left
-            // the merchant with a phantom "Product saved!" and no SKU, unable
-            // to tell why. Surface the reason so they can pick a unique value.
-            if ($sku !== '') {
-                $this->save_warnings[] = sprintf(
-                    /* translators: %s: the SKU the merchant tried to save */
-                    __('The SKU "%s" was not saved because it is already used by another product. SKUs must be unique.', 'brikpanel'),
-                    $sku
-                );
+        // SKU. Only when the box was on the page (see the stock note above).
+        if (isset($_POST['sku']) && is_scalar($_POST['sku'])) {
+            $sku = sanitize_text_field(wp_unslash($_POST['sku']));
+            try {
+                $product->set_sku($sku);
+            } catch (\Exception $e) {
+                // WooCommerce throws WC_Data_Exception here when the SKU is a
+                // duplicate (or otherwise invalid). The rest of the product still
+                // saves fine, so we keep going — but silently swallowing this left
+                // the merchant with a phantom "Product saved!" and no SKU, unable
+                // to tell why. Surface the reason so they can pick a unique value.
+                if ($sku !== '') {
+                    $this->save_warnings[] = sprintf(
+                        /* translators: %s: the SKU the merchant tried to save */
+                        __('The SKU "%s" was not saved because it is already used by another product. SKUs must be unique.', 'brikpanel'),
+                        $sku
+                    );
+                }
             }
         }
 
@@ -9032,6 +9427,16 @@ class Brikpanel_Product_Editor {
             }
         }
 
+        // Alt texts go in at the same point and by the same rule: once the
+        // images and variations are stored, only for images the saved product
+        // has, and a problem is a warning that never fails the product save.
+        $alt_state = null;
+        try {
+            $alt_state = $this->save_image_alts($saved_id);
+        } catch (\Throwable $e) {
+            $this->save_warnings[] = self::alt_reason_message('failed');
+        }
+
         /**
          * Fires after the BrikPanel editor has fully persisted a product,
          * including its variations. Hook in here to sync to external systems,
@@ -9058,7 +9463,7 @@ class Brikpanel_Product_Editor {
             // number came from the page load, so without this it goes stale the
             // moment anything changes it — after "Clear all" the warning would
             // still promise to destroy variations that are already gone.
-            'variation_count' => $final_product ? count($final_product->get_children()) : 0,
+            'variation_count' => $final_product ? count(brikpanel_variation_ids($final_product)) : 0,
             // The status as saved, which can differ from the one asked for:
             // "pending" for someone who may not publish, "future" for a date
             // ahead. The editor's live flag, button and status control follow
@@ -9070,6 +9475,12 @@ class Brikpanel_Product_Editor {
         // play rather than what it sent.
         if ($video_state !== null) {
             $response['videos'] = $video_state;
+        }
+
+        // The alt text now stored for every image the editor sent one for,
+        // cleaned the way WordPress cleans it, so the editor shows that.
+        if ($alt_state !== null) {
+            $response['image_alts'] = (object) $alt_state;
         }
 
         // Non-fatal issues (duplicate SKU/GTIN…): the product saved, but some
@@ -9106,6 +9517,13 @@ class Brikpanel_Product_Editor {
             if (!empty($this->promoted_axis_map)) {
                 $response['promoted_axes'] = $this->promoted_axis_map;
             }
+            // Which key every posted axis was saved under. Most are unchanged;
+            // the editor re-keys the ones that differ, or a name typed outside
+            // ASCII (or with punctuation sanitize_title() drops) keeps a key
+            // the returned variations no longer use.
+            if (!empty($this->axis_key_map)) {
+                $response['axis_keys'] = $this->axis_key_map;
+            }
             // Only when a taxonomy was actually created: the client needs the
             // refreshed list so the new attribute's term typeahead is populated.
             // Skipped otherwise, since rebuilding it costs a get_terms() per
@@ -9119,6 +9537,19 @@ class Brikpanel_Product_Editor {
             // Same extras filter as the initial render so integrations surface
             // their per-variation fields on freshly generated/saved rows too.
             $response['variation_extras'] = apply_filters('brikpanel_pe_variation_extras', $fresh_extras, $final_product, $variation_ids, 'saved');
+            // Whether the variations now sell from the product's shared stock:
+            // the rows read it when the Inventory card is not on the page.
+            $response['shared_stock'] = !empty($fresh['shared_stock']);
+        }
+
+        // The stored stock after the save, for the Inventory card: an
+        // unchanged box kept the stored quantity (orders may have lowered it
+        // since the page opened), so the box has to show that number now.
+        if ($final_product) {
+            $response['stock'] = [
+                'manage' => true === $final_product->get_manage_stock('edit'),
+                'qty'    => $final_product->get_stock_quantity('edit'),
+            ];
         }
 
         // Blocksy's swatches editor works from the hidden attribute rows
@@ -9385,10 +9816,12 @@ class Brikpanel_Product_Editor {
 
             if (empty($name) || empty($values)) continue;
 
-            // De-dupe by lowercase name so the same attribute can't sneak
-            // through twice from a malformed payload.
-            $key = strtolower($taxonomy ?: $name);
-            if (isset($seen_names[$key])) continue;
+            // De-dupe by WooCommerce's key so the same attribute can't sneak
+            // through twice from a malformed payload. strtolower() missed
+            // "Цвет" / "цвет", which WooCommerce stores under one key, so the
+            // later row silently replaced the earlier one.
+            $key = brikpanel_attr_key($taxonomy ?: $name);
+            if ($key === '' || isset($seen_names[$key])) continue;
             $seen_names[$key] = true;
 
             $attribute = new WC_Product_Attribute();
@@ -9461,6 +9894,9 @@ class Brikpanel_Product_Editor {
                 'name'     => $attr->attribute_label ?: $attr->attribute_name,
                 'slug'     => $attr->attribute_name,
                 'taxonomy' => $taxonomy,
+                // WooCommerce's key for the attribute (see $build_attr_record):
+                // a row picked from this list is keyed with it.
+                'key'      => brikpanel_attr_key($taxonomy),
                 'terms'    => $term_names,
                 // Only "Custom ordering" (menu_order) makes the storefront honour
                 // the per-term order we write on save. An attribute someone set
@@ -9802,6 +10238,14 @@ class Brikpanel_Product_Editor {
      * update_attributes() deletes every `attribute_*` row it is not given —
      * turning a repairable import glitch into permanent loss.
      *
+     * Keys come back in WooCommerce's own form (brikpanel_attr_key()). Rows
+     * stored under another spelling of the same axis, such as the raw
+     * `attribute_pa_вид` that releases up to 3.3.34 wrote for a non-ASCII
+     * taxonomy (WooCommerce reads `attribute_pa_%d0%b2…` and never saw them),
+     * are folded into it; when both spellings exist the one WooCommerce reads
+     * wins. The next save that writes the variation's attributes stores the
+     * value under WooCommerce's key and drops the other row.
+     *
      * @param int $variation_id Variation post ID.
      * @return array<string,string> Axis key (no `attribute_` prefix) => stored value.
      */
@@ -9811,18 +10255,28 @@ class Brikpanel_Product_Editor {
             return [];
         }
         $stored = [];
+        $other_spelling = [];
         foreach ((array) get_post_meta($variation_id) as $meta_key => $meta_values) {
             if (strpos($meta_key, 'attribute_') !== 0) {
                 continue;
             }
-            $axis_key = substr($meta_key, strlen('attribute_'));
-            if ($axis_key === '' || $axis_key === false) {
+            $suffix = substr($meta_key, strlen('attribute_'));
+            if ($suffix === '' || $suffix === false) {
+                continue;
+            }
+            $axis_key = brikpanel_attr_key($suffix);
+            if ($axis_key === '') {
                 continue;
             }
             $value = is_array($meta_values) ? reset($meta_values) : $meta_values;
-            $stored[$axis_key] = is_scalar($value) ? (string) $value : '';
+            $value = is_scalar($value) ? (string) $value : '';
+            if ($axis_key === $suffix) {
+                $stored[$axis_key] = $value;
+            } elseif (!isset($other_spelling[$axis_key])) {
+                $other_spelling[$axis_key] = $value;
+            }
         }
-        return $stored;
+        return $stored + $other_spelling;
     }
 
     /**
@@ -9975,21 +10429,29 @@ class Brikpanel_Product_Editor {
         // re-edited from the editor stay linked to the right attribute.
         $slug_remap = [];
 
+        // Each posted attribute row's spellings of its axis key (the client's
+        // key verbatim and cleaned, the name for a typed attribute) mapped to
+        // the key the axis is saved under. Feeds $axis_alias below.
+        $posted_axis_aliases = [];
+
         // The product's own option lists and its children's stored values, both
         // read before anything is written. They are the evidence used below to
         // tell a merchant who cleared an attribute's tags apart from an import
         // that emptied them behind the merchant's back — see the block that
         // handles an axis arriving with no values.
+        // Every axis is keyed the way WooCommerce keys it (brikpanel_attr_key():
+        // `pa_%d0%b2%d0%b8%d0%b4` for the taxonomy `pa_вид`), which is also how
+        // the variations' meta and the children's values below are keyed. The
+        // raw taxonomy name only goes to taxonomy functions.
         $stored_attribute_options = [];
         foreach ($product->get_attributes() as $stored_attr) {
-            $stored_attr_name = $stored_attr->get_name();
-            $stored_attr_key  = $stored_attr->is_taxonomy() ? $stored_attr_name : sanitize_title($stored_attr_name);
+            $stored_attr_key = brikpanel_attr_key($stored_attr->get_name());
             if ($stored_attr_key !== '') {
                 $stored_attribute_options[$stored_attr_key] = (array) $stored_attr->get_options();
             }
         }
         $child_axis_values = [];
-        $existing_child_ids = array_map('intval', (array) $product->get_children());
+        $existing_child_ids = brikpanel_variation_ids($product);
         // One query for the whole set instead of one per child: the reads below
         // and the per-variation reads in the save loop then all come from cache.
         if (!empty($existing_child_ids)) {
@@ -10037,8 +10499,8 @@ class Brikpanel_Product_Editor {
                 // leftover `attribute_<name>` rows an earlier, deleted attribute
                 // of the same name had left on the variations — resurrecting a
                 // value nobody chose, which is the exact failure 3.2.44 closed.
-                $probe_key = $taxonomy !== '' ? $taxonomy : sanitize_title($name);
-                $client_key = sanitize_key($attr_data['key'] ?? '');
+                $probe_key = brikpanel_attr_key($taxonomy !== '' ? $taxonomy : $name);
+                $client_key = brikpanel_attr_key_clean($attr_data['key'] ?? '');
                 if (!array_key_exists($probe_key, $stored_attribute_options)) continue;
                 $stored_options = array_filter(
                     $stored_attribute_options[$probe_key],
@@ -10066,10 +10528,21 @@ class Brikpanel_Product_Editor {
             }
 
             // Skip a second row for the same axis. Keyed by taxonomy when set,
-            // otherwise by the slugified name so "Size" and "Size " collapse.
-            $dedupe_key = $taxonomy !== '' ? strtolower($taxonomy) : sanitize_title($name);
+            // otherwise by the name, both the way WooCommerce keys them, so
+            // "Size" and "Size " collapse.
+            $dedupe_key = brikpanel_attr_key($taxonomy !== '' ? $taxonomy : $name);
             if ($dedupe_key === '' || isset($seen_var_names[$dedupe_key])) continue;
             $seen_var_names[$dedupe_key] = true;
+
+            // The key this row's variations were posted under: whatever the
+            // client derived (its own slug, a raw taxonomy name, WooCommerce's
+            // key), kept verbatim so the reply can tell the client which key
+            // the axis was saved under (axis_keys).
+            $posted_key = (isset($attr_data['key']) && is_scalar($attr_data['key']) && strlen((string) $attr_data['key']) <= 600)
+                ? (string) $attr_data['key']
+                : '';
+            $client_key = brikpanel_attr_key_clean($posted_key);
+            $was_promoted = false;
 
             // Promote a typed-in attribute to a real global taxonomy: bind to
             // one the store already has, or create it. Only reached when the
@@ -10097,25 +10570,26 @@ class Brikpanel_Product_Editor {
                     // the later row custom instead — both axes survive, nothing
                     // is overwritten, and the product still says what the
                     // merchant typed.
-                    if ($matched !== '' && isset($seen_var_names[strtolower($matched)])) {
+                    if ($matched !== '' && isset($seen_var_names[brikpanel_attr_key($matched)])) {
                         $matched = '';
                     }
                     if ($matched !== '') {
-                        $seen_var_names[strtolower($matched)] = true;
-                        // Register BOTH spellings of the old axis key. The
+                        $seen_var_names[brikpanel_attr_key($matched)] = true;
+                        // Register every spelling of the old axis key. The
                         // client derives it with its own slugify(), which
-                        // disagrees with sanitize_title() outside ASCII —
-                        // remove_accents() turns "Größe" into `grosse` while
+                        // disagrees with sanitize_title() outside ASCII:
+                        // remove_accents() turns "Größe" into `grose` while
                         // the JS produces `gro-e`. Keying on only one of them
                         // would leave every variation of such an attribute
                         // unmatched, and the axis would be dropped below.
                         $old_keys = array_unique(array_filter([
-                            sanitize_title($name),
-                            sanitize_key($attr_data['key'] ?? ''),
-                        ]));
+                            brikpanel_attr_key($name),
+                            $client_key,
+                            $posted_key,
+                        ], 'strlen'));
                         foreach ($old_keys as $old_key) {
                             if ($old_key !== $matched) {
-                                $slug_remap[$old_key] = $matched;
+                                $slug_remap[$old_key] = brikpanel_attr_key($matched);
                             }
                             // Same map, but it outlives this function: the AJAX
                             // response uses it to tell the editor which of its
@@ -10123,6 +10597,7 @@ class Brikpanel_Product_Editor {
                             $this->promoted_axis_map[$old_key] = $matched;
                         }
                         $taxonomy = $matched;
+                        $was_promoted = true;
                     }
                 }
             }
@@ -10165,22 +10640,45 @@ class Brikpanel_Product_Editor {
 
             $wc_attributes[] = $attribute;
 
+            // The key this axis is saved under, and the spellings of it the
+            // client may have used for its variations: its own key verbatim,
+            // that key cleaned, and for an attribute typed by name the name
+            // WooCommerce-keyed (a promoted one maps from its old custom key
+            // to the taxonomy). A row picked as a taxonomy adds no name
+            // spelling: its name is a label that can equal another axis.
+            $axis_canonical = brikpanel_attr_key($attribute->get_name());
+            $record_spellings = [$posted_key, $client_key];
+            if (!$attribute->is_taxonomy() || $was_promoted) {
+                $record_spellings[] = brikpanel_attr_key($name);
+            }
+            foreach ($record_spellings as $spelling) {
+                if ($spelling !== '' && !isset($posted_axis_aliases[$spelling])) {
+                    $posted_axis_aliases[$spelling] = $axis_canonical;
+                }
+            }
+            if ($posted_key !== '' && $axis_canonical !== '') {
+                $this->axis_key_map[$posted_key] = $axis_canonical;
+            }
+
             // Capture this axis's default selection. JS sends a display NAME;
             // store the term SLUG for taxonomy axes (what WC's frontend default
             // lookup compares against) and the raw value for custom ones, keyed
-            // exactly like WC core (taxonomy name / sanitize_title of the label)
-            // and using the post-promotion $taxonomy so a just-promoted custom
-            // Color maps to pa_color, not the old slug.
-            $default_val = isset($attr_data['default']) ? sanitize_text_field($attr_data['default']) : '';
-            if ($default_val !== '') {
+            // exactly like WC core (brikpanel_attr_key() of the taxonomy or the
+            // label) and using the post-promotion $taxonomy so a just-promoted
+            // custom Color maps to pa_color, not the old slug. The slug lookup
+            // reads the value as posted: sanitize_text_field() deletes the
+            // `%xx` octets an encoded slug is made of.
+            $default_raw = (isset($attr_data['default']) && is_scalar($attr_data['default'])) ? (string) $attr_data['default'] : '';
+            $default_val = sanitize_text_field($default_raw);
+            if ($default_raw !== '' && $axis_canonical !== '') {
                 if ($taxonomy && taxonomy_exists($taxonomy)) {
-                    $def_term = get_term_by('name', $default_val, $taxonomy);
+                    $def_term = $default_val !== '' ? get_term_by('name', $default_val, $taxonomy) : false;
                     if (!$def_term) {
-                        $def_term = get_term_by('slug', sanitize_title($default_val), $taxonomy);
+                        $def_term = get_term_by('slug', sanitize_title($default_raw), $taxonomy);
                     }
-                    $default_attributes[$taxonomy] = $def_term ? $def_term->slug : sanitize_title($default_val);
-                } else {
-                    $default_attributes[sanitize_title($name)] = $default_val;
+                    $default_attributes[$axis_canonical] = $def_term ? $def_term->slug : sanitize_title($default_raw);
+                } elseif ($default_val !== '') {
+                    $default_attributes[$axis_canonical] = $default_val;
                 }
             }
         }
@@ -10196,12 +10694,10 @@ class Brikpanel_Product_Editor {
         // The variation axis wins: it is the one the variation rows depend on.
         $taken_attribute_keys = [];
         foreach ($wc_attributes as $axis_attr) {
-            $axis_name = $axis_attr->get_name();
-            $taken_attribute_keys[strtolower($axis_attr->is_taxonomy() ? $axis_name : sanitize_title($axis_name))] = true;
+            $taken_attribute_keys[brikpanel_attr_key($axis_attr->get_name())] = true;
         }
         foreach ($existing_non_variation as $preserved) {
-            $preserved_name = $preserved->get_name();
-            $preserved_key  = strtolower($preserved->is_taxonomy() ? $preserved_name : sanitize_title($preserved_name));
+            $preserved_key = brikpanel_attr_key($preserved->get_name());
             if ($preserved_key === '' || isset($taken_attribute_keys[$preserved_key])) {
                 continue;
             }
@@ -10213,6 +10709,18 @@ class Brikpanel_Product_Editor {
         $product->set_attributes($wc_attributes);
         $product->save();
 
+        // WooCommerce's shared stock, as ajax_save_product() just stored it:
+        // the product counts one quantity and every variation that counts no
+        // stock of its own sells from it. Such a row must not get a manual
+        // stock status: WooCommerce copies the product's status down to it,
+        // and writing "instock" first fired a false back-in-stock event.
+        $parent_shares = (true === $product->get_manage_stock('edit'));
+        // What the rows below actually do, rather than the children read
+        // before them (that list still has rows about to be deleted and
+        // lacks the new ones): drives the leftover check after the loop.
+        $saved_rows       = 0;
+        $any_row_follows  = false;
+
         // The axis keys a variation is allowed to carry, keyed exactly the way
         // the per-variation loop below normalises them. Removing an attribute
         // row does not rebuild the variation table, so the client keeps posting
@@ -10222,13 +10730,56 @@ class Brikpanel_Product_Editor {
         // Left empty (so the filter is a no-op) when no variation axis survived,
         // rather than stripping every attribute off every variation.
         $allowed_axis_keys = [];
+        // WooCommerce's key of each axis => its taxonomy ('' for a custom one),
+        // for the term lookups below: the key of `pa_вид` is not a taxonomy name.
+        $axis_taxonomy = [];
         foreach ($wc_attributes as $axis_attr) {
             if (!$axis_attr->get_variation()) {
                 continue;
             }
-            $axis_name = $axis_attr->get_name();
-            $allowed_axis_keys[$axis_attr->is_taxonomy() ? $axis_name : sanitize_title($axis_name)] = true;
+            $axis_key = brikpanel_attr_key($axis_attr->get_name());
+            if ($axis_key === '') {
+                continue;
+            }
+            $allowed_axis_keys[$axis_key] = true;
+            $axis_taxonomy[$axis_key] = ($axis_attr->is_taxonomy() && taxonomy_exists($axis_attr->get_name()))
+                ? $axis_attr->get_name()
+                : '';
         }
+
+        // Every spelling a posted variation may use for an axis, mapped to the
+        // key the axis is saved under. The client keys its rows its own way
+        // (a slug of the typed name, a raw taxonomy name such as `pa_вид`,
+        // WooCommerce's key when the server gave it one), and a variation it
+        // generated carries that key while one it loaded carries WooCommerce's.
+        // First match wins, in this order: the axes' own keys, then each
+        // posted row's spellings (a promoted row's old key points at its new
+        // taxonomy, like $slug_remap), then the raw taxonomy names.
+        $axis_alias = [];
+        foreach ($allowed_axis_keys as $axis_key => $unused) {
+            $axis_alias[$axis_key] = $axis_key;
+        }
+        foreach ($posted_axis_aliases as $spelling => $axis_key) {
+            if (!isset($axis_alias[$spelling])) {
+                $axis_alias[$spelling] = $axis_key;
+            }
+        }
+        foreach ($axis_taxonomy as $axis_key => $axis_tax) {
+            if ($axis_tax !== '' && !isset($axis_alias[$axis_tax])) {
+                $axis_alias[$axis_tax] = $axis_key;
+            }
+        }
+        $resolve_axis_key = static function ($raw_key) use ($axis_alias) {
+            $raw_key = is_scalar($raw_key) ? (string) $raw_key : '';
+            if ($raw_key === '' || strlen($raw_key) > 600) {
+                return '';
+            }
+            if (isset($axis_alias[$raw_key])) {
+                return $axis_alias[$raw_key];
+            }
+            $key = brikpanel_attr_key($raw_key);
+            return $axis_alias[$key] ?? $key;
+        };
 
         // Every attribute the product still has, axis or spec. The filter above
         // answers "may the payload write this key"; this answers the different
@@ -10238,8 +10789,7 @@ class Brikpanel_Product_Editor {
         // deleted is in neither list, so the phantom-meta sweep still works.
         $known_axis_keys = $allowed_axis_keys;
         foreach ($wc_attributes as $known_attr) {
-            $known_name = $known_attr->get_name();
-            $known_key  = $known_attr->is_taxonomy() ? $known_name : sanitize_title($known_name);
+            $known_key = brikpanel_attr_key($known_attr->get_name());
             if ($known_key !== '') {
                 $known_axis_keys[$known_key] = true;
             }
@@ -10289,11 +10839,34 @@ class Brikpanel_Product_Editor {
                 }
             }
         }
-        // The editor's one file list holds the files every variation shares
-        // (see get_product_data()). Variations whose files differ open with an
-        // empty list, so Digital on with an empty list chooses nothing: each
-        // existing variation keeps its own files.
-        $keep_variation_files = $flags_sent && $parent_is_downloadable && empty($parent_download_objects);
+        // What the switches and the file list showed for the variations that
+        // exist: get_product_data() draws them from variation_flags_summary(),
+        // so a switch is on only when EVERY variation has the flag and the list
+        // holds the files they all share (it opens empty when theirs differ).
+        // A posted switch that still says what it showed was not touched and
+        // is not written onto the variations. On a product whose variations
+        // differ ("Paperback" ships, "E-book" downloads) both switches open
+        // off, and a plain Update used to turn every variation physical and
+        // delete the e-book's files. Digital on locks Virtual on in the editor
+        // (syncVirtualLock()), so Virtual reads as shown when it equals "all
+        // virtual, or all downloadable". A switch the merchant flipped still
+        // applies to every variation, and so does an edited file list.
+        $shown_flags = ($flags_sent && !empty($existing_child_ids))
+            ? $this->variation_flags_summary($existing_child_ids)
+            : null;
+        if (null !== $shown_flags) {
+            $apply_virtual      = $parent_is_virtual !== ($shown_flags['virtual'] || $shown_flags['downloadable']);
+            $apply_downloadable = $parent_is_downloadable !== $shown_flags['downloadable'];
+            // null: the list opened empty, because the variations' files differ
+            // or not all of them are downloadable.
+            $shown_files   = $shown_flags['downloadable'] ? $shown_flags['downloads'] : null;
+            $files_changed = $parent_is_downloadable
+                && !$this->same_download_files($parent_download_objects, (array) $shown_files);
+        } else {
+            $apply_virtual = $apply_downloadable = $flags_sent;
+            $shown_files   = null;
+            $files_changed = $flags_sent && $parent_is_downloadable;
+        }
 
         // Track submitted variation IDs. `$loop_index` mirrors WC's own
         // variation-metabox loop counter — 3rd-party per-variation save
@@ -10309,7 +10882,11 @@ class Brikpanel_Product_Editor {
 
             if ($var_id) {
                 $variation = wc_get_product($var_id);
-                if (!$variation || !$variation->is_type('variation')) {
+                // A variation of ANOTHER product is not edited from here: the
+                // capability check covered this product only. It is answered
+                // like an id that is not a variation at all, with a new row.
+                if (!$variation || !$variation->is_type('variation')
+                    || (int) $variation->get_parent_id() !== (int) $product->get_id()) {
                     $variation = new WC_Product_Variation();
                     $variation->set_parent_id($product->get_id());
                 }
@@ -10340,30 +10917,53 @@ class Brikpanel_Product_Editor {
                 ? $this->read_variation_attribute_meta($resolved_var_id)
                 : [];
             if (isset($var_data['attributes']) && is_array($var_data['attributes'])) {
+                // Which axes this row posted under the key they are saved
+                // under. When a row carries one axis twice (a loaded variation
+                // still holding an old spelling next to WooCommerce's), the
+                // value under WooCommerce's spelling wins.
+                $posted_as_saved_key = [];
                 foreach ($var_data['attributes'] as $key => $val) {
-                    $key = sanitize_text_field($key);
-                    $val = sanitize_text_field($val);
-                    // Promoted custom attributes change key from `color` to
-                    // `pa_color` (etc.) — JS sent the old slug, rewrite it
-                    // here so the variation stays attached to the parent.
-                    if (isset($slug_remap[$key])) {
-                        $key = $slug_remap[$key];
+                    // Resolved before anything is cleaned: sanitize_text_field()
+                    // deletes the `%xx` octets a non-ASCII key and term slug are
+                    // made of (`pa_%d0%b2…` became `pa_`, its slug ''), which is
+                    // how every value of such an attribute was lost on save. The
+                    // alias map also folds a promoted attribute's old key onto
+                    // its taxonomy (what $slug_remap did here) and the client's
+                    // own spellings onto WooCommerce's key.
+                    $raw_key  = is_scalar($key) ? (string) $key : '';
+                    $axis_key = $resolve_axis_key($raw_key);
+                    if ($axis_key === '') {
+                        continue;
                     }
-                    // Axis no longer on the product — see $allowed_axis_keys.
-                    $axis_key = (strpos($key, 'pa_') === 0 && taxonomy_exists($key)) ? $key : sanitize_title($key);
+                    $as_saved_key = ($raw_key === $axis_key);
+                    if (isset($posted_axis_keys[$axis_key]) && !$as_saved_key && !empty($posted_as_saved_key[$axis_key])) {
+                        continue;
+                    }
                     $posted_axis_keys[$axis_key] = true;
+                    // Axis no longer on the product — see $allowed_axis_keys.
                     if (!empty($allowed_axis_keys) && !isset($allowed_axis_keys[$axis_key])) {
                         continue;
                     }
-                    if (strpos($key, 'pa_') === 0 && taxonomy_exists($key)) {
-                        $term = get_term_by('name', $val, $key);
-                        if (!$term) {
-                            $term = get_term_by('slug', sanitize_title($val), $key);
+                    $raw_val  = is_scalar($val) ? (string) $val : '';
+                    $axis_tax = $axis_taxonomy[$axis_key] ?? brikpanel_attr_taxonomy_from_key($axis_key);
+                    if ($axis_tax !== '') {
+                        // The editor sends a term name for a variation it
+                        // generated and the stored slug for one it loaded; the
+                        // slug is looked up as posted, so an encoded one is found.
+                        $value = '';
+                        if ($raw_val !== '') {
+                            $val_text = sanitize_text_field($raw_val);
+                            $term = $val_text !== '' ? get_term_by('name', $val_text, $axis_tax) : false;
+                            if (!$term) {
+                                $term = get_term_by('slug', sanitize_title($raw_val), $axis_tax);
+                            }
+                            $value = $term ? $term->slug : sanitize_title($raw_val);
                         }
-                        $var_attrs[$key] = $term ? $term->slug : sanitize_title($val);
                     } else {
-                        $var_attrs[sanitize_title($key)] = $val;
+                        $value = sanitize_text_field($raw_val);
                     }
+                    $var_attrs[$axis_key] = $value;
+                    $posted_as_saved_key[$axis_key] = $as_saved_key;
                 }
             }
 
@@ -10387,7 +10987,10 @@ class Brikpanel_Product_Editor {
                 if ($stored_val === '' || isset($var_attrs[$stored_key]) || isset($posted_axis_keys[$stored_key])) {
                     continue;
                 }
-                if (isset($slug_remap[$stored_key])) {
+                // A key this save points at another axis (a promoted
+                // attribute's old custom key): its value went in under that one.
+                if (isset($slug_remap[$stored_key])
+                    || (isset($axis_alias[$stored_key]) && $axis_alias[$stored_key] !== $stored_key)) {
                     continue;
                 }
                 if (!empty($known_axis_keys) && !isset($known_axis_keys[$stored_key])) {
@@ -10447,10 +11050,21 @@ class Brikpanel_Product_Editor {
             $var_backorders_raw = isset($var_data['backorders']) ? sanitize_key($var_data['backorders']) : '';
             if ($var_manage) {
                 // Tracking on: quantity + backorders, status derived by WC.
+                // An unchanged box keeps the stored quantity: orders placed
+                // while the editor was open have already lowered it.
+                $var_keep_qty = brikpanel_stock_box_unchanged($variation, $var_stock, $var_data['stock_original'] ?? null);
                 $var_backorders_value = in_array($var_backorders_raw, ['yes', 'notify'], true) ? $var_backorders_raw : 'no';
                 $variation->set_manage_stock(true);
-                $variation->set_stock_quantity($var_stock);
+                if (!$var_keep_qty) {
+                    $variation->set_stock_quantity($var_stock);
+                }
                 $variation->set_backorders($var_backorders_value);
+            } elseif ($parent_shares) {
+                // The row sells from the product's shared stock. Its status is
+                // the product's, which WooCommerce copies down when the product
+                // saves; a backorder rule of its own has no meaning either.
+                $variation->set_manage_stock(false);
+                $variation->set_backorders('no');
             } else {
                 // Tracking off: direct in/out/backorder status. Leave the
                 // stored quantity untouched so re-enabling tracking later
@@ -10553,15 +11167,49 @@ class Brikpanel_Product_Editor {
             // delivery) so the parent prop alone is not enough — without this,
             // a variable "yoga session" still asks for shipping at checkout.
             $is_new_row = 0 === (int) $variation->get_id();
-            if ($flags_sent) {
+            if ($flags_sent && ($is_new_row || null === $shown_flags)) {
+                // A row the editor showed nothing for: the switches and the
+                // list speak for it, as they always did.
                 $variation->set_virtual($parent_is_virtual);
                 $variation->set_downloadable($parent_is_downloadable);
                 if (!$parent_is_downloadable) {
                     $variation->set_downloads([]);
-                } elseif ($is_new_row || !$keep_variation_files) {
-                    $variation->set_downloads($parent_download_objects);
+                } else {
+                    $variation->set_downloads($this->download_copies($parent_download_objects, [], false));
                     $variation->set_download_limit(-1);
                     $variation->set_download_expiry(-1);
+                }
+            } elseif ($flags_sent) {
+                // An existing row: only what the merchant changed (see
+                // $shown_flags above).
+                if ($apply_virtual) {
+                    $variation->set_virtual($parent_is_virtual);
+                }
+                $was_downloadable = (bool) $variation->get_downloadable('edit');
+                if ($apply_downloadable && !$parent_is_downloadable) {
+                    $variation->set_downloadable(false);
+                    $variation->set_downloads([]);
+                } elseif ($parent_is_downloadable && ($apply_downloadable || $files_changed)) {
+                    $variation->set_downloadable(true);
+                    if ($files_changed) {
+                        // An edited shared list replaces the variation's files
+                        // but keeps the variation's own copy of every file it
+                        // already had: that copy's download ID is what its
+                        // buyers' download links point at, and handing every
+                        // variation the first one's IDs broke them. A list that
+                        // opened empty (files differ) adds to each one's own.
+                        $variation->set_downloads($this->download_copies(
+                            $parent_download_objects,
+                            $variation->get_downloads('edit'),
+                            null === $shown_files
+                        ));
+                    }
+                    // Unlimited downloads only for a row that becomes
+                    // downloadable now; a limit set before is the merchant's.
+                    if (!$was_downloadable) {
+                        $variation->set_download_limit(-1);
+                        $variation->set_download_expiry(-1);
+                    }
                 }
             } elseif ($is_new_row) {
                 if (null === $new_row_flags) {
@@ -10591,7 +11239,7 @@ class Brikpanel_Product_Editor {
                 $variation->set_virtual($new_row_flags['virtual']);
                 if ($new_row_flags['downloadable'] && null !== $new_row_flags['downloads']) {
                     $variation->set_downloadable(true);
-                    $variation->set_downloads($new_row_flags['downloads']);
+                    $variation->set_downloads($this->download_copies($new_row_flags['downloads'], [], false));
                     $variation->set_download_limit(-1);
                     $variation->set_download_expiry(-1);
                 }
@@ -10660,15 +11308,22 @@ class Brikpanel_Product_Editor {
             // whenever stock_qty > 0 during save(). Re-apply the explicit
             // choice via direct meta write — same pattern as simple products.
             // Only when tracking is OFF for this variation; when it is on we
-            // intentionally let WC derive the status from quantity.
+            // intentionally let WC derive the status from quantity. A row
+            // that follows the shared stock has no status of its own.
             $vid = $variation->get_id();
-            if (!$var_manage && $vid && get_post_meta($vid, '_stock_status', true) !== $var_stock_status) {
+            if (!$var_manage && !$parent_shares && $vid && get_post_meta($vid, '_stock_status', true) !== $var_stock_status) {
                 update_post_meta($vid, '_stock_status', $var_stock_status);
                 wp_cache_delete('product-' . $vid, 'products');
                 clean_post_cache($vid);
                 do_action('woocommerce_product_set_stock_status', $vid, $var_stock_status, wc_get_product($vid));
             }
 
+            if ($vid) {
+                $saved_rows++;
+                if (!$var_manage) {
+                    $any_row_follows = true;
+                }
+            }
             $submitted_ids[] = $vid;
             if ($vid) $loop_to_variation[$loop_index] = $vid;
 
@@ -10706,7 +11361,7 @@ class Brikpanel_Product_Editor {
         $this->save_measurement_calculator_variation_fields($loop_to_variation);
 
         // Delete removed variations
-        foreach ($product->get_children() as $child_id) {
+        foreach (brikpanel_variation_ids($product) as $child_id) {
             if (!in_array($child_id, $submitted_ids, true)) {
                 $child = wc_get_product($child_id);
                 if ($child) $child->delete(true);
@@ -10733,21 +11388,23 @@ class Brikpanel_Product_Editor {
         );
         clean_post_cache($product_id);
 
-        // A variable product never manages stock at the parent level in
-        // BrikPanel — the inventory card is hidden for variable products and
-        // every variation carries its own explicit stock (managed quantity or
-        // a direct in/out status). A leftover `_manage_stock = yes` on the
-        // parent (from a prior simple→variable conversion, the native WC
-        // editor, or an import) makes WC_Product_Variable::sync() keep the
-        // parent's *own* stock status instead of deriving it from the
-        // children — so a parent stuck at qty 0 / outofstock would report the
-        // whole product out of stock even when its variations are in stock.
-        // Clear parent-level management before the sync so the status is
-        // always derived from the variations.
+        // Product-level stock on a variable product is WooCommerce's shared
+        // stock: the variations that count nothing of their own sell from it,
+        // and the "Shared stock" switch keeps it (this used to clear it on
+        // every save, which turned 40 shared into 40 per size). It is a
+        // leftover only when NO saved row follows it (from a simple→variable
+        // conversion, the native WC editor or an import): then
+        // WC_Product_Variable::sync() keeps the product's own status instead
+        // of deriving it from the variations, and a product stuck at qty 0
+        // reports out of stock while its variations have stock (3.2.17).
+        // Clear that one before the sync. Decided from the rows this save
+        // wrote, not from the children read earlier (that list still holds
+        // deleted rows and misses new ones); with no rows the product keeps
+        // its shared stock for the variations it will get.
         $variable_for_sync = $product instanceof WC_Product_Variable
             ? $product
             : new WC_Product_Variable($product_id);
-        if ($variable_for_sync->get_manage_stock()) {
+        if (true === $variable_for_sync->get_manage_stock('edit') && $saved_rows > 0 && !$any_row_follows) {
             $variable_for_sync->set_manage_stock(false);
             $variable_for_sync->save();
         }
@@ -10911,9 +11568,15 @@ class Brikpanel_Product_Editor {
             wp_send_json_error(['message' => $attachment_id->get_error_message()]);
         }
 
+        // Same image fields as the page data (get_product_data()): WordPress
+        // may already have filled the alt text from the photo's own caption
+        // data, and someone allowed to upload is not always allowed to edit.
         wp_send_json_success([
-            'id'  => $attachment_id,
-            'url' => wp_get_attachment_image_url($attachment_id, 'thumbnail'),
+            'id'       => $attachment_id,
+            'url'      => wp_get_attachment_image_url($attachment_id, 'thumbnail'),
+            'url_m'    => wp_get_attachment_image_url($attachment_id, 'medium'),
+            'alt'      => (string) get_post_meta($attachment_id, '_wp_attachment_image_alt', true),
+            'editable' => current_user_can('edit_post', $attachment_id),
         ]);
     }
 
@@ -10956,7 +11619,7 @@ class Brikpanel_Product_Editor {
 
         // For variable products, duplicate variations
         if ($product->is_type('variable')) {
-            foreach ($product->get_children() as $child_id) {
+            foreach (brikpanel_variation_ids($product) as $child_id) {
                 $variation = wc_get_product($child_id);
                 if (!$variation) continue;
 
@@ -11008,6 +11671,19 @@ class Brikpanel_Product_Editor {
                 $product->set_regular_price(wc_format_decimal($value));
                 break;
             case 'stock':
+                if ($product->is_type('variable')) {
+                    // A variable product has one quantity to edit only when
+                    // it is WooCommerce's shared stock and every variation for
+                    // sale sells from it. Switching tracking on otherwise made
+                    // the sum of the variations' own stock the product's stock,
+                    // the leftover that pins a product out of stock (3.2.17).
+                    $summary = brikpanel_variable_stock_summary($product);
+                    if (true !== $product->get_manage_stock('edit') || !$summary['uses_shared'] || $summary['own_count'] > 0) {
+                        wp_send_json_error(['message' => __('Invalid field.', 'brikpanel')]);
+                    }
+                    $product->set_stock_quantity(intval($value));
+                    break;
+                }
                 $product->set_manage_stock(true);
                 $product->set_stock_quantity(intval($value));
                 $product->set_stock_status(intval($value) > 0 ? 'instock' : 'outofstock');
@@ -11070,6 +11746,18 @@ class Brikpanel_Product_Editor {
     }
 
     public function render_column($column, $post_id) {
+        // The Stock and GTIN cells read each row's variations: all of the
+        // page's rows in one query, on the first cell.
+        static $variations_primed = false;
+        if (!$variations_primed && ($column === 'bpe_stock' || $column === 'bpe_global_unique_id')) {
+            $variations_primed = true;
+            global $wp_query;
+            if ($wp_query instanceof WP_Query && !empty($wp_query->posts)) {
+                brikpanel_prime_variation_ids(array_map(static function ($p) {
+                    return is_object($p) ? (int) $p->ID : (int) $p;
+                }, $wp_query->posts));
+            }
+        }
         if ($column === 'product_status') {
             // Every status by its own name: this column used to call anything
             // that was not published a draft (pending, private, scheduled).
@@ -11100,7 +11788,7 @@ class Brikpanel_Product_Editor {
                 // every version, and it saves a full product load per variation
                 // on every row of the list.
                 $found = [];
-                foreach ($product->get_children() as $child_id) {
+                foreach (brikpanel_variation_ids($product) as $child_id) {
                     $vid = trim(brikpanel_wc_gtin($child_id));
                     if ($vid !== '') {
                         $found[$vid] = true;
@@ -11140,18 +11828,20 @@ class Brikpanel_Product_Editor {
 
             $stock = $product->get_stock_quantity();
             if ($product->is_type('variable')) {
-                $stock = 0;
-                foreach ($product->get_children() as $cid) {
-                    $v = wc_get_product($cid);
-                    if ($v && $v->get_manage_stock()) $stock += (int) $v->get_stock_quantity();
-                }
+                // The product's shared stock counts once, however many
+                // variations sell from it (it used to show 7 × 40 = 280),
+                // and a variable product that counts nothing shows "—", not 0.
+                $stock = brikpanel_variable_stock_summary($product)['qty'];
             }
 
             if ($stock !== null && $stock !== '') {
                 $warn = '';
-                if ((int) $stock === 0) {
+                // "Low" is WooCommerce's own low stock threshold, as on every
+                // other BrikPanel screen.
+                $low = (int) get_option('woocommerce_notify_low_stock_amount', 2);
+                if ((int) $stock <= 0) {
                     $warn = ' brikpanel-pe-stock-out';
-                } elseif ((int) $stock <= 5) {
+                } elseif ((int) $stock <= $low) {
                     $warn = ' brikpanel-pe-stock-low';
                 }
                 echo '<span class="brikpanel-pe-stock-badge' . $warn . '" data-product-id="' . esc_attr($post_id) . '" data-field="stock" data-value="' . esc_attr($stock) . '">' . esc_html($stock) . '</span>';

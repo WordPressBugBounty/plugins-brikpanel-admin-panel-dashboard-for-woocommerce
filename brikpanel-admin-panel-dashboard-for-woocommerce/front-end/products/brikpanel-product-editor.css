@@ -321,9 +321,13 @@
 
 /* Toggle Row */
 .brikpanel-pe-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.25rem 0;margin-bottom:.5rem}
+/* The Inventory card swaps "Track quantity" and "Shared stock" with `hidden`. */
+.brikpanel-pe-toggle-row[hidden]{display:none}
 .brikpanel-pe-toggle-row:last-child{margin-bottom:0}
 .brikpanel-pe-toggle-row>span{font-size:.875rem;font-weight:500;color:var(--pe-text)}
 .brikpanel-pe-toggle-row+.brikpanel-pe-toggle-row{margin-top:.25rem;padding-top:.75rem;border-top:1px solid var(--pe-border)}
+/* The divider belongs between two rows that are both on screen. */
+.brikpanel-pe-toggle-row[hidden]+.brikpanel-pe-toggle-row{margin-top:0;padding-top:.25rem;border-top:0}
 .brikpanel-pe-toggle-label{display:flex;flex-direction:column;gap:.125rem;min-width:0;flex:1}
 .brikpanel-pe-toggle-help{font-size:.75rem;font-weight:400;color:var(--pe-text-secondary, #616161);line-height:1.4}
 .brikpanel-pe-switch input:disabled+.brikpanel-pe-slider{cursor:not-allowed;opacity:.6}
@@ -392,10 +396,17 @@
    them, so there they always show. */
 .brikpanel-pe-gallery-item-remove{position:absolute;top:2px;inset-inline-end:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;opacity:0;transition:opacity .15s ease}
 .brikpanel-pe-gallery-item-video{position:absolute;top:2px;inset-inline-start:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;line-height:0;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;opacity:0;transition:opacity .15s ease}
-.brikpanel-pe-gallery-item:hover .brikpanel-pe-gallery-item-remove,.brikpanel-pe-gallery-item-remove:focus-visible,.brikpanel-pe-gallery-item:hover .brikpanel-pe-gallery-item-video,.brikpanel-pe-gallery-item-video:focus-visible,.brikpanel-pe-gallery-item-video.is-active{opacity:1}
+/* ALT opens the image's alt text (a click on the tile does too): the bottom
+   corner on the end side, above the Featured strip on the first tile. A tick
+   inside says the image has one, so the state is not in the colour alone. */
+.brikpanel-pe-gallery-item-alt{position:absolute;bottom:2px;inset-inline-end:2px;display:inline-flex;align-items:center;gap:2px;box-sizing:border-box;height:18px;margin:0;padding:0 5px;border:none;border-radius:9px;background:rgba(0,0,0,.6);color:#fff;font:inherit;font-size:10px;font-weight:700;line-height:1;letter-spacing:.02em;cursor:pointer;opacity:0;transition:opacity .15s ease}
+.brikpanel-pe-gallery-item:first-child .brikpanel-pe-gallery-item-alt{bottom:16px}
+.brikpanel-pe-gallery-item-alt.is-set{background:var(--pe-primary)}
+.brikpanel-pe-gallery-item-alt svg{flex:none}
+.brikpanel-pe-gallery-item:hover .brikpanel-pe-gallery-item-remove,.brikpanel-pe-gallery-item-remove:focus-visible,.brikpanel-pe-gallery-item:hover .brikpanel-pe-gallery-item-video,.brikpanel-pe-gallery-item-video:focus-visible,.brikpanel-pe-gallery-item-video.is-active,.brikpanel-pe-gallery-item:hover .brikpanel-pe-gallery-item-alt,.brikpanel-pe-gallery-item-alt:focus-visible{opacity:1}
 .brikpanel-pe-gallery-item-video.is-active{background:var(--pe-primary)}
-.brikpanel-pe-gallery-item-remove:focus-visible,.brikpanel-pe-gallery-item-video:focus-visible{outline:2px solid var(--pe-primary);outline-offset:1px}
-@media (hover:none),(any-pointer:coarse){.brikpanel-pe-gallery-item-remove,.brikpanel-pe-gallery-item-video{opacity:1}}
+.brikpanel-pe-gallery-item-remove:focus-visible,.brikpanel-pe-gallery-item-video:focus-visible,.brikpanel-pe-gallery-item-alt:focus-visible{outline:2px solid var(--pe-primary);outline-offset:1px}
+@media (hover:none),(any-pointer:coarse){.brikpanel-pe-gallery-item-remove,.brikpanel-pe-gallery-item-video,.brikpanel-pe-gallery-item-alt{opacity:1}}
 /* One video per product (Flatsome, Porto): a row under the images. */
 .brikpanel-pe-prodvideo{display:flex;align-items:center;gap:.75rem;margin-top:.75rem;padding:.625rem .75rem;background:#fafafa;border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm)}
 .brikpanel-pe-prodvideo-icon{display:flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:50%;background:var(--pe-border);color:var(--pe-text-secondary)}
@@ -556,6 +567,21 @@
 .brikpanel-pe-viddlg .brikpanel-pe-toggle-row>span{font-size:.8125rem}
 .brikpanel-pe-viddlg-actions{align-items:center}
 .brikpanel-pe-viddlg-remove{margin-inline-end:auto}
+
+/* Alt text of the product's images: the window (rides on the
+   .brikpanel-pe-linkdlg base, on <body>) and, with the same form, the phone
+   sheet (.brikpanel-pe-altsheet, also on <body>). One row per image. The box
+   and its label are the shared .brikpanel-control / .brikpanel-field. */
+.brikpanel-pe-altdlg .brikpanel-pe-linkdlg-box{width:440px;box-sizing:border-box}
+.brikpanel-pe-altdlg-done[hidden]{display:none}
+.brikpanel-pe-alt-form{display:grid;gap:14px}
+.brikpanel-pe-alt-row{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.brikpanel-pe-alt-thumb{flex:none;width:56px;height:56px;object-fit:cover;box-sizing:border-box;border:1px solid #e3e3e3;border-radius:8px;background:#f7f7f7}
+.brikpanel-pe-alt-field{flex:1 1 auto}
+/* Three lines (rows), not the shared box's taller default. */
+.wp-core-ui textarea.brikpanel-pe-alt-input{min-height:0}
+.wp-core-ui textarea.brikpanel-pe-alt-input[readonly]{background-color:#f7f7f7}
+.brikpanel-pe-alt-note{margin:0;font-size:12px;line-height:1.5;color:#616161}
 
 /* Variation Wizard */
 .brikpanel-pe-var-wizard{position:relative;min-width:0;max-width:100%}
@@ -934,6 +960,13 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
 .brikpanel-pe-var-table .var-date-clear{position:absolute;inset-inline-end:.3125rem;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--pe-text-placeholder);cursor:pointer}
 .brikpanel-pe-var-table .var-date-clear[hidden]{display:none}
 .brikpanel-pe-var-table .var-date-clear:hover{background:#ececec;color:var(--pe-text)}
+/* The "Alt text" field: looks like the boxes beside it and opens the alt text
+   of the variation's images. One line; a long text ends in "…". */
+.brikpanel-pe-var-table .var-alt-btn{display:flex;align-items:center;width:100%;min-width:0;min-height:40px;box-sizing:border-box;margin:0;padding:.375rem .5rem;font:inherit;font-size:.8125rem;line-height:1.25;text-align:start;color:var(--pe-text);background-color:var(--pe-card);border:1px solid var(--pe-border);border-radius:4px;cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease}
+.brikpanel-pe-var-table .var-alt-btn:hover{border-color:var(--pe-text-placeholder)}
+.brikpanel-pe-var-table .var-alt-btn:focus-visible{border-color:var(--pe-input-focus);box-shadow:0 0 0 1px var(--pe-input-focus);outline:none}
+.brikpanel-pe-var-table .var-alt-text{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.brikpanel-pe-var-table .var-alt-text.is-empty{color:#616161}
 .brikpanel-pe-var-details-more{padding-top:.625rem;border-top:1px solid var(--pe-border)}
 .brikpanel-pe-var-table .var-extras-toggle{display:inline-flex;align-items:center;gap:.375rem;padding:0;border:0;background:none;font:inherit;font-size:.75rem;font-weight:600;color:var(--pe-text-secondary);cursor:pointer}
 .brikpanel-pe-var-table .var-extras-toggle:hover{color:var(--pe-text)}
@@ -1383,6 +1416,13 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
 .brikpanel-pe-inf-btn:focus{outline:none}
 .brikpanel-pe-inf-btn:focus-visible{box-shadow:inset 0 0 0 2px var(--pe-input-focus)}
 .brikpanel-pe-inf-btn[aria-pressed="true"]:focus-visible{box-shadow:inset 0 0 0 2px #fff}
+/* While the product shares its stock (WooCommerce's product-level stock) the
+   same button links a row to that stock: a link instead of ∞. */
+.brikpanel-pe-inf-btn .bpe-ico-link{display:none}
+.bpe-var-shared-on .brikpanel-pe-inf-btn .bpe-ico-inf{display:none}
+.bpe-var-shared-on .brikpanel-pe-inf-btn .bpe-ico-link{display:block}
+/* "Generate variation SKUs" under the product SKU (variable products). */
+.bpe-gen-var-skus{margin-top:.625rem}
 
 /* Variation tools panel — one quiet gray card holding a SINGLE toolbar strip:
    bulk edits, then sorting + "Default Form Values", side by side on ONE line.
@@ -2113,7 +2153,8 @@ html.bp-kbd-open .brikpanel-pe-ph-bar{transform:translateY(110%);visibility:hidd
 .brikpanel-pe-images .brikpanel-pe-gallery-item{box-sizing:border-box;width:auto;height:auto;aspect-ratio:1;border:1px solid #e3e3e3;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .brikpanel-pe-images .brikpanel-pe-gallery-item:first-child{grid-column:span 2;grid-row:span 2;border-color:#e3e3e3}
 .brikpanel-pe-images .brikpanel-pe-gallery-item-remove,
-.brikpanel-pe-images .brikpanel-pe-gallery-item-video{display:none}
+.brikpanel-pe-images .brikpanel-pe-gallery-item-video,
+.brikpanel-pe-images .brikpanel-pe-gallery-item-alt{display:none}
 .brikpanel-pe-images .brikpanel-pe-gallery-item-badge{right:auto;bottom:8px;left:auto;inset-inline-start:8px;padding:2px 8px;color:#303030;font-size:12px;font-weight:600;line-height:1.5;background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.18)}
 .brikpanel-pe-ph-addimg{display:grid;place-content:center;justify-items:center;gap:4px;box-sizing:border-box;aspect-ratio:1;margin:0;padding:0;font:inherit;color:#616161;font-size:13px;font-weight:600;background:#fafafa;border:1.5px dashed #c9c9c9;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .brikpanel-pe-ph-addimg:only-child{grid-column:1/-1;aspect-ratio:auto;min-height:120px}
@@ -2228,6 +2269,7 @@ html[dir="rtl"] .brikpanel-pe .brikpanel-pe-var-table-wrap.is-ph-closing{animati
 .brikpanel-pe-var-table-wrap.is-ph-open .brikpanel-pe-var-details{gap:14px;padding:4px 16px 16px}
 .brikpanel-pe-var-table-wrap.is-ph-open .brikpanel-pe-var-details-grid{gap:14px 12px}
 .brikpanel-pe-var-table-wrap.is-ph-open .brikpanel-pe-var-details select{height:44px;font-size:16px}
+.brikpanel-pe-var-table-wrap.is-ph-open .brikpanel-pe-var-table .var-alt-btn{min-height:44px;font-size:16px}
 .brikpanel-pe .brikpanel-pe-ph-vardelete{display:flex;box-sizing:border-box;width:calc(100% - 32px);min-height:48px;margin:0 16px;font-size:15px;border-radius:12px}
 .brikpanel-pe .brikpanel-pe-ph-vardelete,
 .brikpanel-pe .brikpanel-pe-ph-vardelete:hover,

@@ -2226,7 +2226,7 @@
         $pop.on('click', '.brikpanel-pl-stock-popover-save', function () {
             var qty = $pop.find('.brikpanel-pl-stock-popover-qty').val();
             var status = $pop.find('.brikpanel-pl-toggle-opt.is-active').data('value') || 'instock';
-            saveStockPopover(productId, qty, status, $el);
+            saveStockPopover(productId, qty, status, $el, currentStock);
         });
         // Enter in qty field saves
         $pop.on('keydown', '.brikpanel-pl-stock-popover-qty', function (e) {
@@ -2250,12 +2250,15 @@
         }, 50);
     }
 
-    function saveStockPopover(productId, qty, status, $cell) {
+    function saveStockPopover(productId, qty, status, $cell, openedQty) {
         var data = {
             action: 'brikpanel_quick_edit_product',
             security: PL.nonce,
             product_id: productId,
             stock: qty,
+            // The number the box opened with: saved unchanged, the stored
+            // stock stays (orders may have lowered it meanwhile).
+            stock_original: openedQty,
             stock_status: status
         };
 
@@ -2720,7 +2723,8 @@
             $('#bpl-qe-variations').hide().empty();
             $('#bpl-qe-price').val(product.regular_price || '');
             $('#bpl-qe-sale-price').val(product.sale_price || '');
-            $('#bpl-qe-stock').val(product.stock !== null ? product.stock : '');
+            var qeStock = (product.stock !== null && product.stock !== undefined) ? String(product.stock) : '';
+            $('#bpl-qe-stock').val(qeStock).attr('data-original', qeStock);
             // COGS — only writes when the field is rendered (slug visible).
             // Avoid `|| ''` here: a legit zero cost arrives as either the
             // string "0" or the JS number 0 depending on whether WC's native
@@ -2838,6 +2842,19 @@
             mainData['custom_tax_ids[' + tax + ']'] = ids.join(',');
         });
 
+        // The product's shared stock (WooCommerce's product-level stock that
+        // its variations sell from): sent only when changed and a number, an
+        // empty value would switch it off. No status: the product's status
+        // decides every variation that follows it.
+        var $sharedStock = isVariable ? $('#bpl-qe-shared-stock') : $();
+        if ($sharedStock.length) {
+            var sharedQty = $.trim($sharedStock.val() || '');
+            if (sharedQty !== '' && sharedQty !== String($sharedStock.attr('data-original'))) {
+                mainData.stock = sharedQty;
+                mainData.stock_original = $sharedStock.attr('data-original') || '';
+            }
+        }
+
         if (!isVariable) {
             if ($('#bpl-qe-price').length) {
                 mainData.regular_price = $('#bpl-qe-price').val();
@@ -2845,6 +2862,7 @@
             }
             if ($('#bpl-qe-stock').length) {
                 mainData.stock = $('#bpl-qe-stock').val();
+                mainData.stock_original = $('#bpl-qe-stock').attr('data-original') || '';
             }
             if ($('#bpl-qe-stock-status').length) {
                 mainData.stock_status = $('#bpl-qe-stock-status').val();
@@ -2906,6 +2924,9 @@
 
                     $item.find('.brikpanel-pl-qe-var-input').each(function () {
                         varData[$(this).data('field')] = $(this).val();
+                        if ($(this).data('field') === 'stock') {
+                            varData.stock_original = $(this).attr('data-original') || '';
+                        }
                     });
 
                     $.ajax({
@@ -3690,7 +3711,7 @@
                     $popup.html('<div class="brikpanel-pl-var-popup-empty">' + escHtml(PL.i18n.no_variations) + '</div>');
                     return;
                 }
-                renderVariationPopup($popup, res.data.variations, field, productId);
+                renderVariationPopup($popup, res.data.variations, field, productId, res.data.parent || null);
             },
             error: function () {
                 $popup.html('<div class="brikpanel-pl-var-popup-empty">' + escHtml(PL.i18n.error) + '</div>');
@@ -3698,22 +3719,39 @@
         });
     }
 
-    function renderVariationPopup($popup, variations, field, productId) {
+    function renderVariationPopup($popup, variations, field, productId, parent) {
         var title = field === 'stock' ? PL.i18n.stock_by_variation : PL.i18n.price_by_variation;
         var html = '<div class="brikpanel-pl-var-popup-header">' +
             '<span class="brikpanel-pl-var-popup-title">' + escHtml(title) + '</span>' +
             '<button class="brikpanel-pl-var-popup-close" aria-label="' + escHtml(PL.i18n.popup_close || 'Close') + '">&times;</button></div>';
 
+        // WooCommerce's shared stock: the product counts one quantity that the
+        // variations without a count of their own sell from. It is shown once,
+        // on top; those variations say "Shared" instead of repeating it (each
+        // box used to show it and Apply saved it into every one: 7 × 40).
+        var shared = field === 'stock' && parent && parent.shared;
         html += '<div class="brikpanel-pl-var-popup-body">';
+        if (shared) {
+            var sharedVal = (parent.stock === null || parent.stock === undefined) ? '' : String(parseInt(parent.stock, 10));
+            html += '<div class="brikpanel-pl-var-popup-row brikpanel-pl-var-popup-shared">';
+            html += '<div class="brikpanel-pl-var-popup-name">' + escHtml(PL.i18n.shared_stock) + '</div>';
+            html += '<div class="brikpanel-pl-var-popup-fields">';
+            html += '<input type="number" class="brikpanel-pl-var-popup-input" data-field="shared_stock" value="' + escAttr(sharedVal) + '" data-original="' + escAttr(sharedVal) + '" min="0" aria-label="' + escAttr(PL.i18n.shared_stock) + '">';
+            html += '</div></div>';
+        }
         for (var i = 0; i < variations.length; i++) {
             var v = variations[i];
             html += '<div class="brikpanel-pl-var-popup-row" data-var-id="' + v.id + '">';
             html += '<div class="brikpanel-pl-var-popup-name">' + escHtml(v.name) + '</div>';
 
-            if (field === 'stock') {
+            if (field === 'stock' && v.shared) {
+                html += '<div class="brikpanel-pl-var-popup-fields"><span class="brikpanel-pl-var-shared">' + escHtml(PL.i18n.var_shared) + '</span></div>';
+            } else if (field === 'stock') {
                 var stockVal = v.stock !== null ? v.stock : '';
                 html += '<div class="brikpanel-pl-var-popup-fields">';
-                html += '<input type="number" class="brikpanel-pl-var-popup-input" data-field="stock" value="' + escAttr(stockVal) + '" min="0" placeholder="—">'; // i18n-ignore: empty-value marker, not text.
+                // data-original: an unchanged box keeps the stored stock,
+                // which orders may have lowered while the window was open.
+                html += '<input type="number" class="brikpanel-pl-var-popup-input" data-field="stock" value="' + escAttr(stockVal) + '" data-original="' + escAttr(stockVal) + '" min="0" placeholder="—">'; // i18n-ignore: empty-value marker, not text.
                 html += '</div>';
             } else {
                 html += '<div class="brikpanel-pl-var-popup-fields">';
@@ -3747,11 +3785,42 @@
         // Apply all
         $popup.on('click', '.brikpanel-pl-var-popup-apply', function () {
             var $btn = $(this);
-            var $rows = $popup.find('.brikpanel-pl-var-popup-row');
-            var pending = $rows.length;
+            // Only rows with a box of their own: a variation that sells from
+            // the shared stock has nothing to send.
+            var $rows = $popup.find('.brikpanel-pl-var-popup-row[data-var-id]').filter(function () {
+                return $(this).find('.brikpanel-pl-var-popup-input').length > 0;
+            });
+            var $sharedInput = $popup.find('.brikpanel-pl-var-popup-shared input[data-field="shared_stock"]');
+            // The shared quantity goes to the product, and only when it was
+            // changed and is a number: an empty value would switch the shared
+            // stock off. Never with a status, which would be forced onto
+            // every variation.
+            var sharedVal = $sharedInput.length ? $.trim($sharedInput.val() || '') : '';
+            var sendShared = $sharedInput.length && sharedVal !== '' && sharedVal !== String($sharedInput.attr('data-original'));
+            var pending = $rows.length + (sendShared ? 1 : 0);
             var saved = 0;
 
+            if (!pending) { closeVariationPopup(); return; }
             $btn.prop('disabled', true).text(PL.i18n.saving);
+
+            var done = function () {
+                pending--;
+                if (pending <= 0) {
+                    showToast(countText(PL.i18n.variations_saved, saved), 'success');
+                    closeVariationPopup();
+                    reconcileList();
+                }
+            };
+
+            if (sendShared) {
+                $.ajax({
+                    url: PL.ajax_url,
+                    type: 'POST',
+                    data: { action: 'brikpanel_quick_edit_product', security: PL.nonce, product_id: productId,
+                        stock: sharedVal, stock_original: $sharedInput.attr('data-original') || '' },
+                    complete: done
+                });
+            }
 
             $rows.each(function () {
                 var $row = $(this);
@@ -3760,6 +3829,9 @@
 
                 $row.find('.brikpanel-pl-var-popup-input').each(function () {
                     data[$(this).data('field')] = $(this).val();
+                    if ($(this).data('field') === 'stock') {
+                        data.stock_original = $(this).attr('data-original') || '';
+                    }
                 });
 
                 $.ajax({
@@ -3769,14 +3841,7 @@
                     success: function (res) {
                         if (res.success) saved++;
                     },
-                    complete: function () {
-                        pending--;
-                        if (pending <= 0) {
-                            showToast(countText(PL.i18n.variations_saved, saved), 'success');
-                            closeVariationPopup();
-                            reconcileList();
-                        }
-                    }
+                    complete: done
                 });
             });
         });
@@ -3820,13 +3885,26 @@
                     $container.html('<p class="brikpanel-pl-empty-note" style="text-align:center;padding:1rem;">' + escHtml(PL.i18n.no_variations) + '</p>');
                     return;
                 }
-                renderDrawerVariations($container, res.data.variations, productId);
+                renderDrawerVariations($container, res.data.variations, productId, res.data.parent || null);
             }
         });
     }
 
-    function renderDrawerVariations($container, variations, productId) {
-        var html = '<div class="brikpanel-pl-qe-var-list">';
+    function renderDrawerVariations($container, variations, productId, parent) {
+        var html = '';
+        // WooCommerce's shared stock: one quantity on the product that the
+        // variations without a count of their own sell from. Edited once,
+        // here; those variations show "Shared" and have no Availability of
+        // their own (the product's status decides theirs).
+        if (parent && parent.shared) {
+            var sharedQty = (parent.stock === null || parent.stock === undefined) ? '' : String(parseInt(parent.stock, 10));
+            html += '<div class="brikpanel-pl-qe-field brikpanel-pl-qe-shared-stock">' +
+                '<label for="bpl-qe-shared-stock">' + escHtml(PL.i18n.shared_stock) + '</label>' +
+                '<input type="number" id="bpl-qe-shared-stock" min="0" value="' + escAttr(sharedQty) + '" data-original="' + escAttr(sharedQty) + '" aria-describedby="bpl-qe-shared-stock-help">' +
+                '<small class="brikpanel-pl-toggle-help" id="bpl-qe-shared-stock-help">' + escHtml(PL.i18n.shared_stock_help) + '</small>' +
+                '</div>';
+        }
+        html += '<div class="brikpanel-pl-qe-var-list">';
         var cogsVisible = !!PL.qe_cogs_visible;
         for (var i = 0; i < variations.length; i++) {
             var v = variations[i];
@@ -3845,7 +3923,12 @@
                 var vCogs = (v.cogs_value === '' || v.cogs_value == null) ? '' : String(v.cogs_value);
                 html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.cogs_label || 'Cost') + '</label><input type="text" class="brikpanel-pl-qe-var-input" data-field="cogs_value" value="' + escAttr(vCogs) + '" inputmode="decimal"></div>';
             }
-            html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.stock_label || 'Stock') + '</label><input type="number" class="brikpanel-pl-qe-var-input" data-field="stock" value="' + escAttr(stockVal) + '" min="0"></div>';
+            if (v.shared) {
+                html += '<div class="brikpanel-pl-qe-field brikpanel-pl-qe-var-shared-field"><label>' + escHtml(PL.i18n.stock_label || 'Stock') + '</label><span class="brikpanel-pl-var-shared">' + escHtml(PL.i18n.var_shared) + '</span></div>';
+                html += '</div></div>';
+                continue;
+            }
+            html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.stock_label || 'Stock') + '</label><input type="number" class="brikpanel-pl-qe-var-input" data-field="stock" value="' + escAttr(stockVal) + '" data-original="' + escAttr(stockVal) + '" min="0"></div>';
             html += '</div>';
             html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.stock_status_label || 'Availability') + '</label>';
             html += '<div class="brikpanel-pl-toggle-group" role="radiogroup">' +
@@ -3861,8 +3944,9 @@
 
         $container.html(html).data('parent-id', productId);
 
-        // Toggle click handler for each variation row
-        $container.on('click', '.brikpanel-pl-qe-var-item .brikpanel-pl-toggle-opt', function () {
+        // Toggle click handler for each variation row. The container stays
+        // for the next product: bind once, not once per opening.
+        $container.off('click.bplQeVar').on('click.bplQeVar', '.brikpanel-pl-qe-var-item .brikpanel-pl-toggle-opt', function () {
             var $grp = $(this).closest('.brikpanel-pl-toggle-group');
             $grp.find('.brikpanel-pl-toggle-opt').removeClass('is-active');
             $(this).addClass('is-active');

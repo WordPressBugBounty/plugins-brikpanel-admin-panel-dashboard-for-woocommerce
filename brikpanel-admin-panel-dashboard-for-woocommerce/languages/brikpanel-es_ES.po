@@ -17068,3 +17068,90 @@ msgstr "Día real: %s"
 #, php-format
 msgid "On %s the store counted more add-to-carts than visitors, which bots usually cause. Mark the whole day as real anyway?"
 msgstr "El %s la tienda contó más añadidos al carrito que visitantes, algo que suelen causar los bots. ¿Marcar igualmente todo el día como real?"
+
+#. translators: %s: total amount of the new orders, e.g. $122.00.
+#: front-end/sound/brikpanel-sound.php:188
+#, php-format
+msgid "Total %s"
+msgstr "Total %s"
+
+#: front-end/sound/brikpanel-sound.php:189
+msgid "View orders"
+msgstr "Ver pedidos"
+
+msgctxt "stock that variations take from the product"
+msgid "Shared"
+msgstr "Compartido"
+
+msgid "Shared stock"
+msgstr "Stock compartido"
+
+msgid "All variations sell from one quantity instead of each having its own."
+msgstr "Todas las variaciones se venden de una sola cantidad en lugar de tener cada una la suya."
+
+msgid "Generate variation SKUs"
+msgstr "Generar SKU de variaciones"
+
+msgid "Use the shared stock"
+msgstr "Usar el stock compartido"
+
+msgid "Use the shared stock for every variation"
+msgstr "Usar el stock compartido para todas las variaciones"
+
+msgid "Add the product SKU first."
+msgstr "Añade primero el SKU del producto."
+
+msgid "Every variation already has a SKU."
+msgstr "Todas las variaciones ya tienen SKU."
+
+msgid "Uses the product's shared stock. Change it on the product."
+msgstr "Usa el stock compartido del producto. Cámbialo en el producto."
+
+#, php-format
+msgid "%s variation SKU added"
+msgid_plural "%s variation SKUs added"
+msgstr[0] "%s SKU de variación añadido"
+msgstr[1] "%s SKU de variaciones añadidos"
+
+#: front-end/sound/brikpanel-sound.php:306
+msgid "Skip marketplace orders"
+msgstr "Omitir pedidos de marketplaces"
+
+#: front-end/sound/brikpanel-sound.php:309
+msgid "Orders that BrikMarket brings in from marketplaces such as Trendyol, Hepsiburada or Amazon do not trigger a new order alert, so orders placed on your own store stand out."
+msgstr "Los pedidos que BrikMarket trae de marketplaces como Trendyol, Hepsiburada o Amazon no activan el aviso de nuevo pedido, así destacan los pedidos hechos en tu propia tienda."
+
+#: includes/brikpanel-enqueue.php:2480
+msgid "Alt text"
+msgstr "Texto alternativo"
+
+#: includes/brikpanel-enqueue.php:2481
+msgctxt "short button on a product image that opens its alt text"
+msgid "ALT"
+msgstr "ALT"
+
+#. translators: %s: the image's alt text.
+#: includes/brikpanel-enqueue.php:2483
+#, php-format
+msgid "Alt text: %s"
+msgstr "Texto alternativo: %s"
+
+#: includes/brikpanel-enqueue.php:2484
+msgid "You cannot change this alt text because the image belongs to another user."
+msgstr "No puedes cambiar este texto alternativo porque la imagen pertenece a otro usuario."
+
+#: front-end/products/brikpanel-product-editor.php:7999
+msgid "An alt text was not saved because its image is no longer part of this product."
+msgstr "Un texto alternativo no se guardó porque su imagen ya no forma parte de este producto."
+
+#: front-end/products/brikpanel-product-editor.php:8001
+msgid "An alt text was not saved because you are not allowed to edit that image."
+msgstr "Un texto alternativo no se guardó porque no tienes permiso para editar esa imagen."
+
+#: front-end/products/brikpanel-product-editor.php:8003
+msgid "Alt text changes were not saved because too many were sent at once. Save again with fewer changes."
+msgstr "Los cambios del texto alternativo no se guardaron porque se enviaron demasiados a la vez. Guarda de nuevo con menos cambios."
+
+#: front-end/products/brikpanel-product-editor.php:8005
+msgid "The product was saved, but its alt text changes could not be stored. Try saving again."
+msgstr "El producto se ha guardado, pero no se pudieron guardar los cambios del texto alternativo. Intenta guardar de nuevo."

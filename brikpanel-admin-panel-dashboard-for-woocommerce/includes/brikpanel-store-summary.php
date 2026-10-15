@@ -2770,7 +2770,10 @@ class Brikpanel_Store_Summary {
 		// products (parent _stock is NULL). Using both covers the simple
 		// product case (cost on parent) and the variable case (cost per
 		// variation) without double-counting because variable parents
-		// usually carry no _stock value.
+		// usually carry no _stock value. Only rows that count their stock
+		// (_manage_stock = yes): a variation that sells from the product's
+		// shared stock keeps an old _stock WooCommerce never clears, and the
+		// shared quantity is already counted once on the product row.
 		// Cost joins come from the central key list so a store keeping its
 		// costs in a third-party cost plugin is not summarised as zero-cost.
 		$cost      = brikpanel_cogs_sql_join_set( 'sc', 'p.ID' );
@@ -2785,6 +2788,7 @@ class Brikpanel_Store_Summary {
 				COALESCE(SUM(CAST(stock.meta_value AS DECIMAL(20,4)) * CAST(IFNULL({$cost['value']},'0') AS DECIMAL(20,4))), 0) AS cogs_value
 			 FROM {$wpdb->posts} p
 			 " . brikpanel_sql_single_meta_join( 'post', 'stock', 'p.ID', '_stock', "stock.meta_value <> ''", 'INNER' ) . "
+			 " . brikpanel_sql_single_meta_join( 'post', 'managed', 'p.ID', '_manage_stock', "managed.meta_value = 'yes'", 'INNER' ) . "
 			 " . brikpanel_sql_single_meta_join( 'post', 'price', 'p.ID', '_price' ) . "
 			 {$cost['joins']}
 			 WHERE p.post_type IN ('product','product_variation') AND p.post_status='publish'"

@@ -17068,3 +17068,90 @@ msgstr "Echte dag: %s"
 #, php-format
 msgid "On %s the store counted more add-to-carts than visitors, which bots usually cause. Mark the whole day as real anyway?"
 msgstr "Op %s telde de winkel meer toevoegingen aan de winkelwagen dan bezoekers, wat meestal door bots komt. Toch de hele dag als echt markeren?"
+
+#. translators: %s: total amount of the new orders, e.g. $122.00.
+#: front-end/sound/brikpanel-sound.php:188
+#, php-format
+msgid "Total %s"
+msgstr "Totaal %s"
+
+#: front-end/sound/brikpanel-sound.php:189
+msgid "View orders"
+msgstr "Bestellingen bekijken"
+
+msgctxt "stock that variations take from the product"
+msgid "Shared"
+msgstr "Gedeeld"
+
+msgid "Shared stock"
+msgstr "Gedeelde voorraad"
+
+msgid "All variations sell from one quantity instead of each having its own."
+msgstr "Alle variaties verkopen uit één hoeveelheid in plaats van elk uit een eigen hoeveelheid."
+
+msgid "Generate variation SKUs"
+msgstr "Variatie-SKU's genereren"
+
+msgid "Use the shared stock"
+msgstr "Gedeelde voorraad gebruiken"
+
+msgid "Use the shared stock for every variation"
+msgstr "Gedeelde voorraad gebruiken voor elke variatie"
+
+msgid "Add the product SKU first."
+msgstr "Voeg eerst de SKU van het product toe."
+
+msgid "Every variation already has a SKU."
+msgstr "Elke variatie heeft al een SKU."
+
+msgid "Uses the product's shared stock. Change it on the product."
+msgstr "Gebruikt de gedeelde voorraad van het product. Wijzig deze bij het product."
+
+#, php-format
+msgid "%s variation SKU added"
+msgid_plural "%s variation SKUs added"
+msgstr[0] "%s variatie-SKU toegevoegd"
+msgstr[1] "%s variatie-SKU's toegevoegd"
+
+#: front-end/sound/brikpanel-sound.php:306
+msgid "Skip marketplace orders"
+msgstr "Bestellingen via marktplaatsen overslaan"
+
+#: front-end/sound/brikpanel-sound.php:309
+msgid "Orders that BrikMarket brings in from marketplaces such as Trendyol, Hepsiburada or Amazon do not trigger a new order alert, so orders placed on your own store stand out."
+msgstr "Bestellingen die BrikMarket via marktplaatsen zoals Trendyol, Hepsiburada of Amazon binnenhaalt, geven geen melding van een nieuwe bestelling. Zo vallen bestellingen uit uw eigen winkel op."
+
+#: includes/brikpanel-enqueue.php:2480
+msgid "Alt text"
+msgstr "Alt-tekst"
+
+#: includes/brikpanel-enqueue.php:2481
+msgctxt "short button on a product image that opens its alt text"
+msgid "ALT"
+msgstr "ALT"
+
+#. translators: %s: the image's alt text.
+#: includes/brikpanel-enqueue.php:2483
+#, php-format
+msgid "Alt text: %s"
+msgstr "Alt-tekst: %s"
+
+#: includes/brikpanel-enqueue.php:2484
+msgid "You cannot change this alt text because the image belongs to another user."
+msgstr "U kunt deze alt-tekst niet wijzigen, omdat de afbeelding van een andere gebruiker is."
+
+#: front-end/products/brikpanel-product-editor.php:7999
+msgid "An alt text was not saved because its image is no longer part of this product."
+msgstr "Een alt-tekst is niet opgeslagen, omdat de afbeelding niet meer bij dit product hoort."
+
+#: front-end/products/brikpanel-product-editor.php:8001
+msgid "An alt text was not saved because you are not allowed to edit that image."
+msgstr "Een alt-tekst is niet opgeslagen, omdat u die afbeelding niet mag bewerken."
+
+#: front-end/products/brikpanel-product-editor.php:8003
+msgid "Alt text changes were not saved because too many were sent at once. Save again with fewer changes."
+msgstr "De alt-tekstwijzigingen zijn niet opgeslagen, omdat er te veel tegelijk zijn verzonden. Sla opnieuw op met minder wijzigingen."
+
+#: front-end/products/brikpanel-product-editor.php:8005
+msgid "The product was saved, but its alt text changes could not be stored. Try saving again."
+msgstr "Het product is opgeslagen, maar de alt-tekstwijzigingen konden niet worden bewaard. Probeer opnieuw op te slaan."

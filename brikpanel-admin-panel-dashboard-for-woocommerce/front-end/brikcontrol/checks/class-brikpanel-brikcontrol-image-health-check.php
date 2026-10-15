@@ -229,7 +229,7 @@ class Brikpanel_BrikControl_Image_Health_Check extends Brikpanel_BrikControl_Che
         if ( $product_type === 'variable' && function_exists( 'wc_get_product' ) ) {
             $product = wc_get_product( $product_id );
             if ( $product && method_exists( $product, 'get_children' ) ) {
-                foreach ( $product->get_children() as $variation_id ) {
+                foreach ( brikpanel_variation_ids( $product ) as $variation_id ) {
                     $vid = (int) get_post_thumbnail_id( $variation_id );
                     if ( $vid > 0 ) {
                         $ids[] = $vid;
