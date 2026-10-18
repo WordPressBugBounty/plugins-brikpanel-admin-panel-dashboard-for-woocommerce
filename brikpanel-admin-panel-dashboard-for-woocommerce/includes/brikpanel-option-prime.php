@@ -209,6 +209,8 @@ function brikpanel_prime_keys_admin() {
 		'brikpanel_topbar_custom_link_url',
 		'brikpanel_topbar_item_audience',
 		'brikpanel_topbar_item_hide_roles',
+		// Cache button: one click or LiteSpeed's purge menu (read while the bar renders).
+		'brikpanel_topbar_cache_button',
 
 		// Profit: gates the shipping-cost deduction, the per-order Shipping cost
 		// metabox, the Expenses breakdown row AND the dashboard transient key, so

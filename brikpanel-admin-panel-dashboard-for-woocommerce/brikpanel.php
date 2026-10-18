@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.35
+ * Version: 3.3.36
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.35');
+define('BRIKPANEL_VERSION', '3.3.36');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -737,6 +737,12 @@ if ( brikpanel_phone_app_enabled() ) {
 // the same reason: statuses change outside wp-admin too.
 brikpanel_require('front-end/orders/brikpanel-order-whatsapp-press.php');
 
+// Pack sizes: a variation that sells from the product's shared stock can take
+// more than one unit per sale (a 5-pack takes 5). Global: stock moves at
+// checkout, in payment webhooks, in the REST API and in wp-admin, and the shop
+// shows whole packs. A no-op for every product without the switch.
+brikpanel_require('includes/brikpanel-pack-sizes.php');
+
 // The text domain is loaded above the WooCommerce dependency guard, near the
 // top of this file, so the guard's own notice is translated too.
 
@@ -806,8 +812,13 @@ function brikpanel_init_admin() {
     brikpanel_require('front-end/products/brikpanel-product-code.php');
     brikpanel_require('front-end/products/brikpanel-category-enhancements.php');
     brikpanel_require('front-end/coupons/brikpanel-coupons.php');
+    // The one customer list (Customers page, Segments, Ctrl+K, the bell).
+    brikpanel_require('front-end/customers/class-brikpanel-customers-engine.php');
+    brikpanel_require('front-end/customers/class-brikpanel-customer-profile.php');
     brikpanel_require('front-end/segments/brikpanel-segments.php');
     brikpanel_require('front-end/customer-analytics/brikpanel-customer-analytics.php');
+    // The Customers page (its list and analytics tabs come from the two above).
+    brikpanel_require('front-end/customers/brikpanel-customers.php');
     brikpanel_require('front-end/expenses/brikpanel-expenses.php');
     brikpanel_require('front-end/vendors/brikpanel-vendors.php');
 
@@ -1351,6 +1362,16 @@ brikpanel_require('includes/brikpanel-access-control.php');
 // Also the one place other screens ask before linking to a module's page.
 // =============================================================================
 brikpanel_require('includes/brikpanel-module-pages.php');
+
+// =============================================================================
+// SAVED SIDEBAR ACROSS VERSIONS
+//
+// Rewrites the rows of a saved Navigation layout whose screen was merged into
+// another (Segments + Customer Analytics became Customers). File level: the
+// upgrade routine writes it back on plugins_loaded, before the Navigation
+// module loads on init.
+// =============================================================================
+brikpanel_require('includes/brikpanel-nav-config-migrate.php');
 
 // =============================================================================
 // SCREENS IN WORDPRESS'S MENU
@@ -2195,6 +2216,11 @@ function brikpanel_maybe_upgrade_db() {
     brikpanel_enable_payment_fees_default();
     brikpanel_cartab_dedupe_recovery_credit();
     brikpanel_timezone_fix_rebuild();
+    // A saved sidebar layout keeps its shape when a screen it lists was merged
+    // into another; read-time rewriting covers the requests before this runs.
+    if (function_exists('brikpanel_nav_config_migrate_stored')) {
+        brikpanel_nav_config_migrate_stored();
+    }
     // Re-assert autoload on the write-once markers. Idempotent, and running it
     // on every version bump means a call site that drifts one back to
     // autoload=off self-corrects on the next release instead of silently

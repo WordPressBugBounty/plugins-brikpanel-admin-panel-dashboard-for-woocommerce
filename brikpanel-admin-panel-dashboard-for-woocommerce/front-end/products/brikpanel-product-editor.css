@@ -1407,6 +1407,15 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
 .brikpanel-pe-var-table .var-stock-free:hover{background:#fafafa;color:var(--pe-text)}
 .brikpanel-pe-var-table .var-stock-free:focus{outline:none}
 .brikpanel-pe-var-table .var-stock-free-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Pack size (the product's "Pack sizes" switch): in a row that sells from the
+   shared stock, "× 5" takes the place of the word "Shared", and the link
+   beside it stays. Drawn in every row and shown only then, so a size typed
+   before the switch went off is still there when it comes back on. */
+.brikpanel-pe-var-table .var-pack{display:none;flex:1 1 auto;align-items:center;min-width:0}
+.bpe-var-shared-on.bpe-var-pack-on .brikpanel-pe-var-table .var-stock-box.is-unlimited .var-pack{display:flex}
+.bpe-var-shared-on.bpe-var-pack-on .brikpanel-pe-var-table .var-stock-box.is-unlimited .var-stock-free{display:none}
+.brikpanel-pe-var-table .var-pack-x{flex:0 0 auto;padding-inline-start:.625rem;font-size:.8125rem;line-height:1;color:var(--pe-text-secondary)}
+.brikpanel-pe-var-table td .var-pack input.var-pack-units{flex:1 1 auto;width:auto;min-width:0;height:100%;min-height:0;padding-block:0;padding-inline:.25rem .5rem;line-height:normal;border:0;border-radius:0;background:transparent;box-shadow:none}
 /* ∞, on every row and beside the strip's Stock box: a quiet suffix that turns
    dark while pressed, like the editor's other on/off controls. */
 .brikpanel-pe-inf-btn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:2rem;margin:0;padding:0;border:0;border-inline-start:1px solid var(--pe-border);border-radius:0;background:#f7f7f7;color:var(--pe-text-secondary);cursor:pointer;transition:background-color .15s ease,color .15s ease}

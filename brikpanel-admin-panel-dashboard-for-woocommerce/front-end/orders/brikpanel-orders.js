@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		[brikpanelTableHeader, true],
 		[brikpanelOrderSearch, true],
 		[brikpanelFilters, true],
+		[brikpanelOrdersExplorerLink, true],
 		[() => brikpanelBulkActions(getBulkActions()), true],
 		[brikpanelPagination, true],
 		[brikpanelOrderNumberNamePreview, true],
@@ -864,6 +865,85 @@ function brikpanelFilters() {
 	}
 
 	brikpanelSelect2FilterRemovers();
+}
+
+/**
+ * The Orders explorer (the Segments screen's order list) has no sidebar row:
+ * brikpanel-segments.php prints its link after WooCommerce's Filter button.
+ * Here it sits in the tab row, beside the search button, while the tabs keep
+ * room for their first two; otherwise it goes to the end of the filter row the
+ * search button opens. Decided from widths, never from the screen size: the
+ * language, the store's statuses and their counts change them.
+ */
+function brikpanelOrdersExplorerLink() {
+	const $link = document.querySelector('.bp-orders-explorer');
+	const $header1 = document.querySelector('.brikpanel-orders-table-header-1');
+	const $subsubsub = $header1?.querySelector('.subsubsub');
+	if (!$link || !$subsubsub) return;
+
+	// The list's own look replaces WordPress's button; brikpanelFilters() hid
+	// everything of the filter box that is not a dropdown.
+	$link.classList.remove('button');
+	$link.style.display = '';
+	const $wrap = $link.closest('.bp-orders-explorer-wrap');
+	$header1.insertBefore($link, $subsubsub.nextSibling);
+	$wrap?.remove();
+
+	// The search button is hidden when WooCommerce printed no search box.
+	const hasSearch = !!document.querySelector('.brikpanel-search .search-box');
+	$header1.classList.toggle('bp-orders-explorer-nosearch', !hasSearch);
+	const strip = window.brikpanelScrollStrip ? window.brikpanelScrollStrip($subsubsub) : null;
+
+	// The row's 8px gap, and the 54px search button with the gap before it
+	// (brikpanel-orders.css). Fixed numbers, not read from the page: an open
+	// search drops the row's gap, and the link has no end margin in the
+	// filter row, so reading them would give another answer in each place.
+	const gap = 8;
+	const band = hasSearch ? 62 : 0;
+	let inRow = null;
+	const place = () => {
+		const style = window.getComputedStyle($header1);
+		const inner = $header1.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+		const tabs = Array.from($subsubsub.children).slice(0, 2);
+		const tabsWidth = tabs.reduce((w, $li) => w + $li.getBoundingClientRect().width, 0)
+			+ (tabs.length > 1 ? parseFloat(window.getComputedStyle($subsubsub).columnGap) || 0 : 0);
+		const fits = inner - band - gap - $link.getBoundingClientRect().width >= tabsWidth;
+		if (fits === inRow) return;
+		inRow = fits;
+		if (fits) {
+			$header1.insertBefore($link, $subsubsub.nextSibling);
+		} else {
+			document.querySelector('.brikpanel-filters')?.append($link);
+		}
+		$header1.classList.toggle('bp-orders-explorer-in-row', fits);
+		if (strip) {
+			// The tabs end before the link; without it they run under the search button.
+			strip.endClear = fits ? 0 : 58;
+			strip.lastActive = null;
+			strip.schedule(true);
+		}
+	};
+	place();
+
+	// "Clear filters" joins the filter row a frame later: the link stays last.
+	waitForElement('.brikpanel-filters .brikpanel-clear-filter').then(() => {
+		if (inRow === false) document.querySelector('.brikpanel-filters')?.append($link);
+	});
+
+	let frame = 0;
+	const schedule = () => {
+		if (frame) return;
+		frame = window.requestAnimationFrame(() => {
+			frame = 0;
+			place();
+		});
+	};
+	if (typeof window.ResizeObserver === 'function') {
+		new window.ResizeObserver(schedule).observe($header1);
+	} else {
+		window.addEventListener('resize', schedule);
+	}
+	document.fonts?.ready?.then(schedule);
 }
 
 /**

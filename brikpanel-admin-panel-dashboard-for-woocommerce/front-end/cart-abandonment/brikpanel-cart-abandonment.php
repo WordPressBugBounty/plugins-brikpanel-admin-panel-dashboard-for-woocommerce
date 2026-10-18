@@ -77,6 +77,17 @@ class Brikpanel_Cart_Abandonment {
 	/** Most orders one shopper can have waiting to be settled; older ones drop off. */
 	const SETTLE_MAX_ORDERS = 20;
 
+	/** What popup coupon codes start with while the merchant has not chosen a start of their own. */
+	const POPUP_PREFIX_DEFAULT = 'BRIK';
+
+	/**
+	 * Longest start a merchant can choose. A code is the start, a dash and six
+	 * random characters: it has to fit the popup's code box on a phone, and the
+	 * popup only remembers codes of up to 32 characters (CODE_RE in
+	 * cart-abandonment.js).
+	 */
+	const POPUP_PREFIX_MAX = 16;
+
 	/**
 	 * Orders already credited this request. woocommerce_order_status_changed
 	 * can fire several times for one order in a single save.
@@ -125,6 +136,14 @@ class Brikpanel_Cart_Abandonment {
 			add_action( 'woocommerce_update_options_brikpanel', [ __CLASS__, 'save_popup_i18n' ] );
 			add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_settings_assets' ] );
 		}
+
+		// The popup coupon's code start is cleaned on every write, not only on
+		// the settings screen: an import and a companion plugin's settings card
+		// write the same option, and every one of them passes through here.
+		// Registered before the collection switch below, so a store that has
+		// collection off still cannot save a start that would break its codes
+		// once collection goes back on.
+		add_filter( 'sanitize_option_brikpanel_cartab_popup_coupon_prefix', [ __CLASS__, 'sanitize_popup_coupon_prefix' ] );
 
 		if ( ! self::is_enabled() ) {
 			return;
@@ -191,6 +210,69 @@ class Brikpanel_Cart_Abandonment {
 	/** Configured popup discount percentage (0 disables the coupon). */
 	public static function popup_discount() {
 		return max( 0, min( 100, (int) get_option( 'brikpanel_cartab_popup_discount', 10 ) ) );
+	}
+
+	/**
+	 * What popup coupon codes start with: the merchant's own start, cleaned,
+	 * or BRIK while none is set.
+	 *
+	 * Cleaned again on read, not only on save: an older import or a direct
+	 * database edit can hold anything. Read only when a code is minted or a
+	 * screen shows the setting, never while the plugin loads.
+	 *
+	 * Public and named so a companion plugin can tell whether this BrikPanel
+	 * lets the merchant choose the start before it offers the field itself.
+	 *
+	 * @since 3.3.36
+	 * @return string
+	 */
+	public static function popup_coupon_prefix() {
+		$prefix = self::sanitize_popup_coupon_prefix( get_option( 'brikpanel_cartab_popup_coupon_prefix', '' ) );
+		return '' === $prefix ? self::POPUP_PREFIX_DEFAULT : $prefix;
+	}
+
+	/**
+	 * Clean a typed code start into something a coupon code can safely begin
+	 * with: Latin letters and digits in capitals, every other run of characters
+	 * turned into one dash, at most POPUP_PREFIX_MAX long. "dmt hoşgeldin 4"
+	 * becomes DMT-HOSGELDIN-4.
+	 *
+	 * Accented and Turkish letters lose their marks first. WooCommerce stores a
+	 * code holding a Turkish İ as "i" plus a combining dot, and a shopper who
+	 * types that code in small letters, or with a plain I, is told it does not
+	 * exist (checked on WooCommerce 11.0.1). Letters from other scripts are
+	 * dropped; nothing usable left means "use the default".
+	 *
+	 * Capitals come from strtr(), not strtoupper(): before PHP 8.2 strtoupper()
+	 * follows the server locale. Cleaning a cleaned start changes nothing.
+	 *
+	 * @since 3.3.36
+	 * @param mixed $raw Typed or stored value.
+	 * @return string '' when nothing usable is left.
+	 */
+	public static function sanitize_popup_coupon_prefix( $raw ) {
+		if ( ! is_scalar( $raw ) ) {
+			return '';
+		}
+		$text = remove_accents( (string) $raw );
+		// A decomposed letter keeps its mark as a character of its own, which the
+		// next step would turn into a dash in the middle of a word.
+		$text = (string) preg_replace( '/\p{Mn}+/u', '', $text );
+		$text = (string) preg_replace( '/[^A-Za-z0-9]+/', '-', $text );
+		$text = self::ascii_upper( $text );
+		$text = substr( trim( $text, '-' ), 0, self::POPUP_PREFIX_MAX );
+		return rtrim( $text, '-' );
+	}
+
+	/**
+	 * Capitals for the ASCII letters of a string, whatever the server locale.
+	 * Every other byte, including those of multibyte characters, is left alone.
+	 *
+	 * @param string $text
+	 * @return string
+	 */
+	private static function ascii_upper( $text ) {
+		return strtr( (string) $text, 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' );
 	}
 
 	/** Selected offer-badge animation style, whitelisted against known styles. */
@@ -1968,17 +2050,24 @@ class Brikpanel_Cart_Abandonment {
 				&& ( ! $expires || $expires->getTimestamp() > time() );
 			if ( $usable ) {
 				return [
-					'code'    => $coupon->get_code(),
+					// WooCommerce hands a stored code back in small letters. It
+					// goes out the way it was minted, in capitals: the popup only
+					// remembers a code in capitals, so a repeat signup used to see
+					// its code once and then lose it from the "Your code" tab.
+					// Redemption ignores case either way.
+					'code'    => self::ascii_upper( $coupon->get_code() ),
 					'amount'  => (int) $coupon->get_amount(),
 					'expires' => $expires ? $expires->getTimestamp() : 0,
 				];
 			}
 		}
 
-		// Generate a unique, readable code.
-		$code = '';
+		// Generate a unique, readable code: the merchant's start, then six
+		// random characters. A code already issued keeps the start it had.
+		$prefix = self::popup_coupon_prefix();
+		$code   = '';
 		for ( $i = 0; $i < 5; $i++ ) {
-			$candidate = 'BRIK-' . strtoupper( wp_generate_password( 6, false, false ) );
+			$candidate = $prefix . '-' . self::ascii_upper( wp_generate_password( 6, false, false ) );
 			if ( ! wc_get_coupon_id_by_code( $candidate ) ) {
 				$code = $candidate;
 				break;
@@ -5668,6 +5757,29 @@ class Brikpanel_Cart_Abandonment {
 			'default'           => '10',
 			'custom_attributes' => [ 'min' => 0, 'max' => 100, 'step' => 1 ],
 			'css'               => 'width:90px;',
+		];
+		// No 'default' on purpose: an empty box means BRIK (the placeholder
+		// says so), and a merchant who clears the box must see it empty rather
+		// than have a default typed back in. Cleaned by the sanitize_option
+		// filter registered in the constructor.
+		$fields[] = [
+			'title'             => __( 'Code starts with', 'brikpanel' ),
+			'desc'              => sprintf(
+				/* translators: %s: an example popup coupon code, such as BRIK-7K2P9Q. */
+				__( 'Codes look like %s', 'brikpanel' ),
+				self::popup_coupon_prefix() . '-7K2P9Q'
+			),
+			'desc_tip'          => __( 'Each signup coupon is this text plus 6 random characters. Use Latin letters, numbers and dashes; accented letters lose their marks. Leave it empty for BRIK. Codes already sent keep the start they had.', 'brikpanel' ),
+			'id'                => 'brikpanel_cartab_popup_coupon_prefix',
+			'type'              => 'text',
+			'placeholder'       => self::POPUP_PREFIX_DEFAULT,
+			'custom_attributes' => [
+				'maxlength'    => self::POPUP_PREFIX_MAX,
+				'dir'          => 'ltr',
+				'spellcheck'   => 'false',
+				'autocomplete' => 'off',
+			],
+			'css'               => 'width:220px;',
 		];
 		$fields[] = [
 			'title'    => __( 'Apply automatically', 'brikpanel' ),

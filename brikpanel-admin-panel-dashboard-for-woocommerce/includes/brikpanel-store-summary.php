@@ -4714,7 +4714,7 @@ class Brikpanel_Store_Summary {
 			'brikpanel_modern_dashboard'      => __( 'Modern Dashboard', 'brikpanel' ),
 			'brikpanel_modern_navigation'     => __( 'Modern Navigation', 'brikpanel' ),
 			'brikpanel_modern_login'          => __( 'Modern Login', 'brikpanel' ),
-			'brikpanel_modern_segments'       => __( 'Customer segments', 'brikpanel' ),
+			'brikpanel_modern_segments'       => __( 'Orders explorer', 'brikpanel' ),
 			'brikpanel_modern_coupons'        => __( 'Modern Coupons UI', 'brikpanel' ),
 			'brikpanel_simple_product_editor' => __( 'Simple Product Editor', 'brikpanel' ),
 			'brikpanel_modern_products_list'  => __( 'Modern Products List', 'brikpanel' ),

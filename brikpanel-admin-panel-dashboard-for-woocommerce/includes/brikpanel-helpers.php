@@ -194,6 +194,7 @@ function brikpanel_flush_topbar_counts() {
  */
 function brikpanel_delete_topbar_counts() {
     delete_transient( 'brikpanel_topbar_counts' );
+    delete_transient( 'brikpanel_topbar_new_customers' );
 }
 add_action( 'woocommerce_trash_order',              'brikpanel_flush_topbar_counts' );
 add_action( 'woocommerce_untrash_order',            'brikpanel_flush_topbar_counts' );

@@ -1123,8 +1123,12 @@
 	margin-bottom: 6px !important;
 }
 
+/* Wraps because the merchant chooses how a code starts: a long start with
+ * the copy button beside it is wider than a phone, so the button drops
+ * below and a code too long for one line breaks inside the box. */
 .brikpanel-cartab-popup-overlay .brikpanel-cartab-coupon-row {
 	display: flex !important;
+	flex-wrap: wrap !important;
 	align-items: stretch !important;
 	justify-content: center !important;
 	gap: 8px !important;
@@ -1133,6 +1137,8 @@
 .brikpanel-cartab-popup-overlay .brikpanel-cartab-coupon-code {
 	display: inline-flex !important;
 	align-items: center !important;
+	max-width: 100% !important;
+	overflow-wrap: anywhere !important;
 	padding: 8px 14px !important;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
 	font-size: 16px !important;

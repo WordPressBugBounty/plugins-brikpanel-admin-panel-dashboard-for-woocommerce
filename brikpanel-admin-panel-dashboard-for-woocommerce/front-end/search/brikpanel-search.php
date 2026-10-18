@@ -102,6 +102,15 @@ class Brikpanel_Pro_Search {
 	 */
 	const SKU_PARTIAL_MIN_LENGTH = 3;
 
+	/**
+	 * The per-field order lookups already run in this request, keyed by
+	 * field, limit and terms. The orders and customers sources run the same
+	 * phone, email and name lookups for one search; see order_ids_by_field().
+	 *
+	 * @var array<string,int[]>
+	 */
+	private $order_lookups = array();
+
 	public function __construct() {
 		// We also enqueue the scripts for the public side of WordPress because
 		// for logged in admins, the admin bar shows at the top there too.
@@ -218,7 +227,10 @@ class Brikpanel_Pro_Search {
 			array(
 				'id'         => 'customers',
 				'label'      => __( 'Customers', 'brikpanel' ),
-				'capability' => 'list_users',
+				// Results open the customer's page on the Customers screen,
+				// which every palette user may open; without that screen they
+				// open WordPress profiles.
+				'capability' => class_exists( 'Brikpanel_Customers' ) ? 'manage_woocommerce' : 'list_users',
 				'callback'   => array( $this, 'source_customers' ),
 			),
 			array(
@@ -252,8 +264,24 @@ class Brikpanel_Pro_Search {
 			return false;
 		}
 		// With "Block pages hidden from the menu" on, a source whose results
-		// open a screen closed to this user would only list dead ends.
+		// open a screen closed to this user would only list dead ends. A
+		// customer opens on the Customers screen or, when that one is closed,
+		// on the WordPress profile, so customers close only with both.
+		if ( 'customers' === $source_id ) {
+			return ! ( $this->customer_screen_closed( 'customers' ) && $this->customer_screen_closed( 'users' ) );
+		}
 		return ! ( function_exists( 'brikpanel_nav_search_source_blocked' ) && brikpanel_nav_search_source_blocked( (string) $source_id ) );
+	}
+
+	/**
+	 * Whether "Block pages hidden from the menu" closes a screen customer
+	 * results open: 'customers' (the Customers screen) or 'users' (profiles).
+	 *
+	 * @param string $screen 'customers' or 'users'.
+	 * @return bool
+	 */
+	private function customer_screen_closed( $screen ) {
+		return function_exists( 'brikpanel_nav_search_source_blocked' ) && brikpanel_nav_search_source_blocked( $screen );
 	}
 
 	// =========================================================================
@@ -568,8 +596,7 @@ class Brikpanel_Pro_Search {
 		$ids   = array();
 
 		foreach ( array( 'number', 'phone', 'email', 'name' ) as $field ) {
-			$method = 'order_ids_by_' . $field;
-			$found  = $this->$method( $terms, $limit );
+			$found = $this->order_ids_by_field( $field, $terms, $limit );
 
 			if ( ! empty( $found ) ) {
 				$ids = array_values( array_unique( array_merge( $ids, $found ) ) );
@@ -603,6 +630,24 @@ class Brikpanel_Pro_Search {
 		return is_array( $filtered )
 			? $this->sanitize_id_list( $filtered, $limit )
 			: $ids;
+	}
+
+	/**
+	 * One per-field order lookup (order_ids_by_number(), _phone(), _email(),
+	 * _name()), run once per request for the same terms and limit.
+	 *
+	 * @param string $field number, phone, email or name.
+	 * @param array  $terms Search terms.
+	 * @param int    $limit Most order IDs to return.
+	 * @return int[]
+	 */
+	private function order_ids_by_field( $field, array $terms, $limit ) {
+		$key = $field . '|' . (int) $limit . '|' . implode( "\x1f", $terms );
+		if ( ! isset( $this->order_lookups[ $key ] ) ) {
+			$method                      = 'order_ids_by_' . $field;
+			$this->order_lookups[ $key ] = $this->$method( $terms, (int) $limit );
+		}
+		return $this->order_lookups[ $key ];
 	}
 
 	/**
@@ -1782,11 +1827,108 @@ class Brikpanel_Pro_Search {
 	}
 
 	// =========================================================================
-	// Source: Customers (registered users / WooCommerce customers)
+	// Source: Customers (registered customers and guests)
 	// =========================================================================
 
+	/**
+	 * Customers whose name, email, phone or username matches, registered and
+	 * guest alike, one row each.
+	 *
+	 * A row opens the customer's page on the Customers screen. When that
+	 * screen is closed to this user ("Block pages hidden from the menu"), a
+	 * registered customer opens the WordPress profile instead, and guests,
+	 * who have no profile, are left out.
+	 *
+	 * Accounts are found by their own fields; guests, and accounts known only
+	 * by the details on their orders, through the per-field order lookups the
+	 * orders source runs for the same search (order_ids_by_field() shares
+	 * them), so a phone typed in any common format finds its customer and no
+	 * lookup scans the orders table.
+	 *
+	 * @param string $query The search term as typed.
+	 * @return string Result markup.
+	 */
 	private function source_customers( $query ) {
-		$limit = 10;
+		$limit    = 10;
+		$profiles = class_exists( 'Brikpanel_Customers' ) && class_exists( 'Brikpanel_Customers_Engine' )
+			&& current_user_can( 'manage_woocommerce' ) && ! $this->customer_screen_closed( 'customers' );
+		$accounts = current_user_can( 'list_users' ) && ! $this->customer_screen_closed( 'users' );
+		if ( ! $profiles && ! $accounts ) {
+			return '';
+		}
+
+		// key => [ 'user_id' => int, 'email' => string, 'name' => string ]
+		$found = array();
+		foreach ( $this->registered_customers( $query, $limit ) as $user ) {
+			$found[ 'u:' . (int) $user->ID ] = array(
+				'user_id' => (int) $user->ID,
+				'email'   => (string) $user->user_email,
+				'name'    => '',
+			);
+		}
+		if ( count( $found ) < $limit ) {
+			foreach ( $this->customers_of_orders( $this->customer_order_ids( $query ) ) as $key => $row ) {
+				if ( ! isset( $found[ $key ] ) ) {
+					$found[ $key ] = $row;
+				}
+			}
+		}
+
+		// A guest row for an address an account in the list already uses
+		// would read as the same person twice.
+		$account_emails = array();
+		foreach ( $found as $row ) {
+			if ( $row['user_id'] > 0 && '' !== $row['email'] ) {
+				$account_emails[ brikpanel_strtolower( $row['email'] ) ] = true;
+			}
+		}
+
+		$guest_badge = '<span class="status-badge text-sm" style="background: #f1f1f1;">' . esc_html__( 'Guest', 'brikpanel' ) . '</span>';
+		$items       = array();
+		foreach ( $found as $key => $row ) {
+			if ( count( $items ) >= $limit ) {
+				break;
+			}
+			if ( $row['user_id'] > 0 ) {
+				$user = get_userdata( $row['user_id'] );
+				$url  = $profiles ? Brikpanel_Customers_Engine::profile_url( $key ) : ( $user ? get_edit_user_link( $user->ID ) : '' );
+				if ( ! $url ) {
+					continue;
+				}
+				$name = $user ? trim( $user->first_name . ' ' . $user->last_name ) : '';
+				if ( '' === $name ) {
+					$name = '' !== $row['name'] ? $row['name'] : ( $user ? (string) $user->display_name : $row['email'] );
+				}
+				$items[] = array(
+					'url'      => $url,
+					'title'    => $name,
+					'subtitle' => $user ? (string) $user->user_email : $row['email'],
+				);
+				continue;
+			}
+			if ( ! $profiles || isset( $account_emails[ $row['email'] ] ) ) {
+				continue;
+			}
+			$items[] = array(
+				'url'      => Brikpanel_Customers_Engine::profile_url( $key ),
+				'title'    => '' !== $row['name'] ? $row['name'] : $row['email'],
+				'subtitle' => $row['email'],
+				'badge'    => $guest_badge,
+			);
+		}
+
+		return $this->generate_generic_results_html( $items );
+	}
+
+	/**
+	 * Accounts whose login, email, display name, first or last name (their
+	 * own or their billing one) or billing phone matches.
+	 *
+	 * @param string $query The search term as typed.
+	 * @param int    $limit Most accounts to return.
+	 * @return array<int,object> Users (ID, display_name, user_email) keyed by ID.
+	 */
+	private function registered_customers( $query, $limit ) {
 		$found = array();
 
 		// Core column search: login, email, display name, nicename.
@@ -1799,70 +1941,132 @@ class Brikpanel_Pro_Search {
 			)
 		);
 		foreach ( $by_core as $u ) {
-			$found[ $u->ID ] = $u;
+			$found[ (int) $u->ID ] = $u;
 		}
 
 		// Real-name search via first/last name meta (and WooCommerce billing
 		// names) so "John Doe" resolves even when display_name is a username.
 		if ( count( $found ) < $limit ) {
+			$meta = array( 'relation' => 'OR' );
+			foreach ( array( 'first_name', 'last_name', 'billing_first_name', 'billing_last_name' ) as $key ) {
+				$meta[] = array(
+					'key'     => $key,
+					'value'   => $query,
+					'compare' => 'LIKE',
+				);
+			}
+			if ( $this->is_numeric_term( $query ) ) {
+				$meta[] = array(
+					'key'     => 'billing_phone',
+					'value'   => $query,
+					'compare' => 'LIKE',
+				);
+			}
 			$by_meta = get_users(
 				array(
 					'number'     => $limit,
 					'fields'     => array( 'ID', 'display_name', 'user_email' ),
-					'meta_query' => array(
-						'relation' => 'OR',
-						array(
-							'key'     => 'first_name',
-							'value'   => $query,
-							'compare' => 'LIKE',
-						),
-						array(
-							'key'     => 'last_name',
-							'value'   => $query,
-							'compare' => 'LIKE',
-						),
-						array(
-							'key'     => 'billing_first_name',
-							'value'   => $query,
-							'compare' => 'LIKE',
-						),
-						array(
-							'key'     => 'billing_last_name',
-							'value'   => $query,
-							'compare' => 'LIKE',
-						),
-					),
+					'meta_query' => $meta,
 				)
 			);
 			foreach ( $by_meta as $u ) {
-				$found[ $u->ID ] = $u;
+				$found[ (int) $u->ID ] = $u;
 			}
 		}
 
-		if ( empty( $found ) ) {
-			return '';
+		return array_slice( $found, 0, $limit, true );
+	}
+
+	/**
+	 * Orders whose customer details match, for finding their customers: the
+	 * phone, email and name lookups of the orders source, with its limit, so
+	 * the two sources share one set of queries per search.
+	 *
+	 * @param string $query The search term as typed.
+	 * @return int[] Order IDs, most relevant first.
+	 */
+	private function customer_order_ids( $query ) {
+		$query = trim( (string) $query );
+		$terms = '' === $query ? array() : $this->build_search_terms( $query );
+		if ( empty( $terms ) ) {
+			return array();
+		}
+		$ids = array();
+		foreach ( array( 'phone', 'email', 'name' ) as $field ) {
+			$ids = array_merge( $ids, $this->order_ids_by_field( $field, $terms, self::ORDER_RESULT_LIMIT ) );
+		}
+		return $this->sanitize_id_list( array_values( array_unique( $ids ) ), self::ORDER_RESULT_LIMIT * 3 );
+	}
+
+	/**
+	 * The customers behind a list of orders, in the list's order, one row per
+	 * customer under the key the Customers screen uses: u:<user id> for an
+	 * account, e:<lower-cased email> for a guest. Orders the customer list
+	 * leaves out (drafts, trash, no email, erased by a privacy request) are
+	 * left out here too.
+	 *
+	 * @param int[] $ids Order IDs, most relevant first.
+	 * @return array<string,array{user_id: int, email: string, name: string}>
+	 */
+	private function customers_of_orders( array $ids ) {
+		global $wpdb;
+
+		$ids = $this->sanitize_id_list( $ids, self::ORDER_RESULT_LIMIT * 3 );
+		if ( empty( $ids ) || ! class_exists( 'Brikpanel_Customers_Engine' ) ) {
+			return array();
+		}
+		$not_orders = Brikpanel_Customers_Engine::NOT_ORDERS;
+		$args       = array_merge( $not_orders, $ids );
+		$statuses   = $this->in_placeholders( $not_orders );
+		$holders    = $this->in_placeholders( $ids, '%d' );
+
+		if ( $this->orders_use_hpos() ) {
+			$sql = "SELECT o.id, o.customer_id, o.billing_email AS email, a.first_name, a.last_name
+				FROM {$wpdb->prefix}wc_orders o
+				LEFT JOIN {$wpdb->prefix}wc_order_addresses a ON a.order_id = o.id AND a.address_type = 'billing'
+				WHERE o.type = 'shop_order' AND o.status NOT IN ({$statuses}) AND o.id IN ({$holders})";
+		} else {
+			// Each field from its first meta row, the one get_post_meta()
+			// returns and the customer list keys on.
+			$sql = "SELECT p.ID AS id, cu.meta_value AS customer_id, em.meta_value AS email,
+					fn.meta_value AS first_name, ln.meta_value AS last_name
+				FROM {$wpdb->posts} p
+				" . brikpanel_sql_single_meta_join( 'post', 'cu', 'p.ID', '_customer_user' ) . '
+				' . brikpanel_sql_single_meta_join( 'post', 'em', 'p.ID', '_billing_email' ) . '
+				' . brikpanel_sql_single_meta_join( 'post', 'fn', 'p.ID', '_billing_first_name' ) . '
+				' . brikpanel_sql_single_meta_join( 'post', 'ln', 'p.ID', '_billing_last_name' ) . "
+				WHERE p.post_type = 'shop_order' AND p.post_status NOT IN ({$statuses}) AND p.ID IN ({$holders})";
 		}
 
-		$items = array();
-		foreach ( array_slice( $found, 0, $limit, true ) as $user ) {
-			$url = get_edit_user_link( $user->ID );
-			if ( ! $url ) {
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders are generated from counts, values are bound here.
+		$rows = (array) $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
+		$by_id = array();
+		foreach ( $rows as $row ) {
+			$by_id[ (int) $row->id ] = $row;
+		}
+
+		$out = array();
+		foreach ( $ids as $id ) {
+			if ( ! isset( $by_id[ $id ] ) ) {
 				continue;
 			}
-
-			$name = trim( get_user_meta( $user->ID, 'first_name', true ) . ' ' . get_user_meta( $user->ID, 'last_name', true ) );
-			if ( '' === $name ) {
-				$name = $user->display_name;
+			$row   = $by_id[ $id ];
+			$email = brikpanel_strtolower( trim( (string) $row->email ) );
+			if ( '' === $email || Brikpanel_Customers_Engine::ERASED_EMAIL === $email ) {
+				continue;
 			}
-
-			$items[] = array(
-				'url'      => $url,
-				'title'    => $name,
-				'subtitle' => $user->user_email,
+			$user_id = (int) $row->customer_id;
+			$key     = $user_id > 0 ? 'u:' . $user_id : 'e:' . $email;
+			if ( isset( $out[ $key ] ) || ( 0 === $user_id && null === Brikpanel_Customers_Engine::parse_key( $key ) ) ) {
+				continue;
+			}
+			$out[ $key ] = array(
+				'user_id' => $user_id,
+				'email'   => $email,
+				'name'    => trim( (string) $row->first_name . ' ' . (string) $row->last_name ),
 			);
 		}
-
-		return $this->generate_generic_results_html( $items );
+		return $out;
 	}
 
 	// =========================================================================
@@ -2448,7 +2652,7 @@ class Brikpanel_Pro_Search {
 				'name'    => __( 'Search customers', 'brikpanel' ),
 				'id'      => 'brikpanel_search_customers',
 				'type'    => 'checkbox',
-				'desc'    => __( 'Find registered customers by name, email or username.', 'brikpanel' ),
+				'desc'    => __( 'Find customers by name, email, phone or username.', 'brikpanel' ),
 				'default' => 'yes',
 			),
 			array(

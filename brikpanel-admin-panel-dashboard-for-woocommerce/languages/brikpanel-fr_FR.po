@@ -1485,9 +1485,9 @@ msgstr "Ouvrez Paniers abandonnés et recherchez les adresses d’exemple ci-des
 msgid "Open Abandoned Carts"
 msgstr "Ouvrir Paniers abandonnés"
 
-#: front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cartab-bot-rows-check.php:1004
-msgid "Popup signups among these entries were handed real coupons (codes starting with BRIK-). Each is single-use and locked to the address it was issued to, so nobody else can redeem it; review them in your coupon list if you want them gone."
-msgstr "Des inscriptions par la fenêtre parmi ces entrées ont reçu de vrais codes promo (codes commençant par BRIK-). Chacun est à usage unique et lié à l’adresse pour laquelle il a été émis, personne d’autre ne peut donc l’utiliser ; vérifiez-les dans votre liste de codes promo si vous voulez les supprimer."
+#: front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cartab-bot-rows-check.php:1007
+msgid "Popup signups among these entries were handed real coupons. Each is single-use and locked to the address it was issued to, so nobody else can redeem it; review them in your coupon list if you want them gone."
+msgstr "Des inscriptions par la fenêtre parmi ces entrées ont reçu de vrais codes promo. Chacun est à usage unique et lié à l’adresse pour laquelle il a été émis, personne d’autre ne peut donc l’utiliser ; vérifiez-les dans votre liste de codes promo si vous voulez les supprimer."
 
 #: front-end/brikcontrol/checks/class-brikpanel-brikcontrol-cartab-bot-rows-check.php:1008
 msgid "Open coupons"
@@ -3486,10 +3486,6 @@ msgstr "Toutes vos commandes sont déjà en %s, il n'y a donc rien à convertir 
 msgid "Leave a rate empty to count those orders at their original number (no conversion). Orders that already carry a rate from your multi-currency plugin ignore the values here and always use their own day-of-sale rate."
 msgstr "Laissez un taux vide pour compter ces commandes à leur valeur d'origine (sans conversion). Les commandes qui portent déjà un taux de votre extension multidevise ignorent les valeurs ci-dessus et utilisent toujours leur propre taux du jour de la vente."
 
-#: front-end/customer-analytics/brikpanel-customer-analytics.php:93 front-end/customer-analytics/brikpanel-customer-analytics.php:94 front-end/customer-analytics/brikpanel-customer-analytics.php:105 front-end/customer-analytics/views/page.php:41 front-end/dashboard/brikpanel-dashboard.php:2521
-msgid "Customer Analytics"
-msgstr "Analyses des clients"
-
 #. translators: %s: timestamp
 #: front-end/customer-analytics/brikpanel-customer-analytics.php:174
 #, php-format
@@ -3690,30 +3686,6 @@ msgstr "Récence"
 msgid "Customer segments"
 msgstr "Segments de clients"
 
-#: front-end/customer-analytics/views/page.php:182
-msgid "Each customer is scored from 1 to 5 on Recency, Frequency, and Monetary value, then placed into one of the RFM segments below. Click a card to drill into its customers."
-msgstr "Chaque client reçoit une note de 1 à 5 en récence, fréquence et valeur monétaire, puis il est placé dans l’un des segments RFM ci-dessous. Cliquez sur une carte pour voir ses clients."
-
-#: front-end/customer-analytics/views/page.php:198
-msgid "Segment customers"
-msgstr "Clients du segment"
-
-#: front-end/customer-analytics/views/page.php:203
-msgid "Export this segment (CSV)"
-msgstr "Exporter ce segment (CSV)"
-
-#: front-end/customer-analytics/views/page.php:206
-msgid "Clear selection"
-msgstr "Effacer la sélection"
-
-#: front-end/customer-analytics/views/page.php:214
-msgid "RFM"
-msgstr "RFM"
-
-#: front-end/customer-analytics/views/page.php:223
-msgid "Click a segment above to load its customers."
-msgstr "Cliquez sur un segment ci-dessus pour charger ses clients."
-
 #: front-end/customer-analytics/views/page.php:245
 msgid "Each row is a monthly cohort of customers acquired that month. Each cell shows the % of that cohort who placed at least one order N months later."
 msgstr "Chaque ligne est une cohorte mensuelle de clients acquis ce mois-là. Chaque cellule affiche le % de cette cohorte qui a passé au moins une commande N mois plus tard."
@@ -3749,10 +3721,6 @@ msgstr "Exporter la matrice (CSV)"
 #: front-end/customer-analytics/views/page.php:290 includes/brikpanel-enqueue.php:929
 msgid "Exclude customers from analytics"
 msgstr "Exclure des clients des statistiques"
-
-#: front-end/customer-analytics/views/page.php:294 includes/brikpanel-enqueue.php:930
-msgid "Pick the accounts you do not want counted as customers, for example a point-of-sale or staff login that places many orders. Their orders still count toward your shop revenue and order totals, but they are left out of customer averages, segments, and retention so the numbers reflect your real customers."
-msgstr "Choisissez les comptes que vous ne voulez pas compter comme clients, par exemple un point de vente ou un identifiant du personnel qui passe de nombreuses commandes. Leurs commandes comptent toujours dans le chiffre d'affaires et les totaux de commandes de votre boutique, mais elles sont exclues des moyennes clients, des segments et de la rétention pour que les chiffres reflètent vos vrais clients."
 
 #: front-end/customer-analytics/views/page.php:297 includes/brikpanel-enqueue.php:701 includes/brikpanel-enqueue.php:931
 msgid "People"
@@ -11251,10 +11219,6 @@ msgstr "Trouvez des produits simples et variables par nom, UGS ou GTIN (variatio
 msgid "Search customers"
 msgstr "Rechercher des clients"
 
-#: front-end/search/brikpanel-search.php:2451
-msgid "Find registered customers by name, email or username."
-msgstr "Trouvez des clients enregistrés par nom, e-mail ou nom d'utilisateur."
-
 #: front-end/search/brikpanel-search.php:2455
 msgid "Search navigation"
 msgstr "Rechercher dans la navigation"
@@ -12047,10 +12011,6 @@ msgstr "Ouvrir"
 #: front-end/welcome/brikpanel-welcome.php:195
 msgid "New orders and quick status changes"
 msgstr "Nouvelles commandes et changements de statut rapides"
-
-#: front-end/welcome/brikpanel-welcome.php:203
-msgid "Lifetime value and segments"
-msgstr "Valeur vie et segments"
 
 #: front-end/welcome/brikpanel-welcome.php:213
 msgid "Sync your store to a sheet"
@@ -17155,3 +17115,420 @@ msgstr "Les modifications de texte alternatif n'ont pas été enregistrées, car
 #: front-end/products/brikpanel-product-editor.php:8005
 msgid "The product was saved, but its alt text changes could not be stored. Try saving again."
 msgstr "Le produit a été enregistré, mais les modifications du texte alternatif n'ont pas pu être enregistrées. Réessayez d'enregistrer."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5766
+msgid "Code starts with"
+msgstr "Le code commence par"
+
+#. translators: %s: an example popup coupon code, such as BRIK-7K2P9Q.
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5769
+#, php-format
+msgid "Codes look like %s"
+msgstr "Les codes ressemblent à ceci : %s"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5772
+msgid "Each signup coupon is this text plus 6 random characters. Use Latin letters, numbers and dashes; accented letters lose their marks. Leave it empty for BRIK. Codes already sent keep the start they had."
+msgstr "Chaque code promo d’inscription se compose de ce texte et de 6 caractères aléatoires. Utilisez des lettres latines, des chiffres et des tirets ; les lettres accentuées perdent leur accent (É devient E). Laissez vide pour BRIK. Les codes déjà envoyés gardent le début qu’ils avaient."
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:271
+msgid "Could not clear. Reload the page and try again."
+msgstr "Impossible de vider. Rechargez la page et réessayez."
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:930
+msgid "Clear everything"
+msgstr "Tout vider"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:943
+msgctxt "LiteSpeed LSCache purge option"
+msgid "Page cache"
+msgstr "Cache des pages"
+
+#: includes/brikpanel-cache-clear.php:392
+msgctxt "LiteSpeed purge part"
+msgid "page cache"
+msgstr "cache des pages"
+
+#: includes/brikpanel-cache-clear.php:394
+msgctxt "LiteSpeed purge part"
+msgid "CSS/JS"
+msgstr "CSS/JS"
+
+#: includes/brikpanel-cache-clear.php:396
+msgctxt "LiteSpeed purge part"
+msgid "object cache"
+msgstr "cache d’objets"
+
+#: includes/brikpanel-cache-clear.php:399
+msgctxt "LiteSpeed purge part"
+msgid "opcode cache"
+msgstr "cache d’opcode"
+
+#. translators: 1: cache plugin name (LiteSpeed Cache), 2: what gets cleared, e.g. "page cache, CSS/JS and object cache"
+#: includes/brikpanel-cache-clear.php:416
+#, php-format
+msgid "Purge %1$s: %2$s"
+msgstr "Purger %1$s : %2$s"
+
+#. translators: %s: what gets cleared, e.g. "page cache, CSS/JS and object cache"
+#: includes/brikpanel-cache-clear.php:426
+#, php-format
+msgid "Clears the %s"
+msgstr "Vide : %s"
+
+#: includes/brikpanel-cache-clear.php:589
+msgid "Cache button"
+msgstr "Bouton du cache"
+
+#: includes/brikpanel-cache-clear.php:593
+msgid "What the cache button in the top bar does with LiteSpeed Cache. The menu lists the purge options LiteSpeed offers on this site, such as the page cache, CSS/JS and the object cache."
+msgstr "Ce que fait le bouton du cache de la barre supérieure avec LiteSpeed Cache. Le menu affiche les options de purge que LiteSpeed propose sur ce site, comme le cache des pages, CSS/JS et le cache d’objets."
+
+#: includes/brikpanel-cache-clear.php:595
+msgid "Clear everything in one click"
+msgstr "Tout vider en un clic"
+
+#: includes/brikpanel-cache-clear.php:596
+msgid "Open a menu to choose what to clear"
+msgstr "Ouvrir un menu pour choisir quoi vider"
+
+#. translators: 1: cache plugin name (LiteSpeed Cache), 2: what was cleared, e.g. "page cache, CSS/JS and object cache"
+#: includes/brikpanel-cache-clear.php:733
+#, php-format
+msgid "%1$s purged: %2$s."
+msgstr "%1$s purgé : %2$s."
+
+#: front-end/customer-analytics/views/panels.php:29
+msgid "Customers with orders"
+msgstr "Clients ayant commandé"
+
+#: front-end/customer-analytics/views/panels.php:110
+msgid "Each customer is scored from 1 to 5 on Recency, Frequency, and Monetary value, then placed into one of the RFM segments below. Click a card to see its customers in All customers."
+msgstr "Chaque client reçoit une note de 1 à 5 en récence, fréquence et valeur monétaire, puis il est placé dans l’un des segments RFM ci-dessous. Cliquez sur une carte pour voir ses clients dans « Tous les clients »."
+
+#: front-end/customer-analytics/views/panels.php:184 includes/brikpanel-enqueue.php:960
+msgid "Pick the accounts you do not want counted as customers, for example a point-of-sale or staff login that places many orders. Their orders still count toward your shop revenue and order totals, but they are left out of the customer list, averages, segments and retention, so the numbers reflect your real customers."
+msgstr "Choisissez les comptes que vous ne voulez pas compter comme clients, par exemple un point de vente ou un identifiant du personnel qui passe de nombreuses commandes. Leurs commandes comptent toujours dans le chiffre d'affaires et les totaux de commandes de votre boutique, mais elles sont exclues de la liste des clients, des moyennes, des segments et de la rétention pour que les chiffres reflètent vos vrais clients."
+
+#: front-end/customers/views/page.php:19
+msgid "All customers"
+msgstr "Tous les clients"
+
+#: front-end/customers/views/profile.php:24
+msgid "Customer not found"
+msgstr "Client introuvable"
+
+#: front-end/customers/views/profile.php:28
+msgid "This customer has no account or order in this store."
+msgstr "Ce client n’a ni compte ni commande dans cette boutique."
+
+#. translators: %s: number of days.
+#: front-end/customers/views/profile.php:51
+#, php-format
+msgid "%s day ago"
+msgid_plural "%s days ago"
+msgstr[0] "il y a %s jour"
+msgstr[1] "il y a %s jours"
+
+#: front-end/customers/views/profile.php:85
+msgid "WordPress profile"
+msgstr "Profil WordPress"
+
+#. translators: %s: number of paid orders.
+#: front-end/customers/views/profile.php:101 includes/brikpanel-enqueue.php:1480
+#, php-format
+msgid "%s paid order"
+msgid_plural "%s paid orders"
+msgstr[0] "%s commande payée"
+msgstr[1] "%s commandes payées"
+
+#. translators: %s: number of orders not paid (pending, failed, cancelled...).
+#: front-end/customers/views/profile.php:112
+#, php-format
+msgid "+%s not paid"
+msgid_plural "+%s not paid"
+msgstr[0] "+%s non payée"
+msgstr[1] "+%s non payées"
+
+#. translators: %s: number of orders.
+#: front-end/customers/views/profile.php:163
+#, php-format
+msgid "View all %s order"
+msgid_plural "View all %s orders"
+msgstr[0] "Voir %s commande"
+msgstr[1] "Voir les %s commandes"
+
+#: front-end/customers/views/profile.php:174
+msgid "Products bought"
+msgstr "Produits achetés"
+
+#. translators: %s: quantity bought.
+#: front-end/customers/views/profile.php:187
+#, php-format
+msgctxt "quantity bought"
+msgid "× %s"
+msgstr "× %s"
+
+#: front-end/customers/views/profile.php:194
+msgid "Nothing bought in a paid order yet."
+msgstr "Rien acheté dans une commande payée pour l’instant."
+
+#: front-end/customers/views/profile.php:241 includes/brikpanel-enqueue.php:844
+msgid "Customer since"
+msgstr "Client depuis"
+
+#: front-end/customers/views/profile.php:253
+msgid "Addresses"
+msgstr "Adresses"
+
+#: front-end/customers/views/profile.php:265
+msgid "Email marketing"
+msgstr "Marketing par e-mail"
+
+#: front-end/customers/views/profile.php:267
+msgid "Subscribed"
+msgstr "Abonné"
+
+#: front-end/customers/views/profile.php:269
+msgid "Unsubscribed"
+msgstr "Désabonné"
+
+#: front-end/customers/views/profile.php:271
+msgid "Not on the email list"
+msgstr "Pas sur la liste e-mail"
+
+#. translators: %s: date the customer agreed to receive emails.
+#: front-end/customers/views/profile.php:277
+#, php-format
+msgid "Since %s."
+msgstr "Depuis le %s."
+
+#. translators: 1: number of orders, 2: their total (one amount per currency, comma separated).
+#: front-end/customers/views/profile.php:290
+#, php-format
+msgid "BrikMentor emails brought %1$s order, %2$s."
+msgid_plural "BrikMentor emails brought %1$s orders, %2$s."
+msgstr[0] "Les e-mails BrikMentor ont rapporté %1$s commande, %2$s."
+msgstr[1] "Les e-mails BrikMentor ont rapporté %1$s commandes, %2$s."
+
+#: front-end/customers/views/profile.php:295
+msgid "No orders from BrikMentor emails yet."
+msgstr "Aucune commande issue des e-mails BrikMentor pour l’instant."
+
+#: front-end/customers/views/profile.php:303
+msgid "Coupons used"
+msgstr "Codes promo utilisés"
+
+#. translators: %s: how many times the coupon was used.
+#: front-end/customers/views/profile.php:312
+#, php-format
+msgctxt "times used"
+msgid "× %s"
+msgstr "× %s"
+
+#: front-end/customers/views/profile.php:319
+msgid "No coupons used."
+msgstr "Aucun code promo utilisé."
+
+#: front-end/navigation/brikpanel-navigation.php:234 front-end/navigation/brikpanel-navigation.php:235
+msgid "Customers report"
+msgstr "Rapport clients"
+
+#: front-end/search/brikpanel-search.php:2655
+msgid "Find customers by name, email, phone or username."
+msgstr "Trouvez des clients par nom, e-mail, téléphone ou nom d'utilisateur."
+
+#: front-end/segments/brikpanel-segments.php:90 front-end/segments/brikpanel-segments.php:98 front-end/segments/views/page.php:38 includes/brikpanel-module-pages.php:84 includes/brikpanel-store-summary.php:4717
+msgid "Orders explorer"
+msgstr "Explorateur de commandes"
+
+#. translators: %s: the store's timezone, for example Europe/Istanbul.
+#: front-end/segments/brikpanel-segments.php:1150
+#, php-format
+msgid "Customer since (%s)"
+msgstr "Client depuis (%s)"
+
+#: front-end/welcome/brikpanel-welcome.php:203
+msgid "Every customer, segments and lifetime value"
+msgstr "Tous les clients, segments et valeur à vie"
+
+#: includes/brikpanel-brikmentor-promo.php:359
+msgid "The easiest sale is to someone who has already bought from you. BrikMentor follows up a few days after each completed order with the products other customers bought alongside it, and starts a win-back series for anyone who has not ordered in months."
+msgstr "La vente la plus facile, c’est à quelqu’un qui vous a déjà acheté. BrikMentor relance quelques jours après chaque commande terminée avec les produits que d'autres clients ont achetés avec, et lance une série de reconquête pour ceux qui n'ont pas commandé depuis des mois."
+
+#: includes/brikpanel-enqueue.php:865
+msgid "New today"
+msgstr "Nouveaux aujourd'hui"
+
+#: includes/brikpanel-module-pages.php:90
+msgid "Open the WooCommerce order list"
+msgstr "Ouvrir la liste des commandes WooCommerce"
+
+#: includes/brikpanel-module-pages.php:106
+msgid "Open the WooCommerce customer list"
+msgstr "Ouvrir la liste des clients WooCommerce"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2347
+msgctxt "order locations card: the world globe or the country map"
+msgid "Map"
+msgstr "Carte"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2348
+msgctxt "order locations card: the world globe"
+msgid "World"
+msgstr "Monde"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2362
+msgctxt "map colour scale: fewer orders"
+msgid "Less"
+msgstr "Moins"
+
+#: front-end/dashboard/brikpanel-dashboard.php:2362
+msgctxt "map colour scale: more orders"
+msgid "More"
+msgstr "Plus"
+
+#. translators: 1: city or district, 2: its province, state or region (name or postal code).
+#: front-end/dashboard/brikpanel-dashboard.php:5901
+#, php-format
+msgctxt "city with its region in the top cities list"
+msgid "%1$s, %2$s"
+msgstr "%1$s, %2$s"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5926
+msgctxt "regions of a country, list title"
+msgid "Provinces"
+msgstr "Provinces"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5929
+msgctxt "regions of a country, list title"
+msgid "States"
+msgstr "États"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5931
+msgctxt "regions of a country, list title"
+msgid "Regions"
+msgstr "Régions"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5942
+msgctxt "one region of a country, column header"
+msgid "Province"
+msgstr "Province"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5945
+msgctxt "one region of a country, column header"
+msgid "State"
+msgstr "État"
+
+#: front-end/dashboard/brikpanel-dashboard.php:5947
+msgctxt "one region of a country, column header"
+msgid "Region"
+msgstr "Région"
+
+#: front-end/dashboard/brikpanel-dashboard.php:6929
+msgctxt "province, state or region of a city"
+msgid "Region"
+msgstr "Région"
+
+#: front-end/dashboard/brikpanel-dashboard.php:6949
+msgctxt "orders whose province, state or region was not found"
+msgid "Unknown"
+msgstr "Inconnu"
+
+#: includes/brikpanel-enqueue.php:627
+msgid "Top provinces by orders"
+msgstr "Meilleures provinces par commandes"
+
+#: includes/brikpanel-enqueue.php:628
+msgid "Top provinces by customers"
+msgstr "Meilleures provinces par clients"
+
+#: includes/brikpanel-enqueue.php:629
+msgid "Top states by orders"
+msgstr "Meilleurs États par commandes"
+
+#: includes/brikpanel-enqueue.php:630
+msgid "Top states by customers"
+msgstr "Meilleurs États par clients"
+
+#: includes/brikpanel-enqueue.php:631
+msgid "Top regions by orders"
+msgstr "Meilleures régions par commandes"
+
+#: includes/brikpanel-enqueue.php:632
+msgid "Top regions by customers"
+msgstr "Meilleures régions par clients"
+
+#: includes/brikpanel-enqueue.php:633
+msgctxt "region map tooltip: money from the orders of a region"
+msgid "Sales"
+msgstr "Ventes"
+
+#: includes/brikpanel-enqueue.php:634
+msgid "Order locations map"
+msgstr "Carte des lieux de commande"
+
+#. translators: %s: number of orders, already formatted (e.g. 11).
+#: includes/brikpanel-enqueue.php:636
+#, php-format
+msgid "%s order from an unknown province"
+msgid_plural "%s orders from an unknown province"
+msgstr[0] "%s commande d'une province inconnue"
+msgstr[1] "%s commandes d'une province inconnue"
+
+#. translators: %s: number of orders, already formatted (e.g. 11).
+#: includes/brikpanel-enqueue.php:638
+#, php-format
+msgid "%s order from an unknown state"
+msgid_plural "%s orders from an unknown state"
+msgstr[0] "%s commande d'un État inconnu"
+msgstr[1] "%s commandes d'un État inconnu"
+
+#. translators: %s: number of orders, already formatted (e.g. 11).
+#: includes/brikpanel-enqueue.php:640
+#, php-format
+msgid "%s order from an unknown region"
+msgid_plural "%s orders from an unknown region"
+msgstr[0] "%s commande d'une région inconnue"
+msgstr[1] "%s commandes d'une région inconnue"
+
+#: front-end/products/brikpanel-product-editor.php:2206
+msgid "Pack sizes"
+msgstr "Tailles de lot"
+
+#: front-end/products/brikpanel-product-editor.php:2207
+msgid "Set how many units each variation takes from the shared stock, like 5 for a 5-pack."
+msgstr "Indiquez combien d’unités chaque variation prend dans le stock partagé, par exemple 5 pour un lot de 5."
+
+#: includes/brikpanel-enqueue.php:2784
+msgid "Pack size"
+msgstr "Taille du lot"
+
+#: includes/brikpanel-enqueue.php:2785
+msgid "Units one sale of this variation takes from the shared stock"
+msgstr "Unités qu’une vente de cette variation prend dans le stock partagé"
+
+#. translators: %s: units one sale of a pack takes from the shared stock, e.g. "Pack of 5".
+#: includes/brikpanel-enqueue.php:2957
+#, php-format
+msgid "Pack of %s"
+msgid_plural "Pack of %s"
+msgstr[0] "Lot de %s"
+msgstr[1] "Lot de %s"
+
+#. translators: %s: item name and its stock change, e.g. "Soap - 5 pack (20→15)"
+#: includes/brikpanel-pack-sizes.php:244
+#, php-format
+msgid "Adjusted stock: %s"
+msgstr "Stock ajusté : %s"
+
+#. translators: 1: product ID 2: old stock level 3: new stock level
+#: includes/brikpanel-pack-sizes.php:322
+#, php-format
+msgid "Item #%1$s stock increased from %2$s to %3$s."
+msgstr "Stock de l’article n°%1$s augmenté de %2$s à %3$s."
+
+#. translators: 1: product name 2: how many more of it the stock can fill
+#: includes/brikpanel-pack-sizes.php:657
+#, php-format
+msgid "You cannot add that amount of \"%1$s\" to the cart because there is not enough stock (%2$s remaining)."
+msgstr "Vous ne pouvez pas ajouter cette quantité de \"%1$s\" au panier car il n’y a pas assez de stock (reste %2$s)."

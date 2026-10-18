@@ -104,6 +104,11 @@ function brikpanel_nav_config_get( $refresh = false ) {
 		return $config = [ 'version' => 1, 'items' => [] ];
 	}
 	$decoded['items'] = isset( $decoded['items'] ) && is_array( $decoded['items'] ) ? $decoded['items'] : [];
+	// Rows of screens merged into another are rewritten here too, for a layout
+	// stored before the upgrade wrote it back (includes/brikpanel-nav-config-migrate.php).
+	if ( function_exists( 'brikpanel_nav_config_migrate' ) ) {
+		$decoded = brikpanel_nav_config_migrate( $decoded );
+	}
 	return $config = $decoded;
 }
 

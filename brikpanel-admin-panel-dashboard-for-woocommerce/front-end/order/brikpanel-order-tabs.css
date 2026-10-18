@@ -645,6 +645,19 @@ body.bp-order-tabs {
 	white-space: nowrap;
 }
 
+/* The name opens the customer's page: it reads as the name, the underline
+   says it is a link. */
+.bp-osummary__name-link {
+	color: #303030;
+	text-decoration: none;
+}
+
+.bp-osummary__name-link:hover,
+.bp-osummary__name-link:focus {
+	color: #303030;
+	text-decoration: underline;
+}
+
 .bp-osummary__orders {
 	color: #616161;
 	font-size: .75rem;

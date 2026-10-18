@@ -2,6 +2,22 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.36 (2026-10-18) =
+* New: **One Customers page.** Segments and Customer Analytics are now one page, Customers, with the tabs All customers, RFM segments, Lifetime value and Cohort retention. WooCommerce's own Customers report moves to More as "Customers report", and sidebars you arranged keep their order.
+* New: **A page for every customer, guests too.** It shows their orders, total spent, products bought, abandoned carts, coupons, addresses and email list status. The customer's name on the order screen opens it, and Ctrl+K finds guests too.
+* Tweak: **Segments' order list is now the Orders explorer.** It opens from the "Orders explorer" button next to the search on the Orders list, and old links and bookmarks still work.
+* Tweak: **A faster customer list.** On large stores it loads about three times faster than Segments did. "New customers today" in the bell opens the list of those customers.
+* Fix: **Customer value on multi-currency stores.** Lifetime value and RFM count every order in the store currency, and orders anonymized by WordPress's privacy tools no longer add up to one customer.
+* New: **A sales map by region for stores that sell in one country.** When 90% of the last 30 days' paid orders come from one country, or the store sells to one country only, Order locations shows that country's map by state, province or region, with orders, customers and sales for each. Once a day the globe turns and zooms into it, and "World" brings the globe back. Maps for 49 countries.
+* Tweak: **Cities with their region.** Top cities shows each city with its region, such as "Springfield, IL", so cities with the same name are no longer added together. The Excel export gets a Region column, and a sheet of regions when the store sells in one country.
+* Fix: **The globe no longer jumps.** It started to one side and jumped to the middle each time it loaded or the dates changed, and it now uses less CPU while it spins.
+* Tweak: **Order locations is faster on WordPress posts storage.** On stores that keep orders in WordPress posts, the card loads about four times faster.
+* New: **Pack sizes for shared stock.** Under "Shared stock" in the product editor, a "Pack sizes" switch lets each variation take its own number of units, so a 5-pack takes 5. Cancellations, refunds and order edits use the same units, and a pack the stock cannot fill shows as out of stock.
+* New: **Choose what LiteSpeed clears.** Setting: Dashboard → "Cache button", shown when LiteSpeed Cache is active. With "Open a menu to choose what to clear", the top bar's cache button lists LiteSpeed's own purge options; one click stays the default.
+* Tweak: **The cache button says what it clears.** With LiteSpeed Cache, its tooltip and the message after a click name what is cleared on your site, such as the page cache and CSS/JS.
+* New: **Choose how popup coupon codes start.** Setting: Cart abandonment → Email popup → "Code starts with". Codes can start with your own text, such as WELCOME-7K2P9Q; empty keeps BRIK.
+* Fix: **Signing up again keeps the code.** A visitor who signed up again with the same email got their code back in small letters, and the popup did not keep it in the "Your code" tab.
+
 = 3.3.35 (2026-10-15) =
 * New: **Alt text for product images, also on phones.** Tap an image in the product editor and choose "Alt text"; on a computer, click the image or its ALT button. A variation's images have an "Alt text" field in its details, and the text is saved with the product.
 * New: **Shared stock for variable products.** The Inventory card has a "Shared stock" switch: turn it on and all variations sell from one quantity, as WooCommerce allows. Each variation then shows "Shared", and the stock window and Quick edit in the products list show one "Shared stock" box.

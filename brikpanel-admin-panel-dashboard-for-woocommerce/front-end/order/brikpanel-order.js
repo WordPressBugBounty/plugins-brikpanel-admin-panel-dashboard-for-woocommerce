@@ -1417,12 +1417,27 @@
 			who.className = 'bp-osummary__who';
 			var name = document.createElement('div');
 			name.className = 'bp-osummary__name';
-			name.textContent = data.customer_name;
+			// The name opens the customer's page on the Customers screen.
+			if (data.customer_url) {
+				var link = document.createElement('a');
+				link.className = 'bp-osummary__name-link';
+				link.href = data.customer_url;
+				link.textContent = data.customer_name;
+				name.appendChild(link);
+			} else {
+				name.textContent = data.customer_name;
+			}
 			who.appendChild(name);
-			if (data.customer_orders !== null && data.customer_orders !== undefined && i18n.customer_orders) {
+			var ordersText = '';
+			if (data.customer_orders_text) {
+				ordersText = data.customer_orders_text;
+			} else if (data.customer_orders !== null && data.customer_orders !== undefined && i18n.customer_orders) {
+				ordersText = i18n.customer_orders.replace('%d', String(data.customer_orders));
+			}
+			if (ordersText) {
 				var orders = document.createElement('div');
 				orders.className = 'bp-osummary__orders';
-				orders.textContent = i18n.customer_orders.replace('%d', String(data.customer_orders));
+				orders.textContent = ordersText;
 				who.appendChild(orders);
 			}
 			customer.appendChild(who);

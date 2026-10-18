@@ -102,7 +102,7 @@ function brikpanel_asks_registry() {
         'review'        => array( 'kind' => 'ask', 'family' => '', 'cap' => 'manage_options', 'module' => '' ),
         'bm_announce'   => array( 'kind' => 'ask', 'family' => 'bm', 'cap' => 'manage_woocommerce', 'module' => '' ),
         'bm_pitch_dash' => array( 'kind' => 'ask', 'family' => 'bm', 'cap' => 'manage_woocommerce', 'module' => 'brikpanel-dashboard' ),
-        'bm_pitch_ca'   => array( 'kind' => 'ask', 'family' => 'bm', 'cap' => 'manage_woocommerce', 'module' => 'brikpanel-customer-analytics' ),
+        'bm_pitch_ca'   => array( 'kind' => 'ask', 'family' => 'bm', 'cap' => 'manage_woocommerce', 'module' => 'brikpanel-customers' ),
         'bm_live'       => array( 'kind' => 'ask', 'family' => 'bm', 'cap' => 'manage_options', 'module' => 'brikpanel-dashboard' ),
     );
 }

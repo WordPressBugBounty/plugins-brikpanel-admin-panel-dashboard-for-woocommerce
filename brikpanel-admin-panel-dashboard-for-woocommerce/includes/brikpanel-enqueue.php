@@ -436,12 +436,23 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
         true
     );
 
-    // Cobe (interactive globe)
+    // Cobe (interactive globe), with a BrikPanel change (see the file's head):
+    // versioned by its file time like the dashboard's own scripts.
     wp_enqueue_script(
         'cobe-globe',
         BRIKPANEL_URL . 'assets/js/cobe.js',
         [],
-        BRIKPANEL_VERSION,
+        @filemtime( BRIKPANEL_PATH . 'assets/js/cobe.js' ) ?: BRIKPANEL_VERSION,
+        true
+    );
+
+    // The region map of a store selling in one country (Order locations).
+    // Its map file (assets/maps/<cc>.json) is fetched only when it shows.
+    wp_register_script(
+        'brikpanel_dashboard_regions',
+        BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard-regions.js',
+        [ 'brikpanel_dashboard_viz' ],
+        @filemtime( BRIKPANEL_PATH . 'front-end/dashboard/brikpanel-dashboard-regions.js' ) ?: BRIKPANEL_VERSION,
         true
     );
 
@@ -460,7 +471,7 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
         'brikpanel_dashboard_scripts',
         BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard.js',
         array_merge(
-            [ 'flatpickr-js', 'cobe-globe', 'brikpanel_dashboard_viz' ],
+            [ 'flatpickr-js', 'cobe-globe', 'brikpanel_dashboard_viz', 'brikpanel_dashboard_regions' ],
             $bp_dash_chartjs ? [ 'chart-js' ] : [],
             brikpanel_fit_table_dep(),
             brikpanel_fit_row_dep(),
@@ -521,6 +532,10 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
         'export_url'   => admin_url('admin-post.php'),
         'export_nonce' => wp_create_nonce('brikpanel_dashboard_export'),
         'currency' => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$',
+        // Region maps (assets/maps/<cc>.json) and the site, which keys the
+        // once-a-day map animation (sites of a network share one address).
+        'maps_url' => BRIKPANEL_URL . 'assets/maps/',
+        'blog'     => get_current_blog_id(),
         // Quick "Add expense" from the Profit > Expenses card. Posts straight to
         // the Expenses module's own save endpoint so recurring entries are
         // materialised identically to the full Operational Expenses page.
@@ -607,6 +622,23 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'loc_top_countries_customers' => __('Top countries by customers', 'brikpanel'),
             'loc_top_cities_orders'       => __('Top cities by orders', 'brikpanel'),
             'loc_top_cities_customers'    => __('Top cities by customers', 'brikpanel'),
+            // The region map of a store selling in one country: its list
+            // titles (by what the country's regions are called), the tooltip
+            // and the line under the map.
+            'loc_top_provinces_orders'    => __('Top provinces by orders', 'brikpanel'),
+            'loc_top_provinces_customers' => __('Top provinces by customers', 'brikpanel'),
+            'loc_top_states_orders'       => __('Top states by orders', 'brikpanel'),
+            'loc_top_states_customers'    => __('Top states by customers', 'brikpanel'),
+            'loc_top_regions_orders'      => __('Top regions by orders', 'brikpanel'),
+            'loc_top_regions_customers'   => __('Top regions by customers', 'brikpanel'),
+            'loc_sales'                   => _x('Sales', 'region map tooltip: money from the orders of a region', 'brikpanel'),
+            'loc_map_alt'                 => __('Order locations map', 'brikpanel'),
+            /* translators: %s: number of orders, already formatted (e.g. 11). */
+            'loc_unplaced_province'       => brikpanel_js_plural(_n_noop('%s order from an unknown province', '%s orders from an unknown province', 'brikpanel')),
+            /* translators: %s: number of orders, already formatted (e.g. 11). */
+            'loc_unplaced_state'          => brikpanel_js_plural(_n_noop('%s order from an unknown state', '%s orders from an unknown state', 'brikpanel')),
+            /* translators: %s: number of orders, already formatted (e.g. 11). */
+            'loc_unplaced_region'         => brikpanel_js_plural(_n_noop('%s order from an unknown region', '%s orders from an unknown region', 'brikpanel')),
             'customers'            => __('customers', 'brikpanel'),
             'summary_button'        => __('Copy everything', 'brikpanel'),
             'summary_collecting'    => __('Collecting data…', 'brikpanel'),
@@ -744,34 +776,54 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
 add_action('admin_enqueue_scripts', 'brikpanel_enqueue_custom_dashboard_assets');
 
 // =============================================================================
-// SEGMENTS PAGE ASSETS
+// ORDERS EXPLORER (SEGMENTS) PAGE ASSETS
 // =============================================================================
+/**
+ * The Orders explorer: the Segments screen, a page under WooCommerce's menu
+ * now, so its hook ends in "_page_brikpanel-segments" (the prefix follows the
+ * parent menu's title).
+ *
+ * @param string $hook Admin page hook.
+ * @return void
+ */
 function brikpanel_enqueue_segments_assets($hook) {
-    // WP registers submenu pages of WooCommerce under the hook
-    // "woocommerce_page_<slug>".
-    if ($hook !== 'toplevel_page_brikpanel-segments') {
+    if (!is_string($hook) || !str_ends_with($hook, '_page_brikpanel-segments')) {
         return;
     }
+    brikpanel_segments_enqueue_for(['lock_tab' => 'orders']);
+}
+add_action('admin_enqueue_scripts', 'brikpanel_enqueue_segments_assets');
 
+/**
+ * The Segments list script and styles with their strings, for the Orders
+ * explorer and the Customers page's All customers tab.
+ *
+ * @param array $extra Config merged into brikpanelSegments: lock_tab
+ *                     ('orders'|'customers'), defer (start when the tab is
+ *                     first shown), initial (preset, rfm_segments).
+ * @return void
+ */
+function brikpanel_segments_enqueue_for(array $extra = []) {
     $seg_css_ver = @filemtime( BRIKPANEL_PATH . 'front-end/segments/brikpanel-segments.css' ) ?: BRIKPANEL_VERSION;
     $seg_js_ver  = @filemtime( BRIKPANEL_PATH . 'front-end/segments/brikpanel-segments.js' ) ?: BRIKPANEL_VERSION;
 
+    // overflow + fit-row: the Orders explorer's measured header (B10).
     wp_enqueue_style(
         'brikpanel_segments_styles',
         BRIKPANEL_URL . 'front-end/segments/brikpanel-segments.css',
-        brikpanel_narrow_deps( [ 'tiles', 'ui' ], 'style' ),
+        brikpanel_narrow_deps( [ 'overflow', 'tiles', 'ui' ], 'style' ),
         $seg_css_ver
     );
 
     wp_enqueue_script(
         'brikpanel_segments_scripts',
         BRIKPANEL_URL . 'front-end/segments/brikpanel-segments.js',
-        array_merge( brikpanel_fit_table_dep(), brikpanel_narrow_deps( [ 'tiles', 'format' ] ) ),
+        array_merge( brikpanel_fit_table_dep(), brikpanel_fit_row_dep(), brikpanel_narrow_deps( [ 'overflow', 'tiles', 'format' ] ) ),
         $seg_js_ver,
         true
     );
 
-    wp_localize_script('brikpanel_segments_scripts', 'brikpanelSegments', [
+    $cfg = [
         'ajax_url'  => admin_url('admin-ajax.php'),
         'nonce'     => wp_create_nonce('brikpanel_segments_nonce'),
         'currency'  => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$',
@@ -820,6 +872,8 @@ function brikpanel_enqueue_segments_assets($hook) {
             'col_spent'          => __('Total spent', 'brikpanel'),
             'col_aov'            => __('AOV', 'brikpanel'),
             'col_last_order'     => __('Last order', 'brikpanel'),
+            'col_segment'        => __('Segment', 'brikpanel'),
+            'col_since'          => __('Customer since', 'brikpanel'),
             'preset_all'           => __('All', 'brikpanel'),
             'preset_today'         => __('Today', 'brikpanel'),
             'preset_last7'         => __('Last 7 days', 'brikpanel'),
@@ -840,20 +894,24 @@ function brikpanel_enqueue_segments_assets($hook) {
             'preset_one_time'      => __('One-time buyers', 'brikpanel'),
             'preset_dormant'       => __('Dormant (90+ days)', 'brikpanel'),
             'preset_repeat'        => __('Repeat buyers', 'brikpanel'),
+            'preset_new_today'     => __('New today', 'brikpanel'),
             'remove'               => __('Remove', 'brikpanel'),
         ],
-    ]);
+    ];
+    wp_localize_script('brikpanel_segments_scripts', 'brikpanelSegments', array_merge($cfg, $extra));
 }
-add_action('admin_enqueue_scripts', 'brikpanel_enqueue_segments_assets');
 
 // =============================================================================
-// CUSTOMER ANALYTICS PAGE ASSETS
+// CUSTOMER ANALYTICS TABS (ON THE CUSTOMERS PAGE)
 // =============================================================================
-function brikpanel_enqueue_customer_analytics_assets($hook) {
-    if ($hook !== 'toplevel_page_brikpanel-customer-analytics') {
-        return;
-    }
-
+/**
+ * The Lifetime value, RFM segments and Cohort retention tabs' script, styles
+ * and strings, for the Customers page.
+ *
+ * @param array $extra Config merged into brikpanelCA: initial_tab, header_id.
+ * @return void
+ */
+function brikpanel_ca_enqueue_for(array $extra = []) {
     // Chart.js — register with the same handle the dashboard uses so a
     // user navigating between Dashboard ↔ Customer Analytics doesn't fetch
     // the bundle twice.
@@ -887,7 +945,7 @@ function brikpanel_enqueue_customer_analytics_assets($hook) {
     );
 
     $nonce = wp_create_nonce('brikpanel_customer_analytics_nonce');
-    wp_localize_script('brikpanel_customer_analytics_scripts', 'brikpanelCA', [
+    $cfg = [
         'ajax_url'       => admin_url('admin-ajax.php'),
         'nonce'          => $nonce,
         'export_url'     => add_query_arg([
@@ -931,7 +989,7 @@ function brikpanel_enqueue_customer_analytics_assets($hook) {
             'rfm_frequency'     => __('Frequency', 'brikpanel'),
             'rfm_monetary'      => __('Monetary', 'brikpanel'),
             'excl_title'        => __('Exclude customers from analytics', 'brikpanel'),
-            'excl_intro'        => __('Pick the accounts you do not want counted as customers, for example a point-of-sale or staff login that places many orders. Their orders still count toward your shop revenue and order totals, but they are left out of customer averages, segments, and retention so the numbers reflect your real customers.', 'brikpanel'),
+            'excl_intro'        => __('Pick the accounts you do not want counted as customers, for example a point-of-sale or staff login that places many orders. Their orders still count toward your shop revenue and order totals, but they are left out of the customer list, averages, segments and retention, so the numbers reflect your real customers.', 'brikpanel'),
             'excl_people'       => __('People', 'brikpanel'),
             'excl_search_ph'    => __('Search by name or email…', 'brikpanel'),
             'excl_no_results'   => __('No matching users.', 'brikpanel'),
@@ -947,9 +1005,88 @@ function brikpanel_enqueue_customer_analytics_assets($hook) {
             /* translators: %d: number of excluded accounts */
             'members'           => __('members', 'brikpanel'),
         ],
-    ]);
+    ];
+    wp_localize_script('brikpanel_customer_analytics_scripts', 'brikpanelCA', array_merge($cfg, $extra));
 }
-add_action('admin_enqueue_scripts', 'brikpanel_enqueue_customer_analytics_assets');
+
+// =============================================================================
+// CUSTOMERS PAGE ASSETS
+// =============================================================================
+/**
+ * The Customers page: its tabs reuse the Segments list and the Customer
+ * Analytics panels; a customer's own page (?customer=) loads only its own
+ * script and styles.
+ *
+ * @param string $hook Admin page hook.
+ * @return void
+ */
+function brikpanel_enqueue_customers_assets($hook) {
+    if ($hook !== 'toplevel_page_brikpanel-customers' || !class_exists('Brikpanel_Customers')) {
+        return;
+    }
+
+    if (Brikpanel_Customers::is_profile_request()) {
+        $css_ver = @filemtime(BRIKPANEL_PATH . 'front-end/customers/brikpanel-customer-profile.css') ?: BRIKPANEL_VERSION;
+        wp_enqueue_style(
+            'brikpanel_customer_profile_styles',
+            BRIKPANEL_URL . 'front-end/customers/brikpanel-customer-profile.css',
+            array_merge(brikpanel_fit_table_dep('style'), brikpanel_narrow_deps(['overflow', 'tiles', 'ui'], 'style')),
+            $css_ver
+        );
+        $js_ver = @filemtime(BRIKPANEL_PATH . 'front-end/customers/brikpanel-customer-profile.js') ?: BRIKPANEL_VERSION;
+        wp_enqueue_script(
+            'brikpanel_customer_profile_scripts',
+            BRIKPANEL_URL . 'front-end/customers/brikpanel-customer-profile.js',
+            array_merge(brikpanel_fit_table_dep(), brikpanel_fit_row_dep(), brikpanel_narrow_deps(['overflow', 'tiles'])),
+            $js_ver,
+            true
+        );
+        return;
+    }
+
+    $tab = Brikpanel_Customers::tab();
+
+    // Where the list opens: the bell's "New customers today", or one RFM
+    // segment (?rfm=), checked against the known keys.
+    $initial = [];
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only view state.
+    $preset = isset($_GET['preset']) ? sanitize_key(wp_unslash($_GET['preset'])) : '';
+    if (in_array($preset, ['new_today', 'new_customers', 'repeat', 'vip', 'one_time', 'dormant', 'high_value'], true)) {
+        $initial['preset'] = $preset;
+    }
+    $rfm = isset($_GET['rfm']) ? sanitize_key(wp_unslash($_GET['rfm'])) : '';
+    // phpcs:enable WordPress.Security.NonceVerification.Recommended
+    if ('' !== $rfm && function_exists('brikpanel_ca_rfm_segment_labels') && array_key_exists($rfm, brikpanel_ca_rfm_segment_labels())) {
+        $initial['rfm_segments'] = [$rfm];
+    }
+
+    brikpanel_segments_enqueue_for([
+        'lock_tab' => 'customers',
+        'defer'    => 'all' !== $tab,
+        'initial'  => $initial,
+    ]);
+    brikpanel_ca_enqueue_for([
+        'initial_tab' => $tab,
+        'header_id'   => 'bp-cus-header',
+    ]);
+
+    $css_ver = @filemtime(BRIKPANEL_PATH . 'front-end/customers/brikpanel-customers.css') ?: BRIKPANEL_VERSION;
+    wp_enqueue_style(
+        'brikpanel_customers_styles',
+        BRIKPANEL_URL . 'front-end/customers/brikpanel-customers.css',
+        array('brikpanel_segments_styles', 'brikpanel_customer_analytics_styles'),
+        $css_ver
+    );
+    $js_ver = @filemtime(BRIKPANEL_PATH . 'front-end/customers/brikpanel-customers.js') ?: BRIKPANEL_VERSION;
+    wp_enqueue_script(
+        'brikpanel_customers_scripts',
+        BRIKPANEL_URL . 'front-end/customers/brikpanel-customers.js',
+        array('brikpanel_segments_scripts', 'brikpanel_customer_analytics_scripts'),
+        $js_ver,
+        true
+    );
+}
+add_action('admin_enqueue_scripts', 'brikpanel_enqueue_customers_assets');
 
 // =============================================================================
 // GLOBAL ADMIN STYLES & SCRIPTS
@@ -1355,12 +1492,31 @@ function brikpanel_enqueue_woo_assets($hook) {
                 if ( '' === $summary['customer_name'] ) {
                     $summary['customer_name'] = trim( (string) $order->get_billing_company() );
                 }
-                if ( $order->get_customer_id() ) {
-                    $summary['customer_orders'] = (int) wc_get_customer_order_count( $order->get_customer_id() );
-                    if ( '' === $summary['customer_name'] ) {
-                        $user                     = get_user_by( 'id', $order->get_customer_id() );
-                        $summary['customer_name'] = $user ? $user->display_name : '';
+                if ( $order->get_customer_id() && '' === $summary['customer_name'] ) {
+                    $user                     = get_user_by( 'id', $order->get_customer_id() );
+                    $summary['customer_name'] = $user ? $user->display_name : '';
+                }
+                // The name opens the customer's page, guests included, and the
+                // count under it is the paid orders that page shows (the same
+                // sentence as its "Total spent" tile). Without the Customers
+                // page: WooCommerce's count of the account's orders, unlinked.
+                $customer_key = class_exists( 'Brikpanel_Customers_Engine' )
+                    ? Brikpanel_Customers_Engine::parse_key(
+                        $order->get_customer_id() ? 'u:' . (int) $order->get_customer_id() : 'e:' . brikpanel_strtolower( (string) $order->get_billing_email() )
+                    )
+                    : null;
+                if ( $customer_key ) {
+                    $customer_stats = Brikpanel_Customers_Engine::stats( $customer_key, false );
+                    $paid_orders    = $customer_stats ? (int) $customer_stats['order_count'] : 0;
+                    /* translators: %s: number of paid orders. */
+                    $summary['customer_orders_text'] = sprintf( _n( '%s paid order', '%s paid orders', $paid_orders, 'brikpanel' ), brikpanel_number( $paid_orders ) );
+                    $customer_url = Brikpanel_Customers_Engine::profile_url( $customer_key['key'] );
+                    if ( class_exists( 'Brikpanel_Customers' ) && current_user_can( 'manage_woocommerce' )
+                        && ! ( function_exists( 'brikpanel_nav_url_blocked_for_current_user' ) && brikpanel_nav_url_blocked_for_current_user( $customer_url ) ) ) {
+                        $summary['customer_url'] = $customer_url;
                     }
+                } elseif ( $order->get_customer_id() ) {
+                    $summary['customer_orders'] = (int) wc_get_customer_order_count( $order->get_customer_id() );
                 }
                 if ( function_exists( 'brikpanel_whatsapp_visible_for_user' ) && brikpanel_whatsapp_visible_for_user() && function_exists( 'brikpanel_order_whatsapp_url' ) ) {
                     $summary['whatsapp_url']      = (string) brikpanel_order_whatsapp_url( $order );
@@ -2623,6 +2779,10 @@ function brikpanel_enqueue_woo_assets($hook) {
                 // box and the label of the link beside it.
                 'var_shared'         => _x('Shared', 'stock that variations take from the product', 'brikpanel'),
                 'var_shared_toggle'  => __('Use the shared stock', 'brikpanel'),
+                // "Pack sizes": the box that replaces "Shared" in a row, the
+                // units one sale of that variation takes (a 5-pack takes 5).
+                'var_pack_size'      => __('Pack size', 'brikpanel'),
+                'var_pack_size_help' => __('Units one sale of this variation takes from the shared stock', 'brikpanel'),
                 // The button beside the strip's Stock box, for each meaning.
                 'var_bulk_unlimited' => __('Unlimited stock for every variation', 'brikpanel'),
                 'var_bulk_shared'    => __('Use the shared stock for every variation', 'brikpanel'),
@@ -2793,6 +2953,8 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'ph_schedule_sale'  => __('Schedule the sale', 'brikpanel'),
                 /* translators: %s: units of the variation in stock. */
                 'ph_in_stock'       => brikpanel_js_plural(_n_noop('%s in stock', '%s in stock', 'brikpanel')),
+                /* translators: %s: units one sale of a pack takes from the shared stock, e.g. "Pack of 5". */
+                'ph_pack_of'        => brikpanel_js_plural(_n_noop('Pack of %s', 'Pack of %s', 'brikpanel')),
             ],
         ]);
     }
@@ -2950,7 +3112,7 @@ function brikpanel_shell_pages() {
         'brikpanel-products'           => 'wide',
         'brikpanel-coupons'            => 'wide',
         'brikpanel-segments'           => 'wide',
-        'brikpanel-customer-analytics' => 'wide',
+        'brikpanel-customers'          => 'wide',
         'brikpanel-abandoned-carts'    => 'wide',
         'brikpanel-expenses'           => 'wide',
         'brikpanel-vendors'            => 'wide',

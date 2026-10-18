@@ -247,9 +247,8 @@ if ( ! function_exists( 'brikpanel_nav_store_tail_anchor' ) ) {
 			'wf_woocommerce_packing_list',
 			'brikpanel-abandoned-carts',
 			'brikpanel-google-sheets',
-			'brikpanel-customer-analytics',
-			'brikpanel-segments',
 			'edit.php?post_type=product',
+			'brikpanel-customers',
 			'brikmarket',
 			'woocommerce',
 		);
@@ -292,17 +291,18 @@ if ( ! function_exists( 'brikpanel_nav_apply_store_order' ) ) {
 		// Products sorts below Posts. Pinning it here keeps it, and the BrikPanel
 		// rows pinned beneath it, in the store section.
 		$menu = brikpanel_nav_move_after( $menu, 'edit.php?post_type=product', 'woocommerce' );
+		// Customers directly below WooCommerce (Orders), where WooCommerce's own
+		// Customers row sat before it moved into More; Products follows it. After
+		// the Products move, or Products would land between the two.
+		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-customers', 'woocommerce' );
 		$menu = brikpanel_nav_move_after( $menu, 'admin.php?page=wc-settings&tab=checkout', 'edit.php?post_type=product' );
 		$menu = brikpanel_nav_move_after( $menu, 'wf_woocommerce_packing_list', 'edit.php?post_type=product' );
 
-		// BrikPanel's own analytics sit directly under Products: Segments,
-		// Customer Analytics, Google Sheets, then Abandoned Carts (after Sheets
-		// when present, otherwise after Customer Analytics; the second call is a
-		// no-op without Sheets).
-		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-segments', 'edit.php?post_type=product' );
-		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-customer-analytics', 'brikpanel-segments' );
-		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-google-sheets', 'brikpanel-customer-analytics' );
-		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-abandoned-carts', 'brikpanel-customer-analytics' );
+		// BrikPanel's own rows sit directly under Products: Google Sheets, then
+		// Abandoned Carts (after Sheets when present, otherwise after Products;
+		// the second call is a no-op without Sheets).
+		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-google-sheets', 'edit.php?post_type=product' );
+		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-abandoned-carts', 'edit.php?post_type=product' );
 		$menu = brikpanel_nav_move_after( $menu, 'brikpanel-abandoned-carts', 'brikpanel-google-sheets' );
 
 		// Settings, then More, close the store part. Both follow the same row,

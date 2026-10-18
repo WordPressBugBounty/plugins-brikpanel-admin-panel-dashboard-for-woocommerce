@@ -1052,6 +1052,9 @@ class Brikpanel_Product_Editor {
             // product's one quantity. The variation rows read this, so it is
             // known even when the Inventory card is switched off in settings.
             'shared_stock'         => !empty($data['shared_stock']),
+            // "Pack sizes": rows that sell from the shared stock show a box
+            // for the units one sale takes (a 5-pack takes 5).
+            'pack_sizes'           => !empty($data['pack_sizes']),
             // The product's own SKU: the grey hint in a variation SKU box
             // that has none of its own (the variation then uses this one).
             'parent_sku'           => (string) $data['sku'],
@@ -1781,7 +1784,7 @@ class Brikpanel_Product_Editor {
                      stay as plain product specs (Brand, Material…). A variable
                      product can carry BOTH at once; a simple product treats every
                      attribute as a spec. The card is always visible. -->
-                <div class="brikpanel-pe-card brikpanel-pe-card-wide<?php echo $data['is_variable'] ? ' bpe-variable-on' : ''; ?><?php echo !empty($data['shared_stock']) ? ' bpe-var-shared-on' : ''; ?>" id="bpe-var-card">
+                <div class="brikpanel-pe-card brikpanel-pe-card-wide<?php echo $data['is_variable'] ? ' bpe-variable-on' : ''; ?><?php echo !empty($data['shared_stock']) ? ' bpe-var-shared-on' : ''; ?><?php echo !empty($data['pack_sizes']) ? ' bpe-var-pack-on' : ''; ?>" id="bpe-var-card">
 
                     <?php if ($bpe_show_var) : ?>
                     <div class="brikpanel-pe-var-head" id="bpe-var-toggle-row">
@@ -2190,6 +2193,21 @@ class Brikpanel_Product_Editor {
                         </span>
                         <label class="brikpanel-pe-switch">
                             <input type="checkbox" id="bpe-shared-stock" aria-labelledby="bpe-shared-stock-title" aria-describedby="bpe-shared-stock-help" <?php checked($bp_shared); ?>>
+                            <span class="brikpanel-pe-slider"></span>
+                        </label>
+                    </div>
+                    <!-- Pack sizes (only with shared stock): each variation
+                         can take more than one unit of the shared quantity,
+                         a 5-pack takes 5. Off by default; on, every row that
+                         sells from the shared stock gets a box for its units
+                         (includes/brikpanel-pack-sizes.php does the counting). -->
+                    <div class="brikpanel-pe-toggle-row" id="bpe-pack-sizes-row"<?php echo ($bp_inv_var_mode && $bp_shared) ? '' : ' hidden'; ?>>
+                        <span class="brikpanel-pe-toggle-label">
+                            <span id="bpe-pack-sizes-title"><?php esc_html_e('Pack sizes', 'brikpanel'); ?></span>
+                            <small class="brikpanel-pe-toggle-help" id="bpe-pack-sizes-help"><?php esc_html_e('Set how many units each variation takes from the shared stock, like 5 for a 5-pack.', 'brikpanel'); ?></small>
+                        </span>
+                        <label class="brikpanel-pe-switch">
+                            <input type="checkbox" id="bpe-pack-sizes" aria-labelledby="bpe-pack-sizes-title" aria-describedby="bpe-pack-sizes-help" <?php checked(!empty($data['pack_sizes'])); ?>>
                             <span class="brikpanel-pe-slider"></span>
                         </label>
                     </div>
@@ -6863,6 +6881,7 @@ class Brikpanel_Product_Editor {
             'backorders'        => 'no',
             'manage_stock'      => false,
             'shared_stock'      => false,
+            'pack_sizes'        => false,
             'cogs_value'        => '',
             'sale_from'         => '',
             'sale_to'           => '',
@@ -7174,6 +7193,12 @@ class Brikpanel_Product_Editor {
                     // parent" — the JS renders that as a "(parent)" option.
                     'vendor_id'      => (int) get_post_meta($variation->get_id(), '_brikpanel_vendor_id', true),
                     'vendor_sku'     => (string) get_post_meta($variation->get_id(), '_brikpanel_vendor_sku', true),
+                    // Units one sale takes from the shared stock (1 = a single
+                    // unit). Stored as typed; only counted while the product's
+                    // "Pack sizes" switch is on and the row follows the shared stock.
+                    'pack_units'     => class_exists('Brikpanel_Pack_Sizes')
+                        ? Brikpanel_Pack_Sizes::sanitize_units($variation->get_meta(Brikpanel_Pack_Sizes::UNITS_META, true))
+                        : 1,
                 ];
             }
         }
@@ -7506,6 +7531,8 @@ class Brikpanel_Product_Editor {
             // one quantity (see $shared_stock above). Drives the "Shared stock"
             // switch and the "Shared" word in the variation rows.
             'shared_stock'      => $shared_stock,
+            // The "Pack sizes" switch under "Shared stock" (variable products).
+            'pack_sizes'        => $is_variable && class_exists('Brikpanel_Pack_Sizes') && Brikpanel_Pack_Sizes::switched_on($pid),
             // Same as variations — keep the raw `no/yes/notify` so the
             // editor's optional "Notify customer" radio survives a save.
             'backorders'        => $product->get_backorders('edit') ?: 'no',
@@ -8552,6 +8579,16 @@ class Brikpanel_Product_Editor {
                     $product->set_backorders(in_array($backorders_raw, ['yes', 'notify'], true) ? $backorders_raw : 'no');
                 } else {
                     $product->set_manage_stock(false);
+                }
+            }
+            // "Pack sizes" under "Shared stock". Sent only while the switch is
+            // on the page. Off removes the flag; the variations keep their
+            // pack sizes, so switching it on again brings them back.
+            if (isset($_POST['pack_sizes']) && class_exists('Brikpanel_Pack_Sizes')) {
+                if (!empty($_POST['pack_sizes'])) {
+                    $product->update_meta_data(Brikpanel_Pack_Sizes::SWITCH_META, 'yes');
+                } else {
+                    $product->delete_meta_data(Brikpanel_Pack_Sizes::SWITCH_META);
                 }
             }
         } elseif (isset($_POST['manage_stock']) || isset($_POST['shared_stock'])) {
@@ -11075,6 +11112,19 @@ class Brikpanel_Product_Editor {
                 $variation->set_manage_stock(false);
                 $variation->set_stock_status($var_stock_status);
                 $variation->set_backorders($var_backorders_value);
+            }
+
+            // Pack size: the units one sale takes from the shared stock. Only
+            // a submitted key is written; 1 (or empty) removes it. Kept while
+            // the row counts its own stock or the switch is off, it is simply
+            // not counted then.
+            if (array_key_exists('pack_units', $var_data) && class_exists('Brikpanel_Pack_Sizes')) {
+                $var_pack_units = Brikpanel_Pack_Sizes::sanitize_units($var_data['pack_units']);
+                if ($var_pack_units > 1) {
+                    $variation->update_meta_data(Brikpanel_Pack_Sizes::UNITS_META, $var_pack_units);
+                } else {
+                    $variation->delete_meta_data(Brikpanel_Pack_Sizes::UNITS_META);
+                }
             }
 
             // SKU. Same rule as the dates: it sits in the details panel now, so

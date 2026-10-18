@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.35
+Stable tag: 3.3.36
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -63,7 +63,7 @@ A free **woocommerce statistics plugin** and **woocommerce sales tracker** witho
 
 = Geographic Analytics: WooCommerce Sales by Country =
 
-A 3D rotating globe (Cobe.js) plots the countries your orders come from, see **WooCommerce sales by country** and city without exporting a CSV, with **Top 5 Countries** and **Top 5 Cities** tables. Works with both HPOS and legacy order storage.
+A 3D globe plots the countries your orders come from: **WooCommerce sales by country** and city, with **Top 5 Countries** and **Top 5 Cities** tables. Selling in one country? It zooms into a **sales map by state or province**.
 
 = Lightning-Fast Order Search: Cmd/Ctrl + K from Anywhere =
 
@@ -242,6 +242,10 @@ WooCommerce's built-in analytics are slow, refresh on a delay, and have no live 
 
 That is it. No license key, no email signup, no external account.
 
+= Credits =
+
+Region maps use boundaries from [Natural Earth](https://www.naturalearthdata.com/) (public domain) and postal codes from [GeoNames](https://www.geonames.org/) (CC BY 4.0).
+
 == Frequently Asked Questions ==
 
 = Is BrikPanel really 100% free? =
@@ -371,7 +375,7 @@ Yes. Every order query either has dual code paths, one for the HPOS order tables
 
 = How do I see WooCommerce sales by country? =
 
-Open the BrikPanel dashboard. Scroll to the geographic analytics section. The 3D globe shows the countries your orders come from, and the **Top 5 Countries** and **Top 5 Cities** tables (by orders or by customers) update in real time. BrikPanel extracts country and city from the billing address of every order, so this works with no extra setup.
+Open the BrikPanel dashboard. The 3D globe in Order locations shows the countries your orders come from, and the **Top 5 Countries** and **Top 5 Cities** tables (by orders or by customers) update in real time. A store selling in one country sees its map by state, province or region instead. All from billing addresses, no setup.
 
 = How do I customize the WordPress login page for my WooCommerce store? =
 
@@ -497,6 +501,22 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.36 (2026-10-18) =
+* New: **One Customers page.** Segments and Customer Analytics are now one page, Customers, with the tabs All customers, RFM segments, Lifetime value and Cohort retention. WooCommerce's own Customers report moves to More as "Customers report", and sidebars you arranged keep their order.
+* New: **A page for every customer, guests too.** It shows their orders, total spent, products bought, abandoned carts, coupons, addresses and email list status. The customer's name on the order screen opens it, and Ctrl+K finds guests too.
+* Tweak: **Segments' order list is now the Orders explorer.** It opens from the "Orders explorer" button next to the search on the Orders list, and old links and bookmarks still work.
+* Tweak: **A faster customer list.** On large stores it loads about three times faster than Segments did. "New customers today" in the bell opens the list of those customers.
+* Fix: **Customer value on multi-currency stores.** Lifetime value and RFM count every order in the store currency, and orders anonymized by WordPress's privacy tools no longer add up to one customer.
+* New: **A sales map by region for stores that sell in one country.** When 90% of the last 30 days' paid orders come from one country, or the store sells to one country only, Order locations shows that country's map by state, province or region, with orders, customers and sales for each. Once a day the globe turns and zooms into it, and "World" brings the globe back. Maps for 49 countries.
+* Tweak: **Cities with their region.** Top cities shows each city with its region, such as "Springfield, IL", so cities with the same name are no longer added together. The Excel export gets a Region column, and a sheet of regions when the store sells in one country.
+* Fix: **The globe no longer jumps.** It started to one side and jumped to the middle each time it loaded or the dates changed, and it now uses less CPU while it spins.
+* Tweak: **Order locations is faster on WordPress posts storage.** On stores that keep orders in WordPress posts, the card loads about four times faster.
+* New: **Pack sizes for shared stock.** Under "Shared stock" in the product editor, a "Pack sizes" switch lets each variation take its own number of units, so a 5-pack takes 5. Cancellations, refunds and order edits use the same units, and a pack the stock cannot fill shows as out of stock.
+* New: **Choose what LiteSpeed clears.** Setting: Dashboard → "Cache button", shown when LiteSpeed Cache is active. With "Open a menu to choose what to clear", the top bar's cache button lists LiteSpeed's own purge options; one click stays the default.
+* Tweak: **The cache button says what it clears.** With LiteSpeed Cache, its tooltip and the message after a click name what is cleared on your site, such as the page cache and CSS/JS.
+* New: **Choose how popup coupon codes start.** Setting: Cart abandonment → Email popup → "Code starts with". Codes can start with your own text, such as WELCOME-7K2P9Q; empty keeps BRIK.
+* Fix: **Signing up again keeps the code.** A visitor who signed up again with the same email got their code back in small letters, and the popup did not keep it in the "Your code" tab.
+
 = 3.3.35 (2026-10-15) =
 * New: **Alt text for product images, also on phones.** Tap an image in the product editor and choose "Alt text"; on a computer, click the image or its ALT button. A variation's images have an "Alt text" field in its details, and the text is saved with the product.
 * New: **Shared stock for variable products.** The Inventory card has a "Shared stock" switch: turn it on and all variations sell from one quantity, as WooCommerce allows. Each variation then shows "Shared", and the stock window and Quick edit in the products list show one "Shared stock" box.
@@ -571,11 +591,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **Deactivation survey.** Deactivating BrikPanel from the Plugins screen opens a short, optional question about why. "Skip and deactivate" sends nothing; "Send and deactivate" shares only your answer, the days BrikPanel was in use, version numbers and your admin language with brksoft.com, never your site address or store data.
 * New: **The products list remembers your sort.** The sort you pick is saved for each user and used the next time the list opens. Filters and the "Sort" button's custom order are not kept.
 * Fix: **Sorting by price keeps products without a price.** They no longer drop out of the list, and variable products sort by their lowest price going up and their highest price going down.
-
-= 3.3.28 (2026-10-02) =
-* New: **Top campaigns.** On the dashboard, Visitors by device → "Sources" lists the 5 campaigns that brought the most revenue, with their orders, conversion rate and revenue. The Excel export gets a "Campaigns" sheet. Campaign visits are counted from this version on and follow your visitor tracking and cookie consent settings.
-* New: **Abandoned carts in the Conversion funnel.** A line under the funnel shows the carts abandoned in the selected period, their value, how many were recovered and the change from the previous period. The Excel export has the same figures.
-* New: **Exclude products and saved segments.** Segments → More filters → "Exclude products" leaves out orders, or customers, that include those products. "+ Save as segment" keeps any filter under a name, as a button next to the presets.
-* Fix: **The Segments product filter finds new orders.** It now also finds orders WooCommerce has not yet processed for analytics, and a variable product covers all its variations. "Reset" no longer sends the old status choice.
-* Fix: **Menus moved into More keep their pages.** Tools, Settings or any other menu you move into the sidebar's More menu now opens its pages under it, and the page you are on stays highlighted.
-* Fix: **The dashboard header fits when BrikMarket is active.** The date buttons and "Copy everything" no longer shrink at every width; they stay in one line on wide screens, as they do without BrikMarket.

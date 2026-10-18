@@ -299,6 +299,9 @@ function brikpanel_export_core_table() {
 		'brikpanel_bot_traffic_kept',
 		// Days the merchant marked as real traffic (3.3.34).
 		'brikpanel_bot_traffic_real_days',
+		// The day's decision whether Order locations shows one country's
+		// region map, worked out from this store's own orders.
+		'brikpanel_region_focus',
 		// Person check (3.3.30): when this site started it, and the cloud
 		// address rule's daily tally and pause.
 		'brikpanel_human_proof_since',

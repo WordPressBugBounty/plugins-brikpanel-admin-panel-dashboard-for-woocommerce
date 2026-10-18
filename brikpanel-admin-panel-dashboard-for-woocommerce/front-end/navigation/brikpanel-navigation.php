@@ -105,8 +105,10 @@ add_filter( 'menu_order', 'brikpanel_move_dashboard_to_top', 999 );
 
 /**
  * Relocate WooCommerce's crowded submenu into a synthetic "More" top-level
- * item, promote "Settings" to its own top-level entry, and keep Orders /
- * Customers directly under the WooCommerce item.
+ * item, promote "Settings" to its own top-level entry, and keep Orders (and
+ * Subscriptions) directly under the WooCommerce item. WooCommerce's Customers
+ * report goes into "More" as "Customers report": BrikPanel's own Customers
+ * page takes its place in the sidebar.
  *
  * This is the SINGLE source of truth for that relocation. Both the live sidebar
  * renderer (brikpanel_get_navigation_items) and the settings-page customizer
@@ -117,8 +119,8 @@ add_filter( 'menu_order', 'brikpanel_move_dashboard_to_top', 999 );
  * them into "More", and per-submenu hide flags never matched.
  *
  * Moved submenu slugs are rewritten to the `admin.php?page=<slug>` form (the
- * shape the renderer links them with); Orders / Customers / Subscriptions stay
- * under WooCommerce with their original slugs.
+ * shape the renderer links them with); Orders / Subscriptions stay under
+ * WooCommerce with their original slugs.
  *
  * This runs in admin_footer, long after WordPress removed every menu row the
  * current user may not open (add_submenu_page() refuses them outright, and
@@ -184,7 +186,6 @@ function brikpanel_nav_relocate_wc_submenus( &$menu, &$submenu ) {
 			'edit.php?post_type=shop_order',
 			'wc-orders--shop_subscription',
 			'edit.php?post_type=shop_subscription',
-			'wc-admin&path=/customers',
 		);
 
 		foreach ( $submenu_items as $sub_key => $sub_item ) {
@@ -224,6 +225,14 @@ function brikpanel_nav_relocate_wc_submenus( &$menu, &$submenu ) {
 				}
 				unset( $submenu_items[ $sub_key ] );
 				continue;
+			}
+
+			// WooCommerce's Customers report keeps its place in "More" under a
+			// name of its own, so the sidebar never shows two "Customers" rows
+			// (BrikPanel's Customers page sits right under Orders).
+			if ( 'wc-admin&path=/customers' === $slug ) {
+				$temp[0] = __( 'Customers report', 'brikpanel' );
+				$temp[3] = __( 'Customers report', 'brikpanel' );
 			}
 
 			// Any other WooCommerce submenu (incl. third-party additions) → More.
@@ -502,7 +511,6 @@ function brikpanel_nav_render_child_row( $sub_item, $item_slug, $admin_is_parent
 		'edit.php?post_type=shop_order'        => array( 'icon_file' => 'orders' ), // Non-HPOS
 		'wc-orders--shop_subscription'         => array( 'icon_file' => 'subscriptions' ),
 		'edit.php?post_type=shop_subscription' => array( 'icon_file' => 'subscriptions' ), // Non-HPOS
-		'wc-admin&path=/customers'             => array( 'icon_file' => 'customers' ),
 		// Eklentilerde eklenen WooCommerce alt menüleri:
 		'wpo_wcpdf_options_page'               => array(
 			'icon_file' => 'invoice',
@@ -646,7 +654,7 @@ if (isset($submenu_file)) {
 }
 
 // Belirli sayfalarda menüyü aktif göster
-if ($sub_item_slug === 'wc-admin&path=/customers' && $path === '/customers') {
+if ($sub_item_slug === 'admin.php?page=wc-admin&path=/customers' && $path === '/customers') {
     $class[] = 'brikpanel-current';
 }
 if ($sub_item_slug === 'admin.php?page=wc-admin&path=/add-product' && $path === '/add-product') {
@@ -1261,7 +1269,7 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 				}
 
 				// The WooCommerce top-level is normally a SILENT container: its
-				// Orders / Customers children are rendered as flat top-level rows,
+				// Orders (and Subscriptions) children are rendered as flat top-level rows,
 				// so the row itself deliberately carries no label, padding, hover
 				// or radius (brikpanel-navigation.css excludes
 				// #toplevel_page_woocommerce from those rules) — otherwise that
@@ -1271,9 +1279,8 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 				// "WooCommerce" link instead, and the stripped styling left it 8px
 				// to the left of every other item, shorter, and with no hover
 				// state. That is the misalignment non-administrator accounts hit:
-				// Orders needs `edit_others_shop_orders` and Customers needs
-				// `view_woocommerce_reports`, so a staff role without them (or a
-				// store that hid both rows in Navigation settings) sees the bare
+				// Orders needs `edit_others_shop_orders`, so a staff role without
+				// it (or a store that hid the row in Navigation settings) sees the bare
 				// row an administrator never does. Flag it so the stylesheet can
 				// style it like any other menu item.
 				//
@@ -1338,7 +1345,8 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 				strpos($page, 'wc-reports') !== false ||
 				strpos($page, 'wc-status') !== false ||
 				strpos($page, 'wc-addons') !== false ||
-				strpos($path, '/extensions') !== false
+				strpos($path, '/extensions') !== false ||
+				'/customers' === $path
 			);
 		// A page of a menu moved into "More" opens "More" too.
 		if ( $brikpanel_more_plan && $brikpanel_more_plan['active'] ) {
@@ -1596,8 +1604,7 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 		// Özel ikon atamaları:
 		$has_custom_icon = array(
 			'edit.php?post_type=product' => 'products',
-			'brikpanel-segments' => 'payments',
-			'brikpanel-customer-analytics' => 'credit-card',
+			'brikpanel-customers' => 'customers',
 			'brikpanel-google-sheets' => 'google-sheets',
 			'brikpanel-vendors' => 'invoice',
 			'brikpanel-expenses' => 'payments',
@@ -1702,7 +1709,7 @@ function brikpanel_get_navigation_items( $submenu_as_parent = true ) {
 				)
 			) {
 				$admin_is_parent = true;
-				// WooCommerce keeps Orders / Customers surfaced directly beneath it
+				// WooCommerce keeps Orders surfaced directly beneath it
 				// with no parent label or chevron — BrikPanel deliberately hides the
 				// "WooCommerce" branding so the sidebar reads as clean Shopify-style
 				// items. Everything else that used to live under WooCommerce has been

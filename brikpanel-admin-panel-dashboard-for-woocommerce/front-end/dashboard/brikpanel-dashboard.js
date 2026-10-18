@@ -78,6 +78,18 @@
     let globeVisible = false;
     let locView = 'orders';       // 'orders' | 'customers'
     let locationsData = null;     // cached locations payload for re-render on tab switch
+    // A store selling in one country: its region map ('region') or the
+    // world globe ('world'), as this user last chose (region map by default).
+    let locMode = 'region';
+    let regionMap = null;         // { cc, v, ctl, reversing } while the region map is on the card
+    let regionAnimate = 'day';    // how the next region map comes: 'day' (once a day), 'switch' (from the globe), false
+    let regionFailed = {};        // countries whose map file did not load: the globe stays
+    let regionPreloaded = {};     // map files fetched ahead while the world globe shows
+    // While the region map takes over from the world globe or hands back to
+    // it, the globe holds still (the map draws the very same view), and once
+    // let go its spin comes up gently instead of starting at full speed.
+    let globeHold = false;
+    let globeSpinAt = 0;
     var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let datepickerInstance = null;
     let isLoading = false;
@@ -3500,6 +3512,19 @@
         return Math.max(0.08, 0.6 * (1 - (p - 0.5) / 0.5));
     }
 
+    // How much of its spin the globe has right now: none while held, coming
+    // up over 0.9 s after it was let go.
+    function globeSpin() {
+        if (globeHold) return 0;
+        if (!globeSpinAt) return 1;
+        var k = (performance.now() - globeSpinAt) / 900;
+        if (k >= 1) {
+            globeSpinAt = 0;
+            return 1;
+        }
+        return k <= 0 ? 0 : k * k * (3 - 2 * k);
+    }
+
     // Draw the globe again with the markers it has, when its box is showing.
     function redrawGlobe() {
         var container = document.getElementById('globe-container');
@@ -3607,6 +3632,11 @@
             return 'nogl';
         }
 
+        // cobe's box is as wide as the card: until it got the globe's own
+        // size and auto margins (300 ms later, with the labels) the globe
+        // stood at its left edge and then jumped to the middle.
+        sizeGlobeBox(canvas.parentElement, displaySize);
+
         // Benchmark: measure render time
         var t0 = performance.now();
         globe.update({ phi: globePhi, theta: globeTheta });
@@ -3625,7 +3655,7 @@
         var animFrame = null;
         var rotationSpeed = prefersReducedMotion ? 0 : 0.003;
         var arcTime = 0;
-        var labelWrapper = null;
+        var labels = null;
 
         // IntersectionObserver: pause when not visible
         globeVisible = true;
@@ -3644,7 +3674,7 @@
             if (destroyed || !globeVisible) { animFrame = null; return; }
 
             if (!globeDrag.down && !prefersReducedMotion) {
-                globePhi += rotationSpeed;
+                globePhi += rotationSpeed * globeSpin();
             }
             arcTime += 0.016;
 
@@ -3659,18 +3689,10 @@
                 arcs: pulsedArcs
             });
 
-            // Update label visibility with CSS transition handling
-            if (labelWrapper) {
-                var rs = getComputedStyle(document.documentElement);
-                globeMarkersData.forEach(function (d) {
-                    var a = labelWrapper.querySelector('[style*="--cobe-marker-' + d.code + '"]');
-                    if (!a) return;
-                    var tag = a.querySelector('.globe-code-tag');
-                    if (!tag) return;
-                    var vis = rs.getPropertyValue('--cobe-visible-marker-' + d.code).trim();
-                    tag.classList.toggle('globe-code-tag--visible', !!vis);
-                });
-            }
+            // A label shows while its country faces the viewer, worked out
+            // here like the drawn globe does: reading cobe's CSS properties
+            // back made the browser restyle the whole page on every frame.
+            if (labels) toggleGlobeLabels(labels);
 
             animFrame = requestAnimationFrame(animate);
         }
@@ -3691,12 +3713,11 @@
 
         bindGlobeDrag(canvas);
 
-        // Add country code labels + set labelWrapper for visibility checks.
-        // Not for a globe already replaced (a quick range change).
+        // Add country code labels. Not for a globe already replaced (a quick range change).
         setTimeout(function () {
             if (destroyed) return;
-            setupGlobeLabels(canvas, displaySize);
-            labelWrapper = canvas.parentElement;
+            labels = setupGlobeLabels(canvas, displaySize);
+            toggleGlobeLabels(labels);
         }, 300);
 
         return 'fast';
@@ -3941,7 +3962,7 @@
         function tick() {
             frame = 0;
             if (destroyed || !visible) return;
-            if (!globeDrag.down) globePhi += 0.003;
+            if (!globeDrag.down) globePhi += 0.003 * globeSpin();
             arcTime += 0.016;
             draw();
             frame = requestAnimationFrame(tick);
@@ -3981,15 +4002,23 @@
         };
     }
 
-    // Shared label setup for live globe
-    function setupGlobeLabels(canvas, size) {
-        var wrapper = canvas.parentElement;
+    // cobe's box: the globe's size, in the middle of the card, round.
+    function sizeGlobeBox(wrapper, size) {
         if (!wrapper) return;
         wrapper.style.overflow = 'hidden';
         wrapper.style.width = size + 'px';
         wrapper.style.height = size + 'px';
         wrapper.style.margin = '0 auto';
         wrapper.style.borderRadius = '50%';
+    }
+
+    // The country code labels of the WebGL globe, in the anchors cobe moves
+    // with its markers: [{ tag, p (where on the globe), on }].
+    function setupGlobeLabels(canvas, size) {
+        var wrapper = canvas.parentElement;
+        var list = [];
+        if (!wrapper) return list;
+        sizeGlobeBox(wrapper, size);
 
         globeMarkersData.forEach(function (data) {
             var anchor = wrapper.querySelector('[style*="--cobe-marker-' + data.code + '"]');
@@ -4001,6 +4030,21 @@
             tag.className = 'globe-code-tag';
             tag.textContent = data.code;
             anchor.appendChild(tag);
+            list.push({ tag: tag, p: liteXYZ([data.lat, data.lon], 1.02), on: false });
+        });
+        return list;
+    }
+
+    // Shows the labels whose country faces the viewer (the drawn globe's rule).
+    function toggleGlobeLabels(list) {
+        var sp = Math.sin(globePhi), cp = Math.cos(globePhi);
+        var sn = Math.sin(globeTheta), cn = Math.cos(globeTheta);
+        list.forEach(function (l) {
+            var on = -l.p[0] * sp * cn + l.p[1] * sn + l.p[2] * cp * cn > 0.15;
+            if (on !== l.on) {
+                l.on = on;
+                l.tag.classList.toggle('globe-code-tag--visible', on);
+            }
         });
     }
 
@@ -4097,6 +4141,17 @@
     // =========================================================================
 
     function initLocTabs() {
+        // World | Country: the globe or the region map (stores selling in one country).
+        var panel = document.getElementById('globe-panel');
+        if (panel && panel.getAttribute('data-loc-pref')) {
+            locMode = panel.getAttribute('data-loc-pref') === 'world' ? 'world' : 'region';
+        }
+        document.querySelectorAll('.brikpanel-loc-mode-btn[data-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setLocMode(this.getAttribute('data-mode'));
+            });
+        });
+
         // Scope to the locations panel so the device-panel tabs (which reuse
         // the same .brikpanel-loc-tab class) don't get bound here too.
         var tabs = document.querySelectorAll('.brikpanel-loc-tab[data-view]');
@@ -4153,32 +4208,261 @@
             });
         });
 
-        // Rebuild globe with new marker sizes (always recreate to update arc
-        // routing too). Nothing to place: the reason instead of a blank
-        // 450px box (field test F3).
-        if (globeMarkers.length > 0) {
-            setGlobeEmpty(null);
-            createGlobeInstance();
-        } else {
-            setGlobeEmpty(emptyReason('orders', 'site'));
-        }
-
-        // Update titles
         var globeTitle = document.getElementById('globe-panel-title');
         var countriesTitle = document.getElementById('loc-panel-countries-title');
         var citiesTitle = document.getElementById('loc-panel-cities-title');
+        var citiesWrap = document.getElementById('top-cities-table');
         if (globeTitle) globeTitle.textContent = view === 'customers' ? (i18n.loc_cust_locations || 'Customer locations') : (i18n.loc_order_locations || 'Order locations');
-        if (countriesTitle) countriesTitle.textContent = view === 'customers' ? (i18n.loc_top_countries_customers || 'Top countries by customers') : (i18n.loc_top_countries_orders || 'Top countries by orders');
         if (citiesTitle) citiesTitle.textContent = view === 'customers' ? (i18n.loc_top_cities_customers || 'Top cities by customers') : (i18n.loc_top_cities_orders || 'Top cities by orders');
+
+        // A store selling in one country: its region map, its regions and
+        // its cities (each with its region, so "Merkez, Tokat" is not mixed
+        // with another province's Merkez).
+        var focus = regionFocus();
+        syncLocSwitch(focus);
+        if (focus && locMode === 'region') {
+            showRegionMap(focus, view);
+            if (countriesTitle) countriesTitle.textContent = regionListTitle(focus.word, view);
+            renderTopRegions(focus, view);
+            renderTopCities(cities.filter(function (c) { return c.country === focus.cc && c.region; }), view);
+            setLocFoot(focus);
+            if (citiesTitle) citiesTitle.hidden = false;
+            if (citiesWrap) citiesWrap.hidden = false;
+            return;
+        }
+        setLocFoot(null);
+        if (regionMap && !regionMap.reversing) closeRegionMap();
+        // The country's map fetched ahead, so a switch to it is instant.
+        if (focus) preloadRegionMap(focus);
+
+        // Rebuild globe with new marker sizes (always recreate to update arc
+        // routing too). Nothing to place: the reason instead of a blank
+        // 450px box (field test F3). While the region map shrinks back into
+        // the globe, the globe starts when it is done (setLocMode()).
+        if (!regionMap) {
+            if (globeMarkers.length > 0) {
+                setGlobeEmpty(null);
+                createGlobeInstance();
+            } else {
+                setGlobeEmpty(emptyReason('orders', 'site'));
+            }
+        }
+
+        if (countriesTitle) countriesTitle.textContent = view === 'customers' ? (i18n.loc_top_countries_customers || 'Top countries by customers') : (i18n.loc_top_countries_orders || 'Top countries by orders');
 
         renderTopCountries(countries, view);
         renderTopCities(cities, view);
 
         // No country means no city either: one reason in this panel, not two.
         var noPlaces = countries.length === 0;
-        var citiesWrap = document.getElementById('top-cities-table');
         if (citiesTitle) citiesTitle.hidden = noPlaces;
         if (citiesWrap) citiesWrap.hidden = noPlaces;
+    }
+
+    // The region map block of the payload when this page can draw it.
+    function regionFocus() {
+        var f = locationsData && locationsData.focus;
+        if (!f || !window.brikpanelRegionMap || !CFG.maps_url || typeof window.Path2D !== 'function') return null;
+        if (!/^[A-Z]{2}$/.test(f.cc || '') || regionFailed[f.cc]) return null;
+        return f;
+    }
+
+    // World | Country shows only when the store has a region map.
+    function syncLocSwitch(focus) {
+        var modeRow = document.querySelector('.brikpanel-loc-mode');
+        if (!modeRow) return;
+        modeRow.hidden = !focus;
+        if (!focus) return;
+        var name = modeRow.querySelector('.brikpanel-loc-mode-country');
+        if (name && name.textContent !== focus.country) name.textContent = focus.country;
+        modeRow.setAttribute('data-cc', focus.cc);
+        modeRow.querySelectorAll('.brikpanel-loc-mode-btn[data-mode]').forEach(function (b) {
+            b.setAttribute('aria-pressed', b.getAttribute('data-mode') === locMode ? 'true' : 'false');
+        });
+    }
+
+    function setLocMode(mode) {
+        mode = mode === 'world' ? 'world' : 'region';
+        if (mode === locMode) return;
+        locMode = mode;
+        saveTab('locations', mode);
+        if (!locationsData) return;
+        if (mode === 'world' && regionMap) {
+            // The map flies back into the globe facing the country. The world
+            // globe starts right there, held still under the map's last
+            // picture (the same view) while it gets going, then the map
+            // fades away over it and the globe's spin comes up gently.
+            var rm = regionMap;
+            rm.reversing = true;
+            rm.ctl.reverse(function (phi, theta) {
+                if (regionMap !== rm) return;
+                if (phi !== null) {
+                    globePhi = phi;
+                    globeTheta = theta;
+                }
+                globeHold = true;
+                closeRegionMap(150);
+                applyLocView(locView);
+                setTimeout(function () {
+                    if (regionMap) return;
+                    globeHold = false;
+                    globeSpinAt = performance.now();
+                }, 430);
+            });
+        } else if (mode === 'region') {
+            regionAnimate = 'switch';
+            // The globe holds still: the map starts from this very view.
+            if (globeInstance && !prefersReducedMotion) globeHold = true;
+        }
+        applyLocView(locView);
+    }
+
+    function preloadRegionMap(focus) {
+        var key = focus.cc + '|' + focus.v;
+        if (regionPreloaded[key]) return;
+        regionPreloaded[key] = true;
+        window.brikpanelRegionMap.preload(CFG.maps_url, focus.cc, focus.v).catch(function () {
+            // Asked for again when the map is wanted; the globe stays if it fails then too.
+            regionPreloaded[key] = false;
+        });
+    }
+
+    // The world globe gone from the card (the region map is on it).
+    function dropWorldGlobe(container) {
+        if (globeInstance) {
+            globeInstance.destroy();
+            globeInstance = null;
+        }
+        resetGlobeBox(container, false);
+        var globeCanvas = document.getElementById('brikpanel-globe');
+        if (globeCanvas) {
+            unwrapGlobeCanvas(container, globeCanvas);
+            globeCanvas.style.display = 'none';
+        }
+    }
+
+    function showRegionMap(focus, view) {
+        var container = document.getElementById('globe-container');
+        if (!container) return;
+        if (regionMap && regionMap.cc === focus.cc && regionMap.v === focus.v && !regionMap.reversing) {
+            regionMap.ctl.update(focus, view);
+            return;
+        }
+        closeRegionMap();
+        var how = regionAnimate;
+        regionAnimate = false;
+        // From the world globe: it stays, held still, under the map until the
+        // map has drawn the same view over it, so the box never blinks empty.
+        var keepGlobe = how === 'switch' && !!globeInstance && !prefersReducedMotion;
+        if (!keepGlobe) {
+            setGlobeEmpty(null);
+            dropWorldGlobe(container);
+        }
+        container.classList.add('brikpanel-loc-map-on');
+        var rm = { cc: focus.cc, v: focus.v, ctl: null, reversing: false };
+        regionMap = rm;
+        rm.ctl = window.brikpanelRegionMap.open({
+            container: container,
+            focus: focus,
+            metric: view,
+            animate: how,
+            from: [globePhi, globeTheta],
+            land: liteLandPoints(),
+            shade: liteShade,
+            markers: globeMarkers,
+            reduced: prefersReducedMotion,
+            mapsUrl: CFG.maps_url,
+            storeKey: 'brikpanel_region_anim_' + (CFG.blog || 0),
+            label: i18n.loc_map_alt || '',
+            text: { orders: i18n.loc_orders || '', customers: i18n.loc_customers || '', sales: i18n.loc_sales || '' },
+            number: formatNumber,
+            // The map covers the card: the world globe under it can go.
+            onShown: keepGlobe ? function () {
+                if (regionMap === rm) dropWorldGlobe(container);
+                globeHold = false;
+            } : null
+        });
+        rm.ctl.ready.catch(function () {
+            // The map file did not come (blocked, offline): the globe, as before.
+            globeHold = false;
+            regionFailed[focus.cc] = true;
+            if (regionMap === rm) {
+                closeRegionMap();
+                applyLocView(locView);
+            }
+        });
+    }
+
+    // The region map off the card. fadeAfter (ms): its last picture stays
+    // that long over the world globe starting under it, then fades away.
+    function closeRegionMap(fadeAfter) {
+        if (!regionMap) return;
+        var ctl = regionMap.ctl;
+        regionMap = null;
+        if (fadeAfter) {
+            setTimeout(function () { ctl.destroy(true); }, fadeAfter);
+        } else {
+            ctl.destroy(false);
+        }
+        var container = document.getElementById('globe-container');
+        if (container) container.classList.remove('brikpanel-loc-map-on');
+        var globeCanvas = document.getElementById('brikpanel-globe');
+        if (globeCanvas) globeCanvas.style.display = '';
+    }
+
+    function regionListTitle(word, view) {
+        var w = word === 'province' || word === 'state' ? word : 'region';
+        var key = 'loc_top_' + w + 's_' + (view === 'customers' ? 'customers' : 'orders');
+        return i18n[key] || '';
+    }
+
+    // The busiest regions, like the countries list (bars, sales), without flags.
+    function renderTopRegions(focus, view) {
+        var wrap = document.getElementById('top-countries-table');
+        if (!wrap) return;
+        var isCustomers = view === 'customers';
+        var field = isCustomers ? 'customers' : 'count';
+        var rows = (focus.regions || []).slice().sort(function (a, b) { return (b[field] || 0) - (a[field] || 0); })
+            .filter(function (r) { return (r[field] || 0) > 0; });
+        if (!rows.length) {
+            showEmpty(wrap, emptyReason('orders', 'site'));
+            return;
+        }
+        var unitLabel = isCustomers ? (i18n.customers || 'customers') : (i18n.orders || 'orders');
+        var max = rows[0][field] || 1;
+        var html = '<div class="brikpanel-country-list brikpanel-region-list">';
+        rows.slice(0, 5).forEach(function (r) {
+            var val = r[field] || 0;
+            var name = (focus.names && focus.names[r.key]) || r.key;
+            html += '<div class="brikpanel-country-row">' +
+                '<div class="country-info">' +
+                    '<div class="country-header">' +
+                        '<span class="country-name">' + escapeHtml(name) + '</span>' +
+                        (!isCustomers ? '<span class="country-total">' + escapeHtml(r.total || '') + '</span>' : '') +
+                    '</div>' +
+                    '<div class="country-bar-wrap">' +
+                        '<div class="country-bar" style="width:' + Math.max(1, Math.round(val / max * 100)) + '%"></div>' +
+                    '</div>' +
+                    '<div class="country-meta">' + formatNumber(val) + ' ' + unitLabel + '</div>' +
+                '</div>' +
+            '</div>';
+        });
+        html += '</div>';
+        wrap.innerHTML = html;
+    }
+
+    // Under the map: the orders no region was found for, and the colour scale.
+    function setLocFoot(focus) {
+        var panel = document.getElementById('globe-panel');
+        var foot = panel ? panel.querySelector('.brikpanel-loc-foot') : null;
+        if (!foot) return;
+        foot.hidden = !focus;
+        if (!focus) return;
+        var note = foot.querySelector('.brikpanel-loc-unknown');
+        if (!note) return;
+        var w = focus.word === 'province' || focus.word === 'state' ? focus.word : 'region';
+        var msg = i18n['loc_unplaced_' + w];
+        note.textContent = focus.unplaced > 0 && msg && BF ? BF.count(msg, focus.unplaced) : '';
     }
 
     function renderTopCountries(countries, view) {
@@ -4238,8 +4522,11 @@
             '</tr></thead><tbody>';
 
         cities.slice(0, 5).forEach(function (c, i) {
+            // "Merkez, Tokat", "Springfield, IL" (the server writes it in the
+            // admin's language); a payload cached before cities carried their
+            // region has the name only.
             html += '<tr><td class="rank">' + (i + 1) + '</td>' +
-                '<td>' + escapeHtml(c.name) + '</td>' +
+                '<td>' + escapeHtml(c.label || c.name) + '</td>' +
                 '<td>' + formatNumber(c[countField] || 0) + '</td></tr>';
         });
 

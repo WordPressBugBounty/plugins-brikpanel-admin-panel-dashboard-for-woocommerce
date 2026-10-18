@@ -26,12 +26,18 @@
        switch drives it; the rows read only this flag. */
     state.sharedStock = productData.shared_stock === true;
 
+    /* "Pack sizes", under "Shared stock": a row that sells from the shared
+       stock shows the units one sale takes (a 5-pack takes 5) in place of the
+       word "Shared". CSS swaps the two (.bpe-var-pack-on on the card), so the
+       box is always in the row and its value always saved. */
+    state.packSizes = productData.pack_sizes === true;
+
     /* Every variation field that is backed by a control in the table, i.e. the
        ones a merchant can still be typing into while a save is in flight. Used
        to tell a genuine in-flight edit apart from the server's echo. */
     var VAR_INPUT_FIELDS = ['regular_price', 'sale_price', 'sale_from', 'sale_to', 'manage_stock',
         'enabled', 'stock_quantity', 'stock_status', 'sku', 'global_unique_id', 'tax_class',
-        'shipping_class', 'cogs_value', 'vendor_id', 'backorders'];
+        'shipping_class', 'cogs_value', 'vendor_id', 'backorders', 'pack_units'];
 
     /* Compare two variation field values across the boolean/int/string spellings
        the table state and the submitted payload use for the same thing (a
@@ -612,6 +618,8 @@
             : (isVar ? $('#bpe-shared-stock').is(':checked') : $('#bpe-manage-stock').is(':checked'));
         $('#bpe-manage-stock-row').prop('hidden', skuOnly || isVar);
         $('#bpe-shared-stock-row').prop('hidden', !isVar);
+        // Pack sizes only mean something while the variations share the stock.
+        $('#bpe-pack-sizes-row').prop('hidden', !isVar || !on);
         $('#bpe-stock-qty-field, #bpe-backorders-field').toggle(on);
         $('#bpe-stock-status-field').toggle(!skuOnly && !isVar && !on);
         // The "Backorder behavior" radio collapse refines a manual "On
@@ -625,6 +633,7 @@
         if (!$('#bpe-inventory-card').length) return;
         $('#bpe-manage-stock').on('change', function () { syncInventoryCard(); state.dirty = true; });
         $('#bpe-shared-stock').on('change', function () { onSharedStockToggle(this.checked); });
+        $('#bpe-pack-sizes').on('change', function () { onPackSizesToggle(this.checked); });
         $('#bpe-gen-var-skus').on('click', generateVariationSkus);
         // A variation without a SKU of its own uses the product's: its box
         // shows that one as the grey hint, kept current while it is typed.
@@ -727,6 +736,19 @@
             renderVarTable();
         }
         syncInventoryCard();
+        state.dirty = true;
+    }
+
+    /* The "Pack sizes" switch. Every row already holds its pack size box;
+       the card's class shows it in place of "Shared" in each row that sells
+       from the shared stock (CSS), so nothing is drawn again and a size typed
+       before switching off is still there when it comes back on. */
+    function onPackSizesToggle(on) {
+        state.packSizes = !!on;
+        $('#bpe-var-card').toggleClass('bpe-var-pack-on', state.packSizes);
+        if (PH.built) {
+            $('#bpe-var-table-body tr.var-main-row').each(function () { phoneVarSummary(this); });
+        }
         state.dirty = true;
     }
 
@@ -4692,6 +4714,8 @@
             v.manage_stock   = varRowCounts($row);
             v.enabled        = $row.find('.var-enabled').is(':checked');
             v.stock_quantity = $row.find('.var-stock').val();
+            var $vpack = $row.find('.var-pack-units');
+            if ($vpack.length) v.pack_units = $vpack.val();
             var $vstatus = $scope.find('.var-stock-status');
             if ($vstatus.length) v.stock_status = $vstatus.val() || 'instock';
             v.backorders     = readVarBackorders($scope, v, v.manage_stock);
@@ -5964,10 +5988,17 @@
             // unchanged box leaves the stored stock alone on save, since
             // orders may have lowered it in the meantime.
             if (v._stockOriginal === undefined) { v._stockOriginal = varManage ? ('' + stk) : ''; }
+            // Pack size (units one sale takes from the shared stock). Always in
+            // the box; CSS shows it instead of "Shared" while the product's
+            // "Pack sizes" switch is on. Empty means 1.
+            var packUnits = parseInt(v.pack_units, 10);
+            var packVal = packUnits > 1 ? String(packUnits) : '';
             var stockTd = '<td class="var-stock-cell" data-bp-label="' + esc(t.var_stock) + '">' +
                 '<span class="var-stock-box' + (varManage ? '' : ' is-unlimited') + '" data-manage="' + (varManage ? '1' : '0') + '">' +
                 '<input type="number" class="var-stock" value="' + esc('' + stk) + '" min="0" placeholder="0" aria-label="' + esc(t.var_stock_qty) + '"' + (varManage ? '' : ' hidden') + '>' +
                 '<button type="button" class="var-stock-free" title="' + esc(t.var_track_stock) + '"' + (varManage ? ' hidden' : '') + '><span class="var-stock-free-text">' + esc(freeWord) + '</span></button>' +
+                '<span class="var-pack"><span class="var-pack-x" aria-hidden="true">×</span>' +
+                '<input type="number" class="var-pack-units" value="' + esc(packVal) + '" min="1" max="9999" step="1" inputmode="numeric" placeholder="1" aria-label="' + esc(t.var_pack_size) + '" title="' + esc(t.var_pack_size_help) + '"></span>' +
                 '<button type="button" class="brikpanel-pe-inf-btn var-stock-inf" aria-pressed="' + (varManage ? 'false' : 'true') + '" aria-label="' + esc(modeLabel) + '" title="' + esc(modeLabel) + '">' + infSvg + '</button>' +
                 '</span></td>';
             var cogsTd = hasCogs ? '<td class="var-num-cell" data-bp-label="' + esc(t.cogs) + '"><input type="text" class="var-cogs" value="' + esc(cogsv) + '" data-price="1" placeholder="0' + sep + '00" aria-label="' + esc(t.cogs) + '"></td>' : '';
@@ -6664,6 +6695,9 @@
                 // yet): WooCommerce's shared stock, from the "Shared stock" switch.
                 var shared = $('#bpe-shared-stock').is(':checked');
                 data.shared_stock = shared ? 1 : 0;
+                // "Pack sizes" keeps its own state when "Shared stock" is off.
+                var $packSwitch = $('#bpe-pack-sizes');
+                if ($packSwitch.length) data.pack_sizes = $packSwitch.is(':checked') ? 1 : 0;
                 if (shared) {
                     data.stock_quantity = $('#bpe-stock').val();
                     data.stock_quantity_original = stockOriginal === undefined ? '' : stockOriginal;
@@ -7135,6 +7169,10 @@
                 if ($varShip.length) varObj.shipping_class = $varShip.val();
                 // Backorder rule: the counted row's "Allow backorders?".
                 varObj.backorders = readVarBackorders($scope, v, varManageStock);
+                // Pack size, sent whatever the switch says: the server keeps it
+                // and only counts it while the switch is on.
+                var $varPack = $mainRow.find('.var-pack-units');
+                if ($varPack.length) varObj.pack_units = $varPack.val();
                 var $cogsInput = $(this).find('.var-cogs');
                 if ($cogsInput.length) varObj.cogs_value = parsePrice($cogsInput.val(), sep);
                 var $varVendor = $scope.find('.var-vendor');
@@ -9211,6 +9249,9 @@
         var stock;
         if ($tr.find('.var-stock-box').attr('data-manage') === '1') {
             stock = countText(PE.i18n.ph_in_stock, parseInt($tr.find('.var-stock').val(), 10) || 0);
+        } else if (state.sharedStock && state.packSizes) {
+            // A pack that sells from the shared stock: "Pack of 5".
+            stock = countText(PE.i18n.ph_pack_of, Math.max(1, parseInt($tr.find('.var-pack-units').val(), 10) || 1));
         } else {
             stock = phText($tr.find('.var-stock-free-text')[0]);
         }

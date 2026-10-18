@@ -2542,6 +2542,80 @@ html.brikpanel-modal-lock {
 /* Tabs that run under the search button fade out at that edge only while
    more tabs are hidden there: brikpanel-scroll-strip.js/.css (brikpanelTableHeader). */
 
+/* Orders explorer link (brikpanelOrdersExplorerLink): the search button's
+   look and size, so the 28px row keeps one rhythm (the shared .brikpanel-btn
+   is 40px). In the tab row it sits after the tabs, which end before it, and
+   keeps the search button's 54px and the 8px gap free at its end; it fades
+   with the tabs while the search is open. */
+.bp-orders-explorer,
+.bp-orders-explorer:visited {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	box-sizing: border-box;
+	height: 28px;
+	margin: 0;
+	padding: 0 10px;
+	border: 1px solid #e3e3e3;
+	border-radius: .5rem;
+	background-color: #fff;
+	color: #616161;
+	font-size: .8125rem;
+	font-weight: 550;
+	line-height: 26px;
+	text-decoration: none;
+	white-space: nowrap;
+	transition: background-color .15s ease, color .15s ease;
+}
+
+.bp-orders-explorer:hover,
+.bp-orders-explorer:focus {
+	background-color: #f7f7f7;
+	color: #303030;
+	box-shadow: none;
+}
+
+.bp-orders-explorer:focus-visible {
+	outline: 2px solid #303030;
+	outline-offset: 2px;
+}
+
+.brikpanel-orders-table-header-1 > .bp-orders-explorer {
+	/* Level with the search button, which is placed 8px from the top. */
+	align-self: flex-start;
+	margin-inline-end: 62px;
+	transition: background-color .15s ease, color .15s ease, opacity .2s ease .1s, visibility 0s;
+}
+
+.brikpanel-orders-table-header-1.bp-orders-explorer-nosearch > .bp-orders-explorer {
+	margin-inline-end: 0;
+}
+
+.brikpanel-orders-table-header-1:has(.expanded) > .bp-orders-explorer {
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: opacity .12s ease, visibility 0s .12s;
+}
+
+/* The tabs end before the link, so no band is kept for the search button. */
+.brikpanel-orders-table-header-1.bp-orders-explorer-in-row .subsubsub {
+	padding-inline-end: 0;
+}
+
+/* In the filter row (a tab row with no room for it): last, at the row's end,
+   and out of the Tab order while the row is closed. */
+.brikpanel-filters > .bp-orders-explorer {
+	margin-inline-start: auto;
+	visibility: hidden;
+	transition: background-color .15s ease, color .15s ease, visibility 0s .3s;
+}
+
+.brikpanel-orders-table-header-1:has(.expanded) + .brikpanel-filters-collapse > .brikpanel-filters > .bp-orders-explorer {
+	visibility: visible;
+	transition-delay: 0s;
+}
+
 /* No animation while the page sets itself up (search already open on load). */
 .bp-anim-off,
 .bp-anim-off *,
