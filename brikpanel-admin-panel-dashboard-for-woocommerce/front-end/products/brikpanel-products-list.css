@@ -920,6 +920,90 @@ html:has(.brikpanel-pl-bulk-bar:not([hidden])) body {
     background: #fef2f2;
 }
 
+/* Other plugins' bulk actions (Send to Slynk, Yoast's Bulk edit ...), drawn by
+   applyPluginActions() in brikpanel-products-list.js. While the bar's buttons
+   sit in the row the actions have a menu of their own, "Plugin actions",
+   always folded (as a row's plugin actions); when the bar folds, and on a
+   phone, they join "Bulk actions" under a line instead. Only one of the two
+   copies shows. */
+.brikpanel-pl-bulk-plugins {
+    display: inline-flex;
+    flex: none;
+}
+
+.brikpanel-pl-bulk-plugins[hidden] {
+    display: none;
+}
+
+/* The trigger looks like "Bulk actions" folded. */
+.brikpanel-pl-bulk-bar .brikpanel-pl-bulk-plugins .brikpanel-overflow .brikpanel-pl-bulk-plugins-btn {
+    gap: 6px;
+    width: auto;
+    height: 30px;
+    padding: 0 .75rem;
+    font-size: .8125rem;
+    font-weight: 550;
+    white-space: nowrap;
+}
+
+.brikpanel-pl-bulk-plugins-btn svg {
+    flex: none;
+    transition: transform .15s ease;
+}
+
+.brikpanel-pl-bulk-plugins .brikpanel-overflow.is-open .brikpanel-pl-bulk-plugins-btn svg {
+    transform: rotate(180deg);
+}
+
+/* A plugin's name over its actions. */
+.brikpanel-pl-bulk-bar .brikpanel-pl-bulk-menu > .brikpanel-pl-bulk-group {
+    display: block;
+    padding: .5rem .625rem .125rem;
+    color: #616161;
+    font-size: .75rem;
+    font-weight: 550;
+    line-height: 1.4;
+}
+
+/* Plugins name their actions at any length: a menu that holds them stops at
+   22rem and their rows wrap, where the bar's own short rows stay on one line. */
+.brikpanel-pl-bulk-bar .brikpanel-overflow .brikpanel-pl-bulk-menu:has(> .brikpanel-pl-bulk-pa) {
+    max-width: min(22rem, calc(100vw - 1rem));
+}
+
+.brikpanel-pl-bulk-bar .brikpanel-overflow .brikpanel-pl-bulk-menu > .brikpanel-pl-bulk-pa:not([hidden]) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+@media (min-width: 783px) {
+    /* The row's own menu, or "Bulk actions": never both. */
+    .brikpanel-pl-bulk-bar:not(.is-fold) #bpl-bulk-more > .brikpanel-pl-bulk-pa-copy,
+    .brikpanel-pl-bulk-bar.is-fold .brikpanel-pl-bulk-plugins {
+        display: none;
+    }
+
+    /* The plugin's name stands over its actions here: in front of each one it
+       is for screen readers only. */
+    .brikpanel-pl-bulk-pa .brikpanel-pl-bulk-prefix {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+    }
+}
+
+@media (max-width: 782px) {
+    .brikpanel-pl-bulk-plugins {
+        display: none;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .brikpanel-pl-bulk-inner {
         animation: none;

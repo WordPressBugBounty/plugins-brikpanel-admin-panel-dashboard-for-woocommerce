@@ -21,6 +21,13 @@ if ( ! defined( 'ABSPATH' ) ) {
  * required from anywhere (tools/test-wc-detect.php loads it under WP-CLI).
  */
 
+// WooCommerce's Coupons row, which the sidebar draws as a row of its own
+// (brikpanel_nav_promote_coupons()). Its slug is WooCommerce's, so saved
+// Navigation layouts and page access name it the same way.
+if ( ! defined( 'BRIKPANEL_NAV_COUPONS_SLUG' ) ) {
+	define( 'BRIKPANEL_NAV_COUPONS_SLUG', 'edit.php?post_type=shop_coupon' );
+}
+
 if ( ! function_exists( 'brikpanel_nav_icon_style' ) ) {
 	/**
 	 * Resolve the sidebar icon style preference ('solid' | 'line'). 'solid' is the
@@ -222,6 +229,11 @@ if ( ! function_exists( 'brikpanel_nav_store_tail_anchor' ) ) {
 	 * (`edit.php`, the same line brikpanel_nav_demote_foreign_toplevels() uses)
 	 * is skipped, so Settings and More are never pulled down there with it.
 	 *
+	 * Marketing is still a candidate: the sidebar files it under "More" only
+	 * after this order is laid (brikpanel_nav_customizer_apply()), and Coupons,
+	 * which stands right above it, is then directly above Settings. Without
+	 * Marketing, Coupons is the last store row.
+	 *
 	 * @param array $menu $menu-shaped rows.
 	 * @return string Slug, or '' when no candidate qualifies.
 	 */
@@ -239,6 +251,7 @@ if ( ! function_exists( 'brikpanel_nav_store_tail_anchor' ) ) {
 
 		$candidates = array(
 			'woocommerce-marketing',
+			BRIKPANEL_NAV_COUPONS_SLUG,
 			brikpanel_nav_wc_analytics_slug( $menu ),
 			'wc-admin&path=/payments/overview',
 			'wc-admin&path=/payments/connect',

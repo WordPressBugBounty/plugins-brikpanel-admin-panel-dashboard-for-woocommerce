@@ -534,7 +534,8 @@
 
 .brikpanel-bc-largest-table th,
 .brikpanel-bc-largest-table td {
-    text-align: left;
+    /* start, not left: right to left the cells read from the right. */
+    text-align: start;
     padding: 0.4rem 0.5rem;
     border-bottom: 1px solid #e3e3e3;
 }
@@ -608,6 +609,21 @@
 
 .brikpanel-bc-card .brikpanel-bc-sample-result:empty {
     display: none;
+}
+
+/* Products with missing images (3.3.37): under where the image was shown,
+   the missing files' names or how many images; and the line under a list
+   cut short. */
+.brikpanel-bc-missing-detail {
+    display: block;
+    font-size: 0.75rem;
+    color: #616161;
+}
+
+.brikpanel-bc-list-note {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 0.75rem;
+    color: #616161;
 }
 
 /* Card footer */

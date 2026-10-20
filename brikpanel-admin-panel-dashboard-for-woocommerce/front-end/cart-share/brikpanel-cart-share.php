@@ -479,8 +479,10 @@ class Brikpanel_Cart_Share {
                     // "Any …" attribute — cannot build a deterministic link, skip.
                     continue 2;
                 }
-                $taxonomy = str_replace( 'attribute_', '', $key );
-                $term     = get_term_by( 'slug', $value, $taxonomy );
+                // Decoded first: a taxonomy named outside ASCII is keyed
+                // `attribute_pa_%d0%b2…`, so the slug used to be listed.
+                $taxonomy = brikpanel_attr_taxonomy_from_key( $key );
+                $term     = '' !== $taxonomy ? get_term_by( 'slug', $value, $taxonomy ) : false;
                 $attrs[]  = $term && ! is_wp_error( $term ) ? brikpanel_plain_name( $term->name ) : $value;
             }
 

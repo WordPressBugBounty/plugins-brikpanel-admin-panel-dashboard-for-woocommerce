@@ -1,15 +1,15 @@
-=== BrikPanel: WooCommerce Dashboard, Abandoned Cart Recovery, Google Sheets Sync, Inventory Management & Bulk Editor ===
+=== BrikPanel: WooCommerce Dashboard & Analytics, Abandoned Cart Recovery, Order Export, Inventory Management & Bulk Editor ===
 Contributors: brksoft
 Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
-Tags: woocommerce dashboard, woocommerce inventory management, google sheets, woocommerce bulk editor, abandoned cart
+Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.36
+Stable tag: 3.3.37
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Free WooCommerce dashboard & sales report: abandoned cart recovery, Google Sheets sync, ROAS, bulk editor & inventory management
+Free WooCommerce dashboard & sales report: recover abandoned carts, order export, Google Sheets sync, ROAS, bulk edit & inventory management
 
 == Description ==
 
@@ -38,11 +38,11 @@ The heart of BrikPanel is a **modern WooCommerce dashboard**, a true **woocommer
 * **Beautiful sales chart** powered by Chart.js, plus an **order status donut** (Successful, Failed, Returns & Refunds, Cancelled)
 * **WooCommerce conversion funnel**: Visitors → Product Views → Add to Cart → Checkout → Orders, with counts at every step
 
-This is a complete **WooCommerce sales report** and **reporting** layer: real-time **sales reports**, charts and KPIs inside a **modern WooCommerce admin**, with no external analytics service.
+This is a complete **WooCommerce sales report** and **reporting** layer: real-time **sales reports**, charts and KPIs inside a **modern WooCommerce admin**.
 
 = Customer Analytics: LTV, RFM Segmentation & Cohort Retention =
 
-BrikPanel ships a complete **WooCommerce customer analytics** suite, calculated from your store data and visualized in the dashboard, no external service.
+BrikPanel ships a complete **WooCommerce customer analytics** suite, calculated from your store data and visualized in the dashboard.
 
 * **Customer Lifetime Value (LTV)**: total customers, average and top LTV, full LTV distribution histogram, and a ranked top-customers table
 * **RFM segmentation**: every customer scored on Recency, Frequency, and Monetary, then bucketed into segments like Champions, Loyal Customers, At Risk, About to Sleep, Hibernating, and Lost, with average LTV and orders per segment
@@ -51,7 +51,7 @@ BrikPanel ships a complete **WooCommerce customer analytics** suite, calculated 
 
 = Live Visitors & Real-Time Conversion Tracking =
 
-BrikPanel ships a built-in **WooCommerce live visitors** widget, see who is on your store right now, what page they are on, and whether they have items in the cart. Refreshes every 30 seconds by default (configurable). No external service, no Hotjar, no monthly fee.
+BrikPanel ships a built-in **WooCommerce live visitors** widget, see who is on your store right now, what page they are on, and whether they have items in the cart. Refreshes every 30 seconds by default (configurable). No Hotjar, no monthly fee.
 
 * **WooCommerce real time visitors** widget with cart status (*Browsing / Added to Cart / Order Received*), current page, and customer info
 * **WooCommerce conversion tracking** in the same database that powers the dashboard
@@ -69,11 +69,12 @@ A 3D globe plots the countries your orders come from: **WooCommerce sales by cou
 
 Hit `Ctrl + K` (or `Cmd + K` on Mac) anywhere in wp-admin and an order search overlay opens, the free **woocommerce order search plugin**. Searches order ID, customer name, email, phone and product SKU inside line items at once. True **woocommerce quick search**, with results as you type, status badges and dates.
 
-= Modern WooCommerce Order Management =
+= Modern WooCommerce Order Management & Export =
 
 BrikPanel replaces the cluttered default orders page with a clean **woocommerce order list plugin** screen.
 
 * **30-day overview bar**: total orders, completed, refunded, revenue
+* **WooCommerce order export**: download the selected or filtered orders as Excel or CSV, with addresses, products, variations, SKUs and totals
 * **Inline status change** without opening the edit page
 * HPOS (`wc_get_orders`) and legacy storage (`WP_Query`) both supported
 * Create your own order statuses, like **Return Draft** or **Change**
@@ -182,7 +183,7 @@ A **Custom BrikPanel-styled top admin bar** replaces the default WordPress toolb
 
 = Google Sheets Sync: Real-Time WooCommerce Google Sheets Integration =
 
-BrikPanel ships a free **WooCommerce Google Sheets sync**, a fully native **WooCommerce to Google Sheets** integration that streams orders, customers and analytics into a Google Sheet you control. The free **GSheetConnector alternative** with no Zapier, no Make, no monthly fee.
+BrikPanel ships a free **WooCommerce Google Sheets sync**, a fully native **WooCommerce to Google Sheets** integration that streams orders, customers and analytics into a Google Sheet you control. The free **GSheetConnector alternative** with no Zapier, no Make.
 
 * **Real-time order sync**: every new WooCommerce order is appended within seconds, one row per order or line item so variations get their own rows. Free **woocommerce order sync to google sheets** with no external automation tool
 * **Scheduled WooCommerce Google Sheets export**: hourly, every 4h or daily catch-up; idempotent so re-runs never duplicate rows
@@ -193,7 +194,7 @@ HPOS-compatible: a real **google sheets woocommerce sync**, free.
 
 = WooCommerce ROAS, Net Profit & Ad Spend: Google Ads + Meta Ads =
 
-BrikPanel pulls daily spend from **Google Ads** and **Meta Ads** (Facebook / Instagram) so you see real **WooCommerce ROAS**, **Net Profit** and **ad spend** next to revenue. Multi-currency aware. A free **Triple Whale alternative** and **woocommerce profit tracking** dashboard with no monthly fee.
+BrikPanel pulls daily spend from **Google Ads** and **Meta Ads** (Facebook / Instagram) so you see real **WooCommerce ROAS**, **Net Profit** and **ad spend** next to revenue. Multi-currency aware. A free **Triple Whale alternative** and **woocommerce profit tracking** dashboard.
 
 = BrikMarket Marketplace Analytics =
 
@@ -501,6 +502,25 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.37 (2026-10-20) =
+* New: **Export orders to Excel or CSV.** The new Export button on the Orders list downloads the selected orders, or all orders the list shows with its current tab, search and filters. In Excel, orders with addresses and totals are on one sheet and their products with variations and SKUs on another; CSV has one row per order.
+* Fix: **The Orders title row fits on phones.** Buttons that plugins add beside "Add order", such as Orders Tracking's, no longer run off the screen: when the row is full, they move into a "…" menu with Export.
+* Fix: **AgenWebsite Shipping's "Pengiriman Massal" button.** It no longer squeezes the orders list, which hid the Payment method column. It now sits next to "Bulk actions" when orders are selected, and on phones it is the first item in that menu.
+* Fix: **The selection bar no longer blocks taps on phones.** While no order was selected, the hidden bar still caught taps at the bottom of the Orders list.
+* Tweak: **Other plugins' column headings wrap.** On the Orders list, a text heading wider than its column's content wraps onto two lines, so the content sets the column's width.
+* Tweak: **"Ship to" shows a phone only when it differs.** The expanded order panel no longer repeats the billing phone under Ship to; a different shipping phone still shows.
+* New: **Coupons has its own row in the sidebar.** It stands where Marketing was, and Marketing moved into "More" with the pages marketing plugins add to it. Sidebars you arranged change once, and your visibility rules for Marketing and its Coupons item carry over.
+* Fix: **Headings with nothing to open are hidden.** A sidebar heading no longer shows for someone who cannot open any link under it, for example when Advanced Access Manager or BrikPanel's own role rules hide those links. Divider lines no longer count as links, and "Site management" follows the same rule.
+* New: **See which products have missing images.** Store Health's "Product image health" card lists each product with a missing image, where it was (main image, gallery or a variation) and why: deleted from the Media Library, or the file is missing on the server. The product's name opens it.
+* New: **Remove deleted images.** A button on the same card removes images deleted from the Media Library from the products that still list them, and "Undo last correction" puts them back.
+* Fix: **Missing image files are counted.** An image uploaded on WordPress 6.0 or later whose file was deleted from the server was not counted. Images served from elsewhere, such as S3 or a CDN, are not counted as missing, BrikPanel's variation galleries are checked too, and the check is about twice as fast.
+* Fix: **Other plugins' bulk actions in the product list.** Actions that plugins add to WooCommerce's product list, such as Epos Now's "Send to Slynk" or Yoast's "Bulk edit", now appear under "Bulk actions" when products are selected and in Bulk update.
+* Fix: **Attributes with non-Latin names show by name.** Abandoned carts, shared cart links, Google Sheets, the orders list, Low stock, Ctrl+K search, Suppliers and stock orders showed an attribute named in Cyrillic or another non-Latin script as a code such as "pa_%d0%b2…" or a slug. They now show "Вид: Спортен", carts saved before included, and the attribute's terms screen has the BrikPanel look.
+* Fix: **Variation names for non-Latin attributes.** WooCommerce named such a variation with the option's slug ("Hoodie - спортен"); it now gets the option's name ("Hoodie - Спортен"), and orders, emails and the classic cart no longer repeat the option under it. Existing variations are corrected the next time WooCommerce reads them, and past orders keep the name they were sold with.
+* Tweak: **The logo address takes a path.** Appearance → "Custom brand logo" accepts a path such as /wp-content/uploads/logo.png, so the logo keeps working when the site moves from staging to live; before, the browser refused it and the form did not save. An address that is neither a full URL nor a path now shows an error instead of being saved broken, and Import settings points a logo URL of the old site at the new one.
+* New: **The cache button knows 9 more plugins.** It now also clears Easy Optimizer, FlyingPress, Perfmatters, Nginx Helper, Proxy Cache Purge, Kinsta, WP Engine and GoDaddy, next to WP Rocket, LiteSpeed Cache, WP Fastest Cache and the 13 others it already cleared. With Elementor, one click and "Clear all caches" also clear the Elementor cache.
+* Tweak: **A cache that could not be cleared is named.** When one plugin's purge fails, the message after the click says which.
+
 = 3.3.36 (2026-10-18) =
 * New: **One Customers page.** Segments and Customer Analytics are now one page, Customers, with the tabs All customers, RFM segments, Lifetime value and Cohort retention. WooCommerce's own Customers report moves to More as "Customers report", and sidebars you arranged keep their order.
 * New: **A page for every customer, guests too.** It shows their orders, total spent, products bought, abandoned carts, coupons, addresses and email list status. The customer's name on the order screen opens it, and Ctrl+K finds guests too.
@@ -580,14 +600,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **Bot traffic is cleaned up every night.** Store Health lowers past days that bots inflated, leaves days with real sales for you to decide, and keeps an Undo. Days you put back with Undo are never touched again.
 * Tweak: **Simpler stock for variations.** Each variation now has one stock box with an ∞ button beside it: type how many you have, or press ∞ to sell it without counting. New variations start at 0, the bulk edit bar has the same ∞ button, and "Allow backorders?" sits in each variation's details.
 * Fix: **Top referrers tells two rows of the same site apart.** When one site sends visits through two channels, such as Google ads and Google search, each of its rows in Top referrers now names its channel.
-
-= 3.3.29 (2026-10-04) =
-* New: **A new dashboard look.** The store cards fit in one row, each with a small trend line, and one sales chart switches between Revenue, Orders and Avg. order value, with the previous period dashed. The Excel export and "Copy everything" stay the same.
-* New: **Today's sales in Live visitors.** The card lists up to 5 visitors and "N more". When no one is on the store, it shows today's sales so far and sales per hour.
-* New: **Products and pages card.** Best sellers, Most viewed pages and Most added to cart in one card with tabs. Most viewed pages also counts pages that are not products, such as the shop and home page.
-* Tweak: **Recent orders, Visitors and Customers redrawn.** Recent orders looks like the orders list. Visitors has Devices, Sources and Top campaigns tabs, and Customers shows new and returning customers with the VIP, loyal and at risk groups. Low stock rows show a badge and the variation.
-* Tweak: **The dashboard loads less.** BrikPanel draws its own charts, so Chart.js is loaded only when BrikMarket is active.
-* New: **A new welcome tour.** New users get a 4-step window instead of the 9-step tour. Each step shows one thing BrikPanel does with a small sketch, and the last screen links to the Dashboard, Orders, Customers and Google Sheets. If you closed the old tour, it does not open again.
-* New: **Deactivation survey.** Deactivating BrikPanel from the Plugins screen opens a short, optional question about why. "Skip and deactivate" sends nothing; "Send and deactivate" shares only your answer, the days BrikPanel was in use, version numbers and your admin language with brksoft.com, never your site address or store data.
-* New: **The products list remembers your sort.** The sort you pick is saved for each user and used the next time the list opens. Filters and the "Sort" button's custom order are not kept.
-* Fix: **Sorting by price keeps products without a price.** They no longer drop out of the list, and variable products sort by their lowest price going up and their highest price going down.

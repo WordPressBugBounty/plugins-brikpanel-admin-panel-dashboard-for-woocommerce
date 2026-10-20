@@ -981,7 +981,7 @@ class Brikpanel_Vendors {
 			$parent       = $is_variation ? wc_get_product( $product->get_parent_id() ) : null;
 			// Plain text: stored names and term names can hold "&amp;".
 			$title        = $is_variation
-				? ( ( $parent ? brikpanel_plain_label( $parent->get_name() ) : '' ) . ', ' . brikpanel_plain_label( wc_get_formatted_variation( $product, true ) ) )
+				? ( ( $parent ? brikpanel_plain_label( $parent->get_name() ) : '' ) . ', ' . brikpanel_plain_label( brikpanel_formatted_variation( $product ) ) )
 				: brikpanel_plain_label( $product->get_name() );
 
 			// Raw meta read (native first, legacy fallback) — unlike

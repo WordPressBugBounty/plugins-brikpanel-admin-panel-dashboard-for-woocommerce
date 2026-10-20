@@ -407,9 +407,9 @@ if ( ! function_exists( 'brikpanel_product_label' ) ) {
 			return '';
 		}
 		$name = brikpanel_plain_label( $product->get_name() );
-		if ( $product->is_type( 'variation' ) && function_exists( 'wc_get_formatted_variation' ) ) {
+		if ( $product->is_type( 'variation' ) ) {
 			// Flat, values only, skipping the options already in the title.
-			$extra = brikpanel_plain_label( wc_get_formatted_variation( $product, true, false, true ) );
+			$extra = brikpanel_plain_label( brikpanel_formatted_variation( $product, false, true ) );
 			if ( '' !== $extra ) {
 				$sep  = (string) apply_filters( 'woocommerce_product_variation_title_attributes_separator', ' - ', $product );
 				$name = ( '' !== $name ? $name . $sep : '' ) . $extra;
@@ -558,5 +558,170 @@ if ( ! function_exists( 'brikpanel_attr_taxonomy_from_key' ) ) {
 		$decoded = urldecode( $key );
 
 		return ( $decoded !== $key && taxonomy_exists( $decoded ) ) ? $decoded : '';
+	}
+}
+
+if ( ! function_exists( 'brikpanel_attr_pairs' ) ) {
+	/**
+	 * A variation's options as WooCommerce means to show them: each
+	 * attribute's label and the chosen option's name, in the variation's order.
+	 *
+	 * WooCommerce's readers look a taxonomy up by the key, which is encoded
+	 * outside ASCII: wc_get_formatted_variation() printed a global attribute
+	 * "Вид" as "pa_вид: спортен" (its term slug, not "Спортен"), and
+	 * wc_attribute_label() without the product returns the encoded key
+	 * ("%d1%80…"). Here the taxonomy is found from the key first.
+	 *
+	 * @param WC_Product|array $variation A variation, or a variation attribute
+	 *                                    map as a cart item or
+	 *                                    get_variation_attributes() holds it
+	 *                                    (the `attribute_` prefix is optional).
+	 * @param WC_Product|null  $product   With a map: the variation or its
+	 *                                    parent, so a custom attribute gets the
+	 *                                    name the merchant typed.
+	 * @param bool             $with_labels False when only the options are
+	 *                                    shown: `label` stays '' and nothing is
+	 *                                    looked up for it (a custom attribute's
+	 *                                    label loads the variation's parent).
+	 * @return array<int,array{key:string,taxonomy:string,label:string,value:string,slug:string}>
+	 *         Names as stored (entities kept, like WooCommerce's). `value` is ''
+	 *         for an "Any …" option; `slug` is the stored value.
+	 */
+	function brikpanel_attr_pairs( $variation, $product = null, $with_labels = true ) {
+		if ( $variation instanceof WC_Product ) {
+			$product    = $variation;
+			$attributes = $variation->is_type( 'variation' ) ? (array) $variation->get_attributes() : array();
+		} else {
+			$attributes = array();
+			foreach ( (array) $variation as $key => $value ) {
+				$key = (string) $key;
+				$attributes[ 0 === strpos( $key, 'attribute_' ) ? substr( $key, 10 ) : $key ] = $value;
+			}
+		}
+		$product = $product instanceof WC_Product ? $product : '';
+
+		$pairs = array();
+		foreach ( $attributes as $key => $stored ) {
+			if ( ! is_scalar( $stored ) ) {
+				continue;
+			}
+			$key      = (string) $key;
+			$stored   = (string) $stored;
+			$value    = $stored;
+			$taxonomy = brikpanel_attr_taxonomy_from_key( $key );
+			$label    = '';
+			if ( '' !== $taxonomy ) {
+				if ( '' !== $value ) {
+					$term = get_term_by( 'slug', $value, $taxonomy );
+					if ( $term && ! is_wp_error( $term ) && '' !== (string) $term->name ) {
+						$value = (string) $term->name;
+					}
+				}
+				if ( $with_labels ) {
+					$label = (string) wc_attribute_label( $taxonomy, $product );
+				}
+			} elseif ( $with_labels ) {
+				$label = (string) wc_attribute_label( $key, $product );
+			}
+			// No product to read a custom attribute's name from: the key is
+			// the closest thing, readable rather than encoded.
+			if ( preg_match( '/%[0-9a-f]{2}/i', $label ) ) {
+				$label = rawurldecode( $label );
+			}
+
+			$pairs[] = array(
+				'key'      => $key,
+				'taxonomy' => $taxonomy,
+				'label'    => $label,
+				'value'    => rawurldecode( $value ),
+				'slug'     => $stored,
+			);
+		}
+
+		return $pairs;
+	}
+}
+
+if ( ! function_exists( 'brikpanel_attr_in_name' ) ) {
+	/**
+	 * Whether a variation's name already carries an option, so a list does
+	 * not repeat it.
+	 *
+	 * wc_is_attribute_in_product_name() folds case only in ASCII and expects a
+	 * space before the option, which the "<span> - </span>" separator some
+	 * plugins put into titles takes away. For an encoded taxonomy WooCommerce
+	 * also wrote the decoded term slug into the title ("спортен" for
+	 * "Спортен"), and order items sold before BrikPanel corrected it
+	 * (includes/brikpanel-variation-title.php) keep that name, so that
+	 * spelling counts too.
+	 *
+	 * @param string $value Option name as shown.
+	 * @param string $name  Variation or line item name.
+	 * @param string $slug  The stored value (a term slug), if any.
+	 * @return bool
+	 */
+	function brikpanel_attr_in_name( $value, $name, $slug = '' ) {
+		$value = (string) $value;
+		$name  = (string) $name;
+		if ( '' === $value || '' === $name ) {
+			return false;
+		}
+		if ( function_exists( 'wc_is_attribute_in_product_name' ) && wc_is_attribute_in_product_name( $value, $name ) ) {
+			return true;
+		}
+
+		// A Latin slug never reaches a title, and could match another word.
+		$options = array( brikpanel_plain_name( $value ) );
+		if ( preg_match( '/%[0-9a-f]{2}|[^\x00-\x7F]/i', (string) $slug ) ) {
+			$options[] = rawurldecode( (string) $slug );
+		}
+		$folded = brikpanel_strtolower( brikpanel_plain_label( $name ) );
+		foreach ( $options as $option ) {
+			$option = trim( $option );
+			if ( '' === $option ) {
+				continue;
+			}
+			$needle = ' ' . brikpanel_strtolower( $option );
+			if ( false !== strpos( $folded, $needle . ',' ) || substr( $folded, -strlen( $needle ) ) === $needle ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
+
+if ( ! function_exists( 'brikpanel_formatted_variation' ) ) {
+	/**
+	 * wc_get_formatted_variation( $variation, true, … ) that also reads
+	 * attributes outside ASCII: one line of "Label: Option, …", or the options
+	 * alone.
+	 *
+	 * The same text as WooCommerce's for every Latin attribute; for the global
+	 * attribute "Вид" it reads "Вид: Спортен" where WooCommerce printed
+	 * "pa_вид: спортен" (see brikpanel_attr_pairs()). The options alone also
+	 * name every variation (includes/brikpanel-variation-title.php), so
+	 * without labels nothing is looked up for them.
+	 *
+	 * @param WC_Product $variation     Variation.
+	 * @param bool       $include_names Put each attribute's label before its option.
+	 * @param bool       $skip_in_name  Leave out the options the name already carries.
+	 * @return string As stored (entities kept); '' for anything but a variation.
+	 */
+	function brikpanel_formatted_variation( $variation, $include_names = true, $skip_in_name = false ) {
+		if ( ! $variation instanceof WC_Product || ! $variation->is_type( 'variation' ) ) {
+			return '';
+		}
+
+		$name = $skip_in_name ? (string) $variation->get_name() : '';
+		$list = array();
+		foreach ( brikpanel_attr_pairs( $variation, null, $include_names ) as $pair ) {
+			if ( '' === $pair['value'] || ( $skip_in_name && brikpanel_attr_in_name( $pair['value'], $name, $pair['slug'] ) ) ) {
+				continue;
+			}
+			$list[] = $include_names ? $pair['label'] . ': ' . $pair['value'] : $pair['value'];
+		}
+
+		return implode( ', ', $list );
 	}
 }

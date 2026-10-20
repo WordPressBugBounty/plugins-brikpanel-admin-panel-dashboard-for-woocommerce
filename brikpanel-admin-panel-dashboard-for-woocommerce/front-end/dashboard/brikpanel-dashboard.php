@@ -2953,11 +2953,11 @@ class Brikpanel_Dashboard {
             // S"); `name` stays the one-line label for the Excel export.
             $title   = $name;
             $variant = '';
-            if ( 'product_variation' === $row->post_type && function_exists( 'wc_get_formatted_variation' ) ) {
+            if ( 'product_variation' === $row->post_type ) {
                 $parent = wc_get_product( $product->get_parent_id() );
                 if ( $parent ) {
                     $title   = brikpanel_plain_label( $parent->get_name() );
-                    $variant = brikpanel_plain_label( wc_get_formatted_variation( $product, true, false, false ) );
+                    $variant = brikpanel_plain_label( brikpanel_formatted_variation( $product, false ) );
                 }
             }
 

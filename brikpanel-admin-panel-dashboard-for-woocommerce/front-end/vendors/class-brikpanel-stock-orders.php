@@ -869,7 +869,7 @@ class Brikpanel_Stock_Orders {
 				$results[]    = [
 					'product_id'   => $parent_id,
 					'variation_id' => $product->get_id(),
-					'title'        => ( $parent ? brikpanel_plain_label( $parent->get_name() ) : '' ) . ', ' . brikpanel_plain_label( wc_get_formatted_variation( $product, true ) ),
+					'title'        => ( $parent ? brikpanel_plain_label( $parent->get_name() ) : '' ) . ', ' . brikpanel_plain_label( brikpanel_formatted_variation( $product ) ),
 					'sku'          => $product->get_sku(),
 					'cost'         => $this->resolve_existing_cost( $product ),
 				];
@@ -888,7 +888,7 @@ class Brikpanel_Stock_Orders {
 					$results[]    = [
 						'product_id'   => $product->get_id(),
 						'variation_id' => $variation->get_id(),
-						'title'        => brikpanel_plain_label( $product->get_name() ) . ', ' . brikpanel_plain_label( wc_get_formatted_variation( $variation, true ) ),
+						'title'        => brikpanel_plain_label( $product->get_name() ) . ', ' . brikpanel_plain_label( brikpanel_formatted_variation( $variation ) ),
 						'sku'          => $variation->get_sku(),
 						'cost'         => $this->resolve_existing_cost( $variation ),
 					];

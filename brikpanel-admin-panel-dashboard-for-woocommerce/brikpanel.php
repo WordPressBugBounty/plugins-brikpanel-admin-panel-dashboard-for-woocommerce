@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.36
+ * Version: 3.3.37
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.36');
+define('BRIKPANEL_VERSION', '3.3.37');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -743,6 +743,12 @@ brikpanel_require('front-end/orders/brikpanel-order-whatsapp-press.php');
 // shows whole packs. A no-op for every product without the switch.
 brikpanel_require('includes/brikpanel-pack-sizes.php');
 
+// Variation titles: WooCommerce names a variation of an attribute outside ASCII
+// ("Вид") with the option's slug ("Hoodie - спортен"). Global: WooCommerce
+// rebuilds the title whenever it reads or saves a variation, on any request,
+// and writes it back when it changed.
+brikpanel_require('includes/brikpanel-variation-title.php');
+
 // The text domain is loaded above the WooCommerce dependency guard, near the
 // top of this file, so the guard's own notice is translated too.
 
@@ -797,6 +803,8 @@ function brikpanel_init_admin() {
     brikpanel_require('front-end/orders/brikpanel-orders-compact.php');
     brikpanel_require('front-end/orders/brikpanel-orders-stats.php');
     brikpanel_require('front-end/orders/brikpanel-order-merge.php');
+    // Export button on the orders list (Excel / CSV).
+    brikpanel_require('front-end/orders/brikpanel-order-export.php');
     brikpanel_require('front-end/currency/brikpanel-currency-settings.php');
     brikpanel_require('front-end/order/brikpanel-order-fields.php');
     brikpanel_require('front-end/order/brikpanel-order-shipping-cost.php');
@@ -1438,6 +1446,9 @@ brikpanel_require('includes/brikpanel-brikmentor-promo.php');
 // =============================================================================
 brikpanel_require('includes/cron/brikpanel-cron.php');
 brikpanel_require('includes/cron/customer-analytics-jobs.php');
+// The folder an export is written to between requests, and its cleanup
+// (a cron event, so it is loaded outside wp-admin too).
+brikpanel_require('includes/brikpanel-export-files.php');
 
 // =============================================================================
 // BRIKCONTROL — Store Health panel (loaded outside the is_admin gate so the

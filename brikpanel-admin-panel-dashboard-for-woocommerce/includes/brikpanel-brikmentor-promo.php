@@ -1802,8 +1802,9 @@ function brikpanel_brikmentor_pin_menu( &$menu ) {
 add_filter( 'brikpanel_nav_new_item_after', 'brikpanel_brikmentor_menu_first_position', 10, 2 );
 /**
  * Where the entry first appears in a sidebar the merchant customized before
- * this version existed: after Marketing, the same spot it takes on a store
- * that never touched the customizer. Without this the customizer would file
+ * this version existed: after Coupons, the same spot it takes on a store
+ * that never touched the customizer (Coupons stands where Marketing stood
+ * before Marketing moved into "More"). Without this the customizer would file
  * a never-seen row at the very end, inside the collapsed Site management
  * group, and the entry would be invisible on exactly the stores that care
  * enough about their sidebar to have arranged it.
@@ -1813,7 +1814,7 @@ add_filter( 'brikpanel_nav_new_item_after', 'brikpanel_brikmentor_menu_first_pos
  * @return string
  */
 function brikpanel_brikmentor_menu_first_position( $after, $slug ) {
-    return ( BRIKPANEL_BM_PAGE_SLUG === (string) $slug ) ? 'woocommerce-marketing' : $after;
+    return ( BRIKPANEL_BM_PAGE_SLUG === (string) $slug ) ? 'edit.php?post_type=shop_coupon' : $after;
 }
 
 add_filter( 'brikpanel_nav_item_title', 'brikpanel_brikmentor_menu_badge', 10, 2 );

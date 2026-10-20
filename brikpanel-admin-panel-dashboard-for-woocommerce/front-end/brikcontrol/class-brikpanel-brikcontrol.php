@@ -611,7 +611,8 @@ class Brikpanel_BrikControl {
         delete_transient( $lock );
 
         // Re-run the check so the card the page reloads into is truthful.
-        // Batched checks cannot be re-run inline; they wait for the next scan.
+        // Batched checks cannot be re-run here; one whose cleanup changes what
+        // it scans rescans itself in run_fix() (the image check, 3.3.37).
         if ( ! $check->supports_batching() ) {
             Brikpanel_BrikControl_Storage::save_check_result( $check_id, $check->run( [] ) );
         }

@@ -1599,7 +1599,8 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'brikpanel_orders_scripts',
                 BRIKPANEL_URL . 'front-end/orders/brikpanel-orders.js',
                 // scroll_lock: this screen clips <html> (brikpanel-orders.css).
-                array_merge( ['jquery', 'wc-enhanced-select'], brikpanel_narrow_deps( [ 'scroll_strip', 'format', 'scroll_lock' ] ) ),
+                // fit_row + overflow: the title row folds its secondary buttons.
+                array_merge( ['jquery', 'wc-enhanced-select'], brikpanel_fit_row_dep(), brikpanel_narrow_deps( [ 'scroll_strip', 'format', 'scroll_lock', 'overflow' ] ) ),
                 $orders_js_ver,
                 true
             );
@@ -1607,9 +1608,14 @@ function brikpanel_enqueue_woo_assets($hook) {
             wp_enqueue_style(
                 'brikpanel_orders_styles',
                 BRIKPANEL_URL . 'front-end/orders/brikpanel-orders.css',
-                array_merge( ['woocommerce_admin_styles'], brikpanel_narrow_deps( [ 'scroll_strip', 'scroll_lock' ], 'style' ) ),
+                array_merge( ['woocommerce_admin_styles'], brikpanel_narrow_deps( [ 'scroll_strip', 'scroll_lock', 'overflow' ], 'style' ) ),
                 $orders_css_ver
             );
+
+            // The title row's "More actions" button, the shared markup.
+            ob_start();
+            brikpanel_overflow_trigger( 'bp-orders-more-menu' );
+            $orders_more_trigger = (string) ob_get_clean();
 
             wp_localize_script( 'brikpanel_orders_scripts', 'brikpanelOrdersOverview', [
                 'ajax_url'      => admin_url( 'admin-ajax.php' ),
@@ -1618,6 +1624,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                     && brikpanel_orders_overview_hidden_for_user(),
                 'row_columns'   => function_exists( 'brikpanel_orders_compact_user_row_columns' )
                     ? brikpanel_orders_compact_user_row_columns() : [],
+                'more_trigger'  => $orders_more_trigger,
                 'i18n'     => [
                     'today'             => __( 'Today', 'brikpanel' ),
                     'last_24_hours'     => __( 'Last 24 hours', 'brikpanel' ),
@@ -1670,9 +1677,15 @@ function brikpanel_enqueue_woo_assets($hook) {
         ? Brikpanel_Category_Enhancements::supported_taxonomies()
         : ['product_cat', 'product_tag'];
 
-    $is_product_taxonomy = in_array($hook, ['edit-tags.php', 'term.php'], true)
-        && isset($_GET['taxonomy'])
-        && in_array(sanitize_key($_GET['taxonomy']), $taxonomy_screens, true);
+    // The term screen's taxonomy as WordPress validated it: taxonomy_exists()
+    // on the raw value (wp-admin/admin.php). sanitize_key() cut an attribute
+    // named without Latin letters ("pa_вид") down to "pa_", and its terms
+    // screen lost the BrikPanel look.
+    $screen_taxonomy = in_array($hook, ['edit-tags.php', 'term.php'], true) && isset($GLOBALS['taxnow']) && is_string($GLOBALS['taxnow'])
+        ? $GLOBALS['taxnow']
+        : '';
+
+    $is_product_taxonomy = '' !== $screen_taxonomy && in_array($screen_taxonomy, $taxonomy_screens, true);
     $is_attributes_page = $hook === 'product_page_product_attributes';
 
     // Any product taxonomy term screen (Categories, Tags, Brands, attribute
@@ -1680,9 +1693,7 @@ function brikpanel_enqueue_woo_assets($hook) {
     // BrikPanel admin styling so every taxonomy screen stays visually
     // consistent. The styling is purely cosmetic; the category nesting JS
     // below stays limited to $is_product_taxonomy on purpose.
-    $is_styled_taxonomy = in_array($hook, ['edit-tags.php', 'term.php'], true)
-        && isset($_GET['taxonomy'])
-        && in_array(sanitize_key($_GET['taxonomy']), get_object_taxonomies('product'), true);
+    $is_styled_taxonomy = '' !== $screen_taxonomy && in_array($screen_taxonomy, get_object_taxonomies('product'), true);
 
     if ($is_styled_taxonomy || $is_attributes_page) {
         $tax_css_ver = @filemtime( BRIKPANEL_PATH . 'front-end/products/brikpanel-taxonomy.css' ) ?: BRIKPANEL_VERSION;
@@ -1708,9 +1719,9 @@ function brikpanel_enqueue_woo_assets($hook) {
             $tax_back_url   = admin_url('edit.php?post_type=product&page=product_attributes');
             $tax_back_label = __('Attributes', 'brikpanel');
         } elseif ('term-edit' === $tax_mode) {
-            $tax_object = get_taxonomy(sanitize_key(wp_unslash($_GET['taxonomy']))); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $tax_object = get_taxonomy($screen_taxonomy);
             if ($tax_object) {
-                $tax_back_url   = admin_url('edit-tags.php?taxonomy=' . $tax_object->name . '&post_type=product');
+                $tax_back_url   = admin_url('edit-tags.php?taxonomy=' . rawurlencode($tax_object->name) . '&post_type=product');
                 $tax_back_label = $tax_object->labels->name;
             }
         }
@@ -1749,7 +1760,7 @@ function brikpanel_enqueue_woo_assets($hook) {
 
     // Category tree JS (folder tree, drag-drop nesting, instant filter)
     if ($is_product_taxonomy && 'edit-tags.php' === $hook) {
-        $tax = sanitize_key($_GET['taxonomy'] ?? 'product_cat');
+        $tax = $screen_taxonomy;
 
         $has_enhancements = class_exists('Brikpanel_Category_Enhancements');
 
@@ -1883,6 +1894,34 @@ function brikpanel_enqueue_woo_assets($hook) {
             // '0' for someone who may only send products in for review: no
             // Publish in the bulk bar, and a status badge that is not a toggle.
             'can_publish'        => function_exists('brikpanel_user_can_publish_products') && !brikpanel_user_can_publish_products() ? '0' : '1',
+            // Other plugins' bulk actions (Brikpanel_Products_List::maybe_send_plugin_bulk_actions()).
+            // `list_url` asks WordPress for them on WooCommerce's own list
+            // screen; a chosen one is posted to `run_url` with WordPress's own
+            // bulk nonce, exactly as WooCommerce's "Apply" does. `max` keeps the
+            // selection inside PHP's max_input_vars (WordPress lists 999 a page).
+            'plugin_bulk'        => [
+                'list_url' => add_query_arg(
+                    [
+                        'post_type'              => 'product',
+                        'brikpanel_bulk_actions' => '1',
+                        '_bpnonce'               => wp_create_nonce('brikpanel_products_list_nonce'),
+                    ],
+                    admin_url('edit.php')
+                ),
+                'run_url'  => admin_url('edit.php?post_type=product'),
+                'nonce'    => wp_create_nonce('bulk-posts'),
+                'max'      => max(1, min(999, ((int) ini_get('max_input_vars') ?: 1000) - 20)),
+                // The tab keeps the answer for a few minutes; a different user,
+                // site, language or set of active plugins asks again.
+                'sig'      => md5(wp_json_encode([
+                    get_current_blog_id(),
+                    get_current_user_id(),
+                    get_user_locale(),
+                    (array) get_option('active_plugins', []),
+                    is_multisite() ? array_keys((array) get_site_option('active_sitewide_plugins', [])) : [],
+                    BRIKPANEL_VERSION,
+                ])),
+            ],
             'i18n'     => [
                 'no_products'         => __('No products found.', 'brikpanel'),
                 'error'               => __('An error occurred. Please try again.', 'brikpanel'),
@@ -1998,6 +2037,18 @@ function brikpanel_enqueue_woo_assets($hook) {
                 /* translators: %d: number of selected products. */
                 'selected_count'      => __('Selected: %d', 'brikpanel'),
                 'plugin_columns'      => __('Plugin columns', 'brikpanel'),
+                // Other plugins' bulk actions: the selection bar's menu, the Bulk
+                // update window, and the message after one ran.
+                'plugin_actions'      => __('Plugin actions', 'brikpanel'),
+                /* translators: 1: a plugin's name, 2: one of its bulk actions. Example: "Yoast SEO: Bulk edit". */
+                'plugin_action_label' => _x('%1$s: %2$s', 'plugin name, then one of its bulk actions', 'brikpanel'),
+                /* translators: 1: another plugin's bulk action, such as "Send to Slynk", 2: number of selected products. */
+                'plugin_action_confirm' => brikpanel_js_plural(_n_noop('Run “%1$s” on %2$s product?', 'Run “%1$s” on %2$s products?', 'brikpanel')),
+                'plugin_action_run'   => _x('Run', 'button that runs another plugin\'s bulk action', 'brikpanel'),
+                /* translators: 1: another plugin's bulk action, such as "Send to Slynk", 2: number of products it ran on. */
+                'plugin_action_done'  => brikpanel_js_plural(_n_noop('“%1$s” ran on %2$s product.', '“%1$s” ran on %2$s products.', 'brikpanel')),
+                /* translators: %s: the most products another plugin's bulk action can take at once. */
+                'plugin_action_too_many' => brikpanel_js_plural(_n_noop('Select up to %s product for this action.', 'Select up to %s products for this action.', 'brikpanel')),
                 // Digital product (downloadable) — quick edit drawer
                 'select_file'         => __('Select downloadable file', 'brikpanel'),
                 'select'              => __('Select', 'brikpanel'),

@@ -779,6 +779,10 @@ class Brikpanel_Dashboard_Topbar {
      *   alone or as the LiteSpeed group of the 2+ plugin dropdown. When
      *   LiteSpeed's admin bar offered none on this request, the one-click
      *   button stays.
+     * - Extras (Elementor's cache) have no row: a click that purges every
+     *   active cache clears them too, and its title, LiteSpeed's "Clear
+     *   everything" line or the line under "Clear all caches" says so. They
+     *   never render the control on their own.
      *
      * Only users with `manage_options` see the control, mirroring the
      * capability check enforced in the AJAX handler (and LiteSpeed's own).
@@ -795,6 +799,7 @@ class Brikpanel_Dashboard_Topbar {
         if ( empty( $active ) ) {
             return;
         }
+        $extra_parts = Brikpanel_Cache_Clear::extra_parts();
 
         $broom_svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.36 2.72l1.42 1.42-5.72 5.71-1.42-1.42z"/><path d="M14.27 8.83l-2.12 2.12-1.42-1.41 2.13-2.13"/><path d="M5.5 12.5l4 4"/><path d="M3 21l3.5-3.5a3 3 0 0 1 4.24 0l1.76 1.76a3 3 0 0 1 0 4.24"/><path d="M8 22l1.5-1.5"/><path d="M11.5 18.5L13 17"/></svg>';
 
@@ -807,8 +812,12 @@ class Brikpanel_Dashboard_Topbar {
             $id    = key( $active );
             $label = current( $active );
             $title = 'litespeed' === $id
-                ? Brikpanel_Cache_Clear::litespeed_purge_all_title()
-                : sprintf( /* translators: %s: cache plugin name (e.g. "WP Rocket") */ __( 'Purge %s', 'brikpanel' ), $label );
+                ? Brikpanel_Cache_Clear::litespeed_purge_all_title( true )
+                : sprintf(
+                    /* translators: %s: cache plugin name (e.g. "WP Rocket"), or a list ending with what goes along (e.g. "WP Rocket and Elementor cache") */
+                    __( 'Purge %s', 'brikpanel' ),
+                    wp_sprintf_l( '%l', array_merge( [ $label ], $extra_parts ) )
+                );
             ?>
             <button type="button"
                     class="brikpanel-topbar-icon-btn brikpanel-topbar-cache-btn"
@@ -841,17 +850,30 @@ class Brikpanel_Dashboard_Topbar {
             <div class="<?php echo esc_attr( $menu_class ); ?>" role="menu">
                 <?php if ( $only_litespeed ) : ?>
                 <div class="brikpanel-topbar-dropdown-header"><?php echo esc_html( $active['litespeed'] ); ?></div>
-                <?php $this->render_litespeed_group( $litespeed_items, $broom_svg ); ?>
+                <?php $this->render_litespeed_group( $litespeed_items, $broom_svg, true ); ?>
                 <?php else : ?>
                 <div class="brikpanel-topbar-dropdown-header">
                     <?php esc_html_e( 'Clear cache', 'brikpanel' ); ?>
                 </div>
                 <button type="button"
-                        class="brikpanel-topbar-dropdown-item brikpanel-topbar-cache-item"
+                        class="brikpanel-topbar-dropdown-item brikpanel-topbar-cache-item<?php echo $extra_parts ? ' brikpanel-topbar-cache-entry' : ''; ?>"
                         role="menuitem"
                         data-cache-id="all">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    <?php if ( $extra_parts ) : ?>
+                    <span class="brikpanel-topbar-cache-text">
+                        <span class="brikpanel-topbar-cache-label"><?php esc_html_e( 'Clear all caches', 'brikpanel' ); ?></span>
+                        <span class="brikpanel-topbar-cache-desc"><?php
+                            echo esc_html( sprintf(
+                                /* translators: %s: what else this click clears, e.g. "Elementor cache" */
+                                __( 'Also clears the %s', 'brikpanel' ),
+                                wp_sprintf_l( '%l', $extra_parts )
+                            ) );
+                        ?></span>
+                    </span>
+                    <?php else : ?>
                     <span><?php esc_html_e( 'Clear all caches', 'brikpanel' ); ?></span>
+                    <?php endif; ?>
                 </button>
                 <div class="brikpanel-topbar-dropdown-sep" aria-hidden="true"></div>
                 <?php
@@ -919,10 +941,12 @@ class Brikpanel_Dashboard_Topbar {
      * fetches them in the background; a modified or middle click just follows
      * LiteSpeed's link, which purges and comes back with LiteSpeed's notice.
      *
-     * @param array  $items     Brikpanel_Cache_Clear::litespeed_items().
-     * @param string $broom_svg Static icon markup.
+     * @param array  $items       Brikpanel_Cache_Clear::litespeed_items().
+     * @param string $broom_svg   Static icon markup.
+     * @param bool   $with_extras LiteSpeed is the only cache, so its "Clear
+     *                            everything" takes the extras along.
      */
-    private function render_litespeed_group( array $items, $broom_svg ) {
+    private function render_litespeed_group( array $items, $broom_svg, $with_extras = false ) {
         ?>
                 <button type="button"
                         class="brikpanel-topbar-dropdown-item brikpanel-topbar-cache-item brikpanel-topbar-cache-entry"
@@ -931,7 +955,7 @@ class Brikpanel_Dashboard_Topbar {
                     <?php echo $broom_svg; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG markup ?>
                     <span class="brikpanel-topbar-cache-text">
                         <span class="brikpanel-topbar-cache-label"><?php esc_html_e( 'Clear everything', 'brikpanel' ); ?></span>
-                        <span class="brikpanel-topbar-cache-desc"><?php echo esc_html( Brikpanel_Cache_Clear::litespeed_purge_all_summary() ); ?></span>
+                        <span class="brikpanel-topbar-cache-desc"><?php echo esc_html( Brikpanel_Cache_Clear::litespeed_purge_all_summary( $with_extras ) ); ?></span>
                     </span>
                 </button>
                 <div class="brikpanel-topbar-dropdown-sep" aria-hidden="true"></div>

@@ -48,6 +48,11 @@ class Brikpanel_Products_List {
 
         // Export selected products as CSV
         add_action('admin_post_brikpanel_export_selected_products', [$this, 'handle_export_selected']);
+
+        // Other plugins' bulk actions, asked for on WooCommerce's own list
+        // screen (maybe_send_plugin_bulk_actions()). Last, so every plugin has
+        // set itself up for that screen first.
+        add_action('load-edit.php', [$this, 'maybe_send_plugin_bulk_actions'], PHP_INT_MAX);
     }
 
     // =========================================================================
@@ -389,8 +394,9 @@ class Brikpanel_Products_List {
         }
 
         if ($pagenow === 'edit.php' && isset($_GET['post_type']) && sanitize_key($_GET['post_type']) === 'product') {
-            // Don't redirect if it's a specific sub-action, sub-page, or taxonomy page
-            if (!empty($_GET['action']) || !empty($_GET['action2']) || !empty($_GET['page']) || !empty($_GET['taxonomy'])) {
+            // Don't redirect if it's a specific sub-action, sub-page, or taxonomy page,
+            // or the list asking which bulk actions other plugins add here.
+            if (!empty($_GET['action']) || !empty($_GET['action2']) || !empty($_GET['page']) || !empty($_GET['taxonomy']) || !empty($_GET['brikpanel_bulk_actions'])) {
                 return;
             }
 
@@ -1192,6 +1198,360 @@ class Brikpanel_Products_List {
             <option value="repair_visibility"><?php esc_html_e('Fix store visibility (after import)', 'brikpanel'); ?></option>
         </optgroup>
         <?php
+    }
+
+    // =========================================================================
+    // OTHER PLUGINS' BULK ACTIONS
+    // =========================================================================
+    //
+    // Plugins add bulk actions to WooCommerce's product list through
+    // `bulk_actions-edit-product` and run them through
+    // `handle_bulk_actions-edit-product` (Epos Now's "Send to Slynk", Rank
+    // Math, Yoast, SEOPress). This list replaces that screen, so they were out
+    // of reach (wp.org support, richardlampitt, 19 Oct 2026). The list now
+    // offers them under the selection bar's actions and in the Bulk update
+    // window, and runs a chosen one by sending the selected products to
+    // WordPress's own bulk action route on edit.php, the same request
+    // WooCommerce's "Apply" makes (brikpanel-products-list.js). An action that
+    // only works through its plugin's script on that page is left out
+    // (filter `brikpanel_list_script_only_bulk_actions`).
+
+    /**
+     * Answers "which bulk actions do other plugins add to WooCommerce's product
+     * list?" from inside a real request for that list:
+     * edit.php?post_type=product&brikpanel_bulk_actions=1&_bpnonce=...
+     *
+     * Several plugins add their actions only on that screen: Rank Math on
+     * `current_screen` and SEOPress while its files load, both only when
+     * $pagenow is edit.php. Asking the filter on the BrikPanel page would miss
+     * them, so the list asks here, at the end of `load-edit.php`: every plugin
+     * has set itself up for the screen and nothing has been drawn yet.
+     *
+     * Read only. Nothing runs here; the answer is keys and plain-text labels.
+     */
+    public function maybe_send_plugin_bulk_actions() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- the nonce is checked below, once the request is ours.
+        if (empty($_GET['brikpanel_bulk_actions'])) {
+            return;
+        }
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if (!$screen || 'edit-product' !== $screen->id) {
+            return;
+        }
+
+        $nonce = isset($_GET['_bpnonce']) ? sanitize_text_field(wp_unslash($_GET['_bpnonce'])) : '';
+        if (!wp_verify_nonce($nonce, 'brikpanel_products_list_nonce') || !current_user_can('edit_products')) {
+            wp_send_json_error(null, 403);
+        }
+
+        nocache_headers();
+        wp_send_json_success(['groups' => self::get_plugin_bulk_actions($screen->id)]);
+    }
+
+    /**
+     * The other plugins' bulk actions of the product list, grouped as the list
+     * shows them. Only meaningful on the product list screen itself (see
+     * maybe_send_plugin_bulk_actions()).
+     *
+     * @param string $screen_id The list screen, `edit-product`.
+     * @return array List of [ 'label' => string, 'items' => [ [ 'key' => string, 'label' => string ], ... ] ].
+     */
+    public static function get_plugin_bulk_actions($screen_id = 'edit-product') {
+        // What WP_Posts_List_Table::get_bulk_actions() hands the filter on the
+        // list's normal view, so a callback that places its entry next to
+        // WordPress's own finds them. They are left out again below.
+        $base     = [];
+        $type_obj = get_post_type_object('product');
+        if ($type_obj && current_user_can($type_obj->cap->edit_posts)) {
+            $base['edit'] = 'edit';
+        }
+        if ($type_obj && current_user_can($type_obj->cap->delete_posts)) {
+            $delete_key          = EMPTY_TRASH_DAYS ? 'trash' : 'delete';
+            $base[ $delete_key ] = $delete_key;
+        }
+
+        // A callback written for WordPress's list table runs here as it would
+        // there; one that throws takes only the plugin actions away, never
+        // the answer (same guard as the ASE bridge's column pass).
+        try {
+            // phpcs:ignore WordPress.NamingConventions.ValidHookName.UseUnderscores -- WordPress core hook name.
+            $actions = apply_filters("bulk_actions-{$screen_id}", $base);
+        } catch (\Throwable $e) {
+            $actions = [];
+        }
+        $actions = is_array($actions) ? $actions : [];
+
+        $groups = self::normalize_plugin_bulk_actions($actions);
+
+        /**
+         * Filters the other plugins' bulk actions the BrikPanel product list
+         * offers (the selection bar's menu and the Bulk update window).
+         *
+         * @since 3.3.37
+         *
+         * @param array $groups  List of [ 'label' => string ('' = not grouped),
+         *                       'items' => [ [ 'key' => string, 'label' => string ], ... ] ].
+         * @param array $actions The `bulk_actions-edit-product` result they came from.
+         */
+        $groups = apply_filters('brikpanel_products_plugin_bulk_actions', $groups, $actions);
+
+        // A filter may hand back anything: keep the shape the script reads.
+        $out = [];
+        foreach ((array) $groups as $group) {
+            if (!is_array($group) || empty($group['items']) || !is_array($group['items'])) {
+                continue;
+            }
+            $items = [];
+            foreach ($group['items'] as $item) {
+                if (is_array($item) && isset($item['key'], $item['label']) && self::is_plugin_bulk_key($item['key'])) {
+                    $label = trim(wp_strip_all_tags((string) $item['label']));
+                    if ('' !== $label) {
+                        $items[] = ['key' => (string) $item['key'], 'label' => $label];
+                    }
+                }
+            }
+            if ($items) {
+                $out[] = [
+                    'label' => isset($group['label']) ? trim(wp_strip_all_tags((string) $group['label'])) : '',
+                    'items' => $items,
+                ];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Turns a `bulk_actions-edit-product` result into the groups the list
+     * shows. Free of side effects so tools/test-plugin-bulk-actions.php can
+     * feed it any shape a plugin returns.
+     *
+     * - WordPress's own actions are left out: the list has its own controls
+     *   for them (filter `brikpanel_list_native_bulk_actions`).
+     * - A nested array is a group (an <optgroup> since WordPress 5.6, e.g.
+     *   "Yoast SEO"); actions that come without one share the first group,
+     *   whose label is ''.
+     * - Some plugins put a heading among their actions as an option of its own
+     *   that their script disables ("↓ Rank Math"). Such a heading becomes the
+     *   group of the actions whose keys start with its prefix (filter
+     *   `brikpanel_bulk_action_headings`).
+     * - Rank Math's own rules for its actions apply (rank_math_bulk_allowed()).
+     *
+     * @param array      $actions Key => label, or group label => [ key => label ].
+     * @param array|null $env     Rank Math's state (rank_math_bulk_env()); null reads this site.
+     * @return array List of [ 'label' => string, 'items' => [ [ 'key' => string, 'label' => string ], ... ] ].
+     */
+    public static function normalize_plugin_bulk_actions(array $actions, $env = null) {
+        if (!is_array($env)) {
+            $env = self::rank_math_bulk_env();
+        }
+
+        /**
+         * Filters the bulk action keys the BrikPanel product list leaves out
+         * because it has its own control for them (WordPress's Edit, Move to
+         * Trash, Restore and Delete permanently).
+         *
+         * @since 3.3.37
+         *
+         * @param string[] $keys Keys of the `bulk_actions-edit-product` filter.
+         */
+        $native = array_map('strval', (array) apply_filters('brikpanel_list_native_bulk_actions', ['edit', 'trash', 'untrash', 'delete']));
+
+        /**
+         * Filters the bulk actions that only work through their plugin's own
+         * script on WooCommerce's product list, so the BrikPanel list leaves
+         * them out: sent to WordPress they would do nothing. Elementor AI's
+         * "Unify with Elementor AI" catches WooCommerce's Apply button and
+         * opens its own window; WordPress has no handler for it.
+         *
+         * @since 3.3.37
+         *
+         * @param string[] $keys Keys of the `bulk_actions-edit-product` filter.
+         */
+        $native = array_merge($native, array_map('strval', (array) apply_filters('brikpanel_list_script_only_bulk_actions', ['elementor-ai-unify-product-images'])));
+
+        /**
+         * Filters the heading entries some plugins put among their bulk actions,
+         * as heading key => key prefix of the actions under it.
+         *
+         * @since 3.3.37
+         *
+         * @param array $headings Heading key => action key prefix.
+         */
+        $headings = (array) apply_filters('brikpanel_bulk_action_headings', [
+            'rank_math_options'    => 'rank_math_',
+            'rank_math_ai_options' => 'rank_math_content_ai_',
+        ]);
+
+        // Labels come as the plugin wrote them for an <option>: entities
+        // ("&#8595; Rank Math"), sometimes markup. Plain text, arrows that only
+        // marked a heading in a dropdown removed.
+        $clean = static function ($text) {
+            $text = html_entity_decode(wp_strip_all_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $text = (string) preg_replace('/\s+/u', ' ', $text);
+            return trim($text);
+        };
+
+        // A heading's label is known before its actions are placed: a plugin can
+        // add some of its actions ahead of its heading (Rank Math's Content AI
+        // ones come from a filter of a different priority).
+        $heading_labels = [];
+        foreach ($headings as $heading_key => $prefix) {
+            $heading_key = (string) $heading_key;
+            if (isset($actions[ $heading_key ]) && !is_array($actions[ $heading_key ]) && '' !== (string) $prefix) {
+                $label = trim((string) preg_replace('/^[\x{2193}\x{2B07}\x{21E9}\s]+/u', '', $clean($actions[ $heading_key ])));
+                if ('' !== $label) {
+                    $heading_labels[ $heading_key ] = $label;
+                }
+            }
+        }
+
+        $groups = ['' => []];
+        $seen   = [];
+        $add    = static function ($group, $key, $label) use (&$groups, &$seen) {
+            if (isset($seen[ $key ])) {
+                return;
+            }
+            $seen[ $key ] = true;
+            if (!isset($groups[ $group ])) {
+                $groups[ $group ] = [];
+            }
+            $groups[ $group ][] = ['key' => $key, 'label' => $label];
+        };
+
+        foreach ($actions as $key => $value) {
+            if (is_array($value)) {
+                $group = $clean($key);
+                foreach ($value as $inner_key => $inner_label) {
+                    $inner_key = (string) $inner_key;
+                    if (is_array($inner_label) || in_array($inner_key, $native, true) || !self::is_plugin_bulk_key($inner_key)
+                        || !self::rank_math_bulk_allowed($inner_key, $env)) {
+                        continue;
+                    }
+                    $label = $clean($inner_label);
+                    if ('' !== $label) {
+                        $add($group, $inner_key, $label);
+                    }
+                }
+                continue;
+            }
+
+            $key = (string) $key;
+            if (in_array($key, $native, true) || isset($headings[ $key ]) || !self::is_plugin_bulk_key($key)
+                || !self::rank_math_bulk_allowed($key, $env)) {
+                continue;
+            }
+            $label = $clean($value);
+            if ('' === $label) {
+                continue;
+            }
+
+            // Under the heading whose prefix the key starts with, the longest
+            // prefix first (Rank Math's Content AI actions also start with
+            // Rank Math's own prefix).
+            $group   = '';
+            $longest = 0;
+            foreach ($heading_labels as $heading_key => $heading_label) {
+                $prefix = (string) $headings[ $heading_key ];
+                if (0 === strpos($key, $prefix) && strlen($prefix) > $longest) {
+                    $group   = $heading_label;
+                    $longest = strlen($prefix);
+                }
+            }
+            $add($group, $key, $label);
+        }
+
+        $out = [];
+        foreach ($groups as $label => $items) {
+            if ($items) {
+                $out[] = ['label' => (string) $label, 'items' => $items];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * A bulk action key the list can carry in a URL and a form field. Plugins
+     * use plain identifiers ("sew_bulk_send_product_to_slynk",
+     * "elementor-ai-unify-product-images"); anything else is left out.
+     *
+     * @param mixed $key Action key.
+     * @return bool
+     */
+    private static function is_plugin_bulk_key($key) {
+        return is_string($key) && 1 === preg_match('/^[A-Za-z0-9_.:-]{1,100}$/', $key);
+    }
+
+    /**
+     * Rank Math's own rules for its bulk actions, which its script on
+     * WooCommerce's list applies before anything runs (Rank Math 1.0.280,
+     * assets/admin/js/post-list.js). Without them the list would offer actions
+     * that do nothing: the free plugin leaves the `rank_math_bulk_*` ones to
+     * Rank Math PRO (its script shows a PRO notice instead), and the Content
+     * AI ones need a connected site with credits.
+     *
+     * @param string $key Action key.
+     * @param array  $env Rank Math's state (rank_math_bulk_env()).
+     * @return bool True to offer the action.
+     */
+    private static function rank_math_bulk_allowed($key, array $env) {
+        if (0 !== strpos($key, 'rank_math_') || empty($env['rank_math'])) {
+            // Not Rank Math's, or its state could not be read: offered as
+            // WooCommerce's list offers it.
+            return true;
+        }
+        $connected = !empty($env['connected']);
+        $credits   = isset($env['credits']) ? (int) $env['credits'] : 0;
+        $plan      = isset($env['plan']) ? (string) $env['plan'] : '';
+
+        if (0 === strpos($key, 'rank_math_bulk')) {
+            if (empty($env['pro'])) {
+                return false;
+            }
+            return 'rank_math_bulk_detect_keyword_intent' !== $key || $connected;
+        }
+        if ('rank_math_content_ai_fetch_image_alt' === $key) {
+            return $connected && $credits >= 50;
+        }
+        if (in_array($key, ['rank_math_content_ai_fetch_seo_title', 'rank_math_content_ai_fetch_seo_description', 'rank_math_content_ai_fetch_seo_title_description'], true)) {
+            return $connected && $credits > 0 && '' !== $plan && 'free' !== $plan;
+        }
+        return true;
+    }
+
+    /**
+     * What rank_math_bulk_allowed() needs to know about Rank Math on this
+     * site. The credits are the ones Rank Math keeps; nothing is fetched.
+     *
+     * @return array [ 'rank_math' => bool (state read), 'pro' => bool, 'connected' => bool, 'credits' => int, 'plan' => string ].
+     */
+    private static function rank_math_bulk_env() {
+        $env = [
+            'rank_math' => false,
+            'pro'       => defined('RANK_MATH_PRO_FILE'),
+            'connected' => false,
+            'credits'   => 0,
+            'plan'      => '',
+        ];
+        $helper = '\RankMath\Helper';
+        if (!class_exists($helper)) {
+            return $env;
+        }
+        try {
+            if (is_callable([$helper, 'is_site_connected'])) {
+                $env['connected'] = (bool) call_user_func([$helper, 'is_site_connected']);
+            }
+            if (is_callable([$helper, 'get_content_ai_credits'])) {
+                $env['credits'] = (int) call_user_func([$helper, 'get_content_ai_credits']);
+            }
+            if (is_callable([$helper, 'get_content_ai_plan'])) {
+                $env['plan'] = (string) call_user_func([$helper, 'get_content_ai_plan']);
+            }
+            $env['rank_math'] = true;
+        } catch (\Throwable $e) {
+            // Rank Math changed its helpers: its actions are offered as
+            // WooCommerce's list offers them.
+        }
+        return $env;
     }
 
     /**
@@ -2003,7 +2363,7 @@ class Brikpanel_Products_List {
                             <span class="brikpanel-pl-bulk-more-short"><?php echo esc_html_x('Actions', 'button that opens the bulk actions on phones', 'brikpanel'); ?></span>
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l5-5 5 5"/></svg>
                         </button>
-                        <div class="brikpanel-overflow__menu" id="bpl-bulk-more">
+                        <div class="brikpanel-overflow__menu brikpanel-pl-bulk-menu" id="bpl-bulk-more">
                             <button type="button" class="brikpanel-pl-btn secondary small" id="bpl-bulk-export">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                 <?php esc_html_e('Export selected', 'brikpanel'); ?>
@@ -2037,6 +2397,24 @@ class Brikpanel_Products_List {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                 <?php esc_html_e('Delete permanently', 'brikpanel'); ?>
                             </button>
+                        </div>
+                    </div>
+                    <?php
+                    // Other plugins' bulk actions (Send to Slynk, Yoast's Bulk
+                    // edit ...), filled in by brikpanel-products-list.js once it
+                    // has asked WordPress for them. While the bar's own buttons
+                    // sit in the row they keep a menu of their own here, always
+                    // folded (`is-fold`), as a row's plugin actions do; when the
+                    // bar folds, and on a phone, they join "Bulk actions" under
+                    // a line instead and this one hides.
+                    ?>
+                    <div class="brikpanel-pl-bulk-plugins is-fold" hidden>
+                        <div class="brikpanel-overflow">
+                            <button type="button" class="brikpanel-overflow__trigger brikpanel-pl-bulk-plugins-btn" aria-expanded="false" aria-controls="bpl-bulk-plugins-menu">
+                                <span><?php esc_html_e('Plugin actions', 'brikpanel'); ?></span>
+                                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l5-5 5 5"/></svg>
+                            </button>
+                            <div class="brikpanel-overflow__menu brikpanel-pl-bulk-menu" id="bpl-bulk-plugins-menu"></div>
                         </div>
                     </div>
                 </div>

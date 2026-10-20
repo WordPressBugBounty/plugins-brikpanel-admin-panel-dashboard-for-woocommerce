@@ -498,6 +498,8 @@
             $(this).addClass('active');
             state.status = $(this).data('status');
             state.page = 1;
+            // Other plugins' actions are not offered in the Trash.
+            applyPluginActions();
             fetchProducts();
         });
 
@@ -3056,6 +3058,10 @@
         if (!bar) {
             return;
         }
+        // Other plugins' actions are asked for once, when the bar first shows.
+        if (count > 0 || mSelecting) {
+            loadPluginActions();
+        }
         if (isPhoneList()) {
             // A phone's bar stays up for as long as Select is on, the count in
             // the middle ("3 selected", or what to do while none is). It slides
@@ -4084,6 +4090,9 @@
     }
 
     function openBulkModal() {
+        // Other plugins' actions join the "Selected products" list when they arrive.
+        loadPluginActions();
+
         // Update selected count info
         var count = state.selected.length;
         if (count > 0) {
@@ -4248,7 +4257,8 @@
         var isShipping = action === 'set_weight' || action === 'set_length' ||
                          action === 'set_width' || action === 'set_height';
         // Maintenance actions need no value: they recompute from existing data.
-        var isNoValue = action === 'repair_visibility';
+        // Nor do other plugins' actions: the plugin decides what they do.
+        var isNoValue = action === 'repair_visibility' || action.indexOf(PLUGIN_VALUE) === 0;
         // Rounding swaps the single value input for its own digit + direction picker.
         var isRound = action === 'round_prices';
 
@@ -4293,6 +4303,13 @@
         var which   = activeTab === 'bpl-bulk-tab-sel' ? 'sel' : 'cat';
         var action  = $('#bpl-bulk-action-' + which).val() || '';
         var isTax   = isTaxAction(action);
+
+        // Another plugin's action (only on "Selected products"): WordPress runs
+        // it, as on WooCommerce's list. The window closes once it is confirmed.
+        if (action.indexOf(PLUGIN_VALUE) === 0) {
+            startPluginAction(action.slice(PLUGIN_VALUE.length), closeBulkModal);
+            return;
+        }
 
         // Collect taxonomy term IDs from the visible picker when a tax action runs,
         // plus any brand-new names typed into the free-text box beside it.
@@ -5401,12 +5418,312 @@
     }
 
     // =========================================================================
+    // OTHER PLUGINS' BULK ACTIONS
+    // =========================================================================
+    // Plugins add bulk actions to WooCommerce's product list: Epos Now's "Send
+    // to Slynk", Yoast's "Bulk edit", Rank Math's and SEOPress's robots
+    // settings. The list asks WordPress for them on that list's own screen
+    // (Brikpanel_Products_List::maybe_send_plugin_bulk_actions(); once a page,
+    // when the selection bar or the Bulk update window first opens) and shows
+    // them in three places: at the end of the bar's "Bulk actions" menu under a
+    // line (a folded bar, a phone's sheet), in a "Plugin actions" menu of their
+    // own while the bar's buttons sit in the row, and in the Bulk update
+    // window's "Selected products" list. A chosen one is posted to WordPress's
+    // bulk action route on edit.php with WordPress's own nonce, the same
+    // request WooCommerce's "Apply" makes: the plugin's own handler runs, and
+    // WordPress sends the browser back here, or wherever the plugin sends it
+    // (Yoast opens its bulk editor).
+    var PB = PL.plugin_bulk || null;
+    var PLUGIN_VALUE = 'plugin__';
+    var PLUGIN_RETURN_KEY = 'bplPluginAction';
+    // The answer costs WordPress about as much as opening a page, so the tab
+    // keeps it for ten minutes. A different user, site, language or set of
+    // active plugins (`sig`, includes/brikpanel-enqueue.php) asks again.
+    var PLUGIN_CACHE_KEY = 'bplPluginActions';
+    var PLUGIN_CACHE_MS = 600000;
+    var pluginActions = { groups: [], byKey: {}, request: null };
+    var pluginSubmitting = false;
+
+    function readPluginCache() {
+        try {
+            var c = JSON.parse(window.sessionStorage.getItem(PLUGIN_CACHE_KEY) || 'null');
+            if (c && c.sig === PB.sig && Array.isArray(c.groups) && (Date.now() - (parseInt(c.ts, 10) || 0)) < PLUGIN_CACHE_MS) {
+                return c.groups;
+            }
+        } catch (e) {
+            // No storage: asked every time instead.
+        }
+        return null;
+    }
+
+    function writePluginCache(groups) {
+        try {
+            window.sessionStorage.setItem(PLUGIN_CACHE_KEY, JSON.stringify({ sig: PB.sig, ts: Date.now(), groups: groups }));
+        } catch (e) {
+            // No storage: asked every time instead.
+        }
+    }
+
+    function loadPluginActions() {
+        if (!PB || !PB.list_url || pluginActions.request) {
+            return;
+        }
+        var cached = readPluginCache();
+        if (cached) {
+            pluginActions.request = true;
+            setPluginActions(cached);
+            return;
+        }
+        pluginActions.request = $.ajax({
+            url: PB.list_url,
+            type: 'GET',
+            dataType: 'json',
+            dataFilter: function (raw) {
+                if (typeof raw !== 'string') return raw;
+                var i = raw.indexOf('{');
+                return i > 0 ? raw.slice(i) : raw;
+            },
+            success: function (res) {
+                if (!res || !res.success || !res.data || !Array.isArray(res.data.groups)) {
+                    return;
+                }
+                writePluginCache(res.data.groups);
+                setPluginActions(res.data.groups);
+            }
+            // On a failure nothing is added: the list works as it did.
+        });
+    }
+
+    function setPluginActions(groups) {
+        var clean = [];
+        var byKey = {};
+        groups.forEach(function (g) {
+            if (!g || !Array.isArray(g.items)) { return; }
+            var label = typeof g.label === 'string' ? g.label : '';
+            var items = g.items.filter(function (it) {
+                return it && typeof it.key === 'string' && it.key !== '' && typeof it.label === 'string' && it.label !== '' && !byKey[it.key];
+            });
+            items.forEach(function (it) { byKey[it.key] = { label: it.label, group: label }; });
+            if (items.length) { clean.push({ label: label, items: items }); }
+        });
+        pluginActions.groups = clean;
+        pluginActions.byKey = byKey;
+        applyPluginActions();
+    }
+
+    // "Yoast SEO: Bulk edit": the plugin's name in front, in this language's order.
+    function pluginActionName(key) {
+        var info = pluginActions.byKey[key];
+        if (!info) { return ''; }
+        if (!info.group || !BF || !PL.i18n.plugin_action_label) { return info.label; }
+        return BF.format(PL.i18n.plugin_action_label, [info.group, info.label]);
+    }
+
+    // A menu row. In a computer's menu the plugin's name stands over its
+    // actions, so the name in front of each one is only read out (screen
+    // readers); a phone's sheet has no headings and shows it.
+    function pluginButtonHtml(item, extraClass) {
+        var full = pluginActionName(item.key) || item.label;
+        var inner = escHtml(full);
+        var cut = full.length - item.label.length;
+        if (cut > 0 && full.slice(cut) === item.label) {
+            inner = '<span class="brikpanel-pl-bulk-prefix">' + escHtml(full.slice(0, cut)) + '</span>' + escHtml(item.label);
+        }
+        return '<button type="button" class="brikpanel-pl-btn secondary small brikpanel-pl-bulk-pa' + extraClass + '" data-bpl-plugin-action="' + escAttr(item.key) + '">' + inner + '</button>';
+    }
+
+    function pluginMenuHtml(extraClass, withLine) {
+        var html = '';
+        pluginActions.groups.forEach(function (g) {
+            if (g.label) {
+                html += '<span class="brikpanel-pl-bulk-group' + extraClass + '" aria-hidden="true">' + escHtml(g.label) + '</span>';
+            }
+            g.items.forEach(function (it) { html += pluginButtonHtml(it, extraClass); });
+        });
+        if (html && withLine) {
+            html = '<span class="brikpanel-pl-menu-sep' + extraClass + '" aria-hidden="true"></span>' + html;
+        }
+        return html;
+    }
+
+    // Draws the actions into their three places, or takes them out: in the
+    // Trash the products can only come back or go for good.
+    function applyPluginActions() {
+        var show = pluginActions.groups.length > 0 && state.status !== 'trash';
+
+        var $main = $('#bpl-bulk-more');
+        $main.children('.brikpanel-pl-bulk-pa-copy').remove();
+        var wrap = document.querySelector('.brikpanel-pl-bulk-plugins');
+        var $own = $('#bpl-bulk-plugins-menu');
+        var $select = $('#bpl-bulk-action-sel');
+        var wasPlugin = ($select.val() || '').indexOf(PLUGIN_VALUE) === 0;
+        $select.children('optgroup.bpl-bulk-plugin-group').remove();
+
+        if (show) {
+            $main.append(pluginMenuHtml(' brikpanel-pl-bulk-pa-copy', true));
+            $own.html(pluginMenuHtml('', false));
+            var opts = '';
+            pluginActions.groups.forEach(function (g) {
+                opts += '<optgroup class="bpl-bulk-plugin-group" label="' + escAttr(g.label || PL.i18n.plugin_actions || '') + '">';
+                g.items.forEach(function (it) {
+                    opts += '<option value="' + escAttr(PLUGIN_VALUE + it.key) + '">' + escHtml(it.label) + '</option>';
+                });
+                opts += '</optgroup>';
+            });
+            $select.append(opts);
+        } else {
+            $own.empty();
+        }
+        if (wrap && wrap.hidden === show) {
+            wrap.hidden = !show;
+            var bar = document.getElementById('bpl-bulk-bar');
+            if (bar && !bar.hidden) {
+                syncBulkFold();
+            }
+        }
+        // The chosen action went away with them: back to the first one.
+        if (wasPlugin && !show) {
+            $select.prop('selectedIndex', 0);
+            refreshBulkValueUI();
+        }
+    }
+
+    function startPluginAction(key, onConfirmed) {
+        var info = pluginActions.byKey[key];
+        if (!info || pluginSubmitting || !PB) {
+            return;
+        }
+        var ids = state.selected.slice();
+        var n = ids.length;
+        if (!n) {
+            showToast(PL.i18n.bulk_no_selection, 'error');
+            return;
+        }
+        var max = parseInt(PB.max, 10) || 999;
+        if (n > max) {
+            showToast(countText(PL.i18n.plugin_action_too_many, max), 'error');
+            return;
+        }
+        var name = pluginActionName(key);
+        askThen(pluralText(PL.i18n.plugin_action_confirm, n, [name, fmtNum(n)]), PL.i18n.plugin_action_run, false, function () {
+            if (onConfirmed) {
+                onConfirmed();
+            }
+            submitPluginAction(key, name, ids);
+        });
+    }
+
+    // The same request WooCommerce's list makes when "Apply" is pressed:
+    // edit.php checks WordPress's bulk nonce and the user, hands the products
+    // to the plugin's handler, and redirects to `_wp_http_referer` (this list,
+    // marked so it can say what ran) or to where the plugin sends it.
+    function submitPluginAction(key, name, ids) {
+        if (pluginSubmitting || !PB.run_url || !PB.nonce) {
+            return;
+        }
+        pluginSubmitting = true;
+
+        var token = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+        var here = window.location.pathname + window.location.search;
+        try {
+            window.sessionStorage.setItem(PLUGIN_RETURN_KEY, JSON.stringify({ token: token, name: name, n: ids.length, url: here, ts: Date.now() }));
+        } catch (e) {
+            // No storage: the list comes back without the message.
+        }
+        var back = here + (here.indexOf('?') === -1 ? '?' : '&') + 'bpl_pa=' + encodeURIComponent(token);
+
+        var fields = [['post_type', 'product'], ['action', key], ['_wpnonce', PB.nonce], ['_wp_http_referer', back]];
+        ids.forEach(function (id) { fields.push(['post[]', String(id)]); });
+
+        // WooCommerce's list sends its form in the address (GET), and an older
+        // plugin may read the products from there only, so the same here. A
+        // selection too long for an address goes in the body instead, with
+        // `action` still in the address: BrikPanel lets edit.php through only
+        // with it (Brikpanel_Products_List::redirect_default_list()).
+        var base = PB.run_url.split('?')[0];
+        var query = fields.map(function (f) { return encodeURIComponent(f[0]) + '=' + encodeURIComponent(f[1]); }).join('&');
+        var form = document.createElement('form');
+        if ((base + '?' + query).length <= 6000) {
+            form.method = 'get';
+            form.action = base;
+        } else {
+            form.method = 'post';
+            form.action = base + '?post_type=product&action=' + encodeURIComponent(key);
+        }
+        form.hidden = true;
+        fields.forEach(function (f) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = f[0];
+            input.value = f[1];
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+
+        setBulkLoading(true);
+        form.submit();
+    }
+
+    // Back from edit.php: the address loses the mark (and WordPress's `paged`,
+    // and anything the plugin added for its own screen) and the list says what
+    // ran. Only for the request this tab sent, within ten minutes.
+    function handlePluginActionReturn() {
+        var params;
+        try { params = new URLSearchParams(window.location.search); }
+        catch (e) { return; }
+        var token = params.get('bpl_pa');
+        if (!token) {
+            return;
+        }
+        var saved = null;
+        try {
+            saved = JSON.parse(window.sessionStorage.getItem(PLUGIN_RETURN_KEY) || 'null');
+            window.sessionStorage.removeItem(PLUGIN_RETURN_KEY);
+        } catch (e) {
+            saved = null;
+        }
+        var ours = !!saved && saved.token === token && (Date.now() - (parseInt(saved.ts, 10) || 0)) < 600000;
+        var url;
+        if (ours && typeof saved.url === 'string' && saved.url.indexOf(window.location.pathname) === 0) {
+            url = saved.url;
+        } else {
+            params.delete('bpl_pa');
+            params.delete('paged');
+            var qs = params.toString();
+            url = window.location.pathname + (qs ? '?' + qs : '');
+        }
+        try { window.history.replaceState(null, '', url + window.location.hash); } catch (e) {}
+
+        var n = ours ? (parseInt(saved.n, 10) || 0) : 0;
+        if (n > 0 && typeof saved.name === 'string' && saved.name) {
+            showToast(pluralText(PL.i18n.plugin_action_done, n, [saved.name, fmtNum(n)]), 'success');
+        }
+    }
+
+    function initPluginBulkActions() {
+        $(document).on('click', '[data-bpl-plugin-action]', function () {
+            startPluginAction($(this).attr('data-bpl-plugin-action'));
+        });
+        // Back to this page from the browser's cache (the Back button after
+        // the request left): the list can send again.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted && pluginSubmitting) {
+                pluginSubmitting = false;
+                setBulkLoading(false);
+            }
+        });
+    }
+
+    // =========================================================================
     // BOOT
     // =========================================================================
 
     function init() {
+        // First: it may put the list's own address back before the state is read from it.
+        handlePluginActionReturn();
         bindEvents();
         initBulkModal();
+        initPluginBulkActions();
         readTaxFiltersFromDom();
         readStateFromUrl();
         // A search or a filter carried in by the URL (a reload, the editor's

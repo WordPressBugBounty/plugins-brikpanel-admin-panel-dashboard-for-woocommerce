@@ -1175,6 +1175,11 @@ class Brikpanel_Cart_Abandonment {
 	 * human labels (taxonomy label + term name) so exports and BrikMentor
 	 * emails can render "Size: L" without a further lookup.
 	 *
+	 * The labels are the ones WooCommerce shows in the cart: a custom
+	 * attribute's name as the merchant typed it ("Size", not its key "size"),
+	 * and an attribute named outside ASCII by name, where up to 3.3.36 its
+	 * encoded key and term slug were stored ("pa_%d0%b2…: %d1%81…").
+	 *
 	 * @return array{items:array,count:int,total:float,currency:string}
 	 */
 	private static function cart_snapshot() {
@@ -1191,17 +1196,8 @@ class Brikpanel_Cart_Abandonment {
 			$product = ( isset( $item['data'] ) && $item['data'] instanceof WC_Product ) ? $item['data'] : null;
 			$attrs   = [];
 			if ( ! empty( $item['variation'] ) && is_array( $item['variation'] ) ) {
-				foreach ( $item['variation'] as $key => $value ) {
-					$taxonomy = str_replace( 'attribute_', '', (string) $key );
-					$label    = function_exists( 'wc_attribute_label' ) ? wc_attribute_label( $taxonomy ) : $taxonomy;
-					$value    = (string) $value;
-					if ( taxonomy_exists( $taxonomy ) ) {
-						$term = get_term_by( 'slug', $value, $taxonomy );
-						if ( $term && ! is_wp_error( $term ) ) {
-							$value = $term->name;
-						}
-					}
-					$attrs[ $label ] = $value;
+				foreach ( brikpanel_attr_pairs( $item['variation'], $product ) as $pair ) {
+					$attrs[ $pair['label'] ] = $pair['value'];
 				}
 			}
 			$qty            = (float) $item['quantity'];
@@ -3804,6 +3800,7 @@ class Brikpanel_Cart_Abandonment {
 			if ( ! empty( $item['attributes'] ) && is_array( $item['attributes'] ) ) {
 				$clean = [];
 				foreach ( $item['attributes'] as $label => $value ) {
+					list( $label, $value ) = self::readable_attribute( (string) $label, (string) $value, (int) ( $item['product_id'] ?? 0 ) );
 					$clean[ brikpanel_plain_text_from_html( $label ) ] = brikpanel_plain_text_from_html( $value );
 				}
 				$item['attributes'] = $clean;
@@ -3812,6 +3809,37 @@ class Brikpanel_Cart_Abandonment {
 		unset( $item );
 
 		return $items;
+	}
+
+	/**
+	 * A label and option from a snapshot taken before 3.3.37, readable again.
+	 *
+	 * For an attribute named outside ASCII those snapshots hold WooCommerce's
+	 * encoded key and the term slug ("pa_%d0%b2…: %d1%81…") instead of
+	 * "Вид: Спортен"; see cart_snapshot(). Anything else comes back as it is,
+	 * without a lookup.
+	 *
+	 * @param string $label      Stored label.
+	 * @param string $value      Stored option.
+	 * @param int    $product_id The item's product, for a custom attribute's typed name.
+	 * @return string[] [ label, value ]
+	 */
+	private static function readable_attribute( $label, $value, $product_id ) {
+		if ( ! preg_match( '/%[0-9a-f]{2}/i', $label . $value ) ) {
+			return [ $label, $value ];
+		}
+
+		$taxonomy = brikpanel_attr_taxonomy_from_key( $label );
+		if ( '' !== $taxonomy ) {
+			$term  = get_term_by( 'slug', $value, $taxonomy );
+			$value = ( $term && ! is_wp_error( $term ) ) ? (string) $term->name : $value;
+			$label = (string) wc_attribute_label( $taxonomy );
+		} elseif ( $product_id > 0 && preg_match( '/%[0-9a-f]{2}/i', $label ) ) {
+			$product = wc_get_product( $product_id );
+			$label   = $product ? (string) wc_attribute_label( $label, $product ) : $label;
+		}
+
+		return [ rawurldecode( $label ), rawurldecode( $value ) ];
 	}
 
 	/** Normalize a DB row into the public array shape. */

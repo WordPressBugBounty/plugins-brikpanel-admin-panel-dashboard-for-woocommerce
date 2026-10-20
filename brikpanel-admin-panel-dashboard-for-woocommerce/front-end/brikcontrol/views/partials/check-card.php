@@ -304,6 +304,64 @@ $plugins_active = isset( $meta['plugins']['active'] ) && is_array( $meta['plugin
         <p class="brikpanel-bc-sample-result" data-bc-row-result role="status" aria-live="polite"></p>
     <?php endif; ?>
 
+    <?php
+    // Products with missing images (3.3.37): one row per product image that
+    // is gone, files missing from the server first (the shop shows those
+    // broken). Names, links and labels were written for this viewer by the
+    // check's bc_present(). Assigned on every card: the cards share this scope.
+    $bc_missing = ( isset( $meta['missing']['rows'] ) && is_array( $meta['missing']['rows'] ) && ! empty( $meta['missing']['rows'] ) )
+        ? $meta['missing']
+        : null;
+    if ( null !== $bc_missing ) :
+        ?>
+        <details class="brikpanel-bc-details" data-bc-list="missing">
+            <summary><?php echo esc_html( (string) ( $bc_missing['title'] ?? '' ) ); ?></summary>
+            <div class="brikpanel-bc-table-wrap">
+            <table class="brikpanel-bc-largest-table brikpanel-fit-table">
+                <thead>
+                    <tr>
+                        <th><?php esc_html_e( 'Product', 'brikpanel' ); ?></th>
+                        <th><?php esc_html_e( 'Image', 'brikpanel' ); ?></th>
+                        <th><?php esc_html_e( 'Problem', 'brikpanel' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    foreach ( $bc_missing['rows'] as $bc_miss ) :
+                        if ( ! is_array( $bc_miss ) ) {
+                            continue;
+                        }
+                        $bc_miss_url    = (string) ( $bc_miss['url'] ?? '' );
+                        $bc_miss_name   = (string) ( $bc_miss['product'] ?? '' );
+                        $bc_miss_detail = (string) ( $bc_miss['detail'] ?? '' );
+                        ?>
+                        <tr>
+                            <td class="brikpanel-fit-lead">
+                                <?php if ( '' !== $bc_miss_url ) : ?>
+                                    <a href="<?php echo esc_url( $bc_miss_url ); ?>"><?php echo esc_html( $bc_miss_name ); ?></a>
+                                <?php else : ?>
+                                    <?php echo esc_html( $bc_miss_name ); ?>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php echo esc_html( (string) ( $bc_miss['image'] ?? '' ) ); ?>
+                                <?php if ( '' !== $bc_miss_detail ) : ?>
+                                    <?php // File names have no spaces: they may break after their own "-", "_" and "." (B2). ?>
+                                    <span class="brikpanel-bc-missing-detail"><?php echo implode( '<wbr>', array_map( 'esc_html', (array) preg_split( '/(?<=[\-_.])/', $bc_miss_detail, -1, PREG_SPLIT_NO_EMPTY ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every piece is escaped. ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo esc_html( (string) ( $bc_miss['problem'] ?? '' ) ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            </div>
+            <?php if ( ! empty( $bc_missing['note'] ) ) : ?>
+                <p class="brikpanel-bc-list-note"><?php echo esc_html( (string) $bc_missing['note'] ); ?></p>
+            <?php endif; ?>
+        </details>
+    <?php endif; ?>
+
     <?php if ( ! empty( $largest ) ) : ?>
         <details class="brikpanel-bc-details">
             <summary><?php esc_html_e( 'Largest images (top 10)', 'brikpanel' ); ?></summary>

@@ -1610,8 +1610,16 @@ class Brikpanel_Pro_Search {
 			$product_html = '';
 			if ( isset( $matching_product ) ) {
 				// get_formatted_name() carries a <span class="description"> for
-				// variations; esc_html() alone would print it as text.
-				$product_title = esc_html( brikpanel_plain_label( $matching_product->get_formatted_name() ) );
+				// variations; esc_html() alone would print it as text. Its
+				// options come from wc_get_formatted_variation(), which printed
+				// an attribute named outside ASCII as "pa_вид: спортен", so a
+				// variation's are written here the same way, readable.
+				$formatted_name = $matching_product->get_formatted_name();
+				if ( $matching_product->is_type( 'variation' ) ) {
+					$identifier     = $matching_product->get_sku() ? $matching_product->get_sku() : '#' . $matching_product->get_id();
+					$formatted_name = sprintf( '%2$s (%1$s)', $identifier, $matching_product->get_name() ) . ' ' . brikpanel_formatted_variation( $matching_product, true, true );
+				}
+				$product_title = esc_html( brikpanel_plain_label( $formatted_name ) );
 				$product_html  = '<div class="text-sm matching-order-product">' . $product_title . '</div>';
 			}
 

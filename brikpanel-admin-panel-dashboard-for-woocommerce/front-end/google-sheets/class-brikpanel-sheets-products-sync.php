@@ -1548,21 +1548,17 @@ class Brikpanel_Sheets_Products_Sync {
 			case 'name':          return brikpanel_plain_label( (string) $product->get_name() );
 			case 'variation_attributes':
 				if ( $product->is_type( 'variation' ) ) {
+					// Term names rather than the stored slugs ("black-white"),
+					// and attributes named outside ASCII by name rather than by
+					// their encoded keys (brikpanel_attr_pairs()).
 					$attrs = [];
-					foreach ( $product->get_variation_attributes() as $k => $v ) {
-						if ( $v === '' || ! is_scalar( $v ) ) { continue; }
-						$raw_name = str_replace( 'attribute_', '', $k );
-						$label    = wc_attribute_label( $raw_name );
-						if ( $label === '' || $label === $raw_name ) {
-							$label = brikpanel_title_case( $raw_name );
+					foreach ( brikpanel_attr_pairs( $product ) as $pair ) {
+						if ( $pair['value'] === '' ) { continue; }
+						$label = $pair['label'];
+						if ( $label === '' || $label === $pair['key'] ) {
+							$label = brikpanel_title_case( $pair['key'] );
 						}
-						// The stored value of a global attribute is the term
-						// slug ("black-white"); show the term name instead.
-						$value = (string) $product->get_attribute( $raw_name );
-						if ( $value === '' ) {
-							$value = (string) $v;
-						}
-						$attrs[] = brikpanel_plain_name( $label ) . ': ' . brikpanel_plain_name( $value );
+						$attrs[] = brikpanel_plain_name( $label ) . ': ' . brikpanel_plain_name( $pair['value'] );
 					}
 					return implode( '; ', $attrs );
 				}
