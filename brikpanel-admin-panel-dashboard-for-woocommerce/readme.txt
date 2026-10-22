@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.37
+Stable tag: 3.3.38
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -502,6 +502,12 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.38 (2026-10-22) =
+* New: **Unused images in Store Health.** A new card finds the images that no product, variation, page, setting, review or other plugin uses any more and shows them in a grid with a large preview. Move the ones you pick to the trash: their files stay on the server for 30 days, so nothing breaks, and one click brings them back. The check runs only when you start it.
+* New: **Other plugins' product options in the product editor.** Options that plugins add next to Virtual and Downloadable, such as Germanized's "Service", the "Subscription" of YITH and WP Swings, or Tutor LMS's "For Tutor", now show as switches below Virtual and Digital, only for the product types they apply to. When a plugin does not accept a change made here, a message says so. Setting: Products → "Show other plugins' product options", on by default.
+* Fix: **Saving keeps other plugins' product options.** Saving a product in the BrikPanel editor switched off most of these options, such as Germanized's "Service" or YITH's "Subscription", even when you had not touched them. They now keep their value, with the new setting on or off.
+* New: **Order weights in the export.** Excel and CSV files have a "Total weight" column after Items, in the store's unit of weight, with the same total as the order screen. In Excel, the Products sheet also shows each line's weight. The cell stays empty when no product in the order has a weight.
+
 = 3.3.37 (2026-10-20) =
 * New: **Export orders to Excel or CSV.** The new Export button on the Orders list downloads the selected orders, or all orders the list shows with its current tab, search and filters. In Excel, orders with addresses and totals are on one sheet and their products with variations and SKUs on another; CSV has one row per order.
 * Fix: **The Orders title row fits on phones.** Buttons that plugins add beside "Add order", such as Orders Tracking's, no longer run off the screen: when the row is full, they move into a "…" menu with Export.
@@ -594,9 +600,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **The dashboard in Firefox.** In Firefox, the dashboard's cards stacked one per line and its header took the phone layout on every screen size, and on a phone the Low stock list turned into cards. All of them look as they should again.
 * Fix: **The dashboard on a zoomed page.** On a zoomed page, the cards could stack one per line and the header could switch to its phone layout, even on a wide screen.
 * Fix: **The Order locations globe no longer goes blank.** Browsers without WebGL, such as LibreWolf, showed an empty box, and a globe that lost its graphics context stayed blank until the page was reloaded. A drawn globe now stands in, and the 3D globe comes back on its own.
-
-= 3.3.30 (2026-10-05) =
-* Fix: **Visitors are counted once a day, and only real people.** A visitor now counts after they move the mouse, tap, scroll or press a key. Bots, cloud servers, your staff and pages served from an old cache no longer add visitors, product views, add-to-carts or checkouts. A first-party cookie, `brikpanel_human`, remembers the check for 30 days and follows your cookie consent setting.
-* New: **Bot traffic is cleaned up every night.** Store Health lowers past days that bots inflated, leaves days with real sales for you to decide, and keeps an Undo. Days you put back with Undo are never touched again.
-* Tweak: **Simpler stock for variations.** Each variation now has one stock box with an ∞ button beside it: type how many you have, or press ∞ to sell it without counting. New variations start at 0, the bulk edit bar has the same ∞ button, and "Allow backorders?" sits in each variation's details.
-* Fix: **Top referrers tells two rows of the same site apart.** When one site sends visits through two channels, such as Google ads and Google search, each of its rows in Top referrers now names its channel.

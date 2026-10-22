@@ -131,6 +131,23 @@ class Brikpanel_Product_Editor {
      */
     private $save_parent_virtual = null;
 
+    /**
+     * The options other plugins add next to Virtual and Downloadable, keyed by
+     * product id, read once per request (see plugin_type_options()).
+     *
+     * @var array<int, array<string, array>>
+     */
+    private static $plugin_type_options_memo = [];
+
+    /**
+     * Those options as this save received them, id => on, for the ones the
+     * editor showed (empty outside a save). Checked against the stored values
+     * once every save handler has run (plugin_type_options_after_save()).
+     *
+     * @var array<string, bool>
+     */
+    private $plugin_opts_sent = [];
+
     public function __construct() {
         // Always register the page slug so WordPress doesn't throw a permission error
         // when someone navigates to the URL while the editor is disabled.
@@ -2520,6 +2537,69 @@ class Brikpanel_Product_Editor {
                             </button>
                         </div>
                     </div>
+                    <?php
+                    // The options other plugins put next to Virtual and
+                    // Downloadable in WooCommerce's own product box (Germanized's
+                    // "Service", "Subscription", "For Tutor"…), one switch each,
+                    // posted the way WooCommerce posts them so each plugin's own
+                    // save handler stores them (see plugin_type_options()). Like
+                    // WooCommerce, a switch shows only for the product types its
+                    // classes allow; the editor script applies the same rule live.
+                    // Behind the "Show other plugins' product options" setting;
+                    // whatever is not shown keeps its value on save
+                    // (keep_unshown_plugin_type_options()).
+                    $bpe_plugin_opts = get_option('brikpanel_pe_plugin_type_options', 'yes') === 'yes'
+                        ? self::plugin_type_options($product instanceof WC_Product ? $product : null)
+                        : [];
+                    if ($bpe_plugin_opts) :
+                        // The type and flags the editor script reads on load
+                        // (wcGateContext()): the type select when it is on the
+                        // page, otherwise the variations switch.
+                        $bpe_po_type = $product_type_current;
+                        if (!($product_type_selector_enabled && !empty($product_type_options)) && $bpe_show_var) {
+                            $bpe_po_type = !empty($data['is_variable'])
+                                ? 'variable'
+                                : (brikpanel_is_variable_product_type($bpe_po_type) ? 'simple' : $bpe_po_type);
+                        }
+                        $bpe_po_flags = !brikpanel_is_variable_product_type($bpe_po_type) && !in_array($bpe_po_type, ['grouped', 'external'], true);
+                        $bpe_po_ctx   = [
+                            'type'         => $bpe_po_type,
+                            'downloadable' => $bpe_po_flags && !empty($data['is_downloadable']),
+                            'virtual'      => $bpe_po_flags && (!empty($data['is_virtual']) || !empty($data['is_downloadable'])),
+                        ];
+                        $bpe_po_stored_type = $product instanceof WC_Product ? (string) $product->get_type() : '';
+                        $bpe_po_rows        = '';
+                        $bpe_po_any_shown   = false;
+                        foreach ($bpe_plugin_opts as $bpe_po) {
+                            // A product type this editor cannot show (Bookings,
+                            // Bundles…): its own options stay with WooCommerce's
+                            // editor, like the rest of its settings (the note at the
+                            // top says so), and keep their values here.
+                            if ($bpe_unrepresented && $bpe_po_stored_type !== '' && in_array('show_if_' . $bpe_po_stored_type, $bpe_po['gate'], true)) {
+                                continue;
+                            }
+                            $bpe_po_shown = !$bpe_po['gate'] || self::wc_tab_shown_for($bpe_po['gate'], $bpe_po_ctx);
+                            $bpe_po_any_shown = $bpe_po_any_shown || $bpe_po_shown;
+                            $bpe_po_rows .= '<div class="brikpanel-pe-toggle-row brikpanel-pe-plugin-opt"'
+                                . ($bpe_po['gate'] ? ' data-wc-gate="' . esc_attr(implode(' ', $bpe_po['gate'])) . '"' : '')
+                                . ($bpe_po_shown ? '' : ' hidden') . '>'
+                                . '<span class="brikpanel-pe-toggle-label">' . esc_html($bpe_po['label'])
+                                . ($bpe_po['help'] !== '' ? '<small class="brikpanel-pe-toggle-help">' . esc_html($bpe_po['help']) . '</small>' : '')
+                                . '</span>'
+                                . '<label class="brikpanel-pe-switch">'
+                                . '<input type="checkbox" id="' . esc_attr($bpe_po['id']) . '" name="' . esc_attr($bpe_po['id']) . '"'
+                                . ' data-product-type-option-id="' . esc_attr($bpe_po['id']) . '" aria-label="' . esc_attr($bpe_po['label']) . '"'
+                                . checked(self::plugin_type_option_on($product instanceof WC_Product ? $product : null, $bpe_po['key'], $bpe_po), true, false) . '>'
+                                . '<span class="brikpanel-pe-slider"></span>'
+                                . '</label>'
+                                . '</div>';
+                        }
+                        if ($bpe_po_rows !== '') :
+                    ?>
+                    <div class="brikpanel-pe-plugin-opts" id="bpe-plugin-opts"<?php echo $bpe_po_any_shown ? '' : ' hidden'; ?>>
+                        <?php echo $bpe_po_rows; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every piece escaped above. ?>
+                    </div>
+                    <?php endif; endif; ?>
                 </div>
                 <?php $section_html['digital'] = ob_get_clean(); endif; ?>
 
@@ -6731,6 +6811,218 @@ class Brikpanel_Product_Editor {
     }
 
     /**
+     * The options other plugins put next to "Virtual" and "Downloadable" in
+     * WooCommerce's own product box, through the `product_type_options`
+     * filter: Germanized's "Service", YITH's and WP Swings' "Subscription",
+     * Tutor LMS's "For Tutor", Bookings' "Has persons"… WooCommerce prints
+     * each one as a checkbox named after its `id`, and its plugin saves it
+     * from its own save handler: present means on, absent means off.
+     *
+     * Virtual and Downloadable are left out, this editor has its own switches
+     * for them. An id must look like the meta keys WooCommerce reads (an
+     * underscore, then letters, digits, `_` or `-`): it becomes an HTML id, a
+     * field name and a `$_POST` key, and none of this editor's own fields
+     * starts with an underscore, so an option can never stand in for one.
+     *
+     * The filter runs in the product context WooCommerce gives it ($post,
+     * $thepostid, $product_object, as in capture_wc_product_data_fields()):
+     * Product Bundles reads them in its callback. One combined fire is the
+     * normal path; when a callback throws, the filter runs again one callback
+     * at a time and the others are kept (same rule as collect_custom_tab_meta()).
+     *
+     * @param WC_Product|null $product Product being edited, null for none yet.
+     * @return array<string, array{id: string, key: string, label: string, help: string, gate: string[], default: string}> Keyed by id, in filter order.
+     */
+    private static function plugin_type_options($product) {
+        $memo_key = ($product instanceof WC_Product) ? (int) $product->get_id() : 0;
+        if (isset(self::$plugin_type_options_memo[$memo_key])) {
+            return self::$plugin_type_options_memo[$memo_key];
+        }
+
+        $defaults = function_exists('wc_get_default_product_type_options')
+            ? (array) wc_get_default_product_type_options()
+            : ['virtual' => ['id' => '_virtual'], 'downloadable' => ['id' => '_downloadable']];
+
+        global $post, $thepostid, $product_object;
+        $orig_post    = $post;
+        $orig_postid  = $thepostid ?? null;
+        $orig_prodobj = $product_object ?? null;
+        if ($memo_key) {
+            $post           = get_post($memo_key);
+            $thepostid      = $memo_key;
+            $product_object = $product;
+        }
+        try {
+            $raw = apply_filters('product_type_options', $defaults);
+        } catch (\Throwable $e) {
+            $raw = [];
+            foreach (self::filter_chunks('product_type_options', $defaults)['results'] as $chunk) {
+                if (is_array($chunk)) {
+                    $raw = array_replace($raw, $chunk);
+                }
+            }
+        } finally {
+            $post           = $orig_post;
+            $thepostid      = $orig_postid;
+            $product_object = $orig_prodobj;
+        }
+
+        $options = [];
+        foreach (is_array($raw) ? $raw : [] as $key => $opt) {
+            $key = (string) $key;
+            if ($key === 'virtual' || $key === 'downloadable' || !is_array($opt)
+                || !isset($opt['id']) || !is_string($opt['id'])) {
+                continue;
+            }
+            $id = $opt['id'];
+            if (isset($options[$id]) || $id === '_virtual' || $id === '_downloadable'
+                || !preg_match('/^_[A-Za-z0-9_-]{1,100}$/', $id)) {
+                continue;
+            }
+            $label = isset($opt['label']) && is_scalar($opt['label']) ? trim(wp_strip_all_tags((string) $opt['label'])) : '';
+            if ($label === '') {
+                $label = ucfirst(trim(str_replace(['_', '-'], ' ', $key)));
+            }
+            $wrapper = isset($opt['wrapper_class']) && is_scalar($opt['wrapper_class']) ? trim((string) $opt['wrapper_class']) : '';
+            $options[$id] = [
+                'id'      => $id,
+                'key'     => $key,
+                'label'   => $label,
+                'help'    => isset($opt['description']) && is_scalar($opt['description']) ? trim(wp_strip_all_tags((string) $opt['description'])) : '',
+                // WooCommerce shows or hides the box by these classes, like a tab.
+                'gate'    => self::wc_tab_gate_classes($wrapper === '' ? [] : (preg_split('/\s+/', $wrapper) ?: [])),
+                'default' => isset($opt['default']) && is_scalar($opt['default']) ? (string) $opt['default'] : 'no',
+            ];
+        }
+
+        return self::$plugin_type_options_memo[$memo_key] = $options;
+    }
+
+    /**
+     * Whether a plugin_type_options() option is on for a product, read the way
+     * WooCommerce's product box reads it (html-product-data-panel.php): while
+     * the product has a `_{key}` meta, its `is_{key}()` getter if it has one,
+     * else that meta being "yes"; before that, the option's default.
+     *
+     * @param WC_Product|null $product Product, null for one not saved yet.
+     * @param string          $key     The option's key in the filter.
+     * @param array           $opt     The option, from plugin_type_options().
+     * @return bool
+     */
+    private static function plugin_type_option_on($product, $key, array $opt) {
+        $id = ($product instanceof WC_Product) ? (int) $product->get_id() : 0;
+        if ($id && metadata_exists('post', $id, '_' . $key)) {
+            if (is_callable([$product, 'is_' . $key])) {
+                try {
+                    return (bool) $product->{'is_' . $key}();
+                } catch (\Throwable $e) {
+                    // A getter that wants arguments: read the meta like any other.
+                }
+            }
+            return 'yes' === get_post_meta($id, '_' . $key, true);
+        }
+        return 'yes' === ($opt['default'] ?? 'no');
+    }
+
+    /**
+     * Keeps the options other plugins add next to Virtual and Downloadable
+     * that this save's form did not show.
+     *
+     * Their plugins read them like WooCommerce's own form posts a checkbox:
+     * present means on, absent means off (Germanized and YITH Subscription
+     * write "no", Tutor LMS deletes its flag). This editor runs those save
+     * handlers on every save, so an option it did not put on the form (the
+     * setting is off, the "Digital product" section is hidden, the page was
+     * opened before the option existed) was switched off by any save, even an
+     * untouched one: on 3.3.37 one plain save turned off 8 of 10 such flags,
+     * on a simple and on a variable product.
+     *
+     * `bpe_plugin_opts` lists the ones the form showed, which arrive the way
+     * the merchant left them. Every other one that is on is posted as on, here,
+     * before the first post write: its handler may run from save_post as well
+     * as from WooCommerce's hooks. Only keys this request does not carry are
+     * written, and only ids plugin_type_options() accepted.
+     *
+     * @param int $product_id Product being saved, 0 for a new one.
+     * @return void
+     */
+    private function keep_unshown_plugin_type_options($product_id) {
+        $this->plugin_opts_sent = [];
+        $product = $product_id ? wc_get_product($product_id) : null;
+        $product = $product instanceof WC_Product ? $product : null;
+        $options = self::plugin_type_options($product);
+        if (empty($options)) {
+            return;
+        }
+
+        $shown = [];
+        if (isset($_POST['bpe_plugin_opts']) && is_string($_POST['bpe_plugin_opts'])) {
+            foreach (explode(',', sanitize_text_field(wp_unslash($_POST['bpe_plugin_opts']))) as $shown_id) {
+                $shown_id = trim($shown_id);
+                if (isset($options[$shown_id])) {
+                    $shown[$shown_id] = true;
+                }
+            }
+        }
+
+        foreach ($options as $id => $opt) {
+            if (isset($shown[$id])) {
+                $this->plugin_opts_sent[$id] = array_key_exists($id, $_POST);
+                continue;
+            }
+            if (!array_key_exists($id, $_POST) && self::plugin_type_option_on($product, $opt['key'], $opt)) {
+                $_POST[$id]    = 'on';
+                $_REQUEST[$id] = 'on';
+            }
+        }
+    }
+
+    /**
+     * After a save: the options the form showed, as stored now, plus a warning
+     * for each one whose plugin did not take the merchant's change.
+     *
+     * A plugin can refuse a save that does not come from its own screen (WP
+     * Swings Subscriptions saves "Subscription" only with a nonce its own panel
+     * prints). The switch would then show a value the product does not have,
+     * so the editor gets the stored values back and the merchant is told
+     * which option did not change. Only options on screen for the saved
+     * product type count: one its own rule hides (a simple-only option on a
+     * product just made variable) may be reset by its plugin on purpose.
+     *
+     * @param int $saved_id Saved product id.
+     * @return array<string, bool> id => on as stored, for the editor.
+     */
+    private function plugin_type_options_after_save($saved_id) {
+        if (empty($this->plugin_opts_sent)) {
+            return [];
+        }
+        wp_cache_delete($saved_id, 'post_meta');
+        $product = wc_get_product($saved_id);
+        if (!$product) {
+            return [];
+        }
+        $options = self::plugin_type_options($product);
+        $context = self::wc_tab_visibility_context($product);
+        $stored  = [];
+        foreach ($this->plugin_opts_sent as $id => $sent) {
+            if (!isset($options[$id])) {
+                continue;
+            }
+            $opt         = $options[$id];
+            $on          = self::plugin_type_option_on($product, $opt['key'], $opt);
+            $stored[$id] = $on;
+            if ($on !== $sent && (!$opt['gate'] || self::wc_tab_shown_for($opt['gate'], $context))) {
+                $this->save_warnings[] = sprintf(
+                    /* translators: %s: name of an option another plugin adds next to "Virtual", e.g. "Subscription" */
+                    __('"%s" was not saved: the plugin that adds this option did not accept the change here. You can change it in the WooCommerce product editor.', 'brikpanel'),
+                    $opt['label']
+                );
+            }
+        }
+        return $stored;
+    }
+
+    /**
      * Blocksy's swatches editor (Blocksy Companion Pro) lists a product's
      * attributes by reading WooCommerce's own Attributes panel out of the page:
      * every `[name*=attribute_values]` control inside a
@@ -8046,6 +8338,7 @@ class Brikpanel_Product_Editor {
         $this->axis_key_map        = [];
         $this->save_status         = '';
         $this->save_parent_virtual = null;
+        $this->plugin_opts_sent    = [];
 
         if (!current_user_can('edit_products')) {
             wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
@@ -8180,6 +8473,17 @@ class Brikpanel_Product_Editor {
         // before the first post write fires save_post.
         if (class_exists('Brikpanel_Video')) {
             Brikpanel_Video::begin_save($product_id);
+        }
+
+        // And for the options other plugins add next to Virtual and
+        // Downloadable (Germanized's "Service", "Subscription", "For Tutor"…):
+        // one this form did not show is posted with the value the product
+        // already has, before the first post write, so no save switches it off.
+        // A plugin failing here must not cost the merchant the whole save.
+        try {
+            $this->keep_unshown_plugin_type_options($product_id);
+        } catch (\Throwable $e) {
+            $this->plugin_opts_sent = [];
         }
 
         $is_variable = !empty($_POST['is_variable']);
@@ -9474,6 +9778,16 @@ class Brikpanel_Product_Editor {
             $this->save_warnings[] = self::alt_reason_message('failed');
         }
 
+        // The other plugins' options the form showed, as their plugins stored
+        // them, once every save handler has run; a warning for any change a
+        // plugin did not take (plugin_type_options_after_save()).
+        $plugin_opts_state = [];
+        try {
+            $plugin_opts_state = $this->plugin_type_options_after_save($saved_id);
+        } catch (\Throwable $e) {
+            $plugin_opts_state = [];
+        }
+
         /**
          * Fires after the BrikPanel editor has fully persisted a product,
          * including its variations. Hook in here to sync to external systems,
@@ -9518,6 +9832,12 @@ class Brikpanel_Product_Editor {
         // cleaned the way WordPress cleans it, so the editor shows that.
         if ($alt_state !== null) {
             $response['image_alts'] = (object) $alt_state;
+        }
+
+        // The other plugins' options as stored now, so a switch whose plugin
+        // refused the change goes back to what the product really has.
+        if ($plugin_opts_state) {
+            $response['plugin_opts'] = (object) $plugin_opts_state;
         }
 
         // Non-fatal issues (duplicate SKU/GTIN…): the product saved, but some

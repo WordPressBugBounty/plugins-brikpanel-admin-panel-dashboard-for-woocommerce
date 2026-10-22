@@ -331,6 +331,12 @@
 .brikpanel-pe-toggle-label{display:flex;flex-direction:column;gap:.125rem;min-width:0;flex:1}
 .brikpanel-pe-toggle-help{font-size:.75rem;font-weight:400;color:var(--pe-text-secondary, #616161);line-height:1.4}
 .brikpanel-pe-switch input:disabled+.brikpanel-pe-slider{cursor:not-allowed;opacity:.6}
+/* Options other plugins add next to Virtual and Downloadable, below the
+   Digital section: a divider above them, and one between every two rows that
+   are on screen, also when a row hidden by its product-type rule sits between. */
+.brikpanel-pe-plugin-opts{padding-top:.5rem;border-top:1px solid var(--pe-border)}
+.brikpanel-pe-collapse.open+.brikpanel-pe-plugin-opts{margin-top:1rem}
+.brikpanel-pe-plugin-opts>.brikpanel-pe-toggle-row:not([hidden])~.brikpanel-pe-toggle-row:not([hidden]){margin-top:.25rem;padding-top:.75rem;border-top:1px solid var(--pe-border)}
 
 /* Switch */
 .brikpanel-pe-switch{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}

@@ -2,6 +2,12 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.38 (2026-10-22) =
+* New: **Unused images in Store Health.** A new card finds the images that no product, variation, page, setting, review or other plugin uses any more and shows them in a grid with a large preview. Move the ones you pick to the trash: their files stay on the server for 30 days, so nothing breaks, and one click brings them back. The check runs only when you start it.
+* New: **Other plugins' product options in the product editor.** Options that plugins add next to Virtual and Downloadable, such as Germanized's "Service", the "Subscription" of YITH and WP Swings, or Tutor LMS's "For Tutor", now show as switches below Virtual and Digital, only for the product types they apply to. When a plugin does not accept a change made here, a message says so. Setting: Products → "Show other plugins' product options", on by default.
+* Fix: **Saving keeps other plugins' product options.** Saving a product in the BrikPanel editor switched off most of these options, such as Germanized's "Service" or YITH's "Subscription", even when you had not touched them. They now keep their value, with the new setting on or off.
+* New: **Order weights in the export.** Excel and CSV files have a "Total weight" column after Items, in the store's unit of weight, with the same total as the order screen. In Excel, the Products sheet also shows each line's weight. The cell stays empty when no product in the order has a weight.
+
 = 3.3.37 (2026-10-20) =
 * New: **Export orders to Excel or CSV.** The new Export button on the Orders list downloads the selected orders, or all orders the list shows with its current tab, search and filters. In Excel, orders with addresses and totals are on one sheet and their products with variations and SKUs on another; CSV has one row per order.
 * Fix: **The Orders title row fits on phones.** Buttons that plugins add beside "Add order", such as Orders Tracking's, no longer run off the screen: when the row is full, they move into a "…" menu with Export.

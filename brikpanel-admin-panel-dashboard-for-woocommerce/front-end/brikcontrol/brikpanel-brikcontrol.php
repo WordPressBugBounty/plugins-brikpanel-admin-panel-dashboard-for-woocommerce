@@ -171,7 +171,7 @@ function brikpanel_brikcontrol_stand_down() {
     if ( ! class_exists( 'Brikpanel_Cron' ) || ! Brikpanel_Cron::is_available() ) {
         return;
     }
-    Brikpanel_Cron::stand_down( [ 'brikpanel_brikcontrol_scan', 'brikpanel_brikcontrol_scan_batch', 'brikpanel_bot_traffic_autoclean' ] );
+    Brikpanel_Cron::stand_down( [ 'brikpanel_brikcontrol_scan', 'brikpanel_brikcontrol_scan_batch', 'brikpanel_bot_traffic_autoclean', 'brikpanel_unused_images_scan_step' ] );
 }
 
 // =============================================================================
@@ -198,6 +198,8 @@ require_once BRIKPANEL_PATH . 'front-end/brikcontrol/checks/class-brikpanel-brik
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-registry.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-runner.php';
 require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol.php';
+require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images-scanner.php';
+require_once BRIKPANEL_PATH . 'front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php';
 
 // Default check registration. Other plugins can extend by hooking the
 // `brikpanel_brikcontrol_checks` filter or calling
@@ -210,6 +212,10 @@ Brikpanel_BrikControl_Registry::register( new Brikpanel_BrikControl_Cost_Duplica
 
 // Boot the public façade (admin menu + AJAX).
 Brikpanel_BrikControl::instance();
+
+// The unused images card (3.3.39): a tool under the checks, not a check. Its
+// scan runs only after a click, a slice per background job.
+Brikpanel_BrikControl_Unused_Images::boot();
 
 // Register Action Scheduler handlers + recurring schedule. The register hook
 // fires on init priority 20 once Action Scheduler is ready, and lets the

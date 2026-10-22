@@ -24246,3 +24246,320 @@ msgstr "Пересчитать удержание по когортам"
 #: includes/cron/customer-analytics-jobs.php:551
 msgid "Builds the monthly cohort × period retention matrix."
 msgstr "Строит матрицу удержания месячная когорта × период."
+
+#. translators: Column header: the weight of all items in an order, or of one product line. %s: the store's unit of weight (kg, g, lbs or oz).
+#: front-end/orders/brikpanel-order-export.php:983
+#, php-format
+msgid "Total weight (%s)"
+msgstr "Общий вес (%s)"
+
+#: front-end/orders/brikpanel-orders.php:493
+msgid "Show other plugins' product options"
+msgstr "Показывать параметры товара из других плагинов"
+
+#: front-end/orders/brikpanel-orders.php:496
+msgid "In the product editor, the Virtual / Digital card also shows the options other plugins add next to Virtual and Downloadable (for example \"Subscription\" or \"Service\"), for the product types they apply to. Their values are kept when you save, whether this is on or off."
+msgstr "В редакторе товара карточка «Виртуальный / Цифровой» также показывает параметры, которые другие плагины добавляют рядом с «Виртуальный» и «Загружаемый» (например, «Подписка» или «Услуга»), для тех типов товаров, к которым они относятся. При сохранении их значения не меняются, включена эта настройка или выключена."
+
+#. translators: %s: name of an option another plugin adds next to "Virtual", e.g. "Subscription"
+#: front-end/products/brikpanel-product-editor.php:7017
+#, php-format
+msgid "\"%s\" was not saved: the plugin that adds this option did not accept the change here. You can change it in the WooCommerce product editor."
+msgstr "Параметр «%s» не сохранён: плагин, который его добавляет, не принял здесь это изменение. Вы можете изменить его в редакторе товаров WooCommerce."
+
+#. translators: 1: number of images, 2: their size on the server, e.g. "80 MB".
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:878
+#, php-format
+msgid "%1$s image in the trash · %2$s"
+msgid_plural "%1$s images in the trash · %2$s"
+msgstr[0] "%1$s изображение в корзине · %2$s"
+msgstr[1] "%1$s изображения в корзине · %2$s"
+msgstr[2] "%1$s изображений в корзине · %2$s"
+
+#. translators: 1: number of images, 2: their size on the server, e.g. "310 MB".
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:859
+#, php-format
+msgid "%1$s image is not used anywhere. It takes up %2$s."
+msgid_plural "%1$s images are not used anywhere. Together they take up %2$s."
+msgstr[0] "%1$s изображение нигде не используется. Оно занимает %2$s."
+msgstr[1] "%1$s изображения нигде не используются. Вместе они занимают %2$s."
+msgstr[2] "%1$s изображений нигде не используются. Вместе они занимают %2$s."
+
+#. translators: 1: position of the image in the list, 2: images in the list.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:984
+#, php-format
+msgctxt "position of an image in a list"
+msgid "%1$s of %2$s"
+msgstr "%1$s из %2$s"
+
+#. translators: 1: number of images selected, 2: their size on the server, e.g. "45 MB".
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:962
+#, php-format
+msgid "%1$s selected · %2$s"
+msgid_plural "%1$s selected · %2$s"
+msgstr[0] "Выбрано %1$s · %2$s"
+msgstr[1] "Выбрано %1$s · %2$s"
+msgstr[2] "Выбрано %1$s · %2$s"
+
+#. translators: 1: width in pixels, 2: height in pixels.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:1140
+#, php-format
+msgid "%1$s × %2$s px"
+msgstr "%1$s × %2$s px"
+
+#. translators: %s: a size in gigabytes, e.g. "1.2".
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:906 front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:981
+#, php-format
+msgid "%s GB"
+msgstr "%s ГБ"
+
+#. translators: %s: a size in kilobytes, e.g. "820".
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:913 front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:977
+#, php-format
+msgid "%s KB"
+msgstr "%s КБ"
+
+#. translators: %s: number of images.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:763 front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:973
+#, php-format
+msgid "%s image could not be changed."
+msgid_plural "%s images could not be changed."
+msgstr[0] "Не удалось изменить %s изображение."
+msgstr[1] "Не удалось изменить %s изображения."
+msgstr[2] "Не удалось изменить %s изображений."
+
+#. translators: %s: number of images.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:743 front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:970
+#, php-format
+msgid "%s image deleted for good."
+msgid_plural "%s images deleted for good."
+msgstr[0] "%s изображение удалено навсегда."
+msgstr[1] "%s изображения удалены навсегда."
+msgstr[2] "%s изображений удалено навсегда."
+
+#. translators: %s: number of images.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:756 front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:972
+#, php-format
+msgid "%s image is used now, so it was kept."
+msgid_plural "%s images are used now, so they were kept."
+msgstr[0] "%s изображение теперь используется, поэтому оно сохранено."
+msgstr[1] "%s изображения теперь используются, поэтому они сохранены."
+msgstr[2] "%s изображений теперь используются, поэтому они сохранены."
+
+#. translators: %s: number of images.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:737 front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:969
+#, php-format
+msgid "%s image moved to the trash."
+msgid_plural "%s images moved to the trash."
+msgstr[0] "%s изображение перемещено в корзину."
+msgstr[1] "%s изображения перемещены в корзину."
+msgstr[2] "%s изображений перемещено в корзину."
+
+#. translators: %s: number of images.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:749 front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:971
+#, php-format
+msgid "%s image put back in the Media Library."
+msgid_plural "%s images put back in the Media Library."
+msgstr[0] "%s изображение возвращено в медиабиблиотеку."
+msgstr[1] "%s изображения возвращены в медиабиблиотеку."
+msgstr[2] "%s изображений возвращено в медиабиблиотеку."
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:586
+msgid "A lot has changed on the site since the check. Check again before you delete anything."
+msgstr "После проверки на сайте многое изменилось. Проверьте ещё раз, прежде чем что-либо удалять."
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:35
+msgid "Check again"
+msgstr "Проверить снова"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:572
+msgid "Check for unused images first."
+msgstr "Сначала найдите неиспользуемые изображения."
+
+#. translators: %s: date and time of the check.
+#: front-end/brikcontrol/views/partials/unused-images-card.php:68
+#, php-format
+msgid "Checked %s"
+msgstr "Проверено %s"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:832
+msgid "Checking categories and settings…"
+msgstr "Проверка категорий и настроек…"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:837
+msgid "Checking other plugins' data…"
+msgstr "Проверка данных других плагинов…"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:829
+msgid "Checking products, pages and posts…"
+msgstr "Проверка товаров, страниц и записей…"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:835
+msgid "Checking reviews and profiles…"
+msgstr "Проверка отзывов и профилей…"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:839
+msgid "Checking your theme…"
+msgstr "Проверка вашей темы…"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:988
+msgid "Could not start the check. Please try again."
+msgstr "Не удалось запустить проверку. Попробуйте ещё раз."
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:964
+#, php-format
+msgid "Delete %s image for good? This cannot be undone."
+msgid_plural "Delete %s images for good? This cannot be undone."
+msgstr[0] "Удалить %s изображение навсегда? Это нельзя отменить."
+msgstr[1] "Удалить %s изображения навсегда? Это нельзя отменить."
+msgstr[2] "Удалить %s изображений навсегда? Это нельзя отменить."
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:965
+#, php-format
+msgid "Delete %s image for good? This site has no trash, so this cannot be undone."
+msgid_plural "Delete %s images for good? This site has no trash, so this cannot be undone."
+msgstr[0] "Удалить %s изображение навсегда? На этом сайте нет корзины, поэтому это нельзя отменить."
+msgstr[1] "Удалить %s изображения навсегда? На этом сайте нет корзины, поэтому это нельзя отменить."
+msgstr[2] "Удалить %s изображений навсегда? На этом сайте нет корзины, поэтому это нельзя отменить."
+
+#. translators: %s: date the image is deleted for good.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:1125
+#, php-format
+msgid "Deleted for good on %s"
+msgstr "Удаление навсегда: %s"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:195
+msgctxt "width and height of an image"
+msgid "Dimensions"
+msgstr "Размеры"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:855
+msgid "Every image is used somewhere. There is nothing to clean up."
+msgstr "Каждое изображение где-то используется. Убирать нечего."
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:1178 front-end/brikcontrol/views/partials/unused-images-card.php:176
+msgid "File missing"
+msgstr "Файл отсутствует"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:194
+msgid "File size"
+msgstr "Размер файла"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:40
+msgid "Find the images that no product, page or setting uses any more, look at them, and delete the ones you do not need."
+msgstr "Найдите изображения, которые больше не используют ни товары, ни страницы, ни настройки, просмотрите их и удалите ненужные."
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:42
+msgid "Find unused images"
+msgstr "Найти неиспользуемые изображения"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:844
+msgid "Getting the images ready…"
+msgstr "Подготовка изображений…"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:168
+msgid "Images used only outside this site, such as in e-mails you already sent or on social media, cannot be seen by this check. Images added in the last 24 hours are checked next time."
+msgstr "Эта проверка не видит изображения, которые используются только за пределами сайта, например в уже отправленных письмах или в соцсетях. Изображения, добавленные за последние 24 часа, будут проверены в следующий раз."
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:198
+msgid "In the trash"
+msgstr "В корзине"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:92
+msgid "Largest first"
+msgstr "Сначала самые большие"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:107
+msgid "Looks for the images nothing on the site uses, one part of the site at a time. Runs only after a click on the Store Health page."
+msgstr "Ищет изображения, которые ничто на сайте не использует, по одной части сайта за раз. Запускается только после нажатия на странице «Состояние магазина»."
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:842
+msgid "Measuring the files…"
+msgstr "Измерение файлов…"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:181
+msgid "Next image"
+msgstr "Следующее изображение"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:43
+msgid "Nothing is deleted until you choose."
+msgstr "Ничего не удаляется, пока вы не выберете."
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:201
+msgid "Open in Media Library"
+msgstr "Открыть в медиабиблиотеке"
+
+#. translators: %s: file name of an image.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:1171
+#, php-format
+msgid "Preview %s"
+msgstr "Просмотр %s"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:178
+msgid "Previous image"
+msgstr "Предыдущее изображение"
+
+#. translators: %s: file name of an image.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:1165
+#, php-format
+msgid "Select %s"
+msgstr "Выбрать %s"
+
+#. translators: %s: number of images.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:963 front-end/brikcontrol/views/partials/unused-images-card.php:85 front-end/brikcontrol/views/partials/unused-images-card.php:144
+#, php-format
+msgid "Select all %s"
+msgid_plural "Select all %s"
+msgstr[0] "Выбрать все (%s)"
+msgstr[1] "Выбрать все (%s)"
+msgstr[2] "Выбрать все (%s)"
+
+#. translators: %s: number of images not shown yet.
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:891
+#, php-format
+msgid "Show more (%s left)"
+msgid_plural "Show more (%s left)"
+msgstr[0] "Показать ещё (осталось %s)"
+msgstr[1] "Показать ещё (осталось %s)"
+msgstr[2] "Показать ещё (осталось %s)"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:985
+msgid "Starting…"
+msgstr "Запуск…"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:106
+msgid "Store Health: unused images"
+msgstr "Состояние магазина: неиспользуемые изображения"
+
+#. translators: %s: number of days WordPress keeps the trash.
+#: front-end/brikcontrol/views/partials/unused-images-card.php:129
+#, php-format
+msgid "They are out of the Media Library, but their files stay on the server, so a page that still shows one keeps working. WordPress deletes them for good %s day after they were moved here."
+msgid_plural "They are out of the Media Library, but their files stay on the server, so a page that still shows one keeps working. WordPress deletes them for good %s days after they were moved here."
+msgstr[0] "Их больше нет в медиабиблиотеке, но их файлы остаются на сервере, поэтому страница, которая ещё показывает одно из них, продолжает работать. WordPress удаляет их навсегда через %s день после перемещения сюда."
+msgstr[1] "Их больше нет в медиабиблиотеке, но их файлы остаются на сервере, поэтому страница, которая ещё показывает одно из них, продолжает работать. WordPress удаляет их навсегда через %s дня после перемещения сюда."
+msgstr[2] "Их больше нет в медиабиблиотеке, но их файлы остаются на сервере, поэтому страница, которая ещё показывает одно из них, продолжает работать. WordPress удаляет их навсегда через %s дней после перемещения сюда."
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:575 front-end/brikcontrol/views/partials/unused-images-card.php:77
+msgid "This list is more than a week old. Check again before you delete anything."
+msgstr "Этому списку больше недели. Проверьте ещё раз, прежде чем что-либо удалять."
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:33
+msgid "Unused images"
+msgstr "Неиспользуемые изображения"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:196
+msgid "Uploaded"
+msgstr "Загружено"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:197
+msgid "Uploaded to"
+msgstr "Загружено в"
+
+#: front-end/brikcontrol/class-brikpanel-brikcontrol-unused-images.php:986
+msgid "Working…"
+msgstr "Выполняется…"
+
+#: front-end/brikcontrol/views/partials/unused-images-card.php:57
+msgid "You can leave this page. The check goes on in the background."
+msgstr "Вы можете уйти с этой страницы. Проверка продолжится в фоне."

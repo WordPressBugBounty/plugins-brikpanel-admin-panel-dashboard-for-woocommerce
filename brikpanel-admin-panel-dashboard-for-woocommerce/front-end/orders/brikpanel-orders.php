@@ -490,6 +490,13 @@ function brikpanel_settings_fields() {
             'default' => 'no',
         ],
         [
+            'name'    => __('Show other plugins\' product options', 'brikpanel'),
+            'id'      => 'brikpanel_pe_plugin_type_options',
+            'type'    => 'checkbox',
+            'desc'    => __('In the product editor, the Virtual / Digital card also shows the options other plugins add next to Virtual and Downloadable (for example "Subscription" or "Service"), for the product types they apply to. Their values are kept when you save, whether this is on or off.', 'brikpanel'),
+            'default' => 'yes',
+        ],
+        [
             'name'    => __('Auto-include ACF field groups', 'brikpanel'),
             'id'      => 'brikpanel_pe_acf_auto',
             'type'    => 'checkbox',

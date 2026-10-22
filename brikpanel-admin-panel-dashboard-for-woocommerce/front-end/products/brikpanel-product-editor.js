@@ -124,6 +124,7 @@
         initLinkedProducts();
         initThirdPartyTabLazyLoad();
         initThirdPartyTabTypes();
+        initPluginTypeOptions();
         initBlocksySwatchesBridge();
         initWcDatawrapAnchor();
         initNativeLabelBridge();
@@ -278,53 +279,67 @@
         });
     }
 
+    /* WooCommerce's rule for what a plugin's tab or product box shows on: its
+       `show_if_*` / `hide_if_*` classes against the product type and the
+       Virtual / Downloadable flags. Same rule as
+       Brikpanel_Product_Editor::wc_tab_shown_for(), keep the two in step.
+       wcGateContext() reads the type the way this page sets it: the type select
+       when it is on the page, else the variations switch, else (switch not on
+       the page, its section hidden in settings) the product's stored type, which
+       is what the save keeps then. */
+    function wcGateIsVariable(t) {
+        return t === 'variable' || t.indexOf('variable-') === 0 || t.indexOf('variable_') === 0;
+    }
+    function wcGateContext() {
+        var $pt = $('#bpe-product-type');
+        var type = ($pt.length && $pt.val()) ? String($pt.val()) : '';
+        if (!type) {
+            var stored = String(productData.product_type || 'simple');
+            var $vt = $('#bpe-var-toggle');
+            type = ($vt.length && !$vt.is('[data-section-hidden]'))
+                ? ($vt.is(':checked') ? 'variable' : (wcGateIsVariable(stored) ? 'simple' : stored))
+                : stored;
+        }
+        // Virtual and downloadable are per variation on variable products,
+        // and WooCommerce clears them on grouped and external ones.
+        var flags = !wcGateIsVariable(type) && type !== 'grouped' && type !== 'external';
+        var digital = flags && $('#bpe-digital-toggle').is(':checked');
+        return { type: type, digital: digital, virtual: flags && ($('#bpe-virtual-toggle').is(':checked') || digital) };
+    }
+    function wcGateShown(classes, c) {
+        var shows = classes.filter(function (x) { return x.indexOf('show_if_') === 0; });
+        var on = !shows.length
+            || shows.indexOf('show_if_' + c.type) !== -1
+            || (c.virtual && shows.indexOf('show_if_virtual') !== -1)
+            || (c.digital && shows.indexOf('show_if_downloadable') !== -1);
+        if (classes.indexOf('hide_if_' + c.type) !== -1
+            || (c.virtual && classes.indexOf('hide_if_virtual') !== -1)
+            || (c.digital && classes.indexOf('hide_if_downloadable') !== -1)) {
+            on = false;
+        }
+        return on;
+    }
+    function wcGateClasses(el) {
+        return String(el.getAttribute('data-wc-tab-class') || el.getAttribute('data-wc-gate') || '').split(/\s+/).filter(Boolean);
+    }
+
     /* WooCommerce shows a plugin's product-data tab only for the product types
        its `show_if_*` / `hide_if_*` classes allow: Blocksy's Swatches tab is for
        variable products only. The server prints each section shown or hidden for
        the stored type (data-wc-tab-class carries those classes); this keeps it in
-       step while the merchant switches the type here. Same rule as
-       Brikpanel_Product_Editor::wc_tab_shown_for(), keep the two in step. A
-       hidden section still posts its fields. With no section left on screen the
-       whole card goes, by inline display, which is what the phone layout reads. */
+       step while the merchant switches the type here (wcGateShown()). A hidden
+       section still posts its fields. With no section left on screen the whole
+       card goes, by inline display, which is what the phone layout reads. */
     function initThirdPartyTabTypes() {
         var card = document.querySelector('.brikpanel-pe-wc-fields');
         if (!card) return;
         var groups = [].slice.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group[data-wc-tab-class]:not([data-bp-unpicked])'));
         if (!groups.length) return;
 
-        function isVariableType(t) {
-            return t === 'variable' || t.indexOf('variable-') === 0 || t.indexOf('variable_') === 0;
-        }
-        function context() {
-            var $pt = $('#bpe-product-type');
-            var type = ($pt.length && $pt.val()) ? String($pt.val()) : '';
-            if (!type) {
-                var stored = String(productData.product_type || 'simple');
-                type = $('#bpe-var-toggle').is(':checked') ? 'variable' : (isVariableType(stored) ? 'simple' : stored);
-            }
-            // Virtual and downloadable are per variation on variable products,
-            // and WooCommerce clears them on grouped and external ones.
-            var flags = !isVariableType(type) && type !== 'grouped' && type !== 'external';
-            var digital = flags && $('#bpe-digital-toggle').is(':checked');
-            return { type: type, digital: digital, virtual: flags && ($('#bpe-virtual-toggle').is(':checked') || digital) };
-        }
-        function shown(classes, c) {
-            var shows = classes.filter(function (x) { return x.indexOf('show_if_') === 0; });
-            var on = !shows.length
-                || shows.indexOf('show_if_' + c.type) !== -1
-                || (c.virtual && shows.indexOf('show_if_virtual') !== -1)
-                || (c.digital && shows.indexOf('show_if_downloadable') !== -1);
-            if (classes.indexOf('hide_if_' + c.type) !== -1
-                || (c.virtual && classes.indexOf('hide_if_virtual') !== -1)
-                || (c.digital && classes.indexOf('hide_if_downloadable') !== -1)) {
-                on = false;
-            }
-            return on;
-        }
         function sync() {
-            var c = context();
+            var c = wcGateContext();
             groups.forEach(function (g) {
-                g.hidden = !shown(String(g.getAttribute('data-wc-tab-class') || '').split(/\s+/).filter(Boolean), c);
+                g.hidden = !wcGateShown(wcGateClasses(g), c);
             });
             var any = [].some.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group'), function (g) {
                 return !g.hidden && !g.hasAttribute('data-bp-unpicked') && g.style.display !== 'none';
@@ -334,6 +349,31 @@
             phoneSummaries();
         }
         $(document).on('change', '#bpe-var-toggle, #bpe-product-type, #bpe-virtual-toggle, #bpe-digital-toggle', sync);
+        sync();
+    }
+
+    /* The options other plugins put next to Virtual and Downloadable (the
+       "Show other plugins' product options" rows of the Virtual / Digital card):
+       each one shows only for the product types its own classes allow, like in
+       WooCommerce's editor, and follows the type while the merchant changes it.
+       A hidden one keeps its state and still posts it, as WooCommerce's form
+       does. With none on screen the box goes, so no stray divider is left. */
+    function initPluginTypeOptions() {
+        var box = document.getElementById('bpe-plugin-opts');
+        if (!box) return;
+        var rows = [].slice.call(box.querySelectorAll('.brikpanel-pe-plugin-opt'));
+        function sync() {
+            var c = wcGateContext();
+            rows.forEach(function (r) {
+                if (r.hasAttribute('data-wc-gate')) {
+                    r.hidden = !wcGateShown(wcGateClasses(r), c);
+                }
+            });
+            box.hidden = !rows.some(function (r) { return !r.hidden; });
+            phoneSummaries();
+        }
+        $(document).on('change', '#bpe-var-toggle, #bpe-product-type, #bpe-virtual-toggle, #bpe-digital-toggle', sync);
+        $(box).on('change', 'input[type="checkbox"]', function () { phoneSummaries(); });
         sync();
     }
 
@@ -6904,6 +6944,24 @@
             return val;
         }
 
+        // The options other plugins add next to Virtual and Downloadable,
+        // posted the way WooCommerce's own form posts them: "on" when ticked,
+        // absent when not, a row hidden by its product-type rule included, so
+        // each plugin's save handler reads them as usual. Before the other
+        // third-party fields, because the switch is what the merchant sees.
+        // The list tells the server which ones this form showed; every other
+        // one keeps its stored value there. sentPluginOpts lets the reply put
+        // back a switch whose plugin did not take the change.
+        var sentPluginOpts = {};
+        var $pluginOpts = $('#bpe-plugin-opts input[type="checkbox"][name]');
+        if ($pluginOpts.length) {
+            data.bpe_plugin_opts = $pluginOpts.map(function () { return this.name; }).get().join(',');
+            $pluginOpts.each(function () {
+                sentPluginOpts[this.name] = this.checked;
+                if (this.checked) collectNamedInput(this.name, 'on');
+            });
+        }
+
         // Everything EXCEPT the per-variation extras, which need re-indexing
         // and therefore get their own pass immediately below.
         // Sections kept on the page only so their values survive the save
@@ -7240,6 +7298,19 @@
                     r.data.warnings.forEach(function (w, i) {
                         setTimeout(function () { showToast(w, 'error', 7000); }, 250 * (i + 1));
                     });
+                }
+                // Other plugins' options as their plugins stored them: a switch
+                // a plugin did not take the change for goes back (the warning
+                // above names it). One the merchant flipped again while the save
+                // was out keeps what they chose. Set without a change event, so
+                // it is not counted as a new edit.
+                if (r.data.plugin_opts && typeof r.data.plugin_opts === 'object') {
+                    $('#bpe-plugin-opts input[type="checkbox"][name]').each(function () {
+                        if (!Object.prototype.hasOwnProperty.call(r.data.plugin_opts, this.name)) return;
+                        if (sentPluginOpts[this.name] !== this.checked) return;
+                        this.checked = !!r.data.plugin_opts[this.name];
+                    });
+                    phoneSummaries();
                 }
                 // Refresh SureRank's SEO analysis so the checks reflect the
                 // just-saved title/description/keyword/content. Deferred so it
@@ -8846,7 +8917,11 @@
             return txt ? txt.slice(0, 120) : phT('ph_no_description');
         }
         if (id === 'shipping') {
-            if ($('#bpe-virtual-toggle').is(':checked')) { return phT('ph_virtual'); }
+            // Other plugins' options switched on in the same card ("Subscription").
+            var pluginOpts = $('#bpe-plugin-opts .brikpanel-pe-plugin-opt:not([hidden]) input:checked').map(function () {
+                return phTrim(this.getAttribute('aria-label') || '');
+            }).get().filter(Boolean);
+            if ($('#bpe-virtual-toggle').is(':checked')) { return [phT('ph_virtual')].concat(pluginOpts).join(' · '); }
             var unitOf = function (sel) {
                 return phText($(sel).closest('.brikpanel-pe-input-group').find('.brikpanel-pe-input-suffix')[0]);
             };
@@ -8859,6 +8934,7 @@
             }
             var $sc = $('#bpe-shipping-class');
             if ($sc.length && $sc.val()) { out.push(phText($sc.find('option:selected')[0])); }
+            out = out.concat(pluginOpts);
             return out.length ? out.join(' · ') : phT('ph_not_set');
         }
         if (id === 'linked') {

@@ -217,6 +217,11 @@ class Brikpanel_BrikControl {
                 'row_failed'         => __( 'Could not save. Please try again.', 'brikpanel' ),
             ],
         ] );
+
+        // The unused images card under the checks (3.3.39).
+        if ( class_exists( 'Brikpanel_BrikControl_Unused_Images' ) ) {
+            Brikpanel_BrikControl_Unused_Images::enqueue_assets();
+        }
     }
 
     // =========================================================================

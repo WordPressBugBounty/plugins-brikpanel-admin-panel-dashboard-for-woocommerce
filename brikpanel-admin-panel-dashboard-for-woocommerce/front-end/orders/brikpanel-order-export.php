@@ -8,7 +8,9 @@
  * holds right now: the status tab, month, customer, search, shipping method
  * and whatever filter another plugin adds. One row per order (Excel and CSV);
  * in Excel a second sheet has one row per item line, so a variable product's
- * variations are counted apart.
+ * variations are counted apart. Both carry the weight the order screen shows
+ * (front-end/order/brikpanel-order-weight.php): the order's total on its row,
+ * each line's on the second sheet, for booking parcels.
  *
  * Flow:
  *  1. Prepare. The window posts to the list's own address, not to admin-ajax,
@@ -964,7 +966,8 @@ add_action( 'admin_post_brikpanel_order_export_download', 'brikpanel_order_expor
  * orders sheet only.
  *
  * Kinds: text, money (rounded to the store's decimals), number, date (the
- * store's own clock; the header names the time zone).
+ * store's own clock; the header names the time zone). Weights are numbers in
+ * the store's unit, which their header names.
  *
  * @return array{orders: array, items: array}
  */
@@ -974,8 +977,13 @@ function brikpanel_order_export_columns() {
 		return $cols;
 	}
 	/* translators: %s: the store's timezone, for example Europe/Istanbul. */
-	$date = sprintf( __( 'Date (%s)', 'brikpanel' ), wp_timezone_string() );
-	$col  = static function ( $key, $label, $kind, $width ) {
+	$date   = sprintf( __( 'Date (%s)', 'brikpanel' ), wp_timezone_string() );
+	$weight = brikpanel_safe_sprintf(
+		/* translators: Column header: the weight of all items in an order, or of one product line. %s: the store's unit of weight (kg, g, lbs or oz). */
+		__( 'Total weight (%s)', 'brikpanel' ),
+		function_exists( 'brikpanel_order_weight_unit_label' ) ? brikpanel_order_weight_unit_label() : (string) get_option( 'woocommerce_weight_unit', 'kg' )
+	);
+	$col    = static function ( $key, $label, $kind, $width ) {
 		return [
 			'key'   => $key,
 			'label' => $label,
@@ -1006,6 +1014,7 @@ function brikpanel_order_export_columns() {
 			$col( 'shipping_phone', __( 'Shipping phone', 'brikpanel' ), 'text', 16 ),
 			$col( 'products', __( 'Products', 'brikpanel' ), 'text', 48 ),
 			$col( 'quantity', _x( 'Items', 'column header: how many items an order has', 'brikpanel' ), 'number', 7 ),
+			$col( 'weight', $weight, 'number', 14 ),
 			$col( 'subtotal', __( 'Subtotal', 'brikpanel' ), 'money', 12 ),
 			$col( 'discount', __( 'Discount', 'brikpanel' ), 'money', 11 ),
 			$col( 'shipping', __( 'Shipping', 'brikpanel' ), 'money', 11 ),
@@ -1028,6 +1037,7 @@ function brikpanel_order_export_columns() {
 			$col( 'variation', __( 'Variation', 'brikpanel' ), 'text', 26 ),
 			$col( 'sku', __( 'SKU', 'brikpanel' ), 'text', 16 ),
 			$col( 'quantity', __( 'Quantity', 'brikpanel' ), 'number', 9 ),
+			$col( 'weight', $weight, 'number', 14 ),
 			$col( 'unit_price', __( 'Unit price', 'brikpanel' ), 'money', 12 ),
 			$col( 'total', __( 'Total', 'brikpanel' ), 'money', 12 ),
 			$col( 'tax', __( 'Tax', 'brikpanel' ), 'money', 10 ),
@@ -1189,6 +1199,8 @@ function brikpanel_order_export_order_values( $order ) {
 		$qty_format = __( '%s ×', 'brikpanel' );
 	}
 	$lines    = brikpanel_order_export_lines( $order );
+	// The weights the order screen shows; that module loads on its own.
+	$weights  = function_exists( 'brikpanel_order_weight_compute' ) ? brikpanel_order_weight_compute( $order ) : null;
 	$products = [];
 	foreach ( $lines as $line ) {
 		$text = sprintf( $qty_format, wc_stock_amount( $line['item']->get_quantity() ) ) . ' ' . $line['name'];
@@ -1206,8 +1218,10 @@ function brikpanel_order_export_order_values( $order ) {
 	$coupons = method_exists( $order, 'get_coupon_codes' ) ? $order->get_coupon_codes() : $order->get_used_coupons();
 
 	return [
-		// The item lines, for the Products sheet; no column reads this key.
+		// The item lines and each weighted line's weight by line ID, for the
+		// Products sheet; no column reads these keys.
 		'_lines'            => $lines,
+		'_weights'          => $weights ? $weights['lines'] : [],
 		'number'            => (string) $order->get_order_number(),
 		'date'              => $order->get_date_created(),
 		'status'            => brikpanel_order_export_status_name( $order->get_status() ),
@@ -1229,6 +1243,8 @@ function brikpanel_order_export_order_values( $order ) {
 		'shipping_phone'    => $shipping_phone,
 		'products'          => implode( '; ', $products ),
 		'quantity'          => (float) $order->get_item_count(),
+		// Empty, not 0, when no product in the order has a weight.
+		'weight'            => $weights && $weights['lines'] ? round( (float) $weights['total'], 3 ) : '',
 		'subtotal'          => (float) $order->get_subtotal(),
 		'discount'          => (float) $order->get_total_discount(),
 		'shipping'          => (float) $order->get_shipping_total(),
@@ -1252,11 +1268,13 @@ function brikpanel_order_export_order_values( $order ) {
  * @return array[]
  */
 function brikpanel_order_export_item_values( $order, array $values ) {
-	$lines = isset( $values['_lines'] ) ? $values['_lines'] : brikpanel_order_export_lines( $order );
-	$rows  = [];
+	$lines   = isset( $values['_lines'] ) ? $values['_lines'] : brikpanel_order_export_lines( $order );
+	$weights = isset( $values['_weights'] ) ? (array) $values['_weights'] : [];
+	$rows    = [];
 	foreach ( $lines as $line ) {
 		$item   = $line['item'];
 		$qty    = (float) $item->get_quantity();
+		$id     = (int) $item->get_id();
 		$rows[] = [
 			'number'     => $values['number'],
 			'date'       => $values['date'],
@@ -1266,6 +1284,7 @@ function brikpanel_order_export_item_values( $order, array $values ) {
 			'variation'  => implode( ' / ', $line['options'] ),
 			'sku'        => brikpanel_order_export_sku( $item ),
 			'quantity'   => $qty,
+			'weight'     => isset( $weights[ $id ] ) ? round( (float) $weights[ $id ]['weight'], 3 ) : '',
 			'unit_price' => $qty ? (float) $item->get_subtotal() / $qty : null,
 			'total'      => (float) $item->get_total(),
 			'tax'        => (float) $item->get_total_tax(),
