@@ -24429,8 +24429,3 @@ msgstr "Trabajando…"
 #: front-end/brikcontrol/views/partials/unused-images-card.php:57
 msgid "You can leave this page. The check goes on in the background."
 msgstr "Puedes salir de esta página. La comprobación sigue en segundo plano."
-
-#: includes/brikpanel-enqueue.php:1637
-msgctxt "button: reload the orders list to show the new orders"
-msgid "Show"
-msgstr "Mostrar"

@@ -24424,8 +24424,3 @@ msgstr "Bezig…"
 #: front-end/brikcontrol/views/partials/unused-images-card.php:57
 msgid "You can leave this page. The check goes on in the background."
 msgstr "U kunt deze pagina verlaten. De controle gaat op de achtergrond door."
-
-#: includes/brikpanel-enqueue.php:1637
-msgctxt "button: reload the orders list to show the new orders"
-msgid "Show"
-msgstr "Tonen"

@@ -120,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		[brikpanelEmptyTrashButton, false],
 		[brikpanelAddFiltersToOrderLinks, true],
 		[brikpanelListTableSearchResultCount, true],
-		[brikpanelNewOrdersBar, true],
 	].filter(([, needsTable]) => hasTable || !needsTable).map(([pass]) => pass);
 	try {
 		passes.forEach(pass => {
@@ -336,19 +335,8 @@ function brikpanelOrdersOverviewSection() {
 		});
 	}
 
-	// Data version of the figures on screen, and a quiet reload in flight.
-	let shownVer = parseInt(brikpanelOrdersOverview.data_ver, 10) || 0;
-	let quietBusy = false;
-
-	// quiet: the store moved on while the page stood open. The figures stay
-	// (no loading look) until the new ones arrive.
-	function loadOverview(range, quiet = false) {
-		if (quiet) {
-			if (quietBusy) return;
-			quietBusy = true;
-		} else {
-			$summaryCard.classList.add('is-loading');
-		}
+	function loadOverview(range) {
+		$summaryCard.classList.add('is-loading');
 		const body = new FormData();
 		body.append('action', 'brikpanel_orders_overview');
 		body.append('_ajax_nonce', brikpanelOrdersOverview.nonce);
@@ -357,30 +345,15 @@ function brikpanelOrdersOverviewSection() {
 		fetch(brikpanelOrdersOverview.ajax_url, { method: 'POST', body })
 			.then(r => r.json())
 			.then(response => {
-				if (quiet) quietBusy = false;
 				if (!response.success) { $summaryCard.classList.remove('is-loading'); return; }
 				// A newer request may have superseded this one.
 				if (response.data.range && response.data.range !== currentRange) return;
-				shownVer = Math.max(shownVer, parseInt(response.data.ver, 10) || 0);
 				$summaryCard.classList.remove('is-loading');
 				renderSummary(response.data.summary);
 				renderMarketplaces(response.data.marketplaces);
 			})
-			.catch(() => {
-				if (quiet) quietBusy = false;
-				$summaryCard.classList.remove('is-loading');
-			});
+			.catch(() => { $summaryCard.classList.remove('is-loading'); });
 	}
-
-	// A page left open follows the store: the top bar (or the new-orders bar's
-	// own poll) reports the data version, the order alert says an order came in.
-	document.addEventListener('brikpanel:data-version', (e) => {
-		const ver = parseInt(e && e.detail ? e.detail.ver : 0, 10) || 0;
-		if (ver > shownVer && !document.hidden) loadOverview(currentRange, true);
-	});
-	document.addEventListener('brikpanel:new-orders', () => {
-		if (!document.hidden) loadOverview(currentRange, true);
-	});
 
 	let $mpCard = null;
 	/* Marketplace card (BrikMarket): one row per marketplace under the summary.
@@ -442,168 +415,6 @@ function brikpanelOrdersOverviewSection() {
 	// Initial render.
 	setRangeLabel(currentRange);
 	loadOverview(currentRange);
-}
-
-/**
- * The list as WooCommerce first shows it: first page, newest first, no search
- * and no filter (a status tab is fine). Only there do new orders surely land
- * on top, so only there the new-orders bar counts them. Form fields the
- * filter button sends with their "everything" value count as no filter; any
- * other filled-in parameter, another plugin's filter included, turns it off.
- *
- * @return {boolean}
- */
-function brikpanelPlainOrdersView() {
-	const free = new Set([
-		'page', 'status', 'post_type', 'post_status', 'filter_action', '_wpnonce', '_wp_http_referer', 'mode',
-		// One-time notices after a bulk action.
-		'changed', 'bulk_action', 'ids', 'message', 'deleted', 'trashed', 'untrashed', 'updated',
-	]);
-	const neutral = {
-		paged: ['1'],
-		orderby: ['date'],
-		order: ['desc', 'DESC'],
-		m: ['0'],
-		action: ['-1'],
-		action2: ['-1'],
-		'search-filter': ['all'],
-	};
-	for (const [key, value] of new URLSearchParams(window.location.search)) {
-		if (free.has(key) || value === '') continue;
-		if (Object.prototype.hasOwnProperty.call(neutral, key) && neutral[key].includes(value)) continue;
-		return false;
-	}
-	return true;
-}
-
-/**
- * "1 new order · Show" above an Orders list left open (field report, 23 Oct
- * 2026: the alert came, the list did not change). The rows never move under
- * the merchant's hand: the bar counts the orders that came in after the
- * newest one on this page, and Show opens the same tab again.
- *
- * Woken by the data version the top bar reports and by the new-order alert.
- * With neither (no top bar for this user) it asks for the version itself
- * once a minute while the page is on screen, and passes a newer one on, so
- * the summary above follows too.
- */
-function brikpanelNewOrdersBar() {
-	const cfg = window.brikpanelOrdersOverview;
-	const $form = document.querySelector('#wc-orders-filter') ?? document.querySelector('#posts-filter');
-	if (!cfg || !cfg.ajax_url || !cfg.nonce || !$form) return;
-	const i18n = cfg.i18n || {};
-
-	// The newest order on this page. A list whose rows cannot be read counts
-	// nothing, or it would count every order in the tab.
-	let afterId = 0;
-	let rows = 0;
-	document.querySelectorAll('#the-list > tr').forEach($tr => {
-		const m = /^(?:order|post)-(\d+)$/.exec($tr.id || '');
-		if (!m) return;
-		rows++;
-		afterId = Math.max(afterId, parseInt(m[1], 10) || 0);
-	});
-	const empty = !rows && !!document.querySelector('#the-list > tr.no-items');
-	const params = new URLSearchParams(window.location.search);
-	const tab = params.get('status') || params.get('post_status') || 'all';
-	const counts = brikpanelPlainOrdersView() && (rows > 0 || empty);
-
-	let knownVer = parseInt(cfg.data_ver, 10) || 0;
-	let heardAt = 0;
-	let busy = false;
-	let again = false;
-	let $bar = null;
-	let $text = null;
-
-	function show(count) {
-		if (!(count > 0)) {
-			if ($bar) $bar.hidden = true;
-			return;
-		}
-		if (!$bar) {
-			$bar = makeElement('div', { class: 'brikpanel-orders-newbar', role: 'status', 'aria-live': 'polite', hidden: 'hidden' });
-			$bar.append(makeElement('span', { class: 'brikpanel-orders-newbar__dot', 'aria-hidden': 'true' }));
-			// dir="auto": an English text in a right-to-left admin keeps its own
-			// order ("12 new orders", not "new orders 12").
-			$text = makeElement('span', { class: 'brikpanel-orders-newbar__text', dir: 'auto' });
-			const $show = makeElement('button', {
-				type: 'button',
-				class: 'brikpanel-btn brikpanel-btn--secondary brikpanel-orders-newbar__show',
-			}, { textContent: i18n.show_new_orders || '' });
-			$show.addEventListener('click', () => {
-				$show.disabled = true;
-				// The same tab again, without the one-time notices of a bulk action.
-				const here = new URL(window.location.href);
-				const next = new URL(here.origin + here.pathname);
-				['page', 'status', 'post_type', 'post_status'].forEach(key => {
-					const value = here.searchParams.get(key);
-					if (value) next.searchParams.set(key, value);
-				});
-				window.location.assign(next.toString());
-			});
-			$bar.append($text, $show);
-			$form.insertAdjacentElement('beforebegin', $bar);
-		}
-		$text.textContent = window.brikpanelFormat && typeof window.brikpanelFormat.count === 'function'
-			? window.brikpanelFormat.count(i18n.new_orders, count)
-			: String(count);
-		$bar.hidden = false;
-	}
-
-	// polled: the minute poll, which sends the version it knows (the server
-	// then skips the count while nothing changed) and passes a newer one on.
-	function ask(polled = false) {
-		if (busy) {
-			again = true;
-			return;
-		}
-		busy = true;
-		const body = new FormData();
-		body.append('action', 'brikpanel_orders_new_count');
-		body.append('_ajax_nonce', cfg.nonce);
-		body.append('known_ver', polled ? String(knownVer) : '0');
-		if (counts) {
-			body.append('after_id', String(afterId));
-			body.append('status', tab);
-		}
-		fetch(cfg.ajax_url, { method: 'POST', body, credentials: 'same-origin' })
-			.then(r => r.json())
-			.then(res => {
-				if (!res || !res.success || !res.data) return;
-				const ver = parseInt(res.data.ver, 10) || 0;
-				const moved = ver > knownVer;
-				knownVer = Math.max(knownVer, ver);
-				if (typeof res.data.count !== 'undefined') show(parseInt(res.data.count, 10) || 0);
-				if (polled && moved) {
-					try {
-						document.dispatchEvent(new CustomEvent('brikpanel:data-version', { detail: { ver, from: 'orders-list' } }));
-					} catch (e) { /* old WebView: the summary keeps its figures */ }
-				}
-			})
-			.catch(() => {})
-			.finally(() => {
-				busy = false;
-				if (again) {
-					again = false;
-					ask();
-				}
-			});
-	}
-
-	document.addEventListener('brikpanel:data-version', (e) => {
-		const detail = e && e.detail ? e.detail : {};
-		if (detail.from === 'orders-list') return;
-		heardAt = Date.now();
-		const ver = parseInt(detail.ver, 10) || 0;
-		if (counts && ver > knownVer && !document.hidden) ask();
-	});
-	document.addEventListener('brikpanel:new-orders', () => {
-		if (counts && !document.hidden) ask();
-	});
-	setInterval(() => {
-		if (document.hidden || Date.now() - heardAt < 70000) return;
-		ask(true);
-	}, 60000);
 }
 
 /**

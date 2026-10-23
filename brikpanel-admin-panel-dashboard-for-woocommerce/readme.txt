@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.39
+Stable tag: 3.3.38
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -502,10 +502,6 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
-= 3.3.39 (2026-10-23) =
-* Fix: **The dashboard follows new orders while it stays open.** Orders, revenue, "Today so far" and the last order now change by themselves when an order comes in, along with the new order notification. Before, they only changed after reloading the page.
-* New: **"1 new order" bar on the Orders list.** While the list stays open, the summary above it updates by itself and a bar counts the orders that came in since, with a Show button that opens the same tab again. The rows never move on their own.
-
 = 3.3.38 (2026-10-22) =
 * New: **Unused images in Store Health.** A new card finds the images that no product, variation, page, setting, review or other plugin uses any more and shows them in a grid with a large preview. Move the ones you pick to the trash: their files stay on the server for 30 days, so nothing breaks, and one click brings them back. The check runs only when you start it.
 * New: **Other plugins' product options in the product editor.** Options that plugins add next to Virtual and Downloadable, such as Germanized's "Service", the "Subscription" of YITH and WP Swings, or Tutor LMS's "For Tutor", now show as switches below Virtual and Digital, only for the product types they apply to. When a plugin does not accept a change made here, a message says so. Setting: Products → "Show other plugins' product options", on by default.
@@ -599,3 +595,8 @@ The full release history of every version is in changelog.txt, included with the
 * Tweak: **One message at a time.** The welcome tour, the new store guide, the survey card, the review request and the BrikMentor cards take turns: one at a time, at least 7 days apart, and none while another notice is on the screen.
 * Fix: **Settings search opens the right row.** Six results, such as Dashboard sections and Top bar items, now open at their own row, and a tall row shows from its top.
 * Fix: **Keyboard focus on the order screen.** An item reached with the Tab key no longer hides under the fixed header and tab bar.
+
+= 3.3.31 (2026-10-05) =
+* Fix: **The dashboard in Firefox.** In Firefox, the dashboard's cards stacked one per line and its header took the phone layout on every screen size, and on a phone the Low stock list turned into cards. All of them look as they should again.
+* Fix: **The dashboard on a zoomed page.** On a zoomed page, the cards could stack one per line and the header could switch to its phone layout, even on a wide screen.
+* Fix: **The Order locations globe no longer goes blank.** Browsers without WebGL, such as LibreWolf, showed an empty box, and a globe that lost its graphics context stayed blank until the page was reloaded. A drawn globe now stands in, and the 3D globe comes back on its own.
