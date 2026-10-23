@@ -2,6 +2,10 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.39 (2026-10-23) =
+* Fix: **The dashboard follows new orders while it stays open.** Orders, revenue, "Today so far" and the last order now change by themselves when an order comes in, along with the new order notification. Before, they only changed after reloading the page.
+* New: **"1 new order" bar on the Orders list.** While the list stays open, the summary above it updates by itself and a bar counts the orders that came in since, with a Show button that opens the same tab again. The rows never move on their own.
+
 = 3.3.38 (2026-10-22) =
 * New: **Unused images in Store Health.** A new card finds the images that no product, variation, page, setting, review or other plugin uses any more and shows them in a grid with a large preview. Move the ones you pick to the trash: their files stay on the server for 30 days, so nothing breaks, and one click brings them back. The check runs only when you start it.
 * New: **Other plugins' product options in the product editor.** Options that plugins add next to Virtual and Downloadable, such as Germanized's "Service", the "Subscription" of YITH and WP Swings, or Tutor LMS's "For Tutor", now show as switches below Virtual and Digital, only for the product types they apply to. When a plugin does not accept a change made here, a message says so. Setting: Products → "Show other plugins' product options", on by default.

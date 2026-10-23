@@ -24189,3 +24189,8 @@ msgstr "İşleniyor…"
 #: front-end/brikcontrol/views/partials/unused-images-card.php:57
 msgid "You can leave this page. The check goes on in the background."
 msgstr "Bu sayfadan çıkabilirsiniz. Kontrol arka planda sürer."
+
+#: includes/brikpanel-enqueue.php:1637
+msgctxt "button: reload the orders list to show the new orders"
+msgid "Show"
+msgstr "Göster"

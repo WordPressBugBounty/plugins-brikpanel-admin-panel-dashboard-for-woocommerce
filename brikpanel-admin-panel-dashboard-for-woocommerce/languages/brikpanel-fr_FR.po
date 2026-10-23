@@ -24606,3 +24606,8 @@ msgstr "En cours…"
 #: front-end/brikcontrol/views/partials/unused-images-card.php:57
 msgid "You can leave this page. The check goes on in the background."
 msgstr "Vous pouvez quitter cette page. La vérification continue en arrière-plan."
+
+#: includes/brikpanel-enqueue.php:1637
+msgctxt "button: reload the orders list to show the new orders"
+msgid "Show"
+msgstr "Afficher"

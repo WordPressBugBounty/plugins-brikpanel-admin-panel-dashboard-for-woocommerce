@@ -4227,3 +4227,69 @@ body.bp-orders-compact .wp-list-table thead th.column-brikpanel_whatsapp::before
 	outline-offset: 2px;
 	box-shadow: inset 0 0 0 1px #e3e3e3;
 }
+
+/* ===== New orders bar =====
+   "1 new order · Show" between the summary and an Orders list left open
+   (brikpanelNewOrdersBar in brikpanel-orders.js). The list never moves under
+   the merchant's hand; Show opens the same tab again. The button is the shared
+   .brikpanel-btn, only its place is set here. */
+.brikpanel-orders-newbar {
+	box-sizing: border-box;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	padding-block: 6px;
+	padding-inline: 16px 6px;
+	background-color: #fff;
+	border: 1px solid #e3e3e3;
+	border-radius: .75rem;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+	animation: brikpanel-orders-newbar-in .22s cubic-bezier(.4, 0, .2, 1);
+}
+
+.brikpanel-orders-newbar[hidden] {
+	display: none;
+}
+
+.brikpanel-orders-newbar__dot {
+	flex: 0 0 auto;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: #1a8917;
+	box-shadow: 0 0 0 4px rgba(26, 137, 23, .14);
+}
+
+/* Does not grow: the text stays beside the dot even when its own direction
+   (dir="auto") differs from the page's. */
+.brikpanel-orders-newbar__text {
+	flex: 0 1 auto;
+	min-width: 0;
+	color: #303030;
+	font-size: .875rem;
+	font-weight: 550;
+	line-height: 1.4;
+}
+
+.brikpanel-orders-newbar__show {
+	flex: 0 0 auto;
+	margin-inline-start: auto;
+}
+
+@keyframes brikpanel-orders-newbar-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.brikpanel-orders-newbar {
+		animation: none;
+	}
+}

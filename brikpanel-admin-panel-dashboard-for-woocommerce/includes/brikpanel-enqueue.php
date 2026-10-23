@@ -1625,7 +1625,16 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'row_columns'   => function_exists( 'brikpanel_orders_compact_user_row_columns' )
                     ? brikpanel_orders_compact_user_row_columns() : [],
                 'more_trigger'  => $orders_more_trigger,
+                // The data version this list was printed at: the "new orders"
+                // bar asks for a count only once the version moves past it.
+                'data_ver'      => function_exists( 'brikpanel_data_cache_ver' ) ? (int) brikpanel_data_cache_ver() : 0,
                 'i18n'     => [
+                    // The "1 new order · Show" bar above a list left open.
+                    'new_orders'        => function_exists( 'brikpanel_js_plural' )
+                        /* translators: %s: number of new orders. */
+                        ? brikpanel_js_plural( _n_noop( '%s new order', '%s new orders', 'brikpanel' ) )
+                        : [ 'forms' => [ '%s' ], 'en' => true ],
+                    'show_new_orders'   => _x( 'Show', 'button: reload the orders list to show the new orders', 'brikpanel' ),
                     'today'             => __( 'Today', 'brikpanel' ),
                     'last_24_hours'     => __( 'Last 24 hours', 'brikpanel' ),
                     'last_7_days'       => __( 'Last 7 days', 'brikpanel' ),

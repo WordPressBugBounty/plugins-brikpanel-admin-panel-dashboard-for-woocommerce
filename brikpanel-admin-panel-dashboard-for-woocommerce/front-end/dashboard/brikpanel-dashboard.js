@@ -61,6 +61,18 @@
         showToast(d.message, d.type);
     });
 
+    // A dashboard left open follows the store. The top bar (every 30 s) and
+    // the Live poll report the shared data version, which moves on with every
+    // order event; the new-order alert says when an order came in. Either one
+    // fetches the figures again, quietly (see requestQuietRefresh). Until 3.3.39
+    // the card and its sound came while the Orders figure stayed where it was.
+    document.addEventListener('brikpanel:data-version', function (e) {
+        noteDataVersion(e && e.detail ? e.detail.ver : 0);
+    });
+    document.addEventListener('brikpanel:new-orders', function () {
+        requestQuietRefresh();
+    });
+
     // State. The range is seeded from the user's remembered selection (see
     // Brikpanel_Dashboard::get_range_preference) so a refresh, or leaving the
     // dashboard and coming back, resumes the period the user actually picked
@@ -115,6 +127,16 @@
     var liveOpen = false;              // "N more on the store" opened
     var LIVE_SHOW = 5;                 // rows shown before "N more on the store"
     var todayInfo = null;              // { block: today's figures, serverNow, clientAt } for the live card
+    // Following the store while the page stays open (requestQuietRefresh).
+    var shownVer = 0;                  // data version of the figures on screen (0 until the first answer)
+    var latestVer = 0;                 // newest data version the top bar or the Live poll reported
+    var wantSince = 0;                 // when the order alert last announced an order (0: nothing waiting)
+    var wantFloor = 0;                 // the data version on screen at that moment
+    var quietAt = 0;                   // when the last quiet refresh started
+    var quietTimer = null;             // a quiet refresh waiting for QUIET_GAP to pass
+    var quietOff = false;              // the server refused one (expired nonce): stop asking
+    var QUIET_GAP = 60000;             // at most one quiet refresh a minute
+    var locationsSig = '';             // the places last drawn, so a quiet refresh keeps the globe
 
     // Numbers, percentages, money and dates in the store's format, the percent
     // sign where the viewer's language writes it (front-end/shared/
@@ -160,8 +182,10 @@
 
         // Pause polling when tab is hidden. Coming back refreshes the live
         // count at once, but only reloads the whole dashboard when the tab was
-        // away long enough for the numbers to have moved: flicking between
-        // tabs used to rebuild the full payload on every switch.
+        // away long enough for the numbers to have moved, or an order came in
+        // meanwhile: flicking between tabs used to rebuild the full payload on
+        // every switch. Once figures are on screen the reload is quiet: they
+        // stay until the new ones arrive, and the moved ones count over.
         var hiddenAt = 0;
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'hidden') {
@@ -170,7 +194,9 @@
             } else {
                 startLivePolling();
                 if (!hiddenAt || Date.now() - hiddenAt >= 60000) {
-                    fetchDashboardData();
+                    fetchDashboardData({ quiet: !!shownVer });
+                } else {
+                    scheduleQuiet();
                 }
             }
         });
@@ -266,7 +292,13 @@
     // FETCH DASHBOARD DATA (Single batch call)
     // =========================================================================
 
-    function fetchDashboardData() {
+    // opts.quiet: the store moved on while the page stood open. The figures on
+    // screen stay (no loading look) until the new ones arrive, nothing plays
+    // again, the moved KPI figures count over, and a request the user started
+    // is never cut off for it.
+    function fetchDashboardData(opts) {
+        var quiet = !!(opts && opts.quiet);
+        if (quiet && isLoading) return;
         // A new selection must always supersede an in-flight request rather than
         // being silently dropped. The old `if (isLoading) return;` guard meant
         // that picking a fresh range while a slow (e.g. year-wide) query was
@@ -279,9 +311,14 @@
         var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
         currentFetchController = controller;
         var seq = ++fetchSeq;
+        var startedAt = Date.now();
 
         isLoading = true;
-        setLoadingState(true);
+        if (quiet) {
+            quietAt = startedAt;
+        } else {
+            setLoadingState(true);
+        }
 
         var fd = new FormData();
         fd.append('action', 'brikpanel_dashboard_data');
@@ -306,10 +343,17 @@
 
             isLoading = false;
             currentFetchController = null;
-            setLoadingState(false);
+            if (!quiet) setLoadingState(false);
 
-            if (!res.success) return;
+            if (!res || !res.success) {
+                // Refused (the nonce printed with the page expired): every
+                // later quiet refresh would be refused too.
+                if (quiet) quietOff = true;
+                return;
+            }
             var d = res.data;
+            var prev = lastData;
+            shownVer = parseInt(d.data_ver, 10) || shownVer;
 
             // What the empty cards below explain themselves with.
             emptyCtx.store    = d.store || null;
@@ -358,15 +402,22 @@
             // small lines and the figures counting up.
             safe('profit', function () { renderProfit(d.profit); });
             safe('sparks', function () { renderKpiSparks(d); });
-            safe('countUp', function () { playKpis(d); });
+            safe('countUp', function () {
+                if (quiet) playChangedKpis(prev, d); else playKpis(d);
+            });
 
             safe('sales', function () { renderSales(d); });
             safe('funnel', function () { renderFunnel(d); });
             safe('cartab', function () { renderAbandonedCarts(d.abandoned_carts, d.abandoned_carts_on); });
             safe('rates', function () { renderRates(d); });
 
-            // Globe + Tables
+            // Globe + Tables. The globe is built from scratch (a new WebGL
+            // globe) every time it is drawn, so a quiet refresh leaves it
+            // alone while the places did not change.
             safe('locations', function () {
+                var sig = JSON.stringify(d.order_locations || null);
+                if (quiet && sig === locationsSig) return;
+                locationsSig = sig;
                 locationsData = d.order_locations;
                 applyLocView(locView);
             });
@@ -387,6 +438,14 @@
 
             firstData = false;
             playNext = false;
+
+            // These figures answer an order announced before this request left,
+            // and one announced while it ran once the version on screen moved
+            // past the one shown then (were it still missing, the version
+            // check below catches it). A version heard meanwhile that is newer
+            // than these figures gets its own quiet refresh.
+            if (wantSince && (wantSince <= startedAt || shownVer > wantFloor)) wantSince = 0;
+            scheduleQuiet();
         })
         .catch(function (err) {
             // An aborted request is expected (a newer selection took over); it
@@ -395,8 +454,52 @@
             if (seq !== fetchSeq) return;
             isLoading = false;
             currentFetchController = null;
-            setLoadingState(false);
+            if (!quiet) setLoadingState(false);
+            // A quiet refresh that did not get through (offline a moment) tries
+            // again after the gap; its wish is still waiting.
+            scheduleQuiet();
         });
+    }
+
+    // The top bar or the Live poll reported the shared data version. Newer
+    // than the figures on screen: an order came in or changed. Kept as a
+    // version, not a moment: the same version heard while a refresh is on
+    // its way is already answered by it.
+    function noteDataVersion(ver) {
+        ver = parseInt(ver, 10) || 0;
+        if (!ver) return;
+        if (ver > latestVer) latestVer = ver;
+        scheduleQuiet();
+    }
+
+    // The order alert announced an order. It knows no version, so the wish is
+    // "newer than what is on screen now".
+    function requestQuietRefresh() {
+        wantSince = Date.now();
+        wantFloor = shownVer;
+        scheduleQuiet();
+    }
+
+    function quietWanted() {
+        return wantSince > 0 || (shownVer > 0 && latestVer > shownVer);
+    }
+
+    // Fetch the figures again when a wish waits, at most once every QUIET_GAP:
+    // a busy store moves the version on with every order and every status
+    // change, and each new version is a full rebuild on the server. A hidden
+    // tab waits for its way back (visibilitychange), a running request for
+    // its end (the success handler calls back here).
+    function scheduleQuiet() {
+        if (!quietWanted() || !shownVer || quietOff || quietTimer || isLoading || document.hidden) return;
+        var wait = QUIET_GAP - (Date.now() - quietAt);
+        if (wait > 0) {
+            quietTimer = setTimeout(function () {
+                quietTimer = null;
+                scheduleQuiet();
+            }, wait);
+            return;
+        }
+        fetchDashboardData({ quiet: true });
     }
 
     // =========================================================================
@@ -1828,12 +1931,10 @@
         });
     }
 
-    // Count the store and money figures up after a range change. The finished
-    // server text (wc_price markup) is put back at the end.
-    function playKpis(d) {
-        if (!V || !BF) return;
+    // The store and money figures that count: [element id, value, format].
+    function kpiFigures(d) {
         var p = d.profit || {};
-        var figures = [
+        return [
             ['card-total-sales', d.total_sales_raw, 'm'],
             ['card-orders', d.order_count, 'n'],
             ['card-aov', d.aov_raw, 'm'],
@@ -1844,20 +1945,45 @@
             ['card-profit-expenses', p.expenses_raw, 'm'],
             ['card-profit-net', p.net_raw, 'm']
         ];
-        var fmts = {
-            m: function (v) { return money(v); },
-            n: function (v) { return formatNumber(Math.round(v)); },
-            p: function (v) { return fmtPct(v, 2); }
-        };
-        figures.forEach(function (f) {
+    }
+
+    var KPI_FORMATS = {
+        m: function (v) { return money(v); },
+        n: function (v) { return formatNumber(Math.round(v)); },
+        p: function (v) { return fmtPct(v, 2); }
+    };
+
+    // Count the store and money figures up after a range change. The finished
+    // server text (wc_price markup) is put back at the end.
+    function playKpis(d) {
+        if (!V || !BF) return;
+        kpiFigures(d).forEach(function (f) {
             var el = document.getElementById(f[0]);
             var to = Number(f[1]);
             if (!el || !isFinite(to)) return;
             var card = el.closest('.brikpanel-dash-card') || el;
             var html = el.innerHTML;
             schedulePlay(card, function () {
-                V.countUp(el, to, fmts[f[2]], { done: function () { el.innerHTML = html; } });
+                V.countUp(el, to, KPI_FORMATS[f[2]], { done: function () { el.innerHTML = html; } });
             });
+        });
+    }
+
+    // After a quiet refresh only the figures that moved count, from the value
+    // they showed to the new one; the rest stand still, and one off screen
+    // simply shows its new value.
+    function playChangedKpis(prev, d) {
+        if (!V || !BF || !prev) return;
+        var before = {};
+        kpiFigures(prev).forEach(function (f) { before[f[0]] = Number(f[1]); });
+        kpiFigures(d).forEach(function (f) {
+            var el = document.getElementById(f[0]);
+            var to = Number(f[1]);
+            var from = before[f[0]];
+            if (!el || !isFinite(to) || !isFinite(from) || from === to) return;
+            if (!V.inView(el.closest('.brikpanel-dash-card') || el, 0.3)) return;
+            var html = el.innerHTML;
+            V.countUp(el, to, KPI_FORMATS[f[2]], { from: from, done: function () { el.innerHTML = html; } });
         });
     }
 
@@ -4558,6 +4684,9 @@
         var fd = new FormData();
         fd.append('action', 'brikpanel_dashboard_live');
         fd.append('security', CFG.nonce || '');
+        // The answer carries the data version as well: the dashboard follows
+        // new orders even with the top bar switched off.
+        fd.append('with_ver', '1');
 
         fetch(CFG.ajax_url, {
             method: 'POST',
@@ -4577,7 +4706,12 @@
                 renderLive();
                 return;
             }
-            takeLiveRows(res.data);
+            var data = res.data;
+            if (data && !Array.isArray(data) && typeof data === 'object') {
+                noteDataVersion(data.ver);
+                data = data.visitors;
+            }
+            takeLiveRows(data);
         })
         .catch(function () {});
     }

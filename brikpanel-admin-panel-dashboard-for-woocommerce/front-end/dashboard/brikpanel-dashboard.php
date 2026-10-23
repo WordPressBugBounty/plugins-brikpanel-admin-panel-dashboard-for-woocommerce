@@ -3973,7 +3973,7 @@ class Brikpanel_Dashboard {
         $cache_key = 'bp_dash_g4_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
-            wp_send_json_success( $this->with_tracking_state( $this->with_today( $cached ) ) );
+            wp_send_json_success( $this->with_data_ver( $this->with_tracking_state( $this->with_today( $cached ) ), $cache_ver ) );
         }
 
         $payload = $this->build_dashboard_payload( $range, $custom_start, $custom_end );
@@ -3986,7 +3986,25 @@ class Brikpanel_Dashboard {
             : self::CACHE_TTL;
         set_transient( $cache_key, $payload, $ttl );
 
-        wp_send_json_success( $this->with_tracking_state( $this->with_today( $payload ) ) );
+        wp_send_json_success( $this->with_data_ver( $this->with_tracking_state( $this->with_today( $payload ) ), $cache_ver ) );
+    }
+
+    /**
+     * Add the data version these figures were read at (the one in the cache
+     * key). A dashboard left open compares it with the version the top bar and
+     * the Live poll report, and fetches its figures again, quietly, when an
+     * order came in or changed meanwhile. Outside the cached copy, like the
+     * blocks below.
+     *
+     * @param mixed $payload Dashboard payload.
+     * @param int   $ver     brikpanel_data_cache_ver() as read for the cache key.
+     * @return mixed
+     */
+    private function with_data_ver( $payload, $ver ) {
+        if ( is_array( $payload ) ) {
+            $payload['data_ver'] = (int) $ver;
+        }
+        return $payload;
     }
 
     /**
@@ -4359,6 +4377,16 @@ class Brikpanel_Dashboard {
         foreach ( $visitors as $i => $row ) {
             $last = isset( $row['interacted_at'] ) ? (int) $row['interacted_at'] : ( isset( $row['last_active'] ) ? (int) $row['last_active'] : $now );
             $visitors[ $i ]['ago'] = max( 0, $now - $last );
+        }
+        // The page asks for the data version too ("with_ver"), so a dashboard
+        // left open fetches its figures again after an order even when the top
+        // bar is off. A page loaded before this answer gained the field sends
+        // no flag and keeps getting the bare list it reads.
+        if ( ! empty( $_POST['with_ver'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified above.
+            wp_send_json_success( [
+                'visitors' => array_values( $visitors ),
+                'ver'      => function_exists( 'brikpanel_data_cache_ver' ) ? (int) brikpanel_data_cache_ver() : 0,
+            ] );
         }
         wp_send_json_success( $visitors );
     }
