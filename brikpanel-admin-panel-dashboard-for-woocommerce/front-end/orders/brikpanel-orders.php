@@ -739,7 +739,7 @@ function brikpanel_settings_fields() {
             'name'    => __('Visitor tracking', 'brikpanel'),
             'id'      => 'brikpanel_frontend_tracking',
             'type'    => 'checkbox',
-            'desc'    => __('Track visitors, page views, product views, add-to-carts, checkout visits and live visitors on your storefront. Turn this off if you already use a dedicated analytics tool. BrikPanel will stop adding any tracking scripts or requests to your store pages, and the related dashboard cards will simply stop receiving new data.', 'brikpanel'),
+            'desc'    => __('Track visitors and the countries they browse from, page views, product views, add-to-carts, checkout visits and live visitors on your storefront. Turn this off if you already use a dedicated analytics tool. BrikPanel will stop adding any tracking scripts or requests to your store pages, and the related dashboard cards will simply stop receiving new data.', 'brikpanel'),
             'default' => 'yes',
         ],
         [

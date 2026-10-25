@@ -315,6 +315,13 @@ function brikpanel_unified_track_legacy() {
  * pointer down, touch, wheel, key). A browser that reports itself as
  * automated (navigator.webdriver, HeadlessChrome, no languages) sends nothing.
  *
+ * Speed plugins (3.3.40): WP Rocket, LiteSpeed and others can hold every
+ * script back until the visitor's first touch, and that touch is spent
+ * waking them, so a visitor who touched once was never counted. The tag
+ * carries the markers those plugins honour to leave a script alone, and a
+ * script started late anyway asks the browser whether the page was already
+ * touched (navigator.userActivation) instead of waiting for a second touch.
+ *
  * Idle limit: the script remembers when someone last touched the page and
  * sends that age with every live ping. After BRIKPANEL_VISITOR_IDLE_TIMEOUT
  * without any, it stops pinging. The next interaction pings at once and
@@ -353,8 +360,12 @@ function brikpanel_unified_tracker_js() {
     $human_cookie     = function_exists( 'brikpanel_human_cookie_name' ) ? brikpanel_human_cookie_name() : 'brikpanel_human';
     // "Traffic source in Live view": site-level, so safe in cached HTML too.
     $live_source      = ! function_exists( 'brikpanel_live_traffic_source_enabled' ) || brikpanel_live_traffic_source_enabled();
+    // The id is what WP Rocket's exclusion matches
+    // (brikpanel_tracker_skip_rocket_delay()); data-no-defer and
+    // data-no-optimize keep LiteSpeed Cache from holding it back,
+    // data-cfasync does the same for Cloudflare's Rocket Loader.
     ?>
-    <script>
+    <script id="brikpanel-tracker" data-no-defer="1" data-no-optimize="1" data-cfasync="false">
     (function() {
         var endpoint   = "<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>";
         var isProduct  = <?php echo $is_product ? 'true' : 'false'; ?>;
@@ -692,7 +703,11 @@ function brikpanel_unified_tracker_js() {
         // Scripted events (isTrusted false) and a pointer that did not move
         // do not count. Scroll is left out on purpose: a page can scroll
         // itself, while a person scrolls with a wheel, a touch or a key.
-        var PERSON_EVENTS = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'keydown'];
+        // The end of a touch or click counts too: when a speed plugin starts
+        // this script during the touch that woke it, the rest of that touch
+        // is all that is left to catch.
+        var PERSON_EVENTS = ['pointerdown', 'pointermove', 'touchstart', 'wheel', 'keydown',
+            'touchmove', 'touchend', 'pointerup', 'mousedown', 'click'];
         var px = null, py = null;
         function onPerson(e) {
             if (!asking || !e || e.isTrusted === false) return;
@@ -715,6 +730,18 @@ function brikpanel_unified_tracker_js() {
             }
         }
 
+        // Whether a person already tapped, clicked or pressed a key on this
+        // page before this script started. A speed plugin that holds scripts
+        // back until the first touch starts this one only after it, and that
+        // touch never reaches the listeners above. The browser keeps the
+        // answer itself, and only a real input sets it, never a script.
+        function touchedBefore() {
+            try {
+                return !!(navigator.userActivation && navigator.userActivation.hasBeenActive);
+            } catch (e) {}
+            return false;
+        }
+
         // Nothing is sent for a page nobody is looking at: a prerender the
         // visitor has not opened, or a tab still in the background.
         function onShown() {
@@ -726,6 +753,8 @@ function brikpanel_unified_tracker_js() {
             document.removeEventListener('prerenderingchange', onShown);
             if (humanMark()) {
                 sendCombined(false);
+            } else if (touchedBefore()) {
+                sendCombined(true);
             } else {
                 askPerson();
             }
@@ -918,3 +947,22 @@ function brikpanel_unified_tracker_js() {
     <?php
 }
 add_action( 'wp_footer', 'brikpanel_unified_tracker_js', 20 );
+
+/**
+ * Keeps the tracker out of WP Rocket's "Delay JavaScript execution" (3.3.40).
+ *
+ * WP Rocket matches each entry against the whole script tag, so the
+ * tracker's id is enough. The tracker only starts listening on load and
+ * sends nothing before a person's input, so leaving it undelayed costs a
+ * page almost nothing, while delaying it lost every visitor who touched
+ * the page once.
+ *
+ * @param mixed $exclusions Patterns WP Rocket leaves undelayed.
+ * @return array
+ */
+function brikpanel_tracker_skip_rocket_delay( $exclusions ) {
+    $exclusions   = (array) $exclusions;
+    $exclusions[] = 'brikpanel-tracker';
+    return $exclusions;
+}
+add_filter( 'rocket_delay_js_exclusions', 'brikpanel_tracker_skip_rocket_delay' );

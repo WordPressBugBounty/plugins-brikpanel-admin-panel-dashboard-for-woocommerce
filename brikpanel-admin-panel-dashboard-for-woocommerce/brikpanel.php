@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.38
+ * Version: 3.3.40
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.38');
+define('BRIKPANEL_VERSION', '3.3.40');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -314,6 +314,7 @@ function brikpanel_drop_subsite_tables($tables, $blog_id) {
         'brikpanel_visited_pages',
         'brikpanel_referrers',
         'brikpanel_campaign_visits',
+        'brikpanel_visitor_countries',
         'brikpanel_expenses',
         'brikpanel_expense_skips',
         'brikpanel_cohort_retention',
@@ -1352,6 +1353,8 @@ brikpanel_require('includes/brikpanel-bot-filter.php');
 // =============================================================================
 brikpanel_require('includes/brikpanel-datacenter.php');
 brikpanel_require('includes/brikpanel-human-proof.php');
+// The visitor's country, from the list that ships with the plugin (3.3.40).
+brikpanel_require('includes/brikpanel-ip-country.php');
 
 // =============================================================================
 // ACCESS CONTROL — per-user / per-role interface gate
@@ -1615,6 +1618,20 @@ function brikpanel_create_table() {
         UNIQUE KEY uniq_day_campaign (date_column, campaign)
     ) $charset_collate;";
 
+    // Daily visitors per country (3.3.40): counted with the day's visitor
+    // count, once per visitor, so a day's rows add up to its visitor_count
+    // like the traffic sources do. country = '' when no country was found.
+    // Only the two-letter code is kept, never the address it came from. The
+    // unique key starts with the day, so it serves the date ranges too.
+    $visitor_countries_table = $wpdb->prefix . "brikpanel_visitor_countries";
+    $sql_visitor_countries = "CREATE TABLE $visitor_countries_table (
+        id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        date_column DATE NOT NULL,
+        country CHAR(2) NOT NULL DEFAULT '',
+        visitors INT UNSIGNED NOT NULL DEFAULT 0,
+        UNIQUE KEY uniq_day_country (date_column, country)
+    ) $charset_collate;";
+
     $expenses_table = $wpdb->prefix . "brikpanel_expenses";
     // recurring_parent links an auto-generated occurrence back to its recurring
     // template (0 = a standalone entry or the template itself). The materialiser
@@ -1844,6 +1861,7 @@ function brikpanel_create_table() {
     dbDelta($sql_visited_pages);
     dbDelta($sql_referrers);
     dbDelta($sql_campaign_visits);
+    dbDelta($sql_visitor_countries);
     dbDelta($sql_expenses);
     dbDelta($sql_expense_skips);
     dbDelta($sql_customer_metrics);
@@ -1867,6 +1885,11 @@ function brikpanel_create_table() {
     if ( false === get_option( 'brikpanel_recurring_engine_since', false ) ) {
         add_option( 'brikpanel_recurring_engine_since', gmdate( 'Y-m-d H:i:s' ), '', false );
     }
+
+    // The store day visitor countries started being counted: the dashboard
+    // says "Counted since" for a period that starts earlier. add_option()
+    // writes nothing when it is already there, so only the first run sets it.
+    add_option( 'brikpanel_visitor_countries_since', wp_date( 'Y-m-d' ), '', false );
 }
 
 /**

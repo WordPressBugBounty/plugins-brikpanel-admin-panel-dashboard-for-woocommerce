@@ -875,9 +875,20 @@
         lsSet('signal', JSON.stringify({ type: type, data: data || null, t: Date.now(), from: TAB_ID }));
     }
 
+    // New orders came in: the screen under the card (the dashboard, the Orders
+    // summary) fetches its figures again, so the number moves with the card
+    // instead of after a reload. Every tab hears it: the polling tab from
+    // handle(), the others from the 'orders' message.
+    function tellPage() {
+        try {
+            document.dispatchEvent(new CustomEvent('brikpanel:new-orders'));
+        } catch (e) { /* old WebView without CustomEvent: the next version check catches up */ }
+    }
+
     function onSignal(type, data) {
         if (type === 'orders') {
             drain();
+            tellPage();
         } else if (type === 'poll') {
             pollNow();
         } else if (type === 'replay' && data && Array.isArray(data.ids)) {
@@ -977,7 +988,8 @@
         // The server sends the newest five; it counts the rest for the
         // summary card.
         var more = data.more && typeof data.more === 'object' ? data.more : null;
-        if (more && (parseInt(more.count, 10) || 0) > 0 && (enablePopup || enableConfetti)) {
+        var moreCount = more ? (parseInt(more.count, 10) || 0) : 0;
+        if (moreCount > 0 && (enablePopup || enableConfetti)) {
             addMore(more.count, more.sums);
             if (!fresh.length) {
                 setTimeout(function () { announce('orders'); }, 0);
@@ -985,6 +997,8 @@
             }
         }
         celebrate(fresh);
+        // With the sound alone (no card) the screen still follows the order.
+        if (fresh.length || moreCount > 0) tellPage();
     }
 
     function poll(isRetry) {

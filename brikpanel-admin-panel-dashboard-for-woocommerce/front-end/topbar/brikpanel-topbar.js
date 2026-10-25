@@ -840,8 +840,21 @@
         .then(function (json) {
             if (!json || !json.success || !json.data) return;
             renderTopbarStats(json.data);
+            announceDataVersion(json.data.ver);
         })
         .catch(function () { /* silent */ });
+    }
+
+    // The shared data version moves on with every order event. A screen left
+    // open (the dashboard, the Orders summary) listens on document and fetches
+    // its figures again when the version is newer than the one it shows, so
+    // it needs no poll of its own.
+    function announceDataVersion(ver) {
+        ver = parseInt(ver, 10) || 0;
+        if (!ver) return;
+        try {
+            document.dispatchEvent(new CustomEvent('brikpanel:data-version', { detail: { ver: ver } }));
+        } catch (e) { /* old WebView without CustomEvent: the screens keep their figures */ }
     }
 
     function renderTopbarStats(data) {

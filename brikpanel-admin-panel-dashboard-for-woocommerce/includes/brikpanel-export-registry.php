@@ -307,6 +307,8 @@ function brikpanel_export_core_table() {
 		'brikpanel_human_proof_since',
 		'brikpanel_dc_stats',
 		'brikpanel_dc_paused_until',
+		// The day this site started counting visitor countries (3.3.40).
+		'brikpanel_visitor_countries_since',
 		// Read-only escape hatches: nothing in the plugin ever writes these,
 		// they exist to be set by hand on one site for one reason.
 		'brikpanel_modern_segments',

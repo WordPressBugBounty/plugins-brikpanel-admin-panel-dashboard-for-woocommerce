@@ -419,7 +419,7 @@ function brikpanel_tracking_cookie_names() {
  *   and the prize would be removing a row from a store that self-expires in
  *   two minutes regardless.
  * - NOT the analytics tables. wp_brikpanel_visitors, _visited_pages,
- *   _referrers and _cart_tracking hold daily integer totals with no link to
+ *   _referrers, _visitor_countries and _cart_tracking hold daily integer totals with no link to
  *   any visitor: there is nothing personal in them to erase, and making them
  *   decrementable from an unauthenticated endpoint would hand anyone a
  *   button that zeroes a merchant's analytics. This is the single most

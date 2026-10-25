@@ -55,9 +55,11 @@ class Brikpanel_Dashboard {
         'sales'     => [ 'r', 'o', 'aov' ],
         'products'  => [ 'sold', 'viewed', 'cart' ],
         'visitors'  => [ 'devices', 'sources', 'campaigns' ],
-        // Order locations of a store selling in one country: the globe or
-        // that country's region map.
+        // Locations of a store selling in one country: the globe or that
+        // country's region map.
         'locations' => [ 'region', 'world' ],
+        // What the Locations card shows (3.3.40).
+        'locations_view' => [ 'orders', 'customers', 'visitors' ],
     ];
 
     // The Most viewed pages window loads this many rows at a time; the Excel
@@ -534,7 +536,7 @@ class Brikpanel_Dashboard {
             'live'          => __( 'Live visitors', 'brikpanel' ),
             'funnel'        => __( 'Conversion funnel', 'brikpanel' ),
             'rates'         => __( 'Order rates', 'brikpanel' ),
-            'locations'     => __( 'Order locations globe + Top countries/cities', 'brikpanel' ),
+            'locations'     => __( 'Locations globe + Top countries/cities', 'brikpanel' ),
             'best_sellers'  => __( 'Best sellers', 'brikpanel' ),
             'most_viewed'   => __( 'Most viewed pages', 'brikpanel' ),
             'most_added'    => __( 'Most added to cart', 'brikpanel' ),
@@ -1081,6 +1083,26 @@ class Brikpanel_Dashboard {
              * @since 3.1.28
              */
             do_action( 'brikpanel_dashboard_after_sections' );
+
+            // Visitor countries come from DB-IP's free list (CC BY 4.0), whose
+            // licence asks for a link on the pages that show them: one quiet
+            // line at the very bottom, while the cards that show countries do.
+            if ( ( isset( $visible['locations'] ) || isset( $visible['live'] ) )
+                && function_exists( 'brikpanel_frontend_tracking_enabled' ) && brikpanel_frontend_tracking_enabled() ) :
+                ?>
+                <p class="brikpanel-dash-credit">
+                    <?php
+                    // DB-IP's own wording for the credit, kept in the link.
+                    $credit_link = '<a href="' . esc_url( 'https://db-ip.com' ) . '" target="_blank" rel="noopener">' . esc_html__( 'IP Geolocation by DB-IP', 'brikpanel' ) . '</a>';
+                    printf(
+                        /* translators: %s: the link "IP Geolocation by DB-IP" to db-ip.com, where the visitor country list comes from. */
+                        esc_html__( 'Visitor countries: %s', 'brikpanel' ),
+                        $credit_link // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built above from esc_url() and esc_html__().
+                    );
+                    ?>
+                </p>
+                <?php
+            endif;
             ?>
 
         </div>
@@ -2327,24 +2349,33 @@ class Brikpanel_Dashboard {
         $loc_mode  = '' !== $focus_cc ? ( '' !== $loc_pref ? $loc_pref : 'region' ) : 'world';
         $countries = WC()->countries->get_countries();
         $focus_lbl = '' !== $focus_cc && isset( $countries[ $focus_cc ] ) ? brikpanel_plain_name( $countries[ $focus_cc ] ) : '';
+        // Orders, Customers or Visitors: the one this user opened last time
+        // (3.3.40). Visitors are always shown on the world globe, so the
+        // World | Country switch steps aside there.
+        $loc_view  = self::tab_for( 'locations_view', self::TAB_KEYS['locations_view'], 'orders' );
+        $loc_tabs  = [
+            'orders'    => __( 'Orders', 'brikpanel' ),
+            'customers' => __( 'Customers', 'brikpanel' ),
+            'visitors'  => __( 'Visitors', 'brikpanel' ),
+        ];
+        $visitors  = 'visitors' === $loc_view;
         ?>
-            <!-- Row: Order Locations Globe + Tables -->
+            <!-- Row: Locations globe + tables -->
             <div class="brikpanel-dash-row brikpanel-dash-row-2-1">
-                <div class="brikpanel-dash-panel brikpanel-dash-globe-panel" id="globe-panel" data-loc-mode="<?php echo esc_attr( $loc_mode ); ?>" data-loc-pref="<?php echo esc_attr( $loc_pref ); ?>">
+                <div class="brikpanel-dash-panel brikpanel-dash-globe-panel" id="globe-panel" data-loc-mode="<?php echo esc_attr( $loc_mode ); ?>" data-loc-pref="<?php echo esc_attr( $loc_pref ); ?>" data-loc-view="<?php echo esc_attr( $loc_view ); ?>">
                     <div class="brikpanel-dash-globe-header">
                         <div class="brikpanel-dash-globe-title-group">
-                            <h2 id="globe-panel-title"><?php esc_html_e( 'Order locations', 'brikpanel' ); ?></h2>
+                            <h2 id="globe-panel-title"><?php echo esc_html_x( 'Locations', 'dashboard card: where orders, customers and visitors come from', 'brikpanel' ); ?></h2>
                             <div class="brikpanel-loc-tabs" role="group" aria-label="<?php esc_attr_e( 'View mode', 'brikpanel' ); ?>">
-                                <button class="brikpanel-loc-tab brikpanel-loc-tab--active" data-view="orders" type="button">
-                                    <?php esc_html_e( 'Orders', 'brikpanel' ); ?>
-                                </button>
-                                <button class="brikpanel-loc-tab" data-view="customers" type="button">
-                                    <?php esc_html_e( 'Customers', 'brikpanel' ); ?>
-                                </button>
+                                <?php foreach ( $loc_tabs as $view => $label ) : ?>
+                                    <button class="brikpanel-loc-tab<?php echo $view === $loc_view ? ' brikpanel-loc-tab--active' : ''; ?>" data-view="<?php echo esc_attr( $view ); ?>" type="button" aria-pressed="<?php echo $view === $loc_view ? 'true' : 'false'; ?>">
+                                        <?php echo esc_html( $label ); ?>
+                                    </button>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                         <?php // The world globe or the country's region map; the data request shows it when the store sells in one country. ?>
-                        <div class="brikpanel-loc-mode" role="group" aria-label="<?php echo esc_attr_x( 'Map', 'order locations card: the world globe or the country map', 'brikpanel' ); ?>" data-cc="<?php echo esc_attr( $focus_cc ); ?>"<?php echo '' === $focus_cc ? ' hidden' : ''; ?>>
+                        <div class="brikpanel-loc-mode" role="group" aria-label="<?php echo esc_attr_x( 'Map', 'order locations card: the world globe or the country map', 'brikpanel' ); ?>" data-cc="<?php echo esc_attr( $focus_cc ); ?>"<?php echo ( '' === $focus_cc || $visitors ) ? ' hidden' : ''; ?>>
                             <button class="brikpanel-loc-mode-btn" data-mode="world" type="button" aria-pressed="<?php echo 'world' === $loc_mode ? 'true' : 'false'; ?>"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6.2"/><path d="M1.8 8h12.4M8 1.8c2 2.2 2 10.2 0 12.4M8 1.8c-2 2.2-2 10.2 0 12.4"/></svg><?php echo esc_html_x( 'World', 'order locations card: the world globe', 'brikpanel' ); ?></button>
                             <button class="brikpanel-loc-mode-btn" data-mode="region" type="button" aria-pressed="<?php echo 'region' === $loc_mode ? 'true' : 'false'; ?>"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true" focusable="false"><path d="M8 14.2s4.6-4.3 4.6-7.6A4.6 4.6 0 0 0 3.4 6.6c0 3.3 4.6 7.6 4.6 7.6z"/><circle cx="8" cy="6.6" r="1.6"/></svg><span class="brikpanel-loc-mode-country"><?php echo esc_html( $focus_lbl ); ?></span></button>
                         </div>
@@ -2363,12 +2394,13 @@ class Brikpanel_Dashboard {
                     </div>
                 </div>
                 <div class="brikpanel-dash-panel brikpanel-dash-locations-panel">
-                    <h2 id="loc-panel-countries-title"><?php esc_html_e( 'Top countries', 'brikpanel' ); ?></h2>
+                    <?php // Visitors have no cities: their list is the only one. ?>
+                    <h2 id="loc-panel-countries-title"><?php echo esc_html( $visitors ? __( 'Top countries by visitors', 'brikpanel' ) : __( 'Top countries', 'brikpanel' ) ); ?></h2>
                     <div class="brikpanel-dash-table-wrap" id="top-countries-table">
                         <p class="brikpanel-dash-empty"><?php esc_html_e( 'Loading...', 'brikpanel' ); ?></p>
                     </div>
-                    <h2 class="brikpanel-dash-locations-h2" id="loc-panel-cities-title"><?php esc_html_e( 'Top cities', 'brikpanel' ); ?></h2>
-                    <div class="brikpanel-dash-table-wrap" id="top-cities-table">
+                    <h2 class="brikpanel-dash-locations-h2" id="loc-panel-cities-title"<?php echo $visitors ? ' hidden' : ''; ?>><?php esc_html_e( 'Top cities', 'brikpanel' ); ?></h2>
+                    <div class="brikpanel-dash-table-wrap" id="top-cities-table"<?php echo $visitors ? ' hidden' : ''; ?>>
                         <p class="brikpanel-dash-empty"><?php esc_html_e( 'Loading...', 'brikpanel' ); ?></p>
                     </div>
                 </div>
@@ -3969,11 +4001,12 @@ class Brikpanel_Dashboard {
         // Most viewed pages lists only pages a shopper can open, and the three
         // Products and pages lists carry their counts (most_viewed_total,
         // top_products_total, most_cart_total). "g4": cities carry their
-        // region, and the locations may carry a region map (focus).
-        $cache_key = 'bp_dash_g4_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key;
+        // region, and the locations may carry a region map (focus). "g5": the
+        // locations carry the visitors' countries (3.3.40).
+        $cache_key = 'bp_dash_g5_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
-            wp_send_json_success( $this->with_tracking_state( $this->with_today( $cached ) ) );
+            wp_send_json_success( $this->with_data_ver( $this->with_tracking_state( $this->with_today( $cached ) ), $cache_ver ) );
         }
 
         $payload = $this->build_dashboard_payload( $range, $custom_start, $custom_end );
@@ -3986,7 +4019,25 @@ class Brikpanel_Dashboard {
             : self::CACHE_TTL;
         set_transient( $cache_key, $payload, $ttl );
 
-        wp_send_json_success( $this->with_tracking_state( $this->with_today( $payload ) ) );
+        wp_send_json_success( $this->with_data_ver( $this->with_tracking_state( $this->with_today( $payload ) ), $cache_ver ) );
+    }
+
+    /**
+     * Add the data version these figures were read at (the one in the cache
+     * key). A dashboard left open compares it with the version the top bar and
+     * the Live poll report, and fetches its figures again, quietly, when an
+     * order came in or changed meanwhile. Outside the cached copy, like the
+     * blocks below.
+     *
+     * @param mixed $payload Dashboard payload.
+     * @param int   $ver     brikpanel_data_cache_ver() as read for the cache key.
+     * @return mixed
+     */
+    private function with_data_ver( $payload, $ver ) {
+        if ( is_array( $payload ) ) {
+            $payload['data_ver'] = (int) $ver;
+        }
+        return $payload;
     }
 
     /**
@@ -4116,8 +4167,10 @@ class Brikpanel_Dashboard {
         // Recent orders
         $recent_orders = $this->get_recent_orders();
 
-        // Order locations (for globe)
+        // Order locations (for globe), and the visitors' countries for the
+        // card's Visitors tab, joined with those orders (3.3.40).
         $order_locations = $this->get_order_locations( $start_gmt, $end_gmt, $exclude_mp );
+        $order_locations['visitors'] = $this->get_visitor_locations( $start_local, $end_local, $order_locations['countries'] ?? [], $end_gmt, $exclude_mp );
 
         // Device breakdown (uses local dates for brikpanel_visitors table)
         $devices = $this->get_device_breakdown( $start_local, $end_local );
@@ -4356,9 +4409,29 @@ class Brikpanel_Dashboard {
         // Seconds since the visitor last did something, on the server's
         // clock: the card sorts by it and writes "3 min ago".
         $now = time();
+        // The visitor's country (3.3.40) in this admin's language. The row
+        // keeps only the code; the list line takes the short name ("United
+        // States", not "United States (US)"), the bubble the full one.
+        $wc_countries = $visitors && function_exists( 'WC' ) && WC()->countries ? WC()->countries->get_countries() : [];
         foreach ( $visitors as $i => $row ) {
             $last = isset( $row['interacted_at'] ) ? (int) $row['interacted_at'] : ( isset( $row['last_active'] ) ? (int) $row['last_active'] : $now );
             $visitors[ $i ]['ago'] = max( 0, $now - $last );
+
+            $code = isset( $row['country'] ) && is_string( $row['country'] ) ? $row['country'] : '';
+            $name = '' !== $code && isset( $wc_countries[ $code ] ) ? brikpanel_plain_name( $wc_countries[ $code ] ) : '';
+            $visitors[ $i ]['country']       = '' !== $name ? $code : '';
+            $visitors[ $i ]['country_name']  = $name;
+            $visitors[ $i ]['country_short'] = '' !== $name ? (string) preg_replace( '/\s*\([^()]{1,6}\)$/u', '', $name ) : '';
+        }
+        // The page asks for the data version too ("with_ver"), so a dashboard
+        // left open fetches its figures again after an order even when the top
+        // bar is off. A page loaded before this answer gained the field sends
+        // no flag and keeps getting the bare list it reads.
+        if ( ! empty( $_POST['with_ver'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified above.
+            wp_send_json_success( [
+                'visitors' => array_values( $visitors ),
+                'ver'      => function_exists( 'brikpanel_data_cache_ver' ) ? (int) brikpanel_data_cache_ver() : 0,
+            ] );
         }
         wp_send_json_success( $visitors );
     }
@@ -5706,7 +5779,20 @@ class Brikpanel_Dashboard {
     // ORDER LOCATIONS (countries + cities for globe)
     // =========================================================================
 
-    private function get_order_locations( $start_gmt, $end_gmt, $exclude_marketplace = false ) {
+    /**
+     * Where the period's paid orders come from: countries (all), cities (the
+     * top ones by orders and by customers) and, for a store selling in one
+     * country, its region block.
+     *
+     * @param string $start_gmt           Start, Y-m-d H:i:s GMT.
+     * @param string $end_gmt             End, Y-m-d H:i:s GMT.
+     * @param bool   $exclude_marketplace Leave marketplace orders out.
+     * @param bool   $counts_only         Only each country's order count, as
+     *                                    [ code => count ] (3.3.40, for the
+     *                                    Visitors tab); no city or region query.
+     * @return array
+     */
+    private function get_order_locations( $start_gmt, $end_gmt, $exclude_marketplace = false, $counts_only = false ) {
         global $wpdb;
 
         $include_statuses    = brikpanel_paid_order_statuses();
@@ -5808,6 +5894,13 @@ class Brikpanel_Dashboard {
         }
 
         $country_results = $wpdb->get_results( $country_query );
+        if ( $counts_only ) {
+            $counts = [];
+            foreach ( (array) $country_results as $row ) {
+                $counts[ (string) $row->code ] = (int) $row->order_count;
+            }
+            return $counts;
+        }
 
         // Cities: the top 25 by orders and by customers, so spellings of one
         // place merged below still leave a full top 10 for each view.
@@ -5892,6 +5985,112 @@ class Brikpanel_Dashboard {
             $locations['focus'] = $focus;
         }
         return $locations;
+    }
+
+    /**
+     * Visitors per country for the Locations card's Visitors tab (3.3.40),
+     * each with the orders from that country on the same days (the Orders
+     * tab's rule: billing country of paid orders). Store-local days, like
+     * every visitor table.
+     *
+     * Countries come most visitors first. Visitors with no country found, and
+     * any code WooCommerce does not list, are counted in 'unknown', never as
+     * a row. A period that starts before countries were first counted
+     * ('brikpanel_visitor_countries_since') counts its orders from that day
+     * on too: 69 orders beside the 5 visitors of the update's first day said
+     * nothing. 'since' is that first day when the period starts before it and
+     * those earlier days had visitors or orders ('' otherwise), with
+     * 'since_label' written in the store's short date format.
+     *
+     * @param string $start_local     First day, Y-m-d (store time).
+     * @param string $end_local       Last day, Y-m-d (store time).
+     * @param array  $order_countries Rows of get_order_locations()['countries'] for the period.
+     * @param string $end_gmt         The period's end in GMT, for counting orders from the first counted day ('' to keep the period's).
+     * @param bool   $exclude_mp      Leave marketplace orders out, as the period's counts do.
+     * @return array{countries: array<int, array{code:string,name:string,visitors:int,orders:int}>, unknown: int, total: int, since: string, since_label: string}
+     */
+    private function get_visitor_locations( $start_local, $end_local, array $order_countries, $end_gmt = '', $exclude_mp = false ) {
+        global $wpdb;
+
+        $out   = [ 'countries' => [], 'unknown' => 0, 'total' => 0, 'since' => '', 'since_label' => '' ];
+        $table = $wpdb->prefix . 'brikpanel_visitor_countries';
+        if ( ! $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) ) {
+            return $out; // The database update has not run on this site yet.
+        }
+        $since       = (string) get_option( 'brikpanel_visitor_countries_since', '' );
+        $since_cuts  = 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $since ) && $start_local < $since;
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- internal table name; values prepared.
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT country, SUM(visitors) AS visitors
+               FROM {$table}
+              WHERE date_column BETWEEN %s AND %s
+              GROUP BY country",
+            $start_local,
+            $end_local
+        ), ARRAY_A );
+
+        $orders = [];
+        foreach ( $order_countries as $row ) {
+            if ( isset( $row['code'] ) ) {
+                $orders[ (string) $row['code'] ] = (int) ( $row['count'] ?? 0 );
+            }
+        }
+        // The same days as the visitors: orders from the first counted day on.
+        $orders_cut = false;
+        if ( $since_cuts && $rows && '' !== (string) $end_gmt && $since <= $end_local ) {
+            $from        = get_gmt_from_date( $since . ' 00:00:00' );
+            $since_count = $this->get_order_locations( $from, $end_gmt, $exclude_mp, true );
+            $orders_cut  = array_sum( $since_count ) !== array_sum( $orders );
+            $orders      = $since_count;
+        }
+        $wc_countries = WC()->countries->get_countries();
+        foreach ( (array) $rows as $row ) {
+            $visitors = (int) $row['visitors'];
+            if ( $visitors <= 0 ) {
+                continue;
+            }
+            $out['total'] += $visitors;
+            $code          = (string) $row['country'];
+            if ( '' === $code || ! isset( $wc_countries[ $code ] ) ) {
+                $out['unknown'] += $visitors;
+                continue;
+            }
+            $out['countries'][] = [
+                'code'     => $code,
+                // WooCommerce's list holds entities ("Cura&ccedil;ao").
+                'name'     => brikpanel_plain_name( $wc_countries[ $code ] ),
+                'visitors' => $visitors,
+                'orders'   => $orders[ $code ] ?? 0,
+            ];
+        }
+        usort( $out['countries'], static function ( $a, $b ) {
+            return [ $b['visitors'], $b['orders'], $a['code'] ] <=> [ $a['visitors'], $a['orders'], $b['code'] ];
+        } );
+
+        // A period that starts before countries were counted: say from when,
+        // but only when those earlier days had visitors or orders that are
+        // left out (a store that opened since has nothing missing).
+        if ( $since_cuts ) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- internal table name; values prepared.
+            $before = $orders_cut ? 1 : (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COALESCE(SUM(visitor_count), 0) FROM {$wpdb->prefix}brikpanel_visitors WHERE date_column >= %s AND date_column < %s",
+                $start_local,
+                $since
+            ) );
+            if ( $before > 0 ) {
+                $out['since'] = $since;
+                try {
+                    $day = new DateTimeImmutable( $since . ' 12:00:00', wp_timezone() );
+                    // One piece on screen: the date never breaks over two lines.
+                    $out['since_label'] = str_replace( ' ', "\u{00A0}", wp_date( brikpanel_short_date_format(), $day->getTimestamp() ) );
+                } catch ( Exception $e ) {
+                    $out['since_label'] = $since;
+                }
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -6563,7 +6762,7 @@ class Brikpanel_Dashboard {
      * carries *everything* on screen — one clean tab per section: Summary
      * (KPIs + profit + returns + LTV), Funnel, Order Status, Devices,
      * Customer Segments, Top Products, Most Viewed, Most Added to Cart,
-     * Sales Over Time, Countries, Cities, Low Stock, Subscriptions (when
+     * Sales Over Time, Countries, Cities, Visitor countries, Low Stock, Subscriptions (when
      * any), and Orders (every order in the window — the full record set).
      * A real workbook, not one stacked CSV, so each table is tidy, numbers
      * stay numeric, and it opens correctly in Excel / Google Sheets under
@@ -6933,6 +7132,29 @@ class Brikpanel_Dashboard {
             }
         }
 
+        // ---------- Sheet 11c: Visitor countries (3.3.40) ----------
+        // The Locations card's Visitors tab, every country, with the source
+        // line DB-IP's licence asks for wherever its countries are shown.
+        $vlocs         = isset( $locs['visitors'] ) && is_array( $locs['visitors'] ) ? $locs['visitors'] : [];
+        $visitor_sheet = [ [ [ __( 'Country', 'brikpanel' ), $H ], [ __( 'Visitors', 'brikpanel' ), $H ], [ __( 'Orders', 'brikpanel' ), $H ] ] ];
+        foreach ( (array) ( $vlocs['countries'] ?? [] ) as $vc ) {
+            $visitor_sheet[] = [ (string) $vc['name'], (int) $vc['visitors'], (int) $vc['orders'] ];
+        }
+        if ( (int) ( $vlocs['unknown'] ?? 0 ) > 0 ) {
+            $visitor_sheet[] = [ _x( 'Unknown', 'visitors whose country was not found', 'brikpanel' ), (int) $vlocs['unknown'], '' ];
+        }
+        if ( 1 === count( $visitor_sheet ) ) {
+            $visitor_sheet[] = [ __( 'No data for this period', 'brikpanel' ), '', '' ];
+        }
+        $visitor_sheet[] = [ '', '', '' ];
+        if ( '' !== (string) ( $vlocs['since'] ?? '' ) ) {
+            /* translators: %s: the date visitor countries started being counted on this store. */
+            $visitor_sheet[] = [ sprintf( __( 'Counted since %s', 'brikpanel' ), (string) ( $vlocs['since_label'] ?? $vlocs['since'] ) ), '', '' ];
+        }
+        $credit_text     = __( 'IP Geolocation by DB-IP', 'brikpanel' ) . ' (https://db-ip.com)';
+        /* translators: %s: the link "IP Geolocation by DB-IP" to db-ip.com, where the visitor country list comes from. */
+        $visitor_sheet[] = [ sprintf( __( 'Visitor countries: %s', 'brikpanel' ), $credit_text ), '', '' ];
+
         // ---------- Sheet 12: Low Stock ----------
         $lowstock = [ [ [ __( 'Product', 'brikpanel' ), $H ], [ __( 'SKU', 'brikpanel' ), $H ], [ __( 'Remaining', 'brikpanel' ), $H ] ] ];
         if ( empty( $d['low_stock'] ) ) {
@@ -7040,6 +7262,7 @@ class Brikpanel_Dashboard {
             $writer->add_sheet( $regions_title, $regions_sheet, [ 1 => 26, 2 => 12, 3 => 14, 4 => 16 ] );
         }
         $writer->add_sheet( __( 'Cities', 'brikpanel' ), $cities, [ 1 => 22, 2 => 20, 3 => 16, 4 => 12, 5 => 14, 6 => 10 ] );
+        $writer->add_sheet( __( 'Visitor countries', 'brikpanel' ), $visitor_sheet, [ 1 => 30, 2 => 12, 3 => 12 ] );
         $writer->add_sheet( __( 'Low stock', 'brikpanel' ), $lowstock, [ 1 => 40, 2 => 18, 3 => 12 ] );
         if ( $subs_sheet !== null ) {
             $writer->add_sheet( __( 'Subscriptions', 'brikpanel' ), $subs_sheet, [ 1 => 24, 2 => 12 ] );

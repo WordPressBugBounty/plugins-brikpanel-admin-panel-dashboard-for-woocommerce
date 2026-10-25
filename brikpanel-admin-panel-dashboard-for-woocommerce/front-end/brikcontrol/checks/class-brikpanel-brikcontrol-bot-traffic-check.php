@@ -169,6 +169,7 @@ class Brikpanel_BrikControl_Bot_Traffic_Check extends Brikpanel_BrikControl_Chec
         'c' => [ 'cart_count' ],
         'r' => [ 'hits' ],
         'p' => [ 'visit_count' ],
+        'g' => [ 'visitors' ],
     ];
 
     /**
@@ -578,7 +579,7 @@ class Brikpanel_BrikControl_Bot_Traffic_Check extends Brikpanel_BrikControl_Chec
                         brikpanel_number( $cartab )
                     );
             }
-            $parts[]      = __( 'The cleanup lowers each flagged figure to the highest value it could honestly have had, scales that day\'s traffic sources and device counts to match, deletes the flagged entries, and keeps everything it changed so one click puts it back.', 'brikpanel' );
+            $parts[]      = __( 'The cleanup lowers each flagged figure to the highest value it could honestly have had, scales that day\'s traffic sources, device counts and visitor countries to match, deletes the flagged entries, and keeps everything it changed so one click puts it back.', 'brikpanel' );
             $r['message'] = implode( ' ', $parts );
         } elseif ( $cartab > 0 ) {
             $r['message'] = $cartab_check
@@ -2307,9 +2308,9 @@ class Brikpanel_BrikControl_Bot_Traffic_Check extends Brikpanel_BrikControl_Chec
 
     /**
      * Backup entries for one store-wide column on one day, plus the cascade a
-     * lowered visitor figure implies: that day's device counts and
-     * traffic-source hits are scaled by the same ratio so the cards that break
-     * visitors down keep adding up.
+     * lowered visitor figure implies: that day's device counts, traffic-source
+     * hits and visitor countries are scaled by the same ratio so the cards
+     * that break visitors down keep adding up.
      *
      * A day can span several rows; the correction lands on the first and the
      * rest are zeroed, exactly as the per-series tables are handled.
@@ -2384,6 +2385,46 @@ class Brikpanel_BrikControl_Bot_Traffic_Check extends Brikpanel_BrikControl_Chec
                 $new = (int) floor( $old * $ratio );
                 if ( $old !== $new ) {
                     $planned[] = [ 't' => 'r', 'id' => (int) $hit['id'], 'col' => 'hits', 'old' => $old, 'new' => $new ];
+                }
+            }
+        }
+
+        // Visitor countries (3.3.40), by the same ratio. Rounded by largest
+        // remainder rather than down, so the day's countries still add up to
+        // its corrected visitor count instead of falling a few short.
+        $countries = $wpdb->prefix . 'brikpanel_visitor_countries';
+        if ( $this->table_exists( $countries ) ) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery -- internal table; bound value prepared.
+            $counts = (array) $wpdb->get_results(
+                $wpdb->prepare( "SELECT id, visitors FROM {$countries} WHERE date_column = %s ORDER BY id ASC", $date ),
+                ARRAY_A
+            );
+            $sum   = 0;
+            $parts = [];
+            foreach ( $counts as $count ) {
+                $sum += (int) $count['visitors'];
+            }
+            $goal = min( $sum, (int) round( $sum * $ratio ) );
+            $kept = 0;
+            foreach ( $counts as $count ) {
+                $exact   = (int) $count['visitors'] * $ratio;
+                $floor   = (int) floor( $exact );
+                $parts[] = [ 'id' => (int) $count['id'], 'old' => (int) $count['visitors'], 'new' => $floor, 'rest' => $exact - $floor ];
+                $kept   += $floor;
+            }
+            usort( $parts, static function ( $a, $b ) {
+                return ( $b['rest'] <=> $a['rest'] ) ?: ( $a['id'] <=> $b['id'] );
+            } );
+            foreach ( $parts as $i => $part ) {
+                if ( $kept >= $goal ) {
+                    break;
+                }
+                $parts[ $i ]['new']++;
+                $kept++;
+            }
+            foreach ( $parts as $part ) {
+                if ( $part['old'] !== $part['new'] ) {
+                    $planned[] = [ 't' => 'g', 'id' => $part['id'], 'col' => 'visitors', 'old' => $part['old'], 'new' => $part['new'] ];
                 }
             }
         }
@@ -3083,6 +3124,8 @@ class Brikpanel_BrikControl_Bot_Traffic_Check extends Brikpanel_BrikControl_Chec
                 return $wpdb->prefix . 'brikpanel_referrers';
             case 'p':
                 return $wpdb->prefix . 'brikpanel_visited_pages';
+            case 'g':
+                return $wpdb->prefix . 'brikpanel_visitor_countries';
         }
         return '';
     }

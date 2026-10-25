@@ -2731,6 +2731,7 @@ if ( ! function_exists( 'brikpanel_order_numbers_for_ids' ) ) {
 //
 // Columns that are NOT UTC, and must never go through the *_utc helpers:
 // brikpanel_visitors.date_column, brikpanel_referrers.date_column,
+// brikpanel_visitor_countries.date_column,
 // brikpanel_visited_pages.date_column, brikpanel_cart_tracking.date_column,
 // brikpanel_expenses.expense_date, brikpanel_stock_orders.*_date and
 // brikpanel_ad_spend.date are all written in site-local time on purpose.

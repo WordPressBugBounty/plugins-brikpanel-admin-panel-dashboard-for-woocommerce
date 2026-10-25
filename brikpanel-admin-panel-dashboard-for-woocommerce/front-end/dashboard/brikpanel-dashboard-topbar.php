@@ -996,6 +996,12 @@ class Brikpanel_Dashboard_Topbar {
         wp_send_json_success( [
             'live'          => $live,
             'notifications' => $counts,
+            // The shared data version (brikpanel_data_cache_ver()): a screen
+            // left open (the dashboard, the Orders summary) compares it with
+            // the one its figures came with and fetches them again when an
+            // order changed. This poll runs on every screen anyway, so the
+            // screens need no poll of their own.
+            'ver'           => function_exists( 'brikpanel_data_cache_ver' ) ? (int) brikpanel_data_cache_ver() : 0,
         ] );
     }
 

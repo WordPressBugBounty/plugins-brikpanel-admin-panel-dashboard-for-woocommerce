@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.38
+Stable tag: 3.3.40
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -53,17 +53,17 @@ BrikPanel ships a complete **WooCommerce customer analytics** suite, calculated 
 
 BrikPanel ships a built-in **WooCommerce live visitors** widget, see who is on your store right now, what page they are on, and whether they have items in the cart. Refreshes every 30 seconds by default (configurable). No Hotjar, no monthly fee.
 
-* **WooCommerce real time visitors** widget with cart status (*Browsing / Added to Cart / Order Received*), current page, and customer info
+* **WooCommerce real time visitors** widget with cart status (*Browsing / Added to Cart / Order Received*), current page, country and customer info
 * **WooCommerce conversion tracking** in the same database that powers the dashboard
 * Visitor IPs are never stored by tracking, only a salted SHA-256 hash, and live visitor data stays in a short-lived cache, never permanently in the database
 * Privacy switches: make tracking wait for cookie consent (WordPress Consent API or your own banner), turn front-end tracking off entirely, or keep it on while excluding logged-in customer details from the Live view
 * Most-viewed pages and most added-to-cart products reports
 
-A free **woocommerce statistics plugin** and **woocommerce sales tracker** without any external SaaS.
+A free **woocommerce statistics plugin** and **woocommerce sales tracker** without external SaaS.
 
 = Geographic Analytics: WooCommerce Sales by Country =
 
-A 3D globe plots the countries your orders come from: **WooCommerce sales by country** and city, with **Top 5 Countries** and **Top 5 Cities** tables. Selling in one country? It zooms into a **sales map by state or province**.
+A 3D globe plots where your orders, customers and visitors come from: **WooCommerce sales by country** and city, with **Top Countries** and **Top Cities** tables. Selling in one country? It zooms into a **sales map by state or province**.
 
 = Lightning-Fast Order Search: Cmd/Ctrl + K from Anywhere =
 
@@ -247,6 +247,8 @@ That is it. No license key, no email signup, no external account.
 
 Region maps use boundaries from [Natural Earth](https://www.naturalearthdata.com/) (public domain) and postal codes from [GeoNames](https://www.geonames.org/) (CC BY 4.0).
 
+Visitor countries: [IP Geolocation by DB-IP](https://db-ip.com), from its free IP to Country Lite list (CC BY 4.0).
+
 == Frequently Asked Questions ==
 
 = Is BrikPanel really 100% free? =
@@ -376,7 +378,7 @@ Yes. Every order query either has dual code paths, one for the HPOS order tables
 
 = How do I see WooCommerce sales by country? =
 
-Open the BrikPanel dashboard. The 3D globe in Order locations shows the countries your orders come from, and the **Top 5 Countries** and **Top 5 Cities** tables (by orders or by customers) update in real time. A store selling in one country sees its map by state, province or region instead. All from billing addresses, no setup.
+Open the BrikPanel dashboard. The 3D globe in Locations shows the countries your orders come from, and the **Top Countries** and **Top Cities** tables (by orders, customers or visitors) update in real time. A store selling in one country sees its map by state, province or region instead. Orders use billing addresses, visitors their IP address (looked up locally). No setup.
 
 = How do I customize the WordPress login page for my WooCommerce store? =
 
@@ -388,7 +390,7 @@ Press `Ctrl + K` (or `Cmd + K` on Mac) anywhere inside wp-admin. The BrikPanel q
 
 = Can I see who is on my WooCommerce store right now? =
 
-Yes. BrikPanel includes a **woocommerce live visitors** widget on the dashboard that updates every 30 seconds. You can see what page each visitor is on, whether they have items in the cart, and whether they are an existing customer. This is real **woocommerce real time visitors** tracking, not estimates. A page nobody has touched for 30 minutes drops off the list, so a tab left open on a desk is not counted as someone on your store, and it comes back as soon as the visitor scrolls, clicks, taps or types.
+Yes. BrikPanel includes a **woocommerce live visitors** widget on the dashboard that updates every 30 seconds. You can see each visitor's country and page, whether they have items in the cart, and whether they are an existing customer. This is real **woocommerce real time visitors** tracking, not estimates. A page nobody has touched for 30 minutes drops off the list, so a forgotten tab is not counted as someone on your store, and it comes back as soon as the visitor scrolls, clicks, taps or types.
 
 = Does BrikPanel track WooCommerce conversion rate and conversion funnel? =
 
@@ -452,7 +454,7 @@ Yes. BrikPanel is compatible with WooCommerce Subscriptions, Subscriptions for W
 
 = Where does BrikPanel store data? =
 
-Everything stays in your WordPress database. Visitor tracking writes to `wp_brikpanel_visitors` (daily totals), `wp_brikpanel_visited_pages`, `wp_brikpanel_referrers` and `wp_brikpanel_cart_tracking`, all anonymous counters with no visitor identifier in them. Other features have their own tables, created when BrikPanel is activated (expenses, suppliers, customer metrics, abandoned carts). Live visitor data is stored in a transient that auto-expires every 2 minutes and is never written to the database permanently. By default, your store, order, customer and visitor data is never sent anywhere. BrikPanel only contacts an external service for optional features you switch on yourself, described in the next question.
+Everything stays in your WordPress database. Visitor tracking writes to `wp_brikpanel_visitors` (daily totals), `wp_brikpanel_visited_pages`, `wp_brikpanel_referrers`, `wp_brikpanel_visitor_countries` and `wp_brikpanel_cart_tracking`, all anonymous counters with no visitor identifier in them. Other features have their own tables, created when BrikPanel is activated (expenses, suppliers, customer metrics, abandoned carts). Live visitor data is stored in a transient that auto-expires every 2 minutes and is never written to the database permanently. By default, your store, order, customer and visitor data is never sent anywhere. BrikPanel only contacts an external service for optional features you switch on yourself, described in the next question.
 
 = What data does BrikPanel send outside my site? =
 
@@ -501,6 +503,17 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.40 (2026-10-25) =
+* New: **See which countries your visitors come from.** The "Order locations" card is now "Locations", with a Visitors tab next to Orders and Customers: the globe and your top countries by visitors, each with its share and orders. Live visitors shows each visitor's flag and country, and the dashboard's Export Excel file has a "Visitor countries" sheet.
+* New: **Countries are found on your own server.** BrikPanel finds the country in a list that comes with the plugin (DB-IP's free IP to Country Lite), so no IP address is sent anywhere or saved: only the two-letter country code is kept. Countries are counted from the day you update, while "Visitor tracking" is on.
+* Fix: **Visitors from Snapchat, Pinterest and other app browsers are counted.** These apps' built-in browsers, and Instagram on some Xiaomi phones, were taken for robots: those shoppers were not counted, saw no Email popup and got no abandoned cart email. They are now treated like any other visitor.
+* Fix: **Speed plugins no longer hide visitors.** With a plugin that delays JavaScript until the first tap, such as WP Rocket or LiteSpeed Cache, many visitors who tapped or clicked only once were not counted. BrikPanel's counter now asks these plugins to leave it alone, and the first tap counts even when one still holds it back.
+* Fix: **Row links on Categories no longer run off the card.** On wide screens, the Edit, Quick Edit and Delete links of Categories, Tags, Brands and attributes were cut off in longer languages such as Dutch, or with SEO columns, and could cover the name. They now sit next to the name only when they fit, and under it otherwise.
+
+= 3.3.39 (2026-10-23) =
+* Fix: **The dashboard follows new orders while it stays open.** Orders, revenue, "Today so far" and the last order now change by themselves when an order comes in, along with the new order notification. Before, they only changed after reloading the page.
+* New: **"1 new order" bar on the Orders list.** While the list stays open, the summary above it updates by itself and a bar counts the orders that came in since, with a Show button that opens the same tab again. The rows never move on their own.
 
 = 3.3.38 (2026-10-22) =
 * New: **Unused images in Store Health.** A new card finds the images that no product, variation, page, setting, review or other plugin uses any more and shows them in a grid with a large preview. Move the ones you pick to the trash: their files stay on the server for 30 days, so nothing breaks, and one click brings them back. The check runs only when you start it.
@@ -577,26 +590,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **WooCommerce Shipping's label window and WooCommerce's order fulfillment drawer** no longer open under the BrikPanel top bar.
 * Fix: **The Email popup on phones.** The offer image no longer covers the close button, the popup is the same size on every theme (themes with a smaller base font size, such as OceanWP, shrank it), and the floating tab's close button now shows on touch screens.
 * Fix: **Paid items no longer come back as an abandoned cart.** When a customer paid on the bank's page and never returned to the thank-you page, the paid items stayed in their cart and reappeared as a new abandoned cart. BrikPanel now takes them out of the cart on the customer's next visit, as the thank-you page would have; anything added after the order stays.
-
-= 3.3.33 (2026-10-07) =
-* New: **Arrange the dashboard box by box.** Setting: Dashboard → "Dashboard sections" now lists every box on its own, such as Recent orders, Order rates and the Conversion funnel, so you can move or hide each one. Boxes joined by a line sit side by side, and a new "Customize" link on the dashboard's date line opens the list. Layouts you saved before look the same.
-* New: **Product weights on the order screen.** The order's Items tab shows each product's weight, such as "0.12 kg × 3 = 0.36 kg", and a "Total weight" line under the totals, with a note when a product that ships has no weight. Orders without weighted products look as before.
-* New: **The products list on phones works like an app.** Each row shows the image, name, price and a stock dot, a tap opens the product, and coming back keeps your place. Filters, sorting, quick edit and row actions open from the bottom of the screen, "Select" or a long press picks several products, more load as you scroll, and Undo brings back a trashed product.
-* New: **The product editor on phones works like an app.** Back and ⋯ sit at the top, the status and Save at the bottom, images are square tiles, each variation has its own page, and less used cards such as Organization, Description, Shipping and Linked products open as pages. Computers and tablets look as before.
-* New: **Ignore BrikPanel's access rules.** Setting: Access control → "Ignore BrikPanel's access rules", off by default. Turn it on when a plugin such as Advanced Access Manager or B2BKing decides who sees what: BrikPanel then stops applying its own choices of who sees menu items, top bar controls, dashboard widgets and orders analytics, and stops blocking hidden pages. Your saved rules are kept.
-* Tweak: **The new order popup works in a background tab.** The popup and the chime no longer stop when the BrikPanel tab is in the background. With several tabs open, the chime plays once and the popup shows in the tab you are looking at, after any open window is closed.
-* Tweak: **The new order popup for every new order.** It now also shows for completed orders and for orders on hold, marked "Awaiting payment". On an iPhone the chime works after your first tap, volume 0 is silent, and the item count uses the right plural in every language.
-* Fix: **Store Health on MySQL 8.** On MySQL 8.0.22 and later, the daily "Abandoned cart entries" check failed with a database error: the card stayed Pending, Bot traffic missed fake cart entries, the nightly cleanup could not remove them and the error log got new lines every day. It now works on MySQL 8, MySQL 5.7 and MariaDB.
-* Fix: **Stock total of variable products.** When the main product keeps the stock, it is counted once instead of once per variation, and switched-off variations are left out.
-* Fix: **Adding a category keeps the brands.** In the product editor, "Add new category" emptied the brand list, so the next save removed the product's brands.
-* Fix: **A status change counts as an unsaved change** in the product editor, so you are warned before leaving the page.
-* Tweak: **Stock badges follow your low stock threshold.** In the products list, the stock badge turns amber at the store's low stock threshold instead of a fixed 5, and red below zero.
-* Tweak: **A survey card instead of the newsletter card.** The card at the top of the dashboard opens a 2-minute survey on brksoft.com. The newsletter signup stays in WooCommerce > Settings > BrikPanel, with the survey above it.
-* Tweak: **One message at a time.** The welcome tour, the new store guide, the survey card, the review request and the BrikMentor cards take turns: one at a time, at least 7 days apart, and none while another notice is on the screen.
-* Fix: **Settings search opens the right row.** Six results, such as Dashboard sections and Top bar items, now open at their own row, and a tall row shows from its top.
-* Fix: **Keyboard focus on the order screen.** An item reached with the Tab key no longer hides under the fixed header and tab bar.
-
-= 3.3.31 (2026-10-05) =
-* Fix: **The dashboard in Firefox.** In Firefox, the dashboard's cards stacked one per line and its header took the phone layout on every screen size, and on a phone the Low stock list turned into cards. All of them look as they should again.
-* Fix: **The dashboard on a zoomed page.** On a zoomed page, the cards could stack one per line and the header could switch to its phone layout, even on a wide screen.
-* Fix: **The Order locations globe no longer goes blank.** Browsers without WebGL, such as LibreWolf, showed an empty box, and a globe that lost its graphics context stayed blank until the page was reloaded. A drawn globe now stands in, and the 3D globe comes back on its own.

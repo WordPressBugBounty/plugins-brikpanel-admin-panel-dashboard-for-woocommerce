@@ -58,19 +58,24 @@ function brikpanel_bot_ua_tokens() {
         'googleproducer', 'mediapartners', 'chrome-lighthouse', 'lighthouse',
         'google-cloudvertexbot', 'google-safety', 'google-pagerenderer',
 
-        // Other search engines.
-        'slurp', 'yandex', 'baiduspider', 'baidu', 'sogou', 'exabot', 'seznam',
-        'bingpreview', 'msnbot', 'duckduckbot', 'qwantify', 'coccoc', 'naver',
+        // Other search engines. Yandex, Baidu, Sogou and Naver are app names
+        // too: see brikpanel_bot_ua_app_tokens(). Naver's crawler (Yeti) has
+        // no "bot" in its name, so it is caught by its own address.
+        'slurp', 'baiduspider', 'exabot', 'seznam',
+        'bingpreview', 'msnbot', 'duckduckbot', 'qwantify', 'coccoc', 'naver.me/spd',
 
         // Apple.
         'applebot',
 
-        // Social / messaging link unfurlers.
+        // Social / messaging link unfurlers. WhatsApp, Pinterest, Tumblr,
+        // Flipboard and Snapchat are app names too: see
+        // brikpanel_bot_ua_app_tokens(). Flipboard's proxy can carry a
+        // Firefox user agent, so it is named here.
         'facebookexternalhit', 'facebookcatalog', 'meta-externalagent',
         'meta-externalfetcher', 'twitterbot', 'linkedinbot', 'slackbot',
-        'slack-imgproxy', 'discordbot', 'telegrambot', 'whatsapp', 'skypeuripreview',
-        'redditbot', 'pinterest', 'tumblr', 'vkshare', 'embedly', 'quora link preview',
-        'flipboard', 'nuzzel', 'outbrain', 'snapchat',
+        'slack-imgproxy', 'discordbot', 'telegrambot', 'skypeuripreview',
+        'redditbot', 'vkshare', 'embedly', 'quora link preview',
+        'flipboardproxy', 'nuzzel', 'outbrain',
 
         // SEO / marketing suites.
         'ahrefs', 'semrush', 'mj12', 'majestic', 'dotbot', 'rogerbot', 'blexbot',
@@ -96,7 +101,7 @@ function brikpanel_bot_ua_tokens() {
         'python-urllib', 'aiohttp', 'httpx', 'go-http-client', 'okhttp',
         'java/', 'apache-httpclient', 'guzzlehttp', 'axios/', 'node-fetch',
         'restsharp', 'postmanruntime', 'insomnia', 'httpie',
-        'ruby', 'php/', 'dart/', 'winhttp', 'http_request2', 'zabbix',
+        'php/', 'dart/', 'winhttp', 'http_request2', 'zabbix',
 
         // WordPress / WooCommerce internal callers.
         'wordpress/', 'woocommerce/', 'wp-android', 'wp-iphone', 'jetpack',
@@ -113,6 +118,60 @@ function brikpanel_bot_ua_tokens() {
      * @param string[] $tokens Lower-case user-agent fragments.
      */
     return (array) apply_filters( 'brikpanel_bot_ua_tokens', $tokens );
+}
+
+/**
+ * User-agent fragments that mean a robot only when the request does not come
+ * from a real browser (3.3.40).
+ *
+ * These are names a person's browser can carry as well. Apps open links in
+ * their own built-in browser and add their name to its user agent ("Snapchat/
+ * 13.20", "[Pinterest/iOS]", "YandexSearch"), and Instagram puts the phone's
+ * code name in it: the Redmi Note 12 Pro is "ruby", the name the Ruby HTTP
+ * library sends. Matched against the whole list above, every one of those
+ * shoppers was dropped: not counted as a visitor, no email captured, no cart
+ * saved (imaddd, October 2026).
+ *
+ * So these match only a client without a browser engine, which is what the
+ * fetchers that use these names are: "Ruby", "WhatsApp/2.23", "Tumblr/14".
+ * The ones that render pages carry "bot" or "spider" and are caught above.
+ *
+ * @since 3.3.40
+ *
+ * @return string[]
+ */
+function brikpanel_bot_ua_app_tokens() {
+    /**
+     * Filter the user-agent fragments treated as bots only when the request
+     * comes from something other than a browser.
+     *
+     * @since 3.3.40
+     *
+     * @param string[] $tokens Lower-case user-agent fragments.
+     */
+    return (array) apply_filters(
+        'brikpanel_bot_ua_app_tokens',
+        [ 'ruby', 'snapchat', 'pinterest', 'tumblr', 'flipboard', 'whatsapp', 'naver', 'baidu', 'sogou', 'yandex' ]
+    );
+}
+
+/**
+ * Whether a user agent names a browser engine: WebKit (Safari, Chrome, every
+ * app's built-in browser), Gecko (Firefox) or Trident (old Internet Explorer).
+ * HTTP libraries and link fetchers name none.
+ *
+ * @since 3.3.40
+ *
+ * @param string $ua Lower-cased user agent.
+ * @return bool
+ */
+function brikpanel_ua_has_browser_engine( $ua ) {
+    foreach ( [ 'applewebkit/', 'gecko/', 'trident/' ] as $engine ) {
+        if ( false !== strpos( $ua, $engine ) ) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -413,6 +472,17 @@ function brikpanel_scan_request_for_bot( $ua, $is_bot ) {
 
     if ( ! $is_bot && ! $allowlisted ) {
         foreach ( brikpanel_bot_ua_tokens() as $token ) {
+            if ( '' !== $token && false !== strpos( $ua, strtolower( $token ) ) ) {
+                $is_bot = true;
+                break;
+            }
+        }
+    }
+
+    // Names an app's built-in browser carries too: a robot only without a
+    // browser engine (see brikpanel_bot_ua_app_tokens()).
+    if ( ! $is_bot && ! $allowlisted && ! brikpanel_ua_has_browser_engine( $ua ) ) {
+        foreach ( brikpanel_bot_ua_app_tokens() as $token ) {
             if ( '' !== $token && false !== strpos( $ua, strtolower( $token ) ) ) {
                 $is_bot = true;
                 break;

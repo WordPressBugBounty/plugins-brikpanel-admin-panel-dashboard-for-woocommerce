@@ -575,6 +575,8 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'live_src_term'     => __('Search term: %s', 'brikpanel'),
             /* translators: %s: path of the first page of the visit, e.g. "/shop/". */
             'live_src_landing'  => __('Landing page: %s', 'brikpanel'),
+            /* translators: %s: the country the visitor browses from, e.g. "United States (US)". */
+            'live_country'      => __('Country: %s', 'brikpanel'),
             // Live visitors list after the page's security token expired.
             'live_reload'       => __('Reload the page to see live visitors.', 'brikpanel'),
             'aov'            => __('AOV', 'brikpanel'),
@@ -616,12 +618,24 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'total_subscriptions'  => __('total subscriptions', 'brikpanel'),
             'loc_orders'           => __('Orders', 'brikpanel'),
             'loc_customers'        => __('Customers', 'brikpanel'),
-            'loc_order_locations'  => __('Order locations', 'brikpanel'),
-            'loc_cust_locations'   => __('Customer locations', 'brikpanel'),
             'loc_top_countries_orders'    => __('Top countries by orders', 'brikpanel'),
             'loc_top_countries_customers' => __('Top countries by customers', 'brikpanel'),
             'loc_top_cities_orders'       => __('Top cities by orders', 'brikpanel'),
             'loc_top_cities_customers'    => __('Top cities by customers', 'brikpanel'),
+            // The card's Visitors tab (3.3.40): visitors by the country they
+            // browse from, with the orders from each country.
+            'loc_top_countries_visitors'  => __('Top countries by visitors', 'brikpanel'),
+            /* translators: %s: number of visitors, already formatted (e.g. 38). */
+            'loc_unknown_visitors'        => brikpanel_js_plural(_n_noop('%s visitor from an unknown country', '%s visitors from an unknown country', 'brikpanel')),
+            /* translators: %s: a date, e.g. "Oct 28, 2026": the day this store started counting visitor countries. */
+            'loc_counted_since'           => __('Counted since %s', 'brikpanel'),
+            /* translators: %s: a date, e.g. "Oct 28, 2026": the day this store started counting visitor countries. */
+            'loc_countries_from'          => __('Visitor countries are counted from %s on.', 'brikpanel'),
+            'loc_no_country'              => __('No visits with a known country in this period.', 'brikpanel'),
+            /* translators: 1: visitors from one country, e.g. "124 visitors"; 2: orders from it, e.g. "3 orders". */
+            'loc_visitor_meta'            => _x('%1$s · %2$s', 'visitors and orders of one country', 'brikpanel'),
+            /* translators: %s: number of customers, already formatted (e.g. 3). */
+            'loc_n_customers'             => brikpanel_js_plural(_n_noop('%s customer', '%s customers', 'brikpanel')),
             // The region map of a store selling in one country: its list
             // titles (by what the country's regions are called), the tooltip
             // and the line under the map.
@@ -667,6 +681,8 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'export_select_dates'   => __('Pick a custom date range first.', 'brikpanel'),
             'period_loading'        => __('Loading…', 'brikpanel'),
             'globe_alt'             => __('Order locations globe', 'brikpanel'),
+            'globe_alt_customers'   => __('Customer locations globe', 'brikpanel'),
+            'globe_alt_visitors'    => __('Visitor locations globe', 'brikpanel'),
             // Empty cards and charts say why they are empty (brand new store,
             // quiet period, visitor tracking off or waiting for consent).
             'empty_new_orders'       => __('No orders yet. Your first order will show up here.', 'brikpanel'),
@@ -1625,7 +1641,16 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'row_columns'   => function_exists( 'brikpanel_orders_compact_user_row_columns' )
                     ? brikpanel_orders_compact_user_row_columns() : [],
                 'more_trigger'  => $orders_more_trigger,
+                // The data version this list was printed at: the "new orders"
+                // bar asks for a count only once the version moves past it.
+                'data_ver'      => function_exists( 'brikpanel_data_cache_ver' ) ? (int) brikpanel_data_cache_ver() : 0,
                 'i18n'     => [
+                    // The "1 new order · Show" bar above a list left open.
+                    'new_orders'        => function_exists( 'brikpanel_js_plural' )
+                        /* translators: %s: number of new orders. */
+                        ? brikpanel_js_plural( _n_noop( '%s new order', '%s new orders', 'brikpanel' ) )
+                        : [ 'forms' => [ '%s' ], 'en' => true ],
+                    'show_new_orders'   => _x( 'Show', 'button: reload the orders list to show the new orders', 'brikpanel' ),
                     'today'             => __( 'Today', 'brikpanel' ),
                     'last_24_hours'     => __( 'Last 24 hours', 'brikpanel' ),
                     'last_7_days'       => __( 'Last 7 days', 'brikpanel' ),

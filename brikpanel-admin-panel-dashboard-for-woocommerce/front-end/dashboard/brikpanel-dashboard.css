@@ -1904,6 +1904,11 @@ button.brikpanel-dash-guide__item:focus-visible {
     margin-inline-start: auto;
 }
 
+/* No colour scale under the Visitors globe (3.3.40). */
+.brikpanel-loc-legend[hidden] {
+    display: none;
+}
+
 .brikpanel-loc-legend i {
     display: inline-block;
     width: 14px;
@@ -3658,6 +3663,19 @@ button.brikpanel-dash-guide__item:focus-visible {
     font-size: 0.75rem;
 }
 
+/* The visitor's country leads the grey line (3.3.40): the flag, or where
+   flags do not draw, a smaller copy of the country-code badge. */
+.bp-dv-live-flag {
+    margin-inline-end: 0.25rem;
+}
+
+.bp-dv-live-what .bp-dv-flag-code {
+    min-width: 1.375rem;
+    height: 0.9375rem;
+    font-size: 0.625rem;
+    vertical-align: text-bottom;
+}
+
 .bp-dv-live-side {
     display: flex;
     flex-direction: column;
@@ -5031,4 +5049,17 @@ html.bp-dv-pages-lock {
     .bp-dv-flow-bead,
     .bp-dv-sq,
     .bp-dv-rates-item { transition: none; }
+}
+
+/* DB-IP's credit for the visitor countries, the dashboard's last line
+   (3.3.40): its free list asks for a link where its countries are shown. */
+.brikpanel-dash-credit {
+    margin: 1.25rem 0 0;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--bp-text-secondary, #616161);
+}
+
+.brikpanel-dash-credit a {
+    color: inherit;
 }

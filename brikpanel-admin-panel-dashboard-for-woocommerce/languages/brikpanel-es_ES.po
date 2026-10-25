@@ -1705,18 +1705,6 @@ msgstr[0] "%s entrada de carrito abandonado casi seguro la escribió un script."
 msgstr[1] ""
 "%s entradas de carritos abandonados casi seguro las escribió un script."
 
-#: front-end/brikcontrol/checks/class-brikpanel-brikcontrol-bot-traffic-check.php:581
-msgid ""
-"The cleanup lowers each flagged figure to the highest value it could "
-"honestly have had, scales that day's traffic sources and device counts to "
-"match, deletes the flagged entries, and keeps everything it changed so one "
-"click puts it back."
-msgstr ""
-"La limpieza baja cada cifra marcada al valor más alto que podía tener "
-"honestamente, ajusta en proporción las fuentes de tráfico y los recuentos de "
-"dispositivos de ese día, elimina las entradas marcadas y guarda todo lo que "
-"cambió para que un clic lo devuelva."
-
 #. translators: %s: name of another check on the Store Health page, e.g. "Abandoned cart entries".
 #: front-end/brikcontrol/checks/class-brikpanel-brikcontrol-bot-traffic-check.php:587
 #, php-format
@@ -6514,10 +6502,6 @@ msgstr "Embudo de conversión"
 msgid "Order rates"
 msgstr "Tasas de pedidos"
 
-#: front-end/dashboard/brikpanel-dashboard.php:537
-msgid "Order locations globe + Top countries/cities"
-msgstr "Globo de ubicaciones de pedidos + Países/ciudades principales"
-
 #: front-end/dashboard/brikpanel-dashboard.php:538
 #: front-end/dashboard/brikpanel-dashboard.php:2401
 #: includes/brikpanel-enqueue.php:763
@@ -7277,11 +7261,6 @@ msgstr "Solo pedidos de la web"
 #: front-end/dashboard/brikpanel-dashboard.php:2312
 msgid "Out of every 100 orders"
 msgstr "De cada 100 pedidos"
-
-#: front-end/dashboard/brikpanel-dashboard.php:2336
-#: includes/brikpanel-enqueue.php:619
-msgid "Order locations"
-msgstr "Ubicaciones de pedidos"
 
 #: front-end/dashboard/brikpanel-dashboard.php:2337
 msgid "View mode"
@@ -12884,20 +12863,6 @@ msgstr ""
 #: front-end/orders/brikpanel-orders.php:732
 msgid "Visitor tracking"
 msgstr "Seguimiento de visitantes"
-
-#: front-end/orders/brikpanel-orders.php:735
-msgid ""
-"Track visitors, page views, product views, add-to-carts, checkout visits and "
-"live visitors on your storefront. Turn this off if you already use a "
-"dedicated analytics tool. BrikPanel will stop adding any tracking scripts or "
-"requests to your store pages, and the related dashboard cards will simply "
-"stop receiving new data."
-msgstr ""
-"Registra visitantes, páginas vistas, visualizaciones de producto, añadidos "
-"al carrito, visitas al pago y visitantes en vivo en tu tienda. Desactívalo "
-"si ya usas una herramienta de analítica dedicada. BrikPanel dejará de añadir "
-"scripts o peticiones de seguimiento a las páginas de tu tienda, y las "
-"tarjetas relacionadas del panel simplemente dejarán de recibir datos nuevos."
 
 #: front-end/orders/brikpanel-orders.php:739
 msgid "Wait for cookie consent"
@@ -18734,10 +18699,6 @@ msgstr "Valor de vida total"
 msgid "total subscriptions"
 msgstr "suscripciones totales"
 
-#: includes/brikpanel-enqueue.php:620
-msgid "Customer locations"
-msgstr "Ubicaciones de clientes"
-
 #: includes/brikpanel-enqueue.php:621
 msgid "Top countries by orders"
 msgstr "Países principales por pedidos"
@@ -24429,3 +24390,149 @@ msgstr "Trabajando…"
 #: front-end/brikcontrol/views/partials/unused-images-card.php:57
 msgid "You can leave this page. The check goes on in the background."
 msgstr "Puedes salir de esta página. La comprobación sigue en segundo plano."
+
+#: includes/brikpanel-enqueue.php:1637
+msgctxt "button: reload the orders list to show the new orders"
+msgid "Show"
+msgstr "Mostrar"
+
+#: front-end/brikcontrol/checks/class-brikpanel-brikcontrol-bot-traffic-check.php:582
+msgid ""
+"The cleanup lowers each flagged figure to the highest value it could honestly"
+" have had, scales that day's traffic sources, device counts and visitor "
+"countries to match, deletes the flagged entries, and keeps everything it "
+"changed so one click puts it back."
+msgstr ""
+"La limpieza baja cada cifra marcada al valor más alto que podía tener "
+"honestamente, ajusta en proporción las fuentes de tráfico, los recuentos de "
+"dispositivos y los países de los visitantes de ese día, elimina las entradas "
+"marcadas y guarda todo lo que cambió para que un clic lo devuelva."
+
+
+#: front-end/dashboard/brikpanel-dashboard.php:539
+msgid "Locations globe + Top countries/cities"
+msgstr "Globo de ubicaciones + Países/ciudades principales"
+
+
+#. translators: %s: the link "IP Geolocation by DB-IP" to db-ip.com, where the
+#. visitor country list comes from.
+#: front-end/dashboard/brikpanel-dashboard.php:1099
+#: front-end/dashboard/brikpanel-dashboard.php:7122
+#, php-format
+msgid "Visitor countries: %s"
+msgstr "Países de los visitantes: %s"
+
+
+#: front-end/dashboard/brikpanel-dashboard.php:1096
+#: front-end/dashboard/brikpanel-dashboard.php:7120
+msgid "IP Geolocation by DB-IP"
+msgstr "Geolocalización IP de DB-IP"
+
+
+#: front-end/dashboard/brikpanel-dashboard.php:2368
+msgctxt "dashboard card: where orders, customers and visitors come from"
+msgid "Locations"
+msgstr "Ubicaciones"
+
+
+#: front-end/dashboard/brikpanel-dashboard.php:2398
+#: includes/brikpanel-enqueue.php:627
+msgid "Top countries by visitors"
+msgstr "Países principales por visitantes"
+
+
+#: front-end/dashboard/brikpanel-dashboard.php:7110
+msgctxt "visitors whose country was not found"
+msgid "Unknown"
+msgstr "Desconocido"
+
+
+#. translators: %s: the date visitor countries started being counted on this
+#. store.
+#. translators: %s: a date, e.g. "Oct 28, 2026": the day this store started
+#. counting visitor countries.
+#: front-end/dashboard/brikpanel-dashboard.php:7118
+#: includes/brikpanel-enqueue.php:631
+#, php-format
+msgid "Counted since %s"
+msgstr "Contados desde %s"
+
+
+#: front-end/dashboard/brikpanel-dashboard.php:7231
+msgid "Visitor countries"
+msgstr "Países de visitantes"
+
+
+#: front-end/orders/brikpanel-orders.php:742
+msgid ""
+"Track visitors and the countries they browse from, page views, product views,"
+" add-to-carts, checkout visits and live visitors on your storefront. Turn "
+"this off if you already use a dedicated analytics tool. BrikPanel will stop "
+"adding any tracking scripts or requests to your store pages, and the related "
+"dashboard cards will simply stop receiving new data."
+msgstr ""
+"Registra visitantes y los países desde los que navegan, páginas vistas, "
+"visualizaciones de producto, añadidos al carrito, visitas al pago y "
+"visitantes en vivo en tu tienda. Desactívalo si ya usas una herramienta de "
+"analítica dedicada. BrikPanel dejará de añadir scripts o peticiones de "
+"seguimiento a las páginas de tu tienda, y las tarjetas relacionadas del panel"
+" simplemente dejarán de recibir datos nuevos."
+
+
+#. translators: %s: the country the visitor browses from, e.g. "United States
+#. (US)".
+#: includes/brikpanel-enqueue.php:579
+#, php-format
+msgid "Country: %s"
+msgstr "País: %s"
+
+
+#. translators: %s: number of visitors, already formatted (e.g. 38).
+#: includes/brikpanel-enqueue.php:629
+#, php-format
+msgid "%s visitor from an unknown country"
+msgid_plural "%s visitors from an unknown country"
+msgstr[0] "%s visitante de un país desconocido"
+msgstr[1] "%s visitantes de países desconocidos"
+
+
+#. translators: %s: a date, e.g. "Oct 28, 2026": the day this store started
+#. counting visitor countries.
+#: includes/brikpanel-enqueue.php:633
+#, php-format
+msgid "Visitor countries are counted from %s on."
+msgstr "Los países de los visitantes se cuentan desde %s."
+
+
+#: includes/brikpanel-enqueue.php:634
+msgid "No visits with a known country in this period."
+msgstr "No hay visitas con un país conocido en este periodo."
+
+
+#. translators: 1: visitors from one country, e.g. "124 visitors"; 2: orders
+#. from it, e.g. "3 orders".
+#: includes/brikpanel-enqueue.php:636
+#, php-format
+msgctxt "visitors and orders of one country"
+msgid "%1$s · %2$s"
+msgstr "%1$s · %2$s"
+
+
+#. translators: %s: number of customers, already formatted (e.g. 3).
+#: includes/brikpanel-enqueue.php:638
+#, php-format
+msgid "%s customer"
+msgid_plural "%s customers"
+msgstr[0] "%s cliente"
+msgstr[1] "%s clientes"
+
+
+#: includes/brikpanel-enqueue.php:684
+msgid "Customer locations globe"
+msgstr "Globo de ubicaciones de clientes"
+
+
+#: includes/brikpanel-enqueue.php:685
+msgid "Visitor locations globe"
+msgstr "Globo de ubicaciones de visitantes"
+
