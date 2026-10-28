@@ -11972,9 +11972,7 @@ class Brikpanel_Product_Editor {
         $duplicate->set_name(($product->get_name() ?? '') . ' (' . __('Copy', 'brikpanel') . ')');
         $duplicate->set_status('draft');
         $duplicate->set_slug('');
-        try {
-            $duplicate->set_sku('');
-        } catch (\Exception $e) {}
+        $this->reset_copy_identity($duplicate);
         $duplicate->save();
 
         // Carry over brand + any other custom taxonomy term relationships that
@@ -11996,9 +11994,7 @@ class Brikpanel_Product_Editor {
                 $new_var = clone $variation;
                 $new_var->set_id(0);
                 $new_var->set_parent_id($duplicate->get_id());
-                try {
-                    $new_var->set_sku('');
-                } catch (\Exception $e) {}
+                $this->reset_copy_identity($new_var);
                 $new_var->save();
             }
             WC_Product_Variable::sync($duplicate->get_id());
@@ -12008,6 +12004,33 @@ class Brikpanel_Product_Editor {
             'product_id' => $duplicate->get_id(),
             'message'    => __('Product duplicated!', 'brikpanel'),
         ]);
+    }
+
+    /**
+     * A copy starts as a new product, the way WooCommerce's own Duplicate
+     * makes one. No SKU and no GTIN: both must be unique, so WooCommerce
+     * refused the original's GTIN on every save of the copy. The SKU stays
+     * empty instead of WooCommerce's "-1" suffix, as BrikPanel copies always
+     * started. No creation date, so it gets today's. And for the product
+     * itself no stars, review count or sales: a copy that kept them showed
+     * "5 stars (3 customer reviews)" above "There are no reviews yet."
+     *
+     * @param WC_Product $copy Product or variation clone, not saved yet.
+     */
+    private function reset_copy_identity($copy) {
+        try {
+            $copy->set_sku('');
+        } catch (\Exception $e) {}
+        try {
+            brikpanel_wc_set_gtin($copy, '');
+        } catch (\Exception $e) {}
+        $copy->set_date_created(null);
+        if (!$copy->is_type('variation')) {
+            $copy->set_total_sales(0);
+            $copy->set_rating_counts(0);
+            $copy->set_average_rating(0);
+            $copy->set_review_count(0);
+        }
     }
 
     // =========================================================================

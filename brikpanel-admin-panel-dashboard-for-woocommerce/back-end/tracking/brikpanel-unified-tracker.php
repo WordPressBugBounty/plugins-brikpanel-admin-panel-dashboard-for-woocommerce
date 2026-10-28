@@ -43,6 +43,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  *                             tracker (brikpanel_unified_track_legacy()).
  *   human=1                 — the tracker saw a real person on this page
  *                             (first input event). Asks for the mark.
+ *   open=1                  : the page is on screen and nobody touched it
+ *                             yet (3.3.41). Counted only while "Count
+ *                             visitors when the page opens" is on, and never
+ *                             earns the mark.
  *   live=1, page_url        — live-visitor ping (rate-limited server-side).
  *   idle                    — with live: seconds since the visitor last
  *                             touched the page (0 on a page load).
@@ -63,7 +67,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *                             said yes).
  *
  * Reply `human`: 'ok' (counted as a person; the mark cookie travels with the
- * reply), 'need' (nothing recorded; ask again after a real input event).
+ * reply), 'need' (nothing recorded; ask again after a real input event),
+ * 'open' (counted on page open; no mark, so the tracker keeps waiting for a
+ * person's input).
  *
  * No nonce: this is a public endpoint reachable from any frontend visitor,
  * and nonces printed into cached storefront HTML go stale anyway. Abuse is
@@ -122,10 +128,16 @@ function brikpanel_ajax_unified_track() {
 
     // The person check. A browser carrying a valid mark (or a signed-in
     // customer) is a person; anyone else must have reported a real input
-    // event and pass the server's own checks.
-    $state = brikpanel_human_state();
+    // event and pass the server's own checks. With "Count visitors when the
+    // page opens" on (3.3.41), a page that opened on screen passes the same
+    // checks and is counted, but gets no person mark (see "opened" below).
+    $state  = brikpanel_human_state();
+    $opened = false;
     if ( ! $state['valid'] && ! is_user_logged_in() ) {
-        if ( empty( $_POST['human'] ) ) {
+        $opened = empty( $_POST['human'] ) && ! empty( $_POST['open'] )
+            && function_exists( 'brikpanel_count_on_open_enabled' ) && brikpanel_count_on_open_enabled()
+            && function_exists( 'brikpanel_open_issue' );
+        if ( empty( $_POST['human'] ) && ! $opened ) {
             wp_send_json_success( [ 'human' => 'need' ] );
         }
         if ( '' !== brikpanel_human_claim_refused() ) {
@@ -149,11 +161,18 @@ function brikpanel_ajax_unified_track() {
     }
 
     $today = brikpanel_human_today();
-    $flags = ( $state['valid'] && $state['today'] ) ? $state['flags'] : '';
-    $done  = [ 'human' => 'ok', 'day' => $today ];
+    if ( $state['valid'] && $state['today'] ) {
+        $flags = $state['flags'];
+    } else {
+        // What a page that opened earlier today already counted (3.3.41), so
+        // the touch that follows does not count the same visitor again.
+        $flags = function_exists( 'brikpanel_open_state' ) ? brikpanel_open_state()['flags'] : '';
+    }
+    $done = [ 'human' => $opened ? 'open' : 'ok', 'day' => $today ];
 
-    // 1) Live-visitor ping (rate limit + transient cap live inside).
-    if ( ! empty( $_POST['live'] ) && function_exists( 'brikpanel_record_live_visitor' ) ) {
+    // 1) Live-visitor ping (rate limit + transient cap live inside). Not for
+    //    a page counted on open: the Live list stays the people who touched.
+    if ( ! $opened && ! empty( $_POST['live'] ) && function_exists( 'brikpanel_record_live_visitor' ) ) {
         $done['live'] = brikpanel_unified_track_live();
     }
 
@@ -190,6 +209,13 @@ function brikpanel_ajax_unified_track() {
     if ( isset( $_POST['campaign'] ) && is_string( $_POST['campaign'] ) && function_exists( 'brikpanel_record_campaign_visit' ) ) {
         brikpanel_record_campaign_visit( wp_unslash( $_POST['campaign'] ) );
         $done['campaign'] = true;
+    }
+
+    // Counted on open, not proved: no person mark, and the session's parked
+    // add-to-carts and checkout visits keep waiting for a real input.
+    if ( $opened ) {
+        brikpanel_open_issue( $flags );
+        wp_send_json_success( $done );
     }
 
     // The mark goes out with this reply, so it arrives even when the page
@@ -315,6 +341,13 @@ function brikpanel_unified_track_legacy() {
  * pointer down, touch, wheel, key). A browser that reports itself as
  * automated (navigator.webdriver, HeadlessChrome, no languages) sends nothing.
  *
+ * Count on open (3.3.41): with "Count visitors when the page opens" on, a page
+ * on screen without the mark also sends one request at once (open=1). It
+ * counts the day's visitor, the page view, the product view and the campaign,
+ * but earns no mark, so the script keeps waiting for a real input. A touch
+ * made while that request is on its way is sent when it answers, carrying
+ * what it counted, so one visitor is never counted twice.
+ *
  * Speed plugins (3.3.40): WP Rocket, LiteSpeed and others can hold every
  * script back until the visitor's first touch, and that touch is spent
  * waking them, so a visitor who touched once was never counted. The tag
@@ -360,6 +393,8 @@ function brikpanel_unified_tracker_js() {
     $human_cookie     = function_exists( 'brikpanel_human_cookie_name' ) ? brikpanel_human_cookie_name() : 'brikpanel_human';
     // "Traffic source in Live view": site-level, so safe in cached HTML too.
     $live_source      = ! function_exists( 'brikpanel_live_traffic_source_enabled' ) || brikpanel_live_traffic_source_enabled();
+    // "Count visitors when the page opens" (3.3.41): site-level as well.
+    $count_on_open    = function_exists( 'brikpanel_count_on_open_enabled' ) && brikpanel_count_on_open_enabled();
     // The id is what WP Rocket's exclusion matches
     // (brikpanel_tracker_skip_rocket_delay()); data-no-defer and
     // data-no-optimize keep LiteSpeed Cache from holding it back,
@@ -390,12 +425,19 @@ function brikpanel_unified_tracker_js() {
         var CONSENT_CAT     = "<?php echo esc_js( $consent_cat ); ?>";
         var CONSENT_COOKIE  = "<?php echo esc_js( $consent_cookie ); ?>";
 
+        // Count a visitor as soon as the page is on screen, before any input
+        // (3.3.41). The server decides; this only says whether to ask.
+        var COUNT_ON_OPEN = <?php echo $count_on_open ? 'true' : 'false'; ?>;
+
         var running   = false;
         var timer     = null;
         var forgotten = false;
         var proven    = false;   // the server counted this page as a person's
         var asking    = false;   // waiting for a person's first input event
         var shownWait = false;   // waiting for the page to be on screen
+        var openCounted  = false; // this page view was counted when it opened
+        var openInFlight = false; // the page-open request has not answered yet
+        var personQueued = false; // a person touched the page meanwhile
 
         // Idle limit: see the PHP docblock of brikpanel_unified_tracker_js().
         var INTERVAL_MS = <?php echo (int) $ping_interval_ms; ?>;
@@ -424,10 +466,12 @@ function brikpanel_unified_tracker_js() {
             return /^1\.\d{4}-\d{2}-\d{2}\.[vpac]{0,4}\.[0-9a-f]{20}$/.test(v) ? v : '';
         }
 
-        // The store's day as the server last said it, else the page's.
+        // The store's day as the server last said it, else the page's. Read
+        // from the person mark or from a page counted on open ("0." in front,
+        // 3.3.41), which says nothing about being a person.
         function storeDay() {
-            var m = humanMark();
-            return m ? m.split('.')[1] : PAGE_DAY;
+            var m = /^[01]\.(\d{4}-\d{2}-\d{2})\.[vpac]{0,4}\.[0-9a-f]{20}$/.exec(readCookie(HUMAN_COOKIE));
+            return m ? m[1] : PAGE_DAY;
         }
 
         // A browser driven by automation says so itself; a person's browser
@@ -609,15 +653,25 @@ function brikpanel_unified_tracker_js() {
 
         // One combined request per page view: live ping, page view, visitor,
         // product view and campaign. `human`: sent because a person just
-        // touched the page (asks the server for the mark).
-        function sendCombined(human) {
+        // touched the page (asks the server for the mark). `open`: the page
+        // is on screen and nobody touched it yet (3.3.41, "Count visitors
+        // when the page opens"); no live ping, the Live list keeps the
+        // people who touched.
+        function sendCombined(human, open) {
             if (!running) return;
             var fd = new FormData();
             fd.append('action', 'brikpanel_unified_track');
             fd.append('tv', '2');
             if (human) fd.append('human', '1');
-            buildLive(fd);
-            if (pageId) {
+            if (open) {
+                fd.append('open', '1');
+                if (REQUIRE_CONSENT) fd.append('consent', '1');
+                openInFlight = true;
+            } else {
+                buildLive(fd);
+            }
+            // Once per page view: not again after it was counted on open.
+            if (pageId && !openCounted) {
                 fd.append('page_id', pageId);
                 fd.append('page_type', pageType);
             }
@@ -640,18 +694,39 @@ function brikpanel_unified_tracker_js() {
             }).then(function(res) {
                 return res.ok ? res.json() : null;
             }).then(function(json) {
-                if (!json || !json.success || !json.data) return;
-                var d = json.data;
-                if (d.human === 'need') {
-                    proven = false;
-                    askPerson();
-                    return;
-                }
-                if (d.human !== 'ok') return;
+                answered(json && json.success && json.data ? json.data : null, open, wantCampaign, campaign);
+            }).catch(function() {
+                answered(null, open, false, '');
+            });
+        }
+
+        // The server's answer. A person who touched the page while the
+        // page-open request was on its way is sent only now, once that
+        // answer's cookie says what was counted, so the visitor is not
+        // counted a second time.
+        function answered(d, open, wantCampaign, campaign) {
+            if (open) openInFlight = false;
+            if (d && d.human === 'ok') {
+                personQueued = false;
                 proven = true;
+                stopAsking();
                 startPings();
                 if (wantCampaign && d.campaign) campaignCounted(campaign, d.day || storeDay());
-            }).catch(function() {});
+                return;
+            }
+            if (d && d.human === 'open') {
+                if (d.pv) openCounted = true;
+                if (wantCampaign && d.campaign) campaignCounted(campaign, d.day || storeDay());
+            }
+            if (personQueued) {
+                personQueued = false;
+                sendCombined(true);
+                return;
+            }
+            if (d && d.human === 'need') {
+                proven = false;
+                askPerson();
+            }
         }
 
         // Recurring live ping for tabs that stay open — live part only, and
@@ -715,9 +790,11 @@ function brikpanel_unified_tracker_js() {
                 if (px === null) { px = e.screenX; py = e.screenY; return; }
                 if (e.screenX === px && e.screenY === py) return;
             }
-            asking = false;
-            for (var i = 0; i < PERSON_EVENTS.length; i++) {
-                document.removeEventListener(PERSON_EVENTS[i], onPerson, true);
+            stopAsking();
+            // The page-open request is still on its way: sent when it answers.
+            if (openInFlight) {
+                personQueued = true;
+                return;
             }
             sendCombined(true);
         }
@@ -727,6 +804,13 @@ function brikpanel_unified_tracker_js() {
             px = null; py = null;
             for (var i = 0; i < PERSON_EVENTS.length; i++) {
                 document.addEventListener(PERSON_EVENTS[i], onPerson, { capture: true, passive: true });
+            }
+        }
+        function stopAsking() {
+            if (!asking) return;
+            asking = false;
+            for (var i = 0; i < PERSON_EVENTS.length; i++) {
+                document.removeEventListener(PERSON_EVENTS[i], onPerson, true);
             }
         }
 
@@ -756,6 +840,9 @@ function brikpanel_unified_tracker_js() {
             } else if (touchedBefore()) {
                 sendCombined(true);
             } else {
+                // Counted now when the store asks for it; the person mark
+                // still waits for a real input.
+                if (COUNT_ON_OPEN) sendCombined(false, true);
                 askPerson();
             }
         }

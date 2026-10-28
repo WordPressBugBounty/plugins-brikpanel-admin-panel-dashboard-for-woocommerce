@@ -3,8 +3,8 @@
  * BrikPanel - phone notifications: what holds whether the module is on or off.
  *
  * The module itself (brikpanel-push.php: phone notifications and the Home
- * Screen app) loads only when wp-config.php has
- * define( 'BRIKPANEL_PHONE_APP', true ) (brikpanel_phone_app_enabled() in
+ * Screen app) loads on every site unless wp-config.php has
+ * define( 'BRIKPANEL_PHONE_APP', false ) (brikpanel_phone_app_enabled() in
  * brikpanel.php). This file loads either way:
  * - the export keys: a module that is off still owns its keys, so an export
  *   never carries a signing key a test left behind
@@ -36,7 +36,8 @@ function brikpanel_push_register_export_keys( $map ) {
 	foreach ( array( 'brikpanel_push_vapid', 'brikpanel_push_vapid_unreadable', 'brikpanel_push_jwt' ) as $key ) {
 		$map[ $key ] = array( 'class' => 'secret' );
 	}
-	foreach ( array( 'brikpanel_push_env', 'brikpanel_push_active', 'brikpanel_push_site', 'brikpanel_push_flood', 'brikpanel_push_keys_alerted', 'brikpanel_push_phone' ) as $key ) {
+	// brikpanel_push_auto_off: where one person closed the top bar phone button's panel for good ('tab' or 'app').
+	foreach ( array( 'brikpanel_push_env', 'brikpanel_push_active', 'brikpanel_push_site', 'brikpanel_push_flood', 'brikpanel_push_keys_alerted', 'brikpanel_push_phone', 'brikpanel_push_auto_off' ) as $key ) {
 		$map[ $key ] = array( 'class' => 'internal' );
 	}
 	return $map;

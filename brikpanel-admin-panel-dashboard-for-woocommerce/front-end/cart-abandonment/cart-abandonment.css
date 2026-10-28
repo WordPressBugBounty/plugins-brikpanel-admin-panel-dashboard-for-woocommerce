@@ -1181,6 +1181,16 @@
 	color: #616161 !important;
 }
 
+/* The code's minimum spend, right under the code: a condition of the code
+ * itself, so it reads a step stronger than the notes around it. */
+.brikpanel-cartab-popup-overlay .brikpanel-cartab-coupon-minimum {
+	margin-top: 8px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	line-height: 1.4 !important;
+	color: #303030 !important;
+}
+
 /* "Wrong address? Edit it" affordance under the emailed-coupon notice. */
 .brikpanel-cartab-popup-overlay .brikpanel-cartab-editmail {
 	margin-top: 10px !important;

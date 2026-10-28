@@ -7,9 +7,11 @@
  *   own devices, can send a test or remove one, and problems on the server
  *   side (no https, outside requests blocked, a copy of the store) are listed
  *   first.
- * - The dashboard on a phone: one "Turn on order notifications" card, which
+ * - A phone: the top bar's phone button, whose panel opens by itself on every
+ *   page until notifications are on there or the person presses its X and
+ *   confirms; where the top bar has no phone button, a dashboard card that
  *   takes its turn in the one-ask-at-a-time line (includes/brikpanel-asks.php,
- *   id "push"), and a hidden line for a phone whose notifications stopped.
+ *   id "push"); a hidden line for a phone whose notifications stopped.
  * - brikpanel-push.js where it matters, and the AJAX it calls (nonce
  *   "brikpanel_push" and manage_woocommerce on every call; a person only
  *   ever touches their own devices).
@@ -166,12 +168,6 @@ function brikpanel_push_health() {
 			),
 		);
 	}
-	if ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON && ! function_exists( 'fastcgi_finish_request' ) && ! function_exists( 'litespeed_finish_request' ) ) {
-		$lines[] = array(
-			'tone' => 'info',
-			'text' => __( 'On this server a notification can arrive a minute or more after the order: it is sent by a background job, and WordPress runs those only when its cron is called (DISABLE_WP_CRON).', 'brikpanel' ),
-		);
-	}
 	if ( function_exists( 'brikpanel_pwa_shared_worker' ) && brikpanel_pwa_shared_worker() ) {
 		$lines[] = array(
 			'tone' => 'info',
@@ -240,6 +236,35 @@ function brikpanel_push_device_status( array $row ) {
 		);
 	}
 	if ( $confirmed ) {
+		// The phone's receipt answers the last send: how long it took to get there.
+		$sent  = $ts( $row['sent_at'] );
+		$delay = ( 0 === $pending && $sent && $sent <= $confirmed ) ? $confirmed - $sent : -1;
+		if ( $delay >= 2 * MINUTE_IN_SECONDS && 'android' === (string) $row['os'] && 'firefox' === (string) $row['browser'] ) {
+			// Mozilla's push server sends Firefox its messages at normal priority: no setting helps.
+			return array(
+				/* translators: %s: how late, such as "7 mins". */
+				'text' => sprintf( __( 'The last notification arrived %s late: Firefox holds notifications while the phone sleeps, and no setting changes that. For instant ones, turn them on in Chrome.', 'brikpanel' ), human_time_diff( 0, $delay ) ),
+				'tone' => 'bad',
+			);
+		}
+		if ( $delay >= 2 * MINUTE_IN_SECONDS && 'android' === (string) $row['os'] ) {
+			// Chrome shows a site's notification from a background job, and Android
+			// runs those late while the phone sleeps unless the browser is unrestricted.
+			$browser = Brikpanel_Push_Sender::browser_label( (string) $row['browser'] );
+			$browser = '' === $browser ? 'Chrome' : $browser;
+			return array(
+				/* translators: 1: how late, such as "7 mins". 2: browser name (Chrome, Brave, Samsung Internet...). The menu path is in Android's own Settings app. */
+				'text' => sprintf( __( 'The last notification arrived %1$s late: Android held it back while the phone slept. In Settings > Apps > %2$s > Battery, choose Unrestricted.', 'brikpanel' ), human_time_diff( 0, $delay ), $browser ),
+				'tone' => 'bad',
+			);
+		}
+		if ( $delay >= 0 ) {
+			return array(
+				/* translators: 1: how long ago, such as "5 mins". 2: how long the notification took to arrive, such as "2 secs". */
+				'text' => sprintf( __( 'Last notification delivered %1$s ago, %2$s after it was sent', 'brikpanel' ), human_time_diff( $confirmed, max( $confirmed, $now ) ), human_time_diff( 0, max( 1, $delay ) ) ),
+				'tone' => 'good',
+			);
+		}
 		return array(
 			/* translators: %s: how long ago, such as "5 mins". */
 			'text' => sprintf( __( 'Last notification delivered %s ago', 'brikpanel' ), human_time_diff( $confirmed, max( $confirmed, $now ) ) ),
@@ -267,7 +292,7 @@ function brikpanel_push_device_status( array $row ) {
 function brikpanel_push_devices_html( $user_id ) {
 	$rows = Brikpanel_Push_Store::user_devices( (int) $user_id );
 	if ( ! $rows ) {
-		return '<p class="brikpanel-push-empty" dir="auto">' . esc_html__( 'No devices yet. Open the store admin on your phone and turn notifications on from the card on the dashboard, or turn them on for this device below.', 'brikpanel' ) . '</p>';
+		return '<p class="brikpanel-push-empty" dir="auto">' . esc_html__( 'No devices yet. Open the store admin on your phone and tap the phone button in the top bar, or turn notifications on for this device below.', 'brikpanel' ) . '</p>';
 	}
 	$can_send = brikpanel_push_available() && Brikpanel_Push_Store::site_matches() && ! Brikpanel_Push_Store::vapid_unreadable();
 	ob_start();
@@ -339,6 +364,12 @@ function brikpanel_push_render_devices_card() {
 		<footer class="brikpanel-push-devices__foot">
 			<button type="button" class="brikpanel-btn brikpanel-btn--primary" data-bp-push-add hidden><?php esc_html_e( 'Turn on for this device', 'brikpanel' ); ?></button>
 			<p class="brikpanel-push-devices__hint" data-bp-push-hint dir="auto" hidden></p>
+			<?php // Android, on for this device: the same step the dashboard card shows after turning on. ?>
+			<div class="brikpanel-push-card__tip brikpanel-push-devices__tip" data-bp-push-battery hidden>
+				<p class="brikpanel-push-card__tip-title" dir="auto"><?php esc_html_e( 'For instant notifications while the phone sleeps', 'brikpanel' ); ?></p>
+				<p class="brikpanel-push-card__tip-body" dir="auto" data-bp-push-battery-text></p>
+				<p class="brikpanel-push-card__tip-path" dir="auto" data-bp-push-battery-path></p>
+			</div>
 		</footer>
 	</section>
 	<table class="form-table">
@@ -363,7 +394,9 @@ add_action( 'woocommerce_admin_field_brikpanel_push_devices', 'brikpanel_push_re
  * @return void
  */
 function brikpanel_push_card_render() {
-	if ( ! function_exists( 'brikpanel_ask_allows' ) || ! brikpanel_ask_allows( 'push' ) ) {
+	// Where the top bar has the phone button, its panel opening by itself is the
+	// offer (brikpanel_push_menu_auto()); the card is for a top bar without it.
+	if ( brikpanel_push_menu_printed() || ! function_exists( 'brikpanel_ask_allows' ) || ! brikpanel_ask_allows( 'push' ) ) {
 		return;
 	}
 	$cookie = brikpanel_push_phone_cookie();
@@ -379,36 +412,7 @@ function brikpanel_push_card_render() {
 		<div class="brikpanel-ea-card__badge" aria-hidden="true">
 			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
 		</div>
-		<div class="brikpanel-ea-card__text">
-			<div class="brikpanel-push-card__view" data-bp-push-view="ask"<?php echo 'i' === $cookie ? ' hidden' : ''; ?>>
-				<p class="brikpanel-ea-card__title" dir="auto"><?php esc_html_e( 'Get every new order on this phone', 'brikpanel' ); ?></p>
-				<p class="brikpanel-ea-card__body" dir="auto"><?php esc_html_e( 'A notification with the order number and total, also when the phone is locked. The customer is never named.', 'brikpanel' ); ?></p>
-			</div>
-			<div class="brikpanel-push-card__view" data-bp-push-view="ios"<?php echo 'i' === $cookie ? '' : ' hidden'; ?>>
-				<p class="brikpanel-ea-card__title" dir="auto"><?php esc_html_e( 'Get every new order on this iPhone', 'brikpanel' ); ?></p>
-				<p class="brikpanel-ea-card__body" dir="auto"><?php esc_html_e( 'An iPhone shows notifications only for apps on the Home Screen. Add BrikPanel there first:', 'brikpanel' ); ?></p>
-				<ol class="brikpanel-push-card__steps">
-					<li dir="auto"><?php esc_html_e( 'Tap the Share button in Safari.', 'brikpanel' ); ?>
-						<svg class="brikpanel-push-card__share" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M7 10H5.5A1.5 1.5 0 0 0 4 11.5v8A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5H17"/></svg>
-					</li>
-					<li dir="auto"><?php esc_html_e( 'Choose "Add to Home Screen".', 'brikpanel' ); ?></li>
-					<li dir="auto"><?php esc_html_e( 'Open BrikPanel from the Home Screen and turn notifications on there.', 'brikpanel' ); ?></li>
-				</ol>
-			</div>
-			<div class="brikpanel-push-card__view" data-bp-push-view="done" hidden>
-				<p class="brikpanel-ea-card__title" dir="auto"><?php esc_html_e( 'Order notifications are on for this phone', 'brikpanel' ); ?></p>
-				<p class="brikpanel-ea-card__body" dir="auto" data-bp-push-note></p>
-			</div>
-			<div class="brikpanel-push-card__view" data-bp-push-view="blocked" hidden>
-				<p class="brikpanel-ea-card__title" dir="auto"><?php esc_html_e( 'Notifications are blocked', 'brikpanel' ); ?></p>
-				<p class="brikpanel-ea-card__body" dir="auto" data-bp-push-blocked></p>
-			</div>
-		</div>
-		<div class="brikpanel-push-card__actions">
-			<button type="button" class="brikpanel-ea-card__cta" data-bp-push-on<?php echo 'i' === $cookie ? ' hidden' : ''; ?>><?php esc_html_e( 'Turn on order notifications', 'brikpanel' ); ?></button>
-			<button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-push-card__btn" data-bp-push-card-test hidden><?php esc_html_e( 'Send a test', 'brikpanel' ); ?></button>
-			<button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-push-card__btn" data-bp-push-install hidden><?php esc_html_e( 'Install BrikPanel', 'brikpanel' ); ?></button>
-		</div>
+		<?php brikpanel_push_offer_markup( $cookie, 'card' ); ?>
 		<button type="button" class="brikpanel-ea-card__close" data-bp-ask-close aria-label="<?php esc_attr_e( 'Dismiss', 'brikpanel' ); ?>">
 			<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
 		</button>
@@ -419,6 +423,330 @@ function brikpanel_push_card_render() {
 	}
 }
 add_action( 'brikpanel_dashboard_before_sections', 'brikpanel_push_card_render', 5 );
+
+/**
+ * The steps that turn notifications on, shared by the dashboard card and the
+ * phone button's panel in the top bar: one view per state (brikpanel-push.js
+ * switches them) and the buttons. The card keeps the early-access card's look,
+ * the panel has its own (brikpanel-push.css), so only the class names differ.
+ *
+ * @param string $cookie What this phone said it can do (brikpanel_push_phone_cookie()).
+ * @param string $where  'card' or 'menu'.
+ * @return void
+ */
+function brikpanel_push_offer_markup( $cookie, $where ) {
+	$card  = 'card' === $where;
+	$ios   = 'i' === $cookie;
+	$text  = $card ? 'brikpanel-ea-card__text' : 'brikpanel-push-offer__text';
+	$title = $card ? 'brikpanel-ea-card__title' : 'brikpanel-push-offer__title';
+	$body  = $card ? 'brikpanel-ea-card__body' : 'brikpanel-push-offer__body';
+	$cta   = $card ? 'brikpanel-ea-card__cta' : 'brikpanel-btn brikpanel-btn--primary brikpanel-push-offer__cta';
+	?>
+	<div class="<?php echo esc_attr( $text ); ?>">
+		<div class="brikpanel-push-card__view" data-bp-push-view="ask"<?php echo $ios ? ' hidden' : ''; ?>>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Get every new order on this phone', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php esc_html_e( 'A notification with the order number and total, also when the phone is locked. The customer is never named.', 'brikpanel' ); ?></p>
+		</div>
+		<div class="brikpanel-push-card__view" data-bp-push-view="ios"<?php echo $ios ? '' : ' hidden'; ?>>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Get every new order on this iPhone', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php esc_html_e( 'An iPhone shows notifications only for apps on the Home Screen. Add BrikPanel there first:', 'brikpanel' ); ?></p>
+			<ol class="brikpanel-push-card__steps">
+				<li dir="auto"><?php esc_html_e( 'Tap the Share button in Safari.', 'brikpanel' ); ?>
+					<svg class="brikpanel-push-card__share" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M7 10H5.5A1.5 1.5 0 0 0 4 11.5v8A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5H17"/></svg>
+				</li>
+				<li dir="auto"><?php esc_html_e( 'Choose "Add to Home Screen".', 'brikpanel' ); ?></li>
+				<li dir="auto"><?php echo $card ? esc_html__( 'Open BrikPanel from the Home Screen and turn notifications on there.', 'brikpanel' ) : esc_html__( 'Open BrikPanel from the Home Screen and tap the phone button at the top to turn notifications on.', 'brikpanel' ); ?></li>
+			</ol>
+		</div>
+		<?php
+		// Android in the browser: the app first, notifications inside it. A permission
+		// given in the tab does not carry over: on Android 13 and later the installed
+		// app has its own, starts without it, and Chrome then drops its notifications.
+		?>
+		<div class="brikpanel-push-card__view" data-bp-push-view="install" hidden>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Get every new order on this phone', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php esc_html_e( 'First add BrikPanel to this phone as an app. Then open the BrikPanel app and turn on order notifications there.', 'brikpanel' ); ?></p>
+		</div>
+		<div class="brikpanel-push-card__view" data-bp-push-view="installed" hidden>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'BrikPanel is being added to this phone', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php echo $card ? esc_html__( 'When it is ready, open the BrikPanel app (on your home screen or in your app list) and turn on order notifications there.', 'brikpanel' ) : esc_html__( 'When it is ready, open the BrikPanel app (on your home screen or in your app list) and tap the phone button at the top to turn on order notifications.', 'brikpanel' ); ?></p>
+		</div>
+		<?php
+		// Android, back in the browser tab once BrikPanel is installed: still the
+		// app, never "in this browser" (the permission trap above). The browser
+		// says it is installed, or it was opened as an app on this phone before
+		// and this browser cannot tell whether it still is: then a link for a
+		// person who removed it.
+		?>
+		<div class="brikpanel-push-card__view" data-bp-push-view="app" hidden>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Open the BrikPanel app', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-app-sure><?php esc_html_e( 'BrikPanel is installed on this phone. Open it from your home screen or app list and turn on order notifications there.', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-app-unsure hidden><?php esc_html_e( 'If BrikPanel is on your home screen, open it there and turn on order notifications.', 'brikpanel' ); ?></p>
+		</div>
+		<?php
+		// The app that was on this phone is gone (the browser says so). Where the
+		// browser can install it again (Chrome makes its install offer again once it
+		// is gone), the app first, as on a phone that never had it (owner, 28 October
+		// 2026: "uygulamayı yükle demesi gerekmez mi?"); elsewhere notifications in
+		// the browser instead. brikpanel-push.js shows one of the two lines.
+		?>
+		<div class="brikpanel-push-card__view" data-bp-push-view="removed" hidden>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'The BrikPanel app was removed from this phone', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-removed-again hidden><?php esc_html_e( 'Add it to this phone again. Then open the BrikPanel app and turn on order notifications there.', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-removed-here><?php esc_html_e( 'You can turn on order notifications in this browser instead.', 'brikpanel' ); ?></p>
+		</div>
+		<div class="brikpanel-push-card__view" data-bp-push-view="done" hidden>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Order notifications are on for this phone', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-note></p>
+			<div class="brikpanel-push-card__tip" data-bp-push-battery hidden>
+				<p class="brikpanel-push-card__tip-title" dir="auto"><?php esc_html_e( 'Last step: instant notifications while the phone sleeps', 'brikpanel' ); ?></p>
+				<p class="brikpanel-push-card__tip-body" dir="auto" data-bp-push-battery-text></p>
+				<p class="brikpanel-push-card__tip-path" dir="auto" data-bp-push-battery-path></p>
+			</div>
+		</div>
+		<div class="brikpanel-push-card__view" data-bp-push-view="blocked" hidden>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Notifications are blocked', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-blocked></p>
+		</div>
+		<?php // A browser that cannot get notifications at all (Edge on Android, an app's own browser, an old iPhone): why, and what to use. ?>
+		<div class="brikpanel-push-card__view" data-bp-push-view="cannot" hidden>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Get every new order on this phone', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-cannot></p>
+		</div>
+	</div>
+	<div class="brikpanel-push-card__actions">
+		<button type="button" class="<?php echo esc_attr( $cta ); ?>" data-bp-push-on<?php echo $ios ? ' hidden' : ''; ?>><?php esc_html_e( 'Turn on order notifications', 'brikpanel' ); ?></button>
+		<button type="button" class="<?php echo esc_attr( $cta ); ?>" data-bp-push-install hidden><?php esc_html_e( 'Install BrikPanel', 'brikpanel' ); ?></button>
+		<button type="button" class="brikpanel-btn brikpanel-btn--link brikpanel-push-card__btn" data-bp-push-here hidden><?php esc_html_e( 'Turn them on in this browser instead', 'brikpanel' ); ?></button>
+		<button type="button" class="brikpanel-btn brikpanel-btn--link brikpanel-push-card__btn" data-bp-push-removed hidden><?php esc_html_e( 'Removed the app? Turn them on in this browser', 'brikpanel' ); ?></button>
+		<button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-push-card__btn" data-bp-push-card-test hidden><?php esc_html_e( 'Send a test', 'brikpanel' ); ?></button>
+	</div>
+	<?php
+}
+
+// -----------------------------------------------------------------------------
+// The phone button in the top bar
+// -----------------------------------------------------------------------------
+
+/**
+ * Whether this page view gets the phone button in the top bar (owner decision,
+ * 27 October 2026: the dashboard card waits its turn in the one-ask-at-a-time
+ * line, sometimes for weeks, and is gone once closed, so a phone always has
+ * this way in). It stays on every phone (owner, 28 October 2026: "o buton hep
+ * kalsın"): what a browser says about its notifications is not always true
+ * (an app removed from the phone, a subscription an iPhone dropped), so the
+ * button never guesses. With notifications on it carries a tick and its panel
+ * says so, with a test; where the browser cannot get them, the panel says why.
+ * Nothing in its panel hides it (owner, 28 October 2026: "hiçbir zaman
+ * kaybolmasın o buton"; a "Don't show this button" link did, and its question
+ * read like the X's): it leaves only where the owner hides it for everyone
+ * under Top bar items (item "phone_app"). Its panel opens by itself where
+ * notifications can still be turned on (brikpanel_push_menu_auto()).
+ *
+ * The phone test comes first: on a computer this costs one cookie read (the
+ * cookie only exists on phones).
+ *
+ * @return bool
+ */
+function brikpanel_push_menu_wanted() {
+	$phone = '' !== brikpanel_push_phone_cookie() || brikpanel_push_phone_view();
+	if ( ! $phone || ! get_current_user_id() || ! current_user_can( 'manage_woocommerce' ) ) {
+		return false;
+	}
+	if ( ! function_exists( 'brikpanel_pwa_for_current_user' ) || ! brikpanel_pwa_for_current_user() ) {
+		return false;
+	}
+	if ( function_exists( 'brikpanel_topbar_item_is_visible' ) && ! brikpanel_topbar_item_is_visible( 'phone_app' ) ) {
+		return false;
+	}
+	return brikpanel_push_available() && brikpanel_push_secure_request() && Brikpanel_Push_Store::site_matches() && ! Brikpanel_Push_Store::vapid_unreadable();
+}
+
+/**
+ * Whether the top bar printed the phone button on this page view.
+ *
+ * @param bool|null $set True from brikpanel_push_menu_render(); null reads.
+ * @return bool
+ */
+function brikpanel_push_menu_printed( $set = null ) {
+	static $printed = false;
+	if ( null !== $set ) {
+		$printed = (bool) $set;
+	}
+	return $printed;
+}
+
+/**
+ * The phone button and its panel, in the top bar's right group next to the
+ * order bell (front-end/dashboard/brikpanel-dashboard-topbar.php). The panel
+ * opens like the bell's (brikpanel-topbar.js) and holds the same steps as the
+ * dashboard card under the app's own icon; it also opens by itself
+ * (brikpanel_push_menu_auto()). On a phone it fills most of the screen, so its
+ * X stays in sight: the content scrolls inside it, under the X.
+ *
+ * Its X first asks "Are you sure?" in the panel itself (owner, 27 October
+ * 2026: "Kapatırsanız bildirim gelmeyebilir"), and closing it never takes the
+ * button away (brikpanel_push_menu_wanted()).
+ *
+ * @return void
+ */
+function brikpanel_push_menu_render() {
+	if ( ! brikpanel_push_menu_wanted() ) {
+		return;
+	}
+	brikpanel_push_menu_printed( true );
+	$label = __( 'Phone app', 'brikpanel' );
+	// Notifications on: the arrow ("get it") turns into a tick (brikpanel-push.js keeps it current).
+	$is_on = 'o' === brikpanel_push_phone_cookie();
+	?>
+	<div class="brikpanel-topbar-menu brikpanel-push-menu<?php echo $is_on ? ' is-on' : ''; ?>" data-topbar-menu="phone-app" data-bp-push-menu>
+		<button type="button" class="brikpanel-topbar-icon-btn brikpanel-push-menu__btn" data-topbar-toggle="phone-app" aria-haspopup="dialog" aria-expanded="false" aria-label="<?php echo esc_attr( $label ); ?>">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path class="brikpanel-push-menu__get" d="M12 7v7M9 11.5l3 3 3-3"/><path class="brikpanel-push-menu__tick" d="M8.75 12.25l2.25 2.25 4.25-4.5"/></svg>
+		</button>
+		<div class="brikpanel-topbar-dropdown brikpanel-push-menu__panel" role="dialog" aria-label="<?php echo esc_attr( $label ); ?>">
+			<button type="button" class="brikpanel-push-menu__close" data-bp-push-menu-close aria-label="<?php esc_attr_e( 'Close', 'brikpanel' ); ?>">
+				<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+			</button>
+			<div class="brikpanel-push-menu__body">
+				<div class="brikpanel-push-menu__app">
+					<img class="brikpanel-push-menu__icon" src="<?php echo esc_url( brikpanel_pwa_icon_url( 'brikpanel-192.png' ) ); ?>" width="44" height="44" alt="" decoding="async">
+					<div class="brikpanel-push-menu__app-text">
+						<p class="brikpanel-push-menu__name"><?php echo esc_html( 'BrikPanel' ); // i18n-ignore: product name ?></p>
+						<p class="brikpanel-push-menu__sub" dir="auto"><?php esc_html_e( 'Works like an app on your phone.', 'brikpanel' ); ?></p>
+					</div>
+				</div>
+				<div class="brikpanel-push-menu__steps" data-bp-push-steps>
+					<?php brikpanel_push_offer_markup( brikpanel_push_phone_cookie(), 'menu' ); ?>
+					<p class="brikpanel-push-menu__hint" dir="auto" data-bp-push-hint hidden><?php esc_html_e( 'You can open this any time with the phone button at the top.', 'brikpanel' ); ?></p>
+				</div>
+				<div class="brikpanel-push-menu__confirm" data-bp-push-confirm role="group" aria-labelledby="brikpanel-push-confirm-title" hidden>
+					<p class="brikpanel-push-offer__title" id="brikpanel-push-confirm-title" dir="auto"><?php esc_html_e( 'Are you sure you want to close this?', 'brikpanel' ); ?></p>
+					<p class="brikpanel-push-offer__body" dir="auto"><?php esc_html_e( 'If you close it, you may not get order notifications.', 'brikpanel' ); ?></p>
+					<div class="brikpanel-push-menu__confirm-actions">
+						<button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-push-menu__confirm-btn" data-bp-push-confirm-yes><?php esc_html_e( 'Close', 'brikpanel' ); ?></button>
+						<button type="button" class="brikpanel-btn brikpanel-btn--primary brikpanel-push-menu__confirm-btn" data-bp-push-confirm-no><?php echo esc_html_x( 'Cancel', 'phone panel: keep it open', 'brikpanel' ); ?></button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<?php
+}
+
+/**
+ * Where this person closed the panel for good with its X: '' (nowhere yet),
+ * 'tab' (in a browser tab: it still opens inside the installed app, where
+ * notifications are turned on) or 'app' (inside the app: nowhere any more).
+ * Per person and site.
+ *
+ * @return string
+ */
+function brikpanel_push_auto_off() {
+	$off = get_user_option( 'brikpanel_push_auto_off', get_current_user_id() );
+	return in_array( $off, array( 'tab', 'app' ), true ) ? $off : '';
+}
+
+/**
+ * Whether the button on this page view still has something to ask for: not
+ * on a phone whose notifications are on, nor where the browser cannot get
+ * them (its panel only says why). Those keep the button, never the panel
+ * opening by itself, and their asks show as on any page.
+ *
+ * @return bool
+ */
+function brikpanel_push_menu_offers() {
+	return brikpanel_push_menu_printed() && ! in_array( brikpanel_push_phone_cookie(), array( 'o', 'u' ), true );
+}
+
+/**
+ * Before any ask prints (asks rule 8): on a page view where the panel will
+ * open by itself everywhere, no ask shows next to it. Where it was closed in
+ * a tab, only the script knows whether this is the app (Android's app shares
+ * the browser's cookies), so the asks keep their place and the panel opens
+ * only on a page view with none of them (brikpanel_push_menu_auto()).
+ *
+ * @param bool $taken Taken already.
+ * @return bool
+ */
+function brikpanel_push_auto_takes_screen( $taken ) {
+	if ( $taken || ! brikpanel_push_menu_offers() || '' !== brikpanel_push_auto_off() ) {
+		return $taken;
+	}
+	// The welcome tour comes first (asks rule 2).
+	return ! ( function_exists( 'brikpanel_should_show_welcome' ) && brikpanel_should_show_welcome() );
+}
+add_filter( 'brikpanel_asks_screen_taken', 'brikpanel_push_auto_takes_screen' );
+
+/**
+ * Whether the panel may open by itself on this page view: the screens and
+ * people asks are for, no notice box or "saved" message on screen, no welcome
+ * tour, no ask drawn (includes/brikpanel-asks.php, rules 1, 2, 6 and 7).
+ *
+ * @return bool
+ */
+function brikpanel_push_auto_page_free() {
+	if ( ! function_exists( 'brikpanel_asks_in_scope' ) || ! brikpanel_asks_in_scope() || brikpanel_asks_hold() || brikpanel_asks_url_hold() ) {
+		return false;
+	}
+	if ( function_exists( 'brikpanel_should_show_welcome' ) && brikpanel_should_show_welcome() ) {
+		return false;
+	}
+	return ! brikpanel_asks_on_page();
+}
+
+/**
+ * On a phone the panel opens by itself on every page, until notifications are
+ * on there or the person presses its X and confirms (owner, 27 October 2026:
+ * "Çarpı işaretine tıklayana kadar ... devamlı olarak gözükmeli. Zira
+ * header'daki buton çok da net bir buton değil."). A tap outside, Escape or
+ * the button put it away for that page only. Decided in the footer, after the
+ * notices, the welcome tour and the BrikMentor announcement have printed; the
+ * script opens it only on a phone without notifications ('all': anywhere,
+ * 'app': only inside the installed app, after an X in a browser tab).
+ *
+ * @return void
+ */
+function brikpanel_push_menu_auto() {
+	if ( ! brikpanel_push_menu_offers() ) {
+		return;
+	}
+	$off = brikpanel_push_auto_off();
+	if ( 'app' === $off || ! brikpanel_push_auto_page_free() ) {
+		return;
+	}
+	wp_add_inline_script( 'brikpanel_push', 'window.brikpanelPushAuto = ' . wp_json_encode( 'tab' === $off ? 'app' : 'all' ) . ';', 'before' );
+}
+add_action( 'admin_footer', 'brikpanel_push_menu_auto', 100 );
+
+/**
+ * Whether the panel was in front of the person, opened by itself, when they
+ * closed it for good: then the other asks wait their days after it (asks
+ * rule 3), as after any window that was put in front of them.
+ *
+ * @return bool
+ */
+function brikpanel_push_ajax_was_shown() {
+	return ! empty( $_POST['shown'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- brikpanel_push_ajax_guard() ran.
+}
+
+/**
+ * The panel's X, confirmed: it never opens by itself again where it was
+ * closed (a browser tab, or the installed app and with it everywhere). The
+ * button stays, and the dashboard card never follows.
+ *
+ * @return void
+ */
+function brikpanel_push_ajax_auto_off() {
+	brikpanel_push_ajax_guard();
+	$where = isset( $_POST['where'] ) && 'app' === sanitize_key( wp_unslash( $_POST['where'] ) ) ? 'app' : 'tab'; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- brikpanel_push_ajax_guard() ran.
+	$off   = 'app' === $where || 'app' === brikpanel_push_auto_off() ? 'app' : 'tab';
+	update_user_option( get_current_user_id(), 'brikpanel_push_auto_off', $off );
+	if ( function_exists( 'brikpanel_ask_closed' ) ) {
+		brikpanel_ask_closed( 'push', brikpanel_push_ajax_was_shown() );
+	}
+	wp_send_json_success( array( 'off' => $off ) );
+}
+add_action( 'wp_ajax_brikpanel_push_auto_off', 'brikpanel_push_ajax_auto_off' );
 
 /**
  * A phone whose notifications stopped (an iPhone can drop them, an update can
@@ -482,8 +810,9 @@ add_action( 'admin_init', 'brikpanel_push_stamp_phone' );
 
 /**
  * brikpanel-push.js on the dashboard, on Settings > Notifications, and on any
- * admin page a phone opens (the phone's cookie says it is one): it keeps the
- * phone's notifications alive and tells the server what the phone can do.
+ * admin page a phone opens (the phone's cookie or browser says it is one, which
+ * is also when the top bar has the phone button): it keeps the phone's
+ * notifications alive and tells the server what the phone can do.
  *
  * @return void
  */
@@ -493,7 +822,7 @@ function brikpanel_push_enqueue() {
 	}
 	$settings  = brikpanel_push_on_settings();
 	$dashboard = brikpanel_push_on_dashboard();
-	if ( ! $settings && ( ! brikpanel_push_available() || ( ! $dashboard && '' === brikpanel_push_phone_cookie() ) ) ) {
+	if ( ! $settings && ! brikpanel_push_menu_wanted() && ( ! brikpanel_push_available() || ( ! $dashboard && '' === brikpanel_push_phone_cookie() ) ) ) {
 		return;
 	}
 	$js  = 'front-end/push/brikpanel-push.js';
@@ -520,6 +849,8 @@ function brikpanel_push_enqueue() {
 			'shared'   => brikpanel_pwa_shared_worker(),
 			'on'       => $can,
 			'secure'   => is_ssl(),
+			// Where the phone button's panel was closed for good (brikpanel_push_auto_off()).
+			'off'      => brikpanel_push_auto_off(),
 			'page'     => $settings ? 'settings' : ( $dashboard ? 'dashboard' : 'other' ),
 			'i18n'     => brikpanel_push_js_strings(),
 		)
@@ -556,6 +887,19 @@ function brikpanel_push_js_strings() {
 		'edgeAndroid' => __( 'This browser cannot get notifications. Use Chrome on Android.', 'brikpanel' ),
 		'unsupported' => __( 'This browser cannot get notifications.', 'brikpanel' ),
 		'already'     => __( 'Notifications are on for this device.', 'brikpanel' ),
+		'installing'  => __( 'Installing…', 'brikpanel' ),
+		/* translators: %s: browser name (Chrome or Samsung Internet), twice. */
+		'battery'     => __( 'To save battery, Android holds back notifications from %s while the phone sleeps. Let %s run in the background:', 'brikpanel' ),
+		/* translators: %s: browser name. The menu path in Android's own Settings app, in the phone's language. */
+		'batteryPath' => __( 'Settings > Apps > %s > Battery > Unrestricted', 'brikpanel' ),
+		'firefoxTitle' => __( 'In Firefox, notifications can wait while the phone sleeps', 'brikpanel' ),
+		'firefoxBody'  => __( 'Firefox holds them back until the phone wakes up, and no setting on the phone changes that. For instant order notifications, open BrikPanel in Chrome and turn them on there.', 'brikpanel' ),
+		// Product names, never translated.
+		'chrome'      => 'Chrome', // i18n-ignore: product name
+		'samsung'     => 'Samsung Internet', // i18n-ignore: product name
+		'brave'       => 'Brave', // i18n-ignore: product name
+		'firefox'     => 'Firefox', // i18n-ignore: product name
+		'opera'       => 'Opera', // i18n-ignore: product name
 	);
 }
 
@@ -616,7 +960,10 @@ function brikpanel_push_ajax_save() {
 		'phone'      => ! empty( $_POST['phone'] ),
 	);
 	// phpcs:enable
-	if ( ! in_array( $ctx, array( 'card', 'settings', 'repair', 'sync' ), true ) ) {
+	// 'card' is the phone offer in front of the person (the dashboard card, or the
+	// button's panel that opened by itself): turning on closes its turn. 'menu' is
+	// the button opened by hand: the asks line drops the offer once the phone says "on".
+	if ( ! in_array( $ctx, array( 'card', 'menu', 'settings', 'repair', 'sync' ), true ) ) {
 		$ctx = 'settings';
 	}
 	if ( ! brikpanel_push_available() || ! Brikpanel_Push_Store::site_matches() || Brikpanel_Push_Store::vapid_unreadable() ) {

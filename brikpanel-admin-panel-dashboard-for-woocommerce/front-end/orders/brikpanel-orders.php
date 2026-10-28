@@ -743,6 +743,16 @@ function brikpanel_settings_fields() {
             'default' => 'yes',
         ],
         [
+            // 3.3.41 (imaddd): stores that buy ad traffic compare Visitors with
+            // the ad platform's landing page views, which count a page that
+            // merely opened. See brikpanel_count_on_open_enabled().
+            'name'    => __('Count visitors when the page opens', 'brikpanel'),
+            'id'      => 'brikpanel_count_on_open',
+            'type'    => 'checkbox',
+            'desc'    => __('Off by default: a visitor is counted after they tap, scroll, move the mouse or press a key, which keeps bots out of your numbers. Turn this on to count a visitor as soon as a store page opens on their screen, the way Meta counts landing page views. Known bots, cloud servers, automated browsers and your staff are still left out, but some bots that look like real browsers may be counted. Conversion rate uses the same visitors.', 'brikpanel'),
+            'default' => 'no',
+        ],
+        [
             'name'     => __('Wait for cookie consent', 'brikpanel'),
             'id'       => 'brikpanel_tracking_require_consent',
             'type'     => 'checkbox',

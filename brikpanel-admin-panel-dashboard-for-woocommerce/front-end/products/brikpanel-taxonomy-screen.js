@@ -248,6 +248,14 @@
             return form.querySelector('input[type="text"]:not([disabled]), textarea:not([disabled]), select:not([disabled])');
         }
 
+        // Blocksy's colour picker, opened from a swatch field in the panel.
+        // It lives at the end of <body> and only while it is open.
+        function pickerOpen() {
+            return Array.prototype.some.call(document.querySelectorAll('.ct-option-modal'), function (el) {
+                return el.getClientRects().length > 0;
+            });
+        }
+
         var api = {
             open: function (focusNode) {
                 if (!isOpen) {
@@ -314,11 +322,17 @@
 
             // The media library, select2 and friends handle their own keys.
             var target = event.target;
-            if (target && target.closest && target.closest('.media-modal, .select2-container, .ui-autocomplete, .wp-picker-container')) {
+            if (target && target.closest && target.closest('.media-modal, .select2-container, .ui-autocomplete, .wp-picker-container, .ct-option-modal')) {
                 return;
             }
 
             if (event.key === 'Escape') {
+                // Blocksy's picker ignores Esc and closes on a click outside
+                // it; closing the panel under it would leave the picker alone
+                // on the page with its field gone.
+                if (pickerOpen()) {
+                    return;
+                }
                 event.preventDefault();
                 api.close();
                 return;

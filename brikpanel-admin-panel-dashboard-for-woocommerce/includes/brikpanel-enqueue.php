@@ -483,7 +483,7 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
 
     // "Keep screen on" in the More menu, for a phone left on the counter
     // with the dashboard open (front-end/dashboard/brikpanel-wake-lock.js).
-    // Parked with the phone app (brikpanel_phone_app_enabled(), brikpanel.php).
+    // Off with the phone app (brikpanel_phone_app_enabled(), brikpanel.php).
     if ( brikpanel_phone_app_enabled() ) {
         wp_enqueue_script(
             'brikpanel_dashboard_wake_lock',
@@ -3139,11 +3139,20 @@ function brikpanel_enqueue_woo_assets($hook) {
         );
 
         wp_localize_script('brikpanel_cartshare_admin', 'brikpanelCartShareAdmin', [
-            'ajaxUrl'      => admin_url('admin-ajax.php'),
-            'nonce'        => wp_create_nonce('brikpanel_cartshare_admin'),
-            'linkPrefix'   => home_url('/') . '?bp-cart=',
-            'whatsappBase' => 'https://wa.me/?text=',
-            'i18n'         => [
+            'ajaxUrl'         => admin_url('admin-ajax.php'),
+            'nonce'           => wp_create_nonce('brikpanel_cartshare_admin'),
+            'linkPrefix'      => home_url('/') . '?' . Brikpanel_Cart_Share::QUERY_VAR . '=',
+            'couponVar'       => Brikpanel_Cart_Share::COUPON_VAR,
+            'checkoutVar'     => Brikpanel_Cart_Share::CHECKOUT_VAR,
+            'canCreateCoupon' => Brikpanel_Cart_Share::can_create_coupons(),
+            // The new coupon's amount box: its unit, and the store's number
+            // marks so "1.000" is read as a thousand where "." groups thousands.
+            'percentSign'     => '%',
+            'currencySymbol'  => html_entity_decode(get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8'),
+            'decimalSep'      => wc_get_price_decimal_separator(),
+            'thousandSep'     => wc_get_price_thousand_separator(),
+            'whatsappBase'    => 'https://wa.me/?text=',
+            'i18n'            => [
                 'searching'                => __('Searching…', 'brikpanel'),
                 'no_results'               => __('No matching products found.', 'brikpanel'),
                 'variable_badge'           => __('Variable', 'brikpanel'),
@@ -3158,6 +3167,17 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'copy_failed'              => __('Could not copy. The link is selected, press Ctrl/Cmd+C.', 'brikpanel'),
                 'shareText'                => __('Here are the products for your order:', 'brikpanel'),
                 'share_title'              => __('Your cart', 'brikpanel'),
+                'hint_cart'                => Brikpanel_Cart_Share::link_hint(false),
+                'hint_checkout'            => Brikpanel_Cart_Share::link_hint(true),
+                'no_coupons'               => __('No matches found.', 'brikpanel'),
+                /* translators: %s: the coupon code typed into the coupon box */
+                'create_named'             => __('Create coupon "%s"', 'brikpanel'),
+                'create_new'               => __('Create a new coupon', 'brikpanel'),
+                'code_required'            => __('Coupon code is required.', 'brikpanel'),
+                'amount_required'          => __('Enter a discount amount.', 'brikpanel'),
+                /* translators: %s: the largest percentage, e.g. 100% */
+                'percent_max'              => sprintf(__('A percentage discount can be at most %s.', 'brikpanel'), brikpanel_percent(100)),
+                'create_failed'            => __('The coupon could not be created. Try again.', 'brikpanel'),
             ],
         ]);
     }

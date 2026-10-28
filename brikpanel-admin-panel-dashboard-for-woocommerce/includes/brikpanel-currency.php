@@ -92,6 +92,111 @@ function brikpanel_manual_fx_factor( $currency ) {
 }
 
 /**
+ * Short fingerprint of the manual rate table, for cache keys.
+ *
+ * A cached copy that holds converted figures must not outlive a rate change.
+ * The update_option hook below already busts the caches, but a delete_option()
+ * fires nothing, so the rates themselves go into the key as well.
+ *
+ * @return string '0' when no rate is set.
+ */
+function brikpanel_fx_rates_signature() {
+    $rates = brikpanel_manual_fx_rates();
+    if ( empty( $rates ) ) {
+        return '0';
+    }
+    ksort( $rates );
+    return substr( md5( (string) wp_json_encode( $rates ) ), 0, 8 );
+}
+
+/**
+ * "1 USD = 0.76 GBP": how a rate from the Currency settings reads on screen.
+ *
+ * @param string $currency Currency code the rate converts from.
+ * @param float  $rate     Store-currency value of one unit of it.
+ * @param string $store    Store currency code; the WooCommerce one when empty.
+ * @return string Plain text.
+ */
+function brikpanel_fx_rate_label( $currency, $rate, $store = '' ) {
+    $store = '' !== (string) $store ? (string) $store : (string) brikpanel_base_currency();
+    return sprintf(
+        /* translators: an exchange rate. 1: a currency code, 2: what one unit of it is worth, 3: the store currency code. Example: 1 USD = 0.76 GBP */
+        __( '1 %1$s = %2$s %3$s', 'brikpanel' ),
+        strtoupper( (string) $currency ),
+        function_exists( 'brikpanel_number' ) ? brikpanel_number( (float) $rate, 6, true ) : (string) (float) $rate,
+        strtoupper( $store )
+    );
+}
+
+/**
+ * Ad spend expressed in the store currency.
+ *
+ * An ad account bills in the currency it was opened with, and neither Meta nor
+ * Google lets the merchant change it, so a store selling in GBP can run every
+ * Meta account in USD. Spend in another currency is converted with the rate
+ * the merchant entered under Settings > Currency, the same table that converts
+ * orders and payment fees, at that one rate for every day. Spend in a currency
+ * with no rate is left out rather than added at face value (dollars added to
+ * pounds are a wrong number, not a smaller one) and comes back in
+ * `unconverted`, so every surface can say what it did not count.
+ *
+ * Works on any rows that carry `platform`, `currency` and `spend`, which is the
+ * shape of Brikpanel_Ads_Store::totals_for_range() and daily_breakdown(). A row
+ * with no currency is store currency, as it always was.
+ *
+ * @param array  $rows  Ad spend rows.
+ * @param string $store Store currency code; the WooCommerce one when empty.
+ * @return array{
+ *     by_platform: array<string,float>,
+ *     total: float,
+ *     unconverted: array<string,float>,
+ *     converted: array<string,array<string,array{amount:float,rate:float}>>
+ * } `by_platform` and `total` are in the store currency. `unconverted` is
+ *   currency => spend left out. `converted` is platform => currency =>
+ *   the original spend and the rate it was converted at.
+ */
+function brikpanel_ad_spend_to_store_currency( array $rows, $store = '' ) {
+    $store = strtoupper( '' !== (string) $store ? (string) $store : (string) brikpanel_base_currency() );
+    $rates = brikpanel_manual_fx_rates();
+    $out   = [
+        'by_platform' => [],
+        'total'       => 0.0,
+        'unconverted' => [],
+        'converted'   => [],
+    ];
+
+    foreach ( $rows as $row ) {
+        $platform = isset( $row['platform'] ) ? (string) $row['platform'] : '';
+        if ( '' === $platform ) {
+            continue;
+        }
+        $spend    = isset( $row['spend'] ) ? (float) $row['spend'] : 0.0;
+        $currency = isset( $row['currency'] ) ? strtoupper( trim( (string) $row['currency'] ) ) : '';
+
+        if ( '' === $currency || $currency === $store ) {
+            $amount = $spend;
+        } elseif ( isset( $rates[ $currency ] ) ) {
+            $amount = $spend * $rates[ $currency ];
+            if ( ! isset( $out['converted'][ $platform ][ $currency ] ) ) {
+                $out['converted'][ $platform ][ $currency ] = [ 'amount' => 0.0, 'rate' => (float) $rates[ $currency ] ];
+            }
+            $out['converted'][ $platform ][ $currency ]['amount'] += $spend;
+        } else {
+            // A zero-spend day leaves nothing out, so it must not hold ROAS back.
+            if ( $spend > 0 ) {
+                $out['unconverted'][ $currency ] = ( $out['unconverted'][ $currency ] ?? 0.0 ) + $spend;
+            }
+            continue;
+        }
+
+        $out['by_platform'][ $platform ] = ( $out['by_platform'][ $platform ] ?? 0.0 ) + $amount;
+        $out['total']                   += $amount;
+    }
+
+    return $out;
+}
+
+/**
  * Pull the day-of-sale conversion factor for an order out of a multi-currency
  * plugin's own snapshot. Returns 0.0 when nothing usable is found so callers
  * fall through to the manual rate.

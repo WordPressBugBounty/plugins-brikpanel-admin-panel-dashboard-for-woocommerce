@@ -1008,7 +1008,7 @@ class Brikpanel_Dashboard {
                                 <?php
                                 // "Keep screen on": phones only, in the folded menu.
                                 // front-end/dashboard/brikpanel-wake-lock.js shows it
-                                // where the browser can keep the screen awake. Parked
+                                // where the browser can keep the screen awake. Off
                                 // with the phone app (brikpanel_phone_app_enabled()).
                                 if ( brikpanel_phone_app_enabled() ) :
                                 ?>
@@ -1752,8 +1752,14 @@ class Brikpanel_Dashboard {
         } else {
             $body = __( 'BrikPanel measures visitors and conversions from the day it was activated. There is no visitor history before that, so a recent install can read low or empty here. Your sales and orders are not affected. Those use your full WooCommerce history.', 'brikpanel' );
         }
-        // How a visitor is counted since 3.3.30 (the person check).
-        $body .= '<br><br>' . esc_html__( 'A visitor is counted once a day, after they move the mouse, tap, scroll or press a key on your store. Bots, your staff and pages nobody looked at are left out.', 'brikpanel' );
+        // How a visitor is counted: on the first input since 3.3.30 (the
+        // person check), or as soon as the page opens when the store asks for
+        // it (3.3.41, "Count visitors when the page opens").
+        if ( function_exists( 'brikpanel_count_on_open_enabled' ) && brikpanel_count_on_open_enabled() ) {
+            $body .= '<br><br>' . esc_html__( 'A visitor is counted once a day, as soon as a store page opens on their screen. Known bots, cloud servers, automated browsers and your staff are left out.', 'brikpanel' );
+        } else {
+            $body .= '<br><br>' . esc_html__( 'A visitor is counted once a day, after they move the mouse, tap, scroll or press a key on your store. Bots, your staff and pages nobody looked at are left out.', 'brikpanel' );
+        }
         $this->render_hint( $title, $body, $align );
     }
 
@@ -1878,14 +1884,14 @@ class Brikpanel_Dashboard {
             $rev_body = $returns_on
                 ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included, tax taken out and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the "Tax in the Profit section" setting, so it is not in Expenses either.', 'brikpanel' )
                 : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with shipping included and tax taken out. Orders placed by store administrators are left out so your own test orders do not change it. Tax is taken out because of the "Tax in the Profit section" setting, so it is not in Expenses either.', 'brikpanel' );
-            $exp_body = __( 'Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is already taken out of Revenue. Open the breakdown to see each part.', 'brikpanel' );
+            $exp_body = __( 'Operating costs for the period: ad spend from connected ad platforms (spend in another currency is converted with the rate under Settings, then Currency), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is already taken out of Revenue. Open the breakdown to see each part.', 'brikpanel' );
         } else {
             $rev_body = $returns_on
                 ? __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included and any customer refunds in the period subtracted. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' )
                 : __( 'The total of all paid orders for the selected dates (Processing and Completed by default), with tax and shipping included. Orders placed by store administrators are left out so your own test orders do not change it. You can change which statuses count under Settings, then Analytics.', 'brikpanel' );
             $exp_body = $tax_in_revenue
-                ? __( 'Operating costs for the period: ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is shown under Revenue and taken off Net profit. Open the breakdown to see each part.', 'brikpanel' )
-                : __( 'Operating costs for the period: order tax, ad spend from connected ad platforms (store currency only), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Open the breakdown to see each part.', 'brikpanel' );
+                ? __( 'Operating costs for the period: ad spend from connected ad platforms (spend in another currency is converted with the rate under Settings, then Currency), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Tax is not here because it is shown under Revenue and taken off Net profit. Open the breakdown to see each part.', 'brikpanel' )
+                : __( 'Operating costs for the period: order tax, ad spend from connected ad platforms (spend in another currency is converted with the rate under Settings, then Currency), payment processing fees charged by the gateway, supplier and stock costs from received purchase orders, plus anything logged in the Expenses module. Open the breakdown to see each part.', 'brikpanel' );
         }
         ?>
             <!-- Profit -->
@@ -3515,15 +3521,25 @@ class Brikpanel_Dashboard {
             if ( $amount <= 0 ) {
                 continue; // hide empty components to keep the card clean
             }
+            $row = [
+                'key'    => $key,
+                'label'  => $label,
+                'amount' => wc_price( $amount ),
+                'raw'    => $amount,
+            ];
+            // Ad spend billed in another currency was converted with the
+            // Settings > Currency rate. The account's own figure goes under
+            // the line, so it can be checked against the ad platform's.
+            if ( ! empty( $s['ad_spend_converted'][ $key ] ) && is_array( $s['ad_spend_converted'][ $key ] ) ) {
+                $note = $this->ad_spend_note( $s['ad_spend_converted'][ $key ] );
+                if ( '' !== $note ) {
+                    $row['note'] = $note;
+                }
+            }
             $flat[] = [
                 'title'  => $bp_key . $key,
                 'parent' => '',
-                'row'    => [
-                    'key'    => $key,
-                    'label'  => $label,
-                    'amount' => wc_price( $amount ),
-                    'raw'    => $amount,
-                ],
+                'row'    => $row,
             ];
         }
 
@@ -3866,6 +3882,23 @@ class Brikpanel_Dashboard {
             $fees_tip = __( 'Payment fees are turned on, but none of the orders in this period record a processing fee. Your payment gateway may not store one, so this cost is not included.', 'brikpanel' );
         }
 
+        // Ad spend billed in a currency with no rate under Settings > Currency
+        // is not in Expenses, so Net profit reads higher than it is. Amounts
+        // carry their currency code: "$" alone could be any dollar.
+        $ads_tip     = '';
+        $ads_missing = is_array( $s['ad_spend_unconverted'] ?? null ) ? $s['ad_spend_unconverted'] : [];
+        if ( $ads_missing ) {
+            $parts = [];
+            foreach ( $ads_missing as $cur => $amount ) {
+                $parts[] = brikpanel_bidi_isolate_numbers( brikpanel_number( (float) $amount, 2 ) ) . ' ' . strtoupper( (string) $cur );
+            }
+            $ads_tip = brikpanel_safe_sprintf(
+                /* translators: %s: ad spend amounts with their currency codes, e.g. "1,076.49 USD" or "1,076.49 USD + 200.00 EUR". */
+                __( 'Ad spend of %s is billed in a currency with no exchange rate, so it is not counted. Add the rate under Settings, then Currency.', 'brikpanel' ),
+                implode( ' + ', $parts )
+            );
+        }
+
         return [
             'cogs_share'     => $share( $cogs_pct ),
             'expenses_share' => $share( $expenses_pct ),
@@ -3897,7 +3930,29 @@ class Brikpanel_Dashboard {
                 )
                 : '',
             'fees_tip'       => $fees_tip,
+            'ads_tip'        => $ads_tip,
         ];
+    }
+
+    /**
+     * The account's own figure under a converted ad spend line in the Expenses
+     * breakdown: "$1,076.49 · 1 USD = 0.76 GBP", one part per currency.
+     *
+     * @param array $converted Currency => [ 'amount' => original spend, 'rate' => rate ] of one platform.
+     * @return string Plain text.
+     */
+    private function ad_spend_note( array $converted ) {
+        $parts = [];
+        foreach ( $converted as $cur => $c ) {
+            $amount = (float) ( $c['amount'] ?? 0 );
+            $rate   = (float) ( $c['rate'] ?? 0 );
+            if ( $amount <= 0 || $rate <= 0 || ! function_exists( 'brikpanel_fx_rate_label' ) ) {
+                continue;
+            }
+            $parts[] = brikpanel_money_text( $amount, [ 'currency' => strtoupper( (string) $cur ) ] )
+                . ' · ' . brikpanel_bidi_isolate_numbers( brikpanel_fx_rate_label( (string) $cur, $rate ) );
+        }
+        return implode( ', ', $parts );
     }
 
     // =========================================================================
@@ -4002,8 +4057,13 @@ class Brikpanel_Dashboard {
         // Products and pages lists carry their counts (most_viewed_total,
         // top_products_total, most_cart_total). "g4": cities carry their
         // region, and the locations may carry a region map (focus). "g5": the
-        // locations carry the visitors' countries (3.3.40).
-        $cache_key = 'bp_dash_g5_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key;
+        // locations carry the visitors' countries (3.3.40). "g6": ad spend in
+        // another currency is converted with the Settings > Currency rates and
+        // the copy carries what had no rate (3.3.41).
+        // The rates themselves join the key: a deleted rate fires no hook, and
+        // a copy holding converted spend must not outlive the rate behind it.
+        $fx_for_key = function_exists( 'brikpanel_fx_rates_signature' ) ? brikpanel_fx_rates_signature() : '0';
+        $cache_key  = 'bp_dash_g6_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key . '_fx' . $fx_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $this->with_data_ver( $this->with_tracking_state( $this->with_today( $cached ) ), $cache_ver ) );
@@ -7207,6 +7267,8 @@ class Brikpanel_Dashboard {
                 'orderby'      => 'date',
                 'order'        => 'DESC',
                 'type'         => 'shop_order',
+                // Every status but the checkout draft (a cart, not an order).
+                'status'       => brikpanel_listed_order_statuses(),
                 'date_created' => $date_filter,
                 'return'       => 'objects',
             ];

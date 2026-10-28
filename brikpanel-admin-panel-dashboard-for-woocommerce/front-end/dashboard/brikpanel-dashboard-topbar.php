@@ -448,6 +448,16 @@ class Brikpanel_Dashboard_Topbar {
                     <?php endif; ?>
 
                     <?php $slot( 'right', 'after', 'create' ); ?>
+                    <?php $slot( 'right', 'before', 'phone_app' ); ?>
+                    <?php
+                    // The phone app button (front-end/push/brikpanel-push-admin.php): on a
+                    // phone only, until notifications are on there. Absent with the phone
+                    // app off (BRIKPANEL_PHONE_APP).
+                    if ( function_exists( 'brikpanel_push_menu_render' ) ) {
+                        brikpanel_push_menu_render();
+                    }
+                    ?>
+                    <?php $slot( 'right', 'after', 'phone_app' ); ?>
                     <?php $slot( 'right', 'before', 'notifications' ); ?>
 
                     <!-- Notifications -->

@@ -144,6 +144,9 @@ class Brikpanel_Cart_Abandonment {
 		// collection off still cannot save a start that would break its codes
 		// once collection goes back on.
 		add_filter( 'sanitize_option_brikpanel_cartab_popup_coupon_prefix', [ __CLASS__, 'sanitize_popup_coupon_prefix' ] );
+		// The popup coupon's minimum spend, for the same reason and on the same
+		// footing: one cleaner for every road into the option.
+		add_filter( 'sanitize_option_brikpanel_cartab_popup_coupon_minimum', [ __CLASS__, 'sanitize_popup_coupon_minimum' ] );
 
 		if ( ! self::is_enabled() ) {
 			return;
@@ -262,6 +265,63 @@ class Brikpanel_Cart_Abandonment {
 		$text = self::ascii_upper( $text );
 		$text = substr( trim( $text, '-' ), 0, self::POPUP_PREFIX_MAX );
 		return rtrim( $text, '-' );
+	}
+
+	/**
+	 * The smallest cart subtotal the popup coupon works on, in the decimal form
+	 * WooCommerce stores ("25.50"), or '' while the merchant has set none.
+	 *
+	 * Cleaned again on read, like the code start: an older import or a direct
+	 * database edit can hold anything. Read only when a code is minted or a
+	 * screen shows the setting, never while the plugin loads.
+	 *
+	 * Public and named so a companion plugin can tell whether this BrikPanel
+	 * takes a minimum before it offers the field itself.
+	 *
+	 * @since 3.3.41
+	 * @return string
+	 */
+	public static function popup_coupon_minimum() {
+		return self::sanitize_popup_coupon_minimum( get_option( 'brikpanel_cartab_popup_coupon_minimum', '' ) );
+	}
+
+	/**
+	 * Clean a typed or stored minimum spend: '' for none, otherwise a decimal
+	 * string with the store's price decimals ("25.50").
+	 *
+	 * A plain number is read as one; anything else goes through WooCommerce's
+	 * own reader, which knows the shop's decimal separator, so "25,50" means
+	 * what it says in a shop that writes prices that way. Zero, negative and
+	 * unreadable values all mean no minimum: WooCommerce ignores a minimum of 0
+	 * itself. The rules match the minimum BrikMentor writes onto its own codes,
+	 * so one amount reads the same on both plugins' screens.
+	 *
+	 * @since 3.3.41
+	 * @param mixed $raw Typed or stored value.
+	 * @return string '' when there is no minimum.
+	 */
+	public static function sanitize_popup_coupon_minimum( $raw ) {
+		if ( ! is_scalar( $raw ) ) {
+			return '';
+		}
+		$raw = trim( (string) $raw );
+		if ( '' === $raw ) {
+			return '';
+		}
+		if ( is_numeric( $raw ) ) {
+			$amount = (float) $raw;
+		} elseif ( function_exists( 'wc_format_decimal' ) ) {
+			$amount = (float) wc_format_decimal( $raw );
+		} else {
+			return '';
+		}
+		if ( ! is_finite( $amount ) || $amount <= 0 ) {
+			return '';
+		}
+		$decimals = function_exists( 'wc_get_price_decimals' ) ? max( 0, (int) wc_get_price_decimals() ) : 2;
+		$text     = number_format( $amount, $decimals, '.', '' );
+		// A shop with no decimals rounds 0.4 down to nothing, which is no minimum.
+		return (float) $text > 0 ? $text : '';
 	}
 
 	/**
@@ -485,6 +545,9 @@ class Brikpanel_Cart_Abandonment {
 			'couponHintApplied' => __( 'Already on your cart, the discount is in your total.', 'brikpanel' ),
 			'couponHintAuto'    => __( 'Saved. It goes on your cart automatically, and you can still type it in at checkout.', 'brikpanel' ),
 			'couponSaved'       => __( 'Your code is saved. Reopen it any time from the tab at the bottom of the page.', 'brikpanel' ),
+			// Shown under the code only when the code carries a minimum spend.
+			/* translators: %s: the smallest cart subtotal the code works on, with its currency, e.g. "$30.00" */
+			'couponMinimum'     => __( 'Minimum spend %s', 'brikpanel' ),
 			'couponTeaser'      => __( 'Your code', 'brikpanel' ),
 			'couponTeaserLabel' => __( 'Show your discount code', 'brikpanel' ),
 			/* translators: %s: the visitor's email address */
@@ -1586,7 +1649,8 @@ class Brikpanel_Cart_Abandonment {
 	 *
 	 * @param string $email Validated, lowercased email.
 	 * @param int    $id    Cart-abandonment entry id.
-	 * @return array{coupon?:string,discount?:int,expires?:int,autoapply?:bool,applied?:bool,coupon_emailed?:bool,email?:string}
+	 * @return array{coupon?:string,discount?:int,expires?:int,minimum?:string,autoapply?:bool,applied?:bool,coupon_emailed?:bool,email?:string}
+	 *         `minimum` is the code's minimum spend as plain money text, set only when it has one.
 	 */
 	private static function deliver_popup_coupon( $email, $id ) {
 		// A popup coupon only exists while the merchant actually runs the
@@ -1636,14 +1700,20 @@ class Brikpanel_Cart_Abandonment {
 		// its email carries the code and its own one-click apply link, and a
 		// coupon quietly sitting on the cart would contradict both the email and
 		// the "check your inbox" the popup is showing.
-		return array_merge(
-			[
-				'coupon'   => $coupon['code'],
-				'discount' => $coupon['amount'],
-				'expires'  => isset( $coupon['expires'] ) ? (int) $coupon['expires'] : 0,
-			],
-			self::autoapply_popup_coupon( $coupon, $email )
-		);
+		$inline = [
+			'coupon'   => $coupon['code'],
+			'discount' => $coupon['amount'],
+			'expires'  => isset( $coupon['expires'] ) ? (int) $coupon['expires'] : 0,
+		];
+		// The code's minimum spend as an amount only: the popup writes the
+		// sentence around it in the page's own language. The amount is in the
+		// store currency, which is the currency the rule was set in; a currency
+		// switcher's visitor currency would put a foreign symbol on it.
+		$minimum = isset( $coupon['minimum'] ) ? (string) $coupon['minimum'] : '';
+		if ( '' !== $minimum && function_exists( 'brikpanel_money_text' ) ) {
+			$inline['minimum'] = brikpanel_money_text( (float) $minimum, [ 'currency' => (string) get_option( 'woocommerce_currency' ) ] );
+		}
+		return array_merge( $inline, self::autoapply_popup_coupon( $coupon, $email ) );
 	}
 
 	/**
@@ -1682,6 +1752,9 @@ class Brikpanel_Cart_Abandonment {
 			'email' => $email,
 			'exp'   => isset( $coupon['expires'] ) ? (int) $coupon['expires'] : 0,
 			'n'     => 0,
+			// Whether the code has a minimum spend at all, so the pass below
+			// only loads the coupon for the codes that can be waiting on one.
+			'min'   => isset( $coupon['minimum'] ) ? (string) $coupon['minimum'] : '',
 		] );
 
 		// Deliberately the same worker the hooks use, so "signed up with a full
@@ -1732,7 +1805,8 @@ class Brikpanel_Cart_Abandonment {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * @param array $record {code, email, exp, n}.
+	 * @param array $record {code, email, exp, n, min}. `min` is absent on records
+	 *                      parked before 3.3.41.
 	 */
 	private static function park_coupon( $record ) {
 		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
@@ -1797,8 +1871,10 @@ class Brikpanel_Cart_Abandonment {
 	/**
 	 * Resolve the parked coupon. The record is deleted on every terminal
 	 * verdict — applied, expired, deleted, or ten fruitless passes — and the
-	 * only outcomes that keep it cost a session array read. That is what stops
-	 * this from ever becoming a retry that runs for the life of a session.
+	 * only outcomes that keep it cost a session array read (plus one coupon
+	 * read for a code with a minimum spend, while the cart is under it). That
+	 * is what stops this from ever becoming a retry that runs for the life of
+	 * a session.
 	 *
 	 * @return bool Whether the code is on the cart now.
 	 */
@@ -1834,6 +1910,14 @@ class Brikpanel_Cart_Abandonment {
 			return false;
 		}
 
+		// A cart still under the code's minimum spend is not an attempt either.
+		// WooCommerce refuses the code until the cart grows, and this runs on
+		// every request, so counting it would use up all ten passes while the
+		// shopper is still browsing and drop the code before they get there.
+		if ( ! empty( $record['min'] ) && self::below_coupon_minimum( (string) $record['code'] ) ) {
+			return false;
+		}
+
 		$record['n'] = (int) $record['n'] + 1;
 		self::park_coupon( $record );
 		if ( $record['n'] > 10 ) {
@@ -1852,6 +1936,40 @@ class Brikpanel_Cart_Abandonment {
 		}
 
 		return $applied;
+	}
+
+	/**
+	 * Is the cart still under this coupon's minimum spend?
+	 *
+	 * WooCommerce's own test (WC_Discounts::validate_coupon_minimum_amount),
+	 * asked without applying anything: the minimum in the 'view' context, so a
+	 * currency switcher converts it the way WooCommerce's check does, against
+	 * the same displayed subtotal and through the same filter. A coupon that
+	 * cannot be read answers "no": the pass then runs and the usual checks
+	 * decide.
+	 *
+	 * @param string $code Coupon code.
+	 * @return bool
+	 */
+	private static function below_coupon_minimum( $code ) {
+		if ( ! class_exists( 'WC_Coupon' ) || ! function_exists( 'wc_get_coupon_id_by_code' ) || ! function_exists( 'wc_add_number_precision' ) ) {
+			return false;
+		}
+		try {
+			$id = (int) wc_get_coupon_id_by_code( $code );
+			if ( ! $id ) {
+				return false;
+			}
+			$coupon  = new WC_Coupon( $id );
+			$minimum = (float) $coupon->get_minimum_amount();
+			if ( $minimum <= 0 ) {
+				return false;
+			}
+			$subtotal = wc_remove_number_precision( wc_add_number_precision( (float) WC()->cart->get_displayed_subtotal() ) );
+			return (bool) apply_filters( 'woocommerce_coupon_validate_minimum_amount', $minimum > $subtotal, $coupon, $subtotal );
+		} catch ( Throwable $e ) {
+			return false;
+		}
 	}
 
 	/**
@@ -2012,12 +2130,14 @@ class Brikpanel_Cart_Abandonment {
 	/**
 	 * Return (or lazily create) the signup coupon for an email: percent
 	 * discount at the configured rate, single use, restricted to that email,
-	 * valid for 30 days. One live coupon per email — a fresh one is only
-	 * generated when the previous one was used or expired.
+	 * valid for 30 days, with the configured minimum spend if there is one.
+	 * One live coupon per email — a fresh one is only generated when the
+	 * previous one was used or expired.
 	 *
 	 * @param string $email Validated, lowercased email.
-	 * @return array{code:string,amount:int,expires:int}|null `expires` is a UTC
-	 *         timestamp, 0 when the coupon never expires.
+	 * @return array{code:string,amount:int,expires:int,minimum:string}|null
+	 *         `expires` is a UTC timestamp, 0 when the coupon never expires.
+	 *         `minimum` is the code's own minimum spend ("25.50"), '' for none.
 	 */
 	private static function get_or_create_popup_coupon( $email ) {
 		$discount = self::popup_discount();
@@ -2054,6 +2174,9 @@ class Brikpanel_Cart_Abandonment {
 					'code'    => self::ascii_upper( $coupon->get_code() ),
 					'amount'  => (int) $coupon->get_amount(),
 					'expires' => $expires ? $expires->getTimestamp() : 0,
+					// The rule this code was minted with, not today's setting:
+					// a code already sent keeps its rules.
+					'minimum' => self::sanitize_popup_coupon_minimum( $coupon->get_minimum_amount( 'edit' ) ),
 				];
 			}
 		}
@@ -2076,6 +2199,9 @@ class Brikpanel_Cart_Abandonment {
 		// Kept in a local so the caller can be told when the code dies without
 		// re-reading the coupon.
 		$expires_at = time() + 30 * DAY_IN_SECONDS;
+		// Written only when the merchant set one, so a store that never touched
+		// the setting mints the coupon it always has, field for field.
+		$minimum = self::popup_coupon_minimum();
 
 		try {
 			$coupon = new WC_Coupon();
@@ -2091,6 +2217,9 @@ class Brikpanel_Cart_Abandonment {
 			$coupon->set_individual_use( self::popup_coupon_individual_use( $email ) );
 			$coupon->set_email_restrictions( [ $email ] );
 			$coupon->set_date_expires( $expires_at );
+			if ( '' !== $minimum ) {
+				$coupon->set_minimum_amount( $minimum );
+			}
 			$coupon->set_description( __( 'Signup popup coupon (BrikPanel cart abandonment)', 'brikpanel' ) );
 			$coupon->save();
 			update_post_meta( $coupon->get_id(), '_brikpanel_cartab_email', $email );
@@ -2098,7 +2227,7 @@ class Brikpanel_Cart_Abandonment {
 			return null;
 		}
 
-		return [ 'code' => $code, 'amount' => $discount, 'expires' => $expires_at ];
+		return [ 'code' => $code, 'amount' => $discount, 'expires' => $expires_at, 'minimum' => $minimum ];
 	}
 
 	/**
@@ -5192,9 +5321,23 @@ class Brikpanel_Cart_Abandonment {
 			__( 'Abandoned at (UTC)', 'brikpanel' ),
 			__( 'Recovered at (UTC)', 'brikpanel' ),
 			__( 'Order ID', 'brikpanel' ),
+			// The number the shop shows for the recovered order, which a
+			// sequential-number plugin can make different from the ID.
+			__( 'Order number', 'brikpanel' ),
 		];
 
-		$to_line = static function ( array $row ) use ( $statuses, $sources ) {
+		// One lookup per batch of 500 rows, not one per row.
+		$numbers_for = static function ( array $rows ) {
+			$ids = [];
+			foreach ( $rows as $row ) {
+				if ( (int) $row['order_id'] > 0 ) {
+					$ids[] = (int) $row['order_id'];
+				}
+			}
+			return $ids ? brikpanel_order_numbers_for_ids( $ids ) : [];
+		};
+
+		$to_line = static function ( array $row, array $numbers = [] ) use ( $statuses, $sources ) {
 			return [
 				$row['email'],
 				$row['first_name'],
@@ -5211,6 +5354,7 @@ class Brikpanel_Cart_Abandonment {
 				$row['abandoned_at'],
 				$row['recovered_at'],
 				$row['order_id'] > 0 ? $row['order_id'] : '',
+				$row['order_id'] > 0 ? ( $numbers[ (int) $row['order_id'] ] ?? (string) $row['order_id'] ) : '',
 			];
 		};
 
@@ -5225,7 +5369,8 @@ class Brikpanel_Cart_Abandonment {
 			fputcsv( $out, $header );
 			$offset = 0;
 			do {
-				$rows = self::query_entries( array_merge( $args, [ 'limit' => 500, 'offset' => $offset ] ) );
+				$rows    = self::query_entries( array_merge( $args, [ 'limit' => 500, 'offset' => $offset ] ) );
+				$numbers = $numbers_for( $rows );
 				foreach ( $rows as $row ) {
 					// CSV only, on purpose — do NOT move this into $to_line().
 					// Every value here is typed by an anonymous storefront
@@ -5235,7 +5380,7 @@ class Brikpanel_Cart_Abandonment {
 					// writer emits text cells as t="inlineStr", which Excel
 					// never evaluates, so guarding there would only stamp a
 					// stray apostrophe onto every phone number in the workbook.
-					fputcsv( $out, brikpanel_csv_safe_row( $to_line( $row ) ) );
+					fputcsv( $out, brikpanel_csv_safe_row( $to_line( $row, $numbers ) ) );
 				}
 				$offset += 500;
 			} while ( count( $rows ) === 500 );
@@ -5253,9 +5398,10 @@ class Brikpanel_Cart_Abandonment {
 
 		$offset = 0;
 		do {
-			$rows = self::query_entries( array_merge( $args, [ 'limit' => 500, 'offset' => $offset ] ) );
+			$rows    = self::query_entries( array_merge( $args, [ 'limit' => 500, 'offset' => $offset ] ) );
+			$numbers = $numbers_for( $rows );
 			foreach ( $rows as $row ) {
-				$sheet[] = $to_line( $row );
+				$sheet[] = $to_line( $row, $numbers );
 			}
 			$offset += 500;
 		} while ( count( $rows ) === 500 );
@@ -5264,7 +5410,7 @@ class Brikpanel_Cart_Abandonment {
 		$writer->add_sheet(
 			__( 'Abandoned carts', 'brikpanel' ),
 			$sheet,
-			[ 1 => 30, 2 => 14, 3 => 14, 4 => 16, 5 => 10, 6 => 11, 7 => 7, 8 => 11, 9 => 9, 10 => 50, 11 => 19, 12 => 19, 13 => 19, 14 => 19, 15 => 9 ],
+			[ 1 => 30, 2 => 14, 3 => 14, 4 => 16, 5 => 10, 6 => 11, 7 => 7, 8 => 11, 9 => 9, 10 => 50, 11 => 19, 12 => 19, 13 => 19, 14 => 19, 15 => 9, 16 => 12 ],
 			true
 		);
 		$xlsx = $writer->build();
@@ -5350,6 +5496,11 @@ class Brikpanel_Cart_Abandonment {
 				$fields['couponHintApplied'] = [ 'label' => __( 'Coupon note (already on the cart)', 'brikpanel' ), 'type' => 'textarea', 'group' => 'system' ];
 			} else {
 				$fields['couponHint'] = [ 'label' => __( 'Coupon note', 'brikpanel' ), 'type' => 'textarea', 'group' => 'system' ];
+			}
+			// Only while the code carries a minimum spend: without one the line
+			// never shows, and a box for it would be text nobody reads.
+			if ( '' !== self::popup_coupon_minimum() ) {
+				$fields['couponMinimum'] = [ 'label' => __( 'Minimum spend note', 'brikpanel' ), 'type' => 'text', 'group' => 'system' ];
 			}
 			$fields['couponSaved']  = [ 'label' => __( 'Reopen note', 'brikpanel' ),        'type' => 'textarea', 'group' => 'system' ];
 			$fields['couponTeaser'] = [ 'label' => __( 'Floating tab after signup', 'brikpanel' ), 'type' => 'text', 'group' => 'system' ];
@@ -5808,6 +5959,23 @@ class Brikpanel_Cart_Abandonment {
 				'autocomplete' => 'off',
 			],
 			'css'               => 'width:220px;',
+		];
+		// Directly under the code start, which a test pins to sit right after
+		// the discount. No 'default' on purpose, like the code start: an empty
+		// box means no minimum, and a merchant who clears it must see it empty.
+		// Cleaned by the sanitize_option filter registered in the constructor.
+		$fields[] = [
+			'title'             => sprintf(
+				/* translators: %s: the store's currency symbol, e.g. "$". */
+				__( 'Minimum spend (%s)', 'brikpanel' ),
+				function_exists( 'get_woocommerce_currency_symbol' ) ? html_entity_decode( get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8' ) : ''
+			),
+			'desc_tip'          => __( 'Below this cart total the signup code does not work. Leave it empty for no minimum. An automatically applied code waits until the cart reaches it. Codes already sent keep their rules.', 'brikpanel' ),
+			'id'                => 'brikpanel_cartab_popup_coupon_minimum',
+			'type'              => 'number',
+			'placeholder'       => __( 'No minimum', 'brikpanel' ),
+			'custom_attributes' => [ 'min' => 0, 'step' => 'any' ],
+			'css'               => 'width:150px;',
 		];
 		$fields[] = [
 			'title'    => __( 'Apply automatically', 'brikpanel' ),

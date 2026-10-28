@@ -193,6 +193,11 @@ class Brikpanel_Segments {
 		$order_statuses = [];
 		if ( function_exists( 'wc_get_order_statuses' ) ) {
 			foreach ( wc_get_order_statuses() as $slug => $label ) {
+				// The block checkout's draft is never listed (query_orders()),
+				// so a "Draft" choice could only ever show an empty list.
+				if ( 'wc-checkout-draft' === $slug ) {
+					continue;
+				}
 				$order_statuses[] = [
 					'value' => preg_replace( '/^wc-/', '', $slug ),
 					'label' => $label,
@@ -606,14 +611,18 @@ class Brikpanel_Segments {
 		$params = [];
 		$where  = [];
 
+		// Both stores keep a block checkout draft as 'wc-checkout-draft'
+		// ('checkout-draft' is only what WC_Order::get_status() returns). Up to
+		// 3.3.40 it was left in: a cart left on the checkout page topped this
+		// list as a "Draft" order and counted in its totals and CSV.
 		if ( $hpos ) {
 			$from = "{$wpdb->prefix}wc_orders o";
 			$where[] = "o.type = 'shop_order'";
-			$where[] = "o.status NOT IN ('trash','auto-draft','checkout-draft')";
+			$where[] = "o.status NOT IN ('trash','auto-draft','draft','checkout-draft','wc-checkout-draft')";
 		} else {
 			$from = "{$wpdb->posts} o";
 			$where[] = "o.post_type = 'shop_order'";
-			$where[] = "o.post_status NOT IN ('trash','auto-draft')";
+			$where[] = "o.post_status NOT IN ('trash','auto-draft','draft','checkout-draft','wc-checkout-draft')";
 		}
 
 		// Date range. The merchant picks store days; the column is UTC.
@@ -742,29 +751,51 @@ class Brikpanel_Segments {
 			$params = array_merge( $params, $f['category_ids'] );
 		}
 
-		// Free-text search: order id, billing email, billing name
+		// Free-text search: order number, billing email, billing name
 		if ( $f['search'] !== '' ) {
-			$like = '%' . $wpdb->esc_like( $f['search'] ) . '%';
-			if ( ctype_digit( $f['search'] ) ) {
-				$order_col = $hpos ? 'o.id' : 'o.ID';
-				$where[]  = "($order_col = %d OR " . ( $hpos
-						? "o.billing_email LIKE %s OR EXISTS (SELECT 1 FROM {$wpdb->prefix}wc_order_addresses oas WHERE oas.order_id = o.id AND oas.address_type='billing' AND (oas.first_name LIKE %s OR oas.last_name LIKE %s OR CONCAT_WS(' ', oas.first_name, oas.last_name) LIKE %s))"
-						: "EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm_s WHERE pm_s.post_id=o.ID AND pm_s.meta_key IN ('_billing_email','_billing_first_name','_billing_last_name') AND pm_s.meta_value LIKE %s)"
-					) . ")";
-				$params[] = (int) $f['search'];
-				$params[] = $like;
-				if ( $hpos ) {
-					$params[] = $like; $params[] = $like; $params[] = $like;
-				}
-			} else {
-				if ( $hpos ) {
-					$where[]  = "(o.billing_email LIKE %s OR EXISTS (SELECT 1 FROM {$wpdb->prefix}wc_order_addresses oas WHERE oas.order_id = o.id AND oas.address_type='billing' AND (oas.first_name LIKE %s OR oas.last_name LIKE %s OR CONCAT_WS(' ', oas.first_name, oas.last_name) LIKE %s)))";
-					$params[] = $like; $params[] = $like; $params[] = $like; $params[] = $like;
+			// "#1001" is how the shop writes a number; the '#' is not part of it.
+			$term = ltrim( $f['search'], '#' );
+			if ( '' === $term ) {
+				$term = $f['search'];
+			}
+			$like      = '%' . $wpdb->esc_like( $term ) . '%';
+			$order_col = $hpos ? 'o.id' : 'o.ID';
+			$meta_t    = $hpos ? "{$wpdb->prefix}wc_orders_meta" : $wpdb->postmeta;
+			$meta_c    = $hpos ? 'order_id' : 'post_id';
+			$parts     = [];
+
+			// A number a sequential-number plugin stored (BrikPanel's own
+			// included), typed with or without its prefix.
+			$numbers = function_exists( 'brikpanel_order_numbers_candidates' ) ? brikpanel_order_numbers_candidates( $term ) : [];
+			$keys    = function_exists( 'brikpanel_order_numbers_display_keys' ) ? brikpanel_order_numbers_display_keys() : [ '_order_number' ];
+			$key_in  = implode( ',', array_fill( 0, count( $keys ), '%s' ) );
+			if ( $numbers ) {
+				$parts[] = "EXISTS (SELECT 1 FROM {$meta_t} onm WHERE onm.{$meta_c} = {$order_col} AND onm.meta_key IN ({$key_in}) AND onm.meta_value IN (" . implode( ',', array_fill( 0, count( $numbers ), '%s' ) ) . '))';
+				$params  = array_merge( $params, $keys, $numbers );
+			}
+
+			if ( ctype_digit( $term ) ) {
+				if ( has_filter( 'woocommerce_order_number' ) ) {
+					// The ID only counts for an order that shows it: one with no
+					// stored number. Otherwise 1001 would also bring up the order
+					// whose ID is 1001 but whose number is something else.
+					$parts[] = "({$order_col} = %d AND NOT EXISTS (SELECT 1 FROM {$meta_t} onx WHERE onx.{$meta_c} = {$order_col} AND onx.meta_key IN ({$key_in}) AND onx.meta_value <> ''))";
+					$params[] = (int) $term;
+					$params   = array_merge( $params, $keys );
 				} else {
-					$where[]  = "EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm_s WHERE pm_s.post_id=o.ID AND pm_s.meta_key IN ('_billing_email','_billing_first_name','_billing_last_name') AND pm_s.meta_value LIKE %s)";
-					$params[] = $like;
+					$parts[]  = "{$order_col} = %d";
+					$params[] = (int) $term;
 				}
 			}
+
+			if ( $hpos ) {
+				$parts[]  = "o.billing_email LIKE %s OR EXISTS (SELECT 1 FROM {$wpdb->prefix}wc_order_addresses oas WHERE oas.order_id = o.id AND oas.address_type='billing' AND (oas.first_name LIKE %s OR oas.last_name LIKE %s OR CONCAT_WS(' ', oas.first_name, oas.last_name) LIKE %s))";
+				$params[] = $like; $params[] = $like; $params[] = $like; $params[] = $like;
+			} else {
+				$parts[]  = "EXISTS (SELECT 1 FROM {$wpdb->postmeta} pm_s WHERE pm_s.post_id=o.ID AND pm_s.meta_key IN ('_billing_email','_billing_first_name','_billing_last_name') AND pm_s.meta_value LIKE %s)";
+				$params[] = $like;
+			}
+			$where[] = '(' . implode( ' OR ', $parts ) . ')';
 		}
 
 		// Sort
@@ -1174,7 +1205,12 @@ class Brikpanel_Segments {
 				__( 'City', 'brikpanel' ),
 				__( 'Payment', 'brikpanel' ),
 				__( 'Total', 'brikpanel' ),
+				// Last, so spreadsheets that read the columns by position keep
+				// working. The number the shop shows, which a sequential-number
+				// plugin can make different from the ID.
+				__( 'Order number', 'brikpanel' ),
 			] );
+			$numbers = brikpanel_order_numbers_for_ids( array_column( $result['items'], 'id' ) );
 			foreach ( $result['items'] as $item ) {
 				fputcsv( $out, brikpanel_csv_safe_row( [
 					$item['id'],
@@ -1187,6 +1223,7 @@ class Brikpanel_Segments {
 					$item['city'],
 					$item['payment'],
 					$item['total'],
+					$numbers[ (int) $item['id'] ] ?? (string) $item['id'],
 				] ) );
 			}
 		} else {

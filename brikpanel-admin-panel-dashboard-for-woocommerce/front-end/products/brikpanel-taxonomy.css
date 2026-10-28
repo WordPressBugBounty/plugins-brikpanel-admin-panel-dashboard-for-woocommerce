@@ -1728,6 +1728,16 @@ body.brikpanel-tax-motion .brikpanel-tax-backdrop.is-open {
     transition: opacity .28s ease, visibility 0s;
 }
 
+/* Pop-ups that a field in the panel opens at the end of <body> come above
+   the panel. Blocksy Pro's colour picker (swatch fields on attribute terms)
+   is fixed at z-index 100000, so it opened out of sight under the panel and
+   the backdrop, and no colour could be picked (wp.org report, 2026-10-27).
+   A foreign element on purpose: the selector has to outrank Blocksy's own
+   `.ct-option-modal` rule, and it only applies while the panel is open. */
+body.brikpanel-tax-panel-open .ct-option-modal {
+    z-index: 100021;
+}
+
 body.brikpanel-tax-has-panel #col-left.brikpanel-tax-panel .brikpanel-tax-panel-head {
     display: flex;
     flex-shrink: 0;

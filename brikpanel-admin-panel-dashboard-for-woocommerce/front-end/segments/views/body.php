@@ -28,7 +28,7 @@ $currency_symbol     = isset( $currency_symbol ) ? (string) $currency_symbol : '
 		<?php // Preset chips, saved segments and "Save as segment": drawn per tab in JS. ?>
 	</div>
 	<div class="bp-seg-quick-search">
-		<input class="brikpanel-control" type="search" id="bp-seg-search" placeholder="<?php echo esc_attr( 'customers' === $bp_seg_tab ? __( 'Search customers', 'brikpanel' ) : __( 'Search by name, email, order ID…', 'brikpanel' ) ); ?>" />
+		<input class="brikpanel-control" type="search" id="bp-seg-search" placeholder="<?php echo esc_attr( 'customers' === $bp_seg_tab ? __( 'Search customers', 'brikpanel' ) : __( 'Search by name, email, order number…', 'brikpanel' ) ); ?>" />
 		<button type="button" class="bp-seg-btn bp-seg-btn-secondary" id="bp-seg-toggle-more" aria-expanded="false">
 			<?php esc_html_e( 'More filters', 'brikpanel' ); ?>
 			<span class="bp-seg-count-badge" id="bp-seg-active-filter-count" hidden>0</span>

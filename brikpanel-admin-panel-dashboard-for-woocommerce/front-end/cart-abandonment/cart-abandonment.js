@@ -178,6 +178,9 @@
 		// corrupt or hand-edited record from being painted into the tab.
 		var CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,31}$/;
 		var DAY_MS = 86400000;
+		// Longest minimum-spend amount kept with a saved code ("$1,234.56" with
+		// its direction marks is far shorter); anything longer is not ours.
+		var MIN_MAX = 40;
 
 		var storage;
 		try {
@@ -244,6 +247,11 @@
 				var rec = JSON.parse(raw);
 				if (rec && rec.v === 1 && typeof rec.code === 'string'
 					&& CODE_RE.test(rec.code) && Number(rec.exp) > Date.now()) {
+					// The minimum is optional (records saved before it existed
+					// have none); a damaged one is dropped, not the whole code.
+					if (typeof rec.min !== 'string' || rec.min.length > MIN_MAX) {
+						rec.min = '';
+					}
 					couponCache = rec;
 				} else if (storage) {
 					storage.removeItem(LS_COUPON); // Expired or foreign shape.
@@ -267,7 +275,11 @@
 				code: data.coupon,
 				pct: Math.max(0, Number(data.discount) || 0),
 				exp: Number(data.expires) > 0 ? Number(data.expires) * 1000 : Date.now() + 30 * DAY_MS,
-				auto: data.autoapply ? 1 : 0
+				auto: data.autoapply ? 1 : 0,
+				// The code's minimum spend as an amount, also as issued. Only
+				// the amount is kept; the sentence around it is written in the
+				// language of whichever page reopens the tab.
+				min: (typeof data.minimum === 'string' && data.minimum.length <= MIN_MAX) ? data.minimum : ''
 			};
 			try {
 				storage.setItem(LS_COUPON, JSON.stringify(rec));
@@ -598,6 +610,10 @@
 			var box = document.createElement('div');
 			box.className = 'brikpanel-cartab-coupon';
 			box.appendChild(buildCouponRow(rec.code));
+			var minLine = buildMinimumLine(rec.min);
+			if (minLine) {
+				box.appendChild(minLine);
+			}
 
 			var hint = document.createElement('div');
 			hint.className = 'brikpanel-cartab-coupon-hint';
@@ -653,6 +669,25 @@
 			codeRow.appendChild(codeEl);
 			codeRow.appendChild(copy);
 			return codeRow;
+		}
+
+		// "Minimum spend $30.00" under the code, when the code has one. Nothing
+		// at all when there is no amount, or when a cached older page left the
+		// sentence out of its settings: no line is better than an English one.
+		// A merchant's own wording without the %s is shown as they wrote it.
+		function buildMinimumLine(amount) {
+			var tpl = cfg.i18n.couponMinimum;
+			if (typeof tpl !== 'string' || tpl === '' || typeof amount !== 'string' || amount === '') {
+				return null;
+			}
+			var line = document.createElement('div');
+			line.className = 'brikpanel-cartab-coupon-minimum';
+			// A function replacement, so a "$" in the amount is never read as a
+			// replacement pattern.
+			line.textContent = tpl.indexOf('%s') === -1 ? tpl : tpl.replace('%s', function () {
+				return amount;
+			});
+			return line;
 		}
 
 		function openPopup() {
@@ -892,6 +927,10 @@
 
 					couponBox.appendChild(intro);
 					couponBox.appendChild(buildCouponRow(data.coupon));
+					var minimumLine = buildMinimumLine(data.minimum);
+					if (minimumLine) {
+						couponBox.appendChild(minimumLine);
+					}
 					couponBox.appendChild(hint);
 
 					// Only promised when it actually happened — with storage

@@ -102,6 +102,9 @@ function brikpanel_prime_keys_always() {
 		// Front-end tracking emitter.
 		'brikpanel_frontend_tracking',
 		'brikpanel_tracking_require_consent',
+		// Printed into the storefront tracker (count a visitor when the page
+		// opens, 3.3.41), so read on every storefront page.
+		'brikpanel_count_on_open',
 		// Start of the person check's transition window, read on init by
 		// brikpanel_human_proof_maybe_roll_out() (autoloaded once written).
 		'brikpanel_human_proof_since',
@@ -326,6 +329,10 @@ function brikpanel_prime_keys_admin() {
 		'brikpanel_orders_overview_hidden_roles',
 		'brikpanel_whatsapp_enabled',
 		'brikpanel_whatsapp_hidden_roles',
+		// Sequential order numbers: read on plugins_loaded on every request to
+		// decide whether any of its hooks are added at all.
+		'brikpanel_order_numbers',
+		'brikpanel_order_numbers_used',
 
 		// Misc.
 		'brikpanel_ads_cache_version',
@@ -362,6 +369,8 @@ function brikpanel_option_autoload_map() {
 		'brikpanel_activated_at'                    => true,
 		'brikpanel_review_dismissed'                => true,
 		'brikpanel_ea_subscribed'                   => true,
+		// Written once, when the first sequential order number is given.
+		'brikpanel_order_numbers_used'              => true,
 	);
 }
 
@@ -397,6 +406,7 @@ function brikpanel_option_autoload_denylist() {
 		'brikpanel_dashboard_section_order'             => 'unbounded, screen-scoped',
 		'brikpanel_excluded_user_ids'                   => 'unbounded',
 		'brikpanel_data_cache_ver'                      => 'write-hot: bumped on every order',
+		'brikpanel_order_numbers_last'                  => 'write-hot: bumped on every new order',
 		'brikpanel_ca_cache_ver'                        => 'write-hot',
 		'brikpanel_ads_cache_version'                   => 'write-hot',
 		'brikpanel_completed_orders_count'              => 'write-hot',

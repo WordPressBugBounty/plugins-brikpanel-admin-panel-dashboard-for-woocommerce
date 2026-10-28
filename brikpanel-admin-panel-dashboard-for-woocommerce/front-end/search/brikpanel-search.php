@@ -412,7 +412,7 @@ class Brikpanel_Pro_Search {
 		}
 
 		/* translators: %s: comma-separated list of searchable areas, e.g. "Orders, Products, Customers". */
-		return sprintf( __( 'Search across: %s. Orders match customer name, email, phone, order ID or product SKU.', 'brikpanel' ), implode( ', ', $names ) );
+		return sprintf( __( 'Search across: %s. Orders match customer name, email, phone, order number or product SKU.', 'brikpanel' ), implode( ', ', $names ) );
 	}
 
 	// =========================================================================
@@ -481,6 +481,7 @@ class Brikpanel_Pro_Search {
 					'post__in' => $order_ids,
 					'limit'    => self::ORDER_RESULT_LIMIT,
 					'type'     => 'shop_order',
+					'status'   => brikpanel_listed_order_statuses(),
 				)
 			);
 		}
@@ -532,8 +533,10 @@ class Brikpanel_Pro_Search {
 	private function query_recent_orders( $limit ) {
 		$query = new WC_Order_Query(
 			array(
-				'type'  => 'shop_order',
-				'limit' => $limit,
+				'type'   => 'shop_order',
+				'limit'  => $limit,
+				// Without it a cart left on the checkout page topped this list.
+				'status' => brikpanel_listed_order_statuses(),
 			)
 		);
 		return $query->get_orders();
@@ -941,15 +944,19 @@ class Brikpanel_Pro_Search {
 
 		$holders = $this->in_placeholders( $ids, '%d' );
 
+		// Both stores keep a block checkout draft as 'wc-checkout-draft';
+		// 'checkout-draft' is only what WC_Order::get_status() returns. Up to
+		// 3.3.40 the list held only the short name, so a cart left on the
+		// checkout page showed in Ctrl+K as an order ("Checkout draft").
 		if ( $this->orders_use_hpos() ) {
 			$sql = "SELECT id FROM {$wpdb->prefix}wc_orders
 				WHERE type = 'shop_order'
-				AND status NOT IN ('trash','auto-draft','checkout-draft')
+				AND status NOT IN ('trash','auto-draft','draft','checkout-draft','wc-checkout-draft')
 				AND id IN ({$holders})";
 		} else {
 			$sql = "SELECT ID FROM {$wpdb->posts}
 				WHERE post_type = 'shop_order'
-				AND post_status NOT IN ('trash','auto-draft')
+				AND post_status NOT IN ('trash','auto-draft','draft','checkout-draft','wc-checkout-draft')
 				AND ID IN ({$holders})";
 		}
 
@@ -961,8 +968,11 @@ class Brikpanel_Pro_Search {
 	}
 
 	/**
-	 * Orders whose number, or third-party order-number meta, is one of the
-	 * terms. Only ever runs for terms that are digits, so a word search never
+	 * Orders whose number is one of the terms. A number stored by a
+	 * sequential-number plugin (BrikPanel's own, WebToffee, SkyVerge, Tyche,
+	 * BeRocket) comes first, with or without its prefix (WEB-1001, #WEB-1001,
+	 * or 1001 under the current prefix); a plain order ID after it. Only
+	 * terms that hold a digit reach the database, so a word search never
 	 * touches it.
 	 *
 	 * @param array $terms
@@ -973,38 +983,47 @@ class Brikpanel_Pro_Search {
 		global $wpdb;
 
 		$numbers = array();
+		$stored  = array();
 		foreach ( $terms as $term ) {
 			$candidate = ltrim( trim( $term ), '#' );
 			if ( '' !== $candidate && ctype_digit( $candidate ) ) {
 				$numbers[ $candidate ] = $candidate;
 			}
+			if ( function_exists( 'brikpanel_order_numbers_candidates' ) ) {
+				foreach ( brikpanel_order_numbers_candidates( $term ) as $value ) {
+					$stored[ $value ] = $value;
+				}
+			} elseif ( '' !== $candidate && ctype_digit( $candidate ) ) {
+				$stored[ $candidate ] = $candidate;
+			}
 		}
 
-		if ( empty( $numbers ) ) {
-			return array();
+		$ids = array();
+		if ( ! empty( $stored ) ) {
+			if ( function_exists( 'brikpanel_order_numbers_find_ids' ) ) {
+				$ids = brikpanel_order_numbers_find_ids( array_values( $stored ), (int) $limit );
+			} else {
+				$values   = array_values( $stored );
+				$holders  = $this->in_placeholders( $values );
+				$meta_sql = $this->orders_use_hpos()
+					? "SELECT order_id FROM {$wpdb->prefix}wc_orders_meta WHERE meta_key = '_order_number' AND meta_value IN ({$holders}) LIMIT %d"
+					: "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_order_number' AND meta_value IN ({$holders}) LIMIT %d";
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders are generated from a count, values are bound below.
+				$ids = (array) $wpdb->get_col( $wpdb->prepare( $meta_sql, array_merge( $values, array( (int) $limit ) ) ) );
+			}
 		}
 
-		$numbers    = array_values( $numbers );
-		$holders    = $this->in_placeholders( $numbers );
-		$id_holders = $this->in_placeholders( $numbers, '%d' );
-		$hpos       = $this->orders_use_hpos();
-
-		if ( $hpos ) {
-			$id_sql   = "SELECT id FROM {$wpdb->prefix}wc_orders WHERE type = 'shop_order' AND id IN ({$id_holders}) LIMIT %d";
-			$meta_sql = "SELECT order_id FROM {$wpdb->prefix}wc_orders_meta WHERE meta_key = '_order_number' AND meta_value IN ({$holders}) LIMIT %d";
-		} else {
-			$id_sql   = "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'shop_order' AND ID IN ({$id_holders}) LIMIT %d";
-			$meta_sql = "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_order_number' AND meta_value IN ({$holders}) LIMIT %d";
+		if ( ! empty( $numbers ) ) {
+			$numbers    = array_values( $numbers );
+			$id_holders = $this->in_placeholders( $numbers, '%d' );
+			$id_sql     = $this->orders_use_hpos()
+				? "SELECT id FROM {$wpdb->prefix}wc_orders WHERE type = 'shop_order' AND id IN ({$id_holders}) LIMIT %d"
+				: "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'shop_order' AND ID IN ({$id_holders}) LIMIT %d";
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders are generated from a count, values are bound below.
+			$ids = array_merge( $ids, (array) $wpdb->get_col( $wpdb->prepare( $id_sql, array_merge( $numbers, array( (int) $limit ) ) ) ) );
 		}
 
-		$args = array_merge( $numbers, array( (int) $limit ) );
-
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders are generated from a count, values are bound below.
-		$ids = (array) $wpdb->get_col( $wpdb->prepare( $id_sql, $args ) );
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- placeholders are generated from a count, values are bound below.
-		$ids = array_merge( $ids, (array) $wpdb->get_col( $wpdb->prepare( $meta_sql, $args ) ) );
-
-		return array_map( 'absint', $ids );
+		return array_values( array_unique( array_map( 'absint', $ids ) ) );
 	}
 
 	/**
@@ -1529,7 +1548,7 @@ class Brikpanel_Pro_Search {
 
 		$orders_map = array();
 		if ( ! empty( $order_ids ) ) {
-			foreach ( wc_get_orders( array( 'post__in' => $order_ids, 'limit' => self::ORDER_SKU_LIMIT ) ) as $o ) {
+			foreach ( wc_get_orders( array( 'post__in' => $order_ids, 'limit' => self::ORDER_SKU_LIMIT, 'status' => brikpanel_listed_order_statuses() ) ) as $o ) {
 				$orders_map[ $o->get_id() ] = $o;
 			}
 		}
@@ -2646,7 +2665,7 @@ class Brikpanel_Pro_Search {
 				'name'    => __( 'Search orders', 'brikpanel' ),
 				'id'      => 'brikpanel_search_orders',
 				'type'    => 'checkbox',
-				'desc'    => __( 'Find orders by customer name, email, phone, order ID or a product SKU inside the order.', 'brikpanel' ),
+				'desc'    => __( 'Find orders by customer name, email, phone, order number or a product SKU inside the order.', 'brikpanel' ),
 				'default' => 'yes',
 			),
 			array(

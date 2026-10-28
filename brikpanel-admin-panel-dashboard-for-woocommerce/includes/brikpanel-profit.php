@@ -2095,21 +2095,24 @@ function brikpanel_profit_per_order_expenses( $start_gmt, $end_gmt, $exclude_mar
 }
 
 /**
- * Store-currency ad spend split per platform for a local date range. Foreign-
- * currency spend is ignored (can't be converted reliably). Every known platform
- * key is always present (0.0 when absent) so callers can rely on the shape.
- * Empty array shape still holds when the Ad Platforms module is absent.
+ * Ad spend for a local date range in the store currency, with what was
+ * converted and what was left out. Spend billed in another currency is
+ * converted with the rate from Settings > Currency; spend in a currency with
+ * no rate is not counted and is reported in `unconverted` (see
+ * brikpanel_ad_spend_to_store_currency()). One query per call.
  *
  * @param string $start_local Y-m-d H:i:s
  * @param string $end_local   Y-m-d H:i:s
- * @return array<string,float> Keyed by platform slug (google_ads, meta_ads).
+ * @return array{by_platform: array<string,float>, total: float, unconverted: array<string,float>, converted: array<string,array<string,array{amount:float,rate:float}>>}
  */
-function brikpanel_profit_ad_spend_by_platform( $start_local, $end_local ) {
+function brikpanel_profit_ad_spend_details( $start_local, $end_local ) {
 	$out = [
-		'google_ads' => 0.0,
-		'meta_ads'   => 0.0,
+		'by_platform' => [],
+		'total'       => 0.0,
+		'unconverted' => [],
+		'converted'   => [],
 	];
-	if ( ! class_exists( 'Brikpanel_Ads_Store' ) ) {
+	if ( ! class_exists( 'Brikpanel_Ads_Store' ) || ! function_exists( 'brikpanel_ad_spend_to_store_currency' ) ) {
 		return $out;
 	}
 	$start_date = substr( (string) $start_local, 0, 10 );
@@ -2123,34 +2126,58 @@ function brikpanel_profit_ad_spend_by_platform( $start_local, $end_local ) {
 		return $out;
 	}
 
-	$rows = Brikpanel_Ads_Store::totals_for_range( $start_date, $end_date );
-	foreach ( (array) $rows as $r ) {
-		$platform = isset( $r['platform'] ) ? (string) $r['platform'] : '';
-		if ( ! array_key_exists( $platform, $out ) ) {
+	return brikpanel_ad_spend_to_store_currency( (array) Brikpanel_Ads_Store::totals_for_range( $start_date, $end_date ), $store_cur );
+}
+
+/**
+ * Store-currency ad spend split per platform for a local date range. Spend in
+ * another currency is converted with the Settings > Currency rate, spend with
+ * no rate is left out. Every known platform key is always present (0.0 when
+ * absent) so callers can rely on the shape. Empty array shape still holds when
+ * the Ad Platforms module is absent.
+ *
+ * @param string     $start_local Y-m-d H:i:s
+ * @param string     $end_local   Y-m-d H:i:s
+ * @param array|null $details     brikpanel_profit_ad_spend_details() of the same
+ *                                range when the caller already has it.
+ * @return array<string,float> Keyed by platform slug (google_ads, meta_ads).
+ */
+function brikpanel_profit_ad_spend_by_platform( $start_local, $end_local, $details = null ) {
+	$out = [
+		'google_ads' => 0.0,
+		'meta_ads'   => 0.0,
+	];
+	if ( ! is_array( $details ) ) {
+		$details = brikpanel_profit_ad_spend_details( $start_local, $end_local );
+	}
+	foreach ( (array) ( $details['by_platform'] ?? [] ) as $platform => $amount ) {
+		if ( ! array_key_exists( (string) $platform, $out ) ) {
 			continue; // unknown platform — never silently fold into a known bucket
 		}
-		$cur = isset( $r['currency'] ) && $r['currency'] !== '' ? $r['currency'] : $store_cur;
-		if ( $cur === $store_cur ) {
-			$out[ $platform ] += (float) $r['spend'];
-		}
+		$out[ $platform ] += (float) $amount;
 	}
 
 	return $out;
 }
 
 /**
- * Ad spend in the STORE currency for a local date range. Foreign-currency
- * spend is ignored (can't be converted reliably). 0 when the Ad Platforms
- * module is absent or has no data. This is the combined total across every
- * platform; the per-platform split lives in
+ * Ad spend in the STORE currency for a local date range, converted where the
+ * merchant entered a rate and without the spend that has none. 0 when the Ad
+ * Platforms module is absent or has no data. This is the combined total
+ * across every platform; the per-platform split lives in
  * brikpanel_profit_ad_spend_by_platform().
  *
- * @param string $start_local Y-m-d H:i:s
- * @param string $end_local   Y-m-d H:i:s
+ * @param string     $start_local Y-m-d H:i:s
+ * @param string     $end_local   Y-m-d H:i:s
+ * @param array|null $by_platform brikpanel_profit_ad_spend_by_platform() of the
+ *                                same range when the caller already has it.
  * @return float
  */
-function brikpanel_profit_ad_spend( $start_local, $end_local ) {
-	$spend = (float) array_sum( brikpanel_profit_ad_spend_by_platform( $start_local, $end_local ) );
+function brikpanel_profit_ad_spend( $start_local, $end_local, $by_platform = null ) {
+	if ( ! is_array( $by_platform ) ) {
+		$by_platform = brikpanel_profit_ad_spend_by_platform( $start_local, $end_local );
+	}
+	$spend = (float) array_sum( $by_platform );
 
 	/**
 	 * Filter the store-currency ad spend that feeds the Profit section.
@@ -2198,8 +2225,11 @@ function brikpanel_profit_snapshot( $revenue, $start_gmt, $end_gmt, $start_local
 	$fees      = brikpanel_profit_payment_fees( $start_gmt, $end_gmt, $exclude_marketplace );
 	$returns   = brikpanel_profit_returns( $start_gmt, $end_gmt, $exclude_marketplace, $refunds );
 	$coupons  = brikpanel_profit_coupons( $start_gmt, $end_gmt, $exclude_marketplace );
-	$ads_by   = brikpanel_profit_ad_spend_by_platform( $start_local, $end_local );
-	$ads      = brikpanel_profit_ad_spend( $start_local, $end_local );
+	// One read of the spend rows feeds the split, the total and the two
+	// currency lists below.
+	$ads_fx   = brikpanel_profit_ad_spend_details( $start_local, $end_local );
+	$ads_by   = brikpanel_profit_ad_spend_by_platform( $start_local, $end_local, $ads_fx );
+	$ads      = brikpanel_profit_ad_spend( $start_local, $end_local, $ads_by );
 
 	list( $exp_manual, $exp_inventory, $exp_other ) = brikpanel_profit_manual_expenses( $start_local, $end_local );
 	$exp_by_category = brikpanel_profit_manual_expenses_by_category( $start_local, $end_local );
@@ -2252,6 +2282,13 @@ function brikpanel_profit_snapshot( $revenue, $start_gmt, $end_gmt, $start_local
 		// Profit tab read scalars, not breakdown lines.
 		'payment_fees_raw'   => $fees['total'],
 		'ad_spend_raw'       => $ads,
+		// Ad spend billed in another currency. `converted` (platform =>
+		// currency => original amount and rate) is already inside ad_spend_raw
+		// and lets the breakdown line show the account's own figure;
+		// `unconverted` (currency => amount) had no rate and is NOT in it, so
+		// Expenses is understated until the merchant enters one.
+		'ad_spend_converted'   => $ads_fx['converted'],
+		'ad_spend_unconverted' => $ads_fx['unconverted'],
 		'exp_manual_raw'     => $exp_manual,
 		'exp_inventory_raw'  => $exp_inventory,
 		'exp_other_raw'      => $exp_other,

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.40
+ * Version: 3.3.41
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.40');
+define('BRIKPANEL_VERSION', '3.3.41');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -720,14 +720,15 @@ brikpanel_require('front-end/order-statuses/brikpanel-order-statuses.php');
 brikpanel_require('front-end/order-statuses/brikpanel-status-emails.php');
 
 // Phone notifications (Web Push), the Home Screen app and "Keep screen on" on
-// the dashboard: parked until they are tested on real phones. The code ships,
-// but none of it loads unless wp-config.php has
-// define( 'BRIKPANEL_PHONE_APP', true ). When on, the module loads on every
+// the dashboard. On for every site since 27 Oct 2026, after a full test on a
+// real Samsung Galaxy A56 (Chrome app, Brave, Firefox); before that it was
+// parked behind this switch. define( 'BRIKPANEL_PHONE_APP', false ) in
+// wp-config.php switches all of it off on one site. The module loads on every
 // request for the same reason as the emails above: orders reach a new status
 // at checkout, in payment webhooks and in cron jobs, not only in wp-admin. The
-// gate file loads either way (export keys, jobs left by a test).
+// gate file loads either way (export keys, jobs left behind when it is off).
 function brikpanel_phone_app_enabled() {
-    return defined( 'BRIKPANEL_PHONE_APP' ) && BRIKPANEL_PHONE_APP;
+    return ! defined( 'BRIKPANEL_PHONE_APP' ) || BRIKPANEL_PHONE_APP;
 }
 brikpanel_require('front-end/push/brikpanel-push-gate.php');
 if ( brikpanel_phone_app_enabled() ) {
@@ -749,6 +750,12 @@ brikpanel_require('includes/brikpanel-pack-sizes.php');
 // rebuilds the title whenever it reads or saves a variation, on any request,
 // and writes it back when it changed.
 brikpanel_require('includes/brikpanel-variation-title.php');
+
+// Sequential order numbers (off by default). Global: orders are placed at
+// checkout, through the Store API, the REST API, payment webhooks and cron,
+// and every one of them must get its number when it is placed, not later in
+// wp-admin. Its settings card is admin-only inside the file.
+brikpanel_require('front-end/orders/brikpanel-order-numbers.php');
 
 // The text domain is loaded above the WooCommerce dependency guard, near the
 // top of this file, so the guard's own notice is translated too.

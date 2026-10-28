@@ -1190,10 +1190,19 @@
     });
 
     // A phone notification reached this browser (BrikPanel's service
-    // worker): check now instead of waiting for the next interval.
+    // worker): check now instead of waiting for the next interval. A worker
+    // that asks (a port comes with the message) learns whether this tab, on
+    // screen, plays the cash register itself: then the phone's own
+    // notification stays quiet and the order is heard once.
     if (navigator.serviceWorker && typeof navigator.serviceWorker.addEventListener === 'function') {
         navigator.serviceWorker.addEventListener('message', function (e) {
             if (!e || !e.data || e.data.type !== 'brikpanel-push') return;
+            var port = e.ports && e.ports[0];
+            if (port) {
+                try {
+                    port.postMessage({ play: !!(isLeader && !document.hidden && enableSound && audio && unlocked) });
+                } catch (x) { /* the worker shows its notification with sound */ }
+            }
             if (isLeader) pollNow();
             else announce('poll');
         });
@@ -1202,6 +1211,11 @@
     function start() {
         // The nonce printed with this page is the freshest one.
         if (cfg.nonce) lsSet('nonce', String(cfg.nonce));
+        // The order this screen edits is already in front of the person (a tap
+        // on its phone notification lands here): no card and no sound for it,
+        // in any tab.
+        var viewing = parseInt(cfg.viewing, 10) || 0;
+        if (viewing > 0) addIds('shown', [viewing]);
         if (locks) requestLock(!document.hidden);
         else startLease();
         armUnlock();

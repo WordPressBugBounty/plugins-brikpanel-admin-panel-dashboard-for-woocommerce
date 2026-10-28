@@ -746,6 +746,18 @@
     overflow-wrap: break-word;
 }
 
+/* Converted ad spend: the account's own figure and the rate under the name
+   ("$1,076.49 · 1 USD = 0.76 GBP"). A line of its own, so the name and the
+   amount beside it keep one baseline. */
+.brikpanel-dash-bd-note {
+    display: block;
+    margin-top: 0.0625rem;
+    color: var(--bp-text-secondary, #616161);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Remove control on a breakdown line. Always in the layout so hovering never
    nudges the row; only its opacity changes. Kept reachable by keyboard, where
    it becomes visible on focus. */
@@ -3095,6 +3107,15 @@ button.brikpanel-dash-guide__item:focus-visible {
 
 .bp-dv-kpi > .brikpanel-dash-card-label > :not(.brikpanel-dash-card-label-text) {
     flex: none;
+}
+
+/* The profit cards' names too (they sit in the head row with "+" and the
+   chevron): cut with "…" they never stuck out, so on a day with no sales the
+   four short figures fitted four columns on a phone and the names read
+   "Mal …", "Gi" (384px Samsung, 27 Oct 2026). Now the cards go 2 + 2. */
+.brikpanel-dash-cards-profit .brikpanel-dash-card-head .brikpanel-dash-card-label-text {
+    overflow: visible;
+    text-overflow: clip;
 }
 
 /* The figure scales with its card and never breaks; a figure that does not

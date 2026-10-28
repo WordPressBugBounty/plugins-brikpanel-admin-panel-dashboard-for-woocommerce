@@ -175,6 +175,47 @@ function brikpanel_ua_has_browser_engine( $ua ) {
 }
 
 /**
+ * A browser's user agent without the phone's own names (3.3.41).
+ *
+ * Android browsers and every app's built-in browser carry the phone's model
+ * ("Linux; Android 14; M bot 51 Build/..."), and Instagram and Threads add
+ * maker, model and code name ("FOSSiBOT; F101; ...", "htc_botdugls",
+ * "HNMAP"). Phones named that way matched "bot", "spider", "nmap" or
+ * "majestic" and were dropped: a scan of Google Play's 54,288 Android devices
+ * found FOSSiBOT, Logicom, OSCAL Spider, HTC Desire 22, Honor 100 Pro and
+ * others, not counted and with no cart capture. Crawlers name themselves in
+ * a part of their own ("(compatible; Googlebot/2.1; ...)"), which stays.
+ *
+ * Only for clients with a browser engine: a fetcher has no device to name.
+ *
+ * @since 3.3.41
+ *
+ * @param string $ua Lower-cased user agent.
+ * @return string
+ */
+function brikpanel_ua_without_device_names( $ua ) {
+    if ( ! brikpanel_ua_has_browser_engine( $ua ) ) {
+        return $ua;
+    }
+    $clean = preg_replace(
+        [
+            // "(linux; android 14; sm-a546b build/up1a...; wv)", also with
+            // "u;" and a language before the model on old phones.
+            '#\(linux;(?: u;)? android[^)]*\)#',
+            // Instagram and Threads (app name "barcelona"): "android (34/14;
+            // 450dpi; 1080x2340; samsung; sm-a546b; a54x; s5e8835; ...)",
+            // on an iPhone "(iphone15,2; ios 18_6; ...)".
+            '#\b(instagram|barcelona) ([0-9][0-9.]*)( android)? \([^)]*\)#',
+            // Facebook's older format: maker, brand, model, carrier.
+            '#\b(fbdv|fbmd|fbmf|fbbd|fbcr)/[^;\]]*#',
+        ],
+        [ '(linux; android)', '$1 $2$3', '$1/' ],
+        $ua
+    );
+    return is_string( $clean ) ? $clean : $ua;
+}
+
+/**
  * User-agent fragments that must never be treated as bots, checked before
  * the token list.
  *
@@ -470,9 +511,12 @@ function brikpanel_scan_request_for_bot( $ua, $is_bot ) {
         }
     }
 
+    // Matched without the phone's own names (3.3.41): a model or maker called
+    // "... bot" or "Spider" is not a crawler.
     if ( ! $is_bot && ! $allowlisted ) {
+        $scan_ua = brikpanel_ua_without_device_names( $ua );
         foreach ( brikpanel_bot_ua_tokens() as $token ) {
-            if ( '' !== $token && false !== strpos( $ua, strtolower( $token ) ) ) {
+            if ( '' !== $token && false !== strpos( $scan_ua, strtolower( $token ) ) ) {
                 $is_bot = true;
                 break;
             }

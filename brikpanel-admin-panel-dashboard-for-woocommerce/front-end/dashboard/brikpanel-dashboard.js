@@ -973,10 +973,12 @@
         // picks the case: fees in a currency with no rate (the total
         // understates), some orders without a fee, or a gateway that records
         // none at all (which used to look like the feature being broken).
+        // Ad spend billed in a currency with no exchange rate is left out the
+        // same way, so it shares the one "!" (ad spend first: the bigger sum).
         var expCard = document.getElementById('profit-expenses-card');
         if (expCard) {
-            var feeTip = tx.fees_tip || '';
-            setEstimateFlag(expCard, !!feeTip, feeTip);
+            var expTip = [tx.ads_tip || '', tx.fees_tip || ''].filter(Boolean).join(' ');
+            setEstimateFlag(expCard, !!expTip, expTip);
         }
 
         // Net profit: colour green/red and show the margin %.
@@ -1157,6 +1159,14 @@
             var k = document.createElement('span');
             k.className = 'brikpanel-dash-bd-k';
             k.textContent = b.label;
+            // Converted ad spend: the account's own figure and the rate, in
+            // small grey type under the name ("$1,076.49 · 1 USD = 0.76 GBP").
+            if (b.note) {
+                var note = document.createElement('span');
+                note.className = 'brikpanel-dash-bd-note';
+                note.textContent = b.note;
+                k.appendChild(note);
+            }
 
             row.appendChild(k);
 

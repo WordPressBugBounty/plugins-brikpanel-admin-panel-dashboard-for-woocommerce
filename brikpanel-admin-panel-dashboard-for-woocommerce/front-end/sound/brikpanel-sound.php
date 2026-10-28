@@ -157,6 +157,7 @@ function brikpanel_order_notify_enqueue( $hook ) {
             'confetti' => ( $settings['confetti'] && in_array( 'brikpanel-confetti', $deps, true ) ) ? '1' : '0',
             'volume'   => $settings['volume'],
             'interval' => $settings['interval'],
+            'viewing'  => brikpanel_order_notify_viewing(),
             // The summary card adds up totals only in the store currency,
             // and links to the orders list.
             'currency'  => get_woocommerce_currency(),
@@ -192,6 +193,30 @@ function brikpanel_order_notify_enqueue( $hook ) {
     );
 }
 add_action( 'admin_enqueue_scripts', 'brikpanel_order_notify_enqueue', 20 );
+
+/**
+ * The order this screen edits, 0 on every other screen. That order gets no
+ * card and no sound: the person is already looking at it (a tap on its phone
+ * notification lands here, front-end/push).
+ *
+ * @return int Order id.
+ */
+function brikpanel_order_notify_viewing() {
+    // phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only: which order this screen shows, used as a number.
+    $action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
+    $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+    if ( 'edit' !== $action || ! $screen ) {
+        return 0;
+    }
+    $id = 0;
+    if ( 'post' === $screen->base && 'shop_order' === $screen->post_type && isset( $_GET['post'] ) ) {
+        $id = absint( $_GET['post'] );
+    } elseif ( isset( $_GET['page'], $_GET['id'] ) && 'wc-orders' === sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
+        $id = absint( $_GET['id'] );
+    }
+    // phpcs:enable WordPress.Security.NonceVerification.Recommended
+    return $id;
+}
 
 /**
  * Cache the most recent processing-order ID so a brand-new admin session can

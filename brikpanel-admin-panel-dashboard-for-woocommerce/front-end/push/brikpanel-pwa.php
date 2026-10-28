@@ -27,9 +27,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Raised only when the icon files change (Android refreshes installed icons; iPhone never does).
+// Raised only when the icon files change. An installed app keeps its old icon when the new one
+// differs by more than about 10% (Chrome asks nobody and changes nothing); iPhone never refreshes.
+// 2 (27 October 2026): 8-bit colour files (the old maskable icon was 16-bit grey), the grid at 48%
+// of the maskable canvas instead of 56%, a 192 px maskable icon, a larger two-tone badge.
 if ( ! defined( 'BRIKPANEL_PWA_ICON_VERSION' ) ) {
-	define( 'BRIKPANEL_PWA_ICON_VERSION', '1' );
+	define( 'BRIKPANEL_PWA_ICON_VERSION', '2' );
 }
 
 /**
@@ -177,12 +180,28 @@ function brikpanel_pwa_serve_manifest() {
 				'purpose' => 'any',
 			),
 			array(
+				'src'     => brikpanel_pwa_icon_url( 'brikpanel-maskable-192.png' ),
+				'sizes'   => '192x192',
+				'type'    => 'image/png',
+				'purpose' => 'maskable',
+			),
+			array(
 				'src'     => brikpanel_pwa_icon_url( 'brikpanel-maskable-512.png' ),
 				'sizes'   => '512x512',
 				'type'    => 'image/png',
 				'purpose' => 'maskable',
 			),
 		),
+		// The app names itself, so a browser tab can ask whether it is installed on this
+		// phone (navigator.getInstalledRelatedApps(), Chrome on Android): back in the tab
+		// the phone button's panel then says "open the app" only while it really is there.
+		'related_applications'        => array(
+			array(
+				'platform' => 'webapp',
+				'url'      => brikpanel_pwa_manifest_url(),
+			),
+		),
+		'prefer_related_applications' => false,
 	);
 	brikpanel_pwa_cache_headers( 'application/manifest+json; charset=utf-8' );
 	echo wp_json_encode( $manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON document.
@@ -258,9 +277,10 @@ function brikpanel_pwa_print_tags() {
 	echo '<meta name="apple-mobile-web-app-title" content="BrikPanel">' . "\n";
 	echo '<meta name="apple-mobile-web-app-status-bar-style" content="default">' . "\n";
 	// A browser install bar that opens by itself would jump the one-ask-at-a-
-	// time line (includes/brikpanel-asks.php). The offer is kept for the
-	// "Install BrikPanel" button the phone card shows after notifications are on.
-	echo "<script>window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.brikpanelInstallPrompt=e;});</script>\n";
+	// time line (includes/brikpanel-asks.php). The offer is kept for the phone
+	// card's "Install BrikPanel" button (Android: the app first, then
+	// notifications inside it), which also hears about an offer that comes late.
+	echo "<script>window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.brikpanelInstallPrompt=e;try{window.dispatchEvent(new Event('brikpanel-install-ready'));}catch(x){}});</script>\n"; // i18n-ignore: event names, not user text
 }
 
 /** @return void */

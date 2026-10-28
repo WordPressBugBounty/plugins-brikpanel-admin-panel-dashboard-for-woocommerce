@@ -959,6 +959,47 @@ function brikpanel_frontend_tracking_enabled() {
 }
 
 /**
+ * Whether a visitor counts as soon as a store page opens (3.3.41).
+ *
+ * Off by default: since 3.3.30 a visitor counts only after a person's first
+ * touch, mouse movement, wheel or key, which keeps bots out. A store that
+ * buys ad traffic compares Visitors with the ad platform's landing page
+ * views, which count every page that opened, so for social traffic (many
+ * leave without touching) Visitors read about half and the conversion rate
+ * about double (imaddd, October 2026). With this on, the tracker also sends
+ * one request when the page is on screen; the server counts the day's
+ * visitor, product view, page view and campaign from it with every other
+ * check intact (bot names, cloud addresses, cross-site posts, the daily lock
+ * of a browser without cookies), but issues no "this is a person" mark: the
+ * add-to-cart and checkout counters still wait for a real input.
+ * WooCommerce ▸ Settings ▸ BrikPanel ▸ Analytics.
+ *
+ * @since 3.3.41
+ *
+ * @return bool
+ */
+function brikpanel_count_on_open_enabled() {
+    return 'yes' === get_option( 'brikpanel_count_on_open', 'no' );
+}
+
+/**
+ * Every order status a list of orders shows: all of WooCommerce's except the
+ * block checkout's draft, for wc_get_orders() calls that list orders.
+ *
+ * WooCommerce adds 'wc-checkout-draft' to wc_get_order_statuses(), so a query
+ * that names no status also loads the carts left on the checkout page, while
+ * WooCommerce's own orders list hides them. Up to 3.3.40 they showed in
+ * Ctrl+K and the dashboard's Excel export as orders.
+ *
+ * @since 3.3.41
+ *
+ * @return string[] wc- prefixed status keys.
+ */
+function brikpanel_listed_order_statuses() {
+    return array_values( array_diff( array_keys( wc_get_order_statuses() ), [ 'wc-checkout-draft' ] ) );
+}
+
+/**
  * Interval, in seconds, between live-visitor pings from an open storefront tab.
  *
  * Clamped to 10–300: below 10 s the ping would defeat its own server-side
@@ -2673,29 +2714,42 @@ if ( ! function_exists( 'brikpanel_order_numbers_for_ids' ) ) {
 			return $map;
 		}
 
-		// 'post__in' is the ID list key both storage backends understand: the
-		// HPOS query reads it, and the legacy one hands it to WP_Query. 'include'
-		// looks like the modern spelling but HPOS ignores it and returns the
-		// whole table.
-		$orders = wc_get_orders(
-			array(
-				'post__in' => $ids,
-				'limit'    => -1,
-				'type'     => 'shop_order',
-				'status'   => 'any',
-			)
-		);
-
-		if ( ! is_array( $orders ) ) {
+		// BrikPanel's own sequential numbers (front-end/orders/brikpanel-order-numbers.php)
+		// sit in order meta, so while its filter is the only one the numbers are
+		// one query per thousand orders instead of an order object per row.
+		if ( function_exists( 'brikpanel_order_numbers_filter_is_ours_only' ) && brikpanel_order_numbers_filter_is_ours_only() ) {
+			foreach ( array_chunk( $ids, 1000 ) as $chunk ) {
+				$map = array_replace( $map, brikpanel_order_numbers_map( $chunk ) );
+			}
 			return $map;
 		}
 
-		// WC_Order, not WC_Abstract_Order: get_order_number() lives on WC_Order
-		// alone, and a refund is an abstract order without it. 'type' should keep
-		// refunds out already, but a fatal is too high a price for trusting that.
-		foreach ( $orders as $order ) {
-			if ( $order instanceof WC_Order ) {
-				$map[ $order->get_id() ] = (string) $order->get_order_number();
+		// 'post__in' is the ID list key both storage backends understand: the
+		// HPOS query reads it, and the legacy one hands it to WP_Query. 'include'
+		// looks like the modern spelling but HPOS ignores it and returns the
+		// whole table. Loaded 200 at a time, so an export of thousands of rows
+		// never holds every order object at once.
+		foreach ( array_chunk( $ids, 200 ) as $chunk ) {
+			$orders = wc_get_orders(
+				array(
+					'post__in' => $chunk,
+					'limit'    => -1,
+					'type'     => 'shop_order',
+					'status'   => 'any',
+				)
+			);
+
+			if ( ! is_array( $orders ) ) {
+				continue;
+			}
+
+			// WC_Order, not WC_Abstract_Order: get_order_number() lives on WC_Order
+			// alone, and a refund is an abstract order without it. 'type' should keep
+			// refunds out already, but a fatal is too high a price for trusting that.
+			foreach ( $orders as $order ) {
+				if ( $order instanceof WC_Order ) {
+					$map[ $order->get_id() ] = (string) $order->get_order_number();
+				}
 			}
 		}
 
