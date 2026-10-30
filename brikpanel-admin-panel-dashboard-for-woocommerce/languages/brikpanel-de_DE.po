@@ -16695,17 +16695,6 @@ msgstr ""
 "Eine Benachrichtigung auf Ihrem Telefon für jede neue Bestellung, auch bei "
 "gesperrtem Telefon. Jede Person schaltet sie auf dem eigenen Telefon ein."
 
-#: front-end/push/brikpanel-push-admin.php:62
-msgid ""
-"Send every new order (processing, completed or on hold) to the phones and "
-"computers where notifications are turned on. A notification shows the order "
-"number, the total and the number of items, never the customer."
-msgstr ""
-"Jede neue Bestellung (In Bearbeitung, Fertiggestellt oder In Wartestellung) "
-"an die Telefone und Computer senden, auf denen Benachrichtigungen "
-"eingeschaltet sind. Eine Benachrichtigung zeigt die Bestellnummer, den "
-"Gesamtbetrag und die Anzahl der Artikel, nie den Kunden."
-
 #: front-end/push/brikpanel-push-admin.php:123
 msgid ""
 "Phone notifications are off for this store. Turn on \"Phone notifications\" "
@@ -16872,14 +16861,6 @@ msgstr ""
 msgid "Get every new order on this iPhone"
 msgstr "Jede neue Bestellung auf diesem iPhone"
 
-#: front-end/push/brikpanel-push-admin.php:389
-msgid ""
-"An iPhone shows notifications only for apps on the Home Screen. Add "
-"BrikPanel there first:"
-msgstr ""
-"Ein iPhone zeigt Benachrichtigungen nur für Apps auf dem Home-Bildschirm. "
-"Fügen Sie BrikPanel zuerst dort hinzu:"
-
 #: front-end/push/brikpanel-push-admin.php:391
 msgid "Tap the Share button in Safari."
 msgstr "Tippen Sie in Safari auf die Taste „Teilen“."
@@ -16887,12 +16868,6 @@ msgstr "Tippen Sie in Safari auf die Taste „Teilen“."
 #: front-end/push/brikpanel-push-admin.php:394
 msgid "Choose \"Add to Home Screen\"."
 msgstr "Wählen Sie „Zum Home-Bildschirm“."
-
-#: front-end/push/brikpanel-push-admin.php:395
-msgid "Open BrikPanel from the Home Screen and turn notifications on there."
-msgstr ""
-"Öffnen Sie BrikPanel vom Home-Bildschirm aus und schalten Sie dort die "
-"Benachrichtigungen ein."
 
 #: front-end/push/brikpanel-push-admin.php:399
 msgid "Order notifications are on for this phone"
@@ -16909,10 +16884,6 @@ msgstr "Bestellbenachrichtigungen einschalten"
 #: front-end/push/brikpanel-push-admin.php:409
 msgid "Send a test"
 msgstr "Test senden"
-
-#: front-end/push/brikpanel-push-admin.php:410
-msgid "Install BrikPanel"
-msgstr "BrikPanel installieren"
 
 #: front-end/push/brikpanel-push-admin.php:412
 #: front-end/sound/brikpanel-sound.php:174 includes/brikpanel-asks.php:844
@@ -16999,26 +16970,6 @@ msgstr ""
 "Benachrichtigungen sind für diese Website in diesem Browser blockiert. "
 "Erlauben Sie sie in den Website-Einstellungen des Browsers und versuchen Sie"
 " es dann erneut."
-
-#: front-end/push/brikpanel-push-admin.php:552
-msgid ""
-"Notifications are off for BrikPanel. Turn them on in the iPhone Settings, "
-"Notifications, BrikPanel. If BrikPanel is not listed, delete it from the "
-"Home Screen and add it again."
-msgstr ""
-"Mitteilungen sind für BrikPanel ausgeschaltet. Schalten Sie sie in den "
-"iPhone-Einstellungen unter Mitteilungen, BrikPanel ein. Wenn BrikPanel dort "
-"fehlt, löschen Sie es vom Home-Bildschirm und fügen Sie es erneut hinzu."
-
-#: front-end/push/brikpanel-push-admin.php:553
-msgid ""
-"An iPhone shows notifications only for apps on the Home Screen. In Safari, "
-"tap Share, then \"Add to Home Screen\", open BrikPanel from there and turn "
-"notifications on."
-msgstr ""
-"Ein iPhone zeigt Benachrichtigungen nur für Apps auf dem Home-Bildschirm. "
-"Tippen Sie in Safari auf „Teilen“, dann auf „Zum Home-Bildschirm“, öffnen "
-"Sie BrikPanel von dort aus und schalten Sie die Benachrichtigungen ein."
 
 #: front-end/push/brikpanel-push-admin.php:554
 msgid "Notifications need iOS 16.4 or later. Update the iPhone first."
@@ -17122,10 +17073,6 @@ msgstr "Testbenachrichtigung"
 msgid "New orders will show up like this."
 msgstr "So werden neue Bestellungen angezeigt."
 
-#: front-end/push/class-brikpanel-push-sender.php:1011
-msgid "BrikPanel app"
-msgstr "BrikPanel-App"
-
 #. translators: 1: store name, 2: device name, like "iPhone · BrikPanel app".
 #: front-end/push/class-brikpanel-push-sender.php:1269
 #, php-format
@@ -17143,15 +17090,6 @@ msgid "Your phone (%s) no longer accepts order notifications from this store."
 msgstr ""
 "Ihr Telefon (%s) nimmt keine Bestellbenachrichtigungen von diesem Shop mehr "
 "an."
-
-#: front-end/push/class-brikpanel-push-sender.php:1274
-msgid ""
-"This happens when the BrikPanel app is removed from the Home Screen, "
-"notifications are turned off for it, or the browser data is cleared."
-msgstr ""
-"Das passiert, wenn die BrikPanel-App vom Home-Bildschirm entfernt wird, ihre"
-" Benachrichtigungen ausgeschaltet werden oder die Browserdaten gelöscht "
-"werden."
 
 #: front-end/push/class-brikpanel-push-sender.php:1275
 msgid ""
@@ -25250,15 +25188,6 @@ msgstr "Um Akku zu sparen, hält Android Benachrichtigungen von %s zurück, wäh
 msgid "Settings > Apps > %s > Battery > Unrestricted"
 msgstr "Einstellungen > Apps > %s > Akku > Nicht eingeschränkt"
 
-msgid "First add BrikPanel to this phone as an app. Then open the BrikPanel app and turn on order notifications there."
-msgstr "Fügen Sie BrikPanel zuerst als App zu diesem Telefon hinzu. Öffnen Sie dann die BrikPanel-App und schalten Sie dort die Bestellbenachrichtigungen ein."
-
-msgid "BrikPanel is being added to this phone"
-msgstr "BrikPanel wird zu diesem Telefon hinzugefügt"
-
-msgid "When it is ready, open the BrikPanel app (on your home screen or in your app list) and turn on order notifications there."
-msgstr "Öffnen Sie die BrikPanel-App, sobald sie bereit ist (auf dem Startbildschirm oder in der App-Liste), und schalten Sie dort die Bestellbenachrichtigungen ein."
-
 msgid "In Firefox, notifications can wait while the phone sleeps"
 msgstr "In Firefox können Benachrichtigungen warten, während das Telefon schläft"
 
@@ -25286,36 +25215,6 @@ msgstr "Funktioniert auf Ihrem Telefon wie eine App."
 #: front-end/push/brikpanel-push-admin.php:578
 msgid "You can open this any time with the phone button at the top."
 msgstr "Sie können dies jederzeit mit der Telefon-Schaltfläche oben öffnen."
-
-#: front-end/push/brikpanel-push-admin.php:456
-msgid ""
-"Open BrikPanel from the Home Screen and tap the phone button at the top to "
-"turn notifications on."
-msgstr ""
-"Öffnen Sie BrikPanel vom Home-Bildschirm aus und tippen Sie oben auf die "
-"Telefon-Schaltfläche, um die Benachrichtigungen einzuschalten."
-
-#: front-end/push/brikpanel-push-admin.php:470
-msgid ""
-"When it is ready, open the BrikPanel app (on your home screen or in your app "
-"list) and tap the phone button at the top to turn on order notifications."
-msgstr ""
-"Öffnen Sie die BrikPanel-App, sobald sie bereit ist (auf dem Startbildschirm "
-"oder in der App-Liste), und tippen Sie oben auf die Telefon-Schaltfläche, um "
-"die Bestellbenachrichtigungen einzuschalten."
-
-#: front-end/push/brikpanel-push-admin.php:479
-msgid "Open the BrikPanel app"
-msgstr "Öffnen Sie die BrikPanel-App"
-
-#: front-end/push/brikpanel-push-admin.php:480
-msgid ""
-"BrikPanel is installed on this phone. Open it from your home screen or app "
-"list and turn on order notifications there."
-msgstr ""
-"Die BrikPanel-App ist auf diesem Telefon installiert. Öffnen Sie sie auf dem "
-"Startbildschirm oder in der App-Liste und schalten Sie dort die "
-"Bestellbenachrichtigungen ein."
 
 #: front-end/push/brikpanel-push-admin.php:597
 msgid "Are you sure you want to close this?"
@@ -25509,22 +25408,6 @@ msgstr ""
 "behält sie in jedem Fall. Die Nummer wird im Bestell-Meta _order_number "
 "gespeichert."
 
-#: front-end/push/brikpanel-push-admin.php:484
-msgid ""
-"If BrikPanel is on your home screen, open it there and turn on order "
-"notifications."
-msgstr ""
-"Wenn BrikPanel auf Ihrem Startbildschirm ist, öffnen Sie es dort und schalten"
-" Sie die Bestellbenachrichtigungen ein."
-
-#: front-end/push/brikpanel-push-admin.php:488
-msgid "The BrikPanel app was removed from this phone"
-msgstr "Die BrikPanel-App wurde von diesem Telefon entfernt"
-
-#: front-end/push/brikpanel-push-admin.php:495
-msgid "Add it to this phone again. Then open the BrikPanel app and turn on order notifications there."
-msgstr "Fügen Sie die App erneut zu diesem Telefon hinzu. Öffnen Sie dann die BrikPanel-App und schalten Sie dort die Bestellbenachrichtigungen ein."
-
 #: front-end/push/brikpanel-push-admin.php:489
 msgid "You can turn on order notifications in this browser instead."
 msgstr ""
@@ -25534,3 +25417,216 @@ msgstr ""
 #: front-end/push/brikpanel-push-admin.php:514
 msgid "Removed the app? Turn them on in this browser"
 msgstr "App entfernt? In diesem Browser einschalten"
+
+#. translators: Label in front of a supplier's own product code, e.g. "AliExpress SKU:" on an order line. %s: the supplier's name.
+#: front-end/vendors/class-brikpanel-vendor-product-editor.php:184
+#, php-format
+msgctxt "supplier name, then the product code that supplier uses"
+msgid "%s SKU:"
+msgstr "SKU bei %s:"
+
+#: front-end/push/brikpanel-push-admin.php:64
+msgid ""
+"Send every new order (processing, completed or on hold) to the phones and "
+"computers where notifications are turned on. A notification never shows the "
+"customer."
+msgstr ""
+"Jede neue Bestellung (In Bearbeitung, Fertiggestellt oder In Wartestellung) "
+"an die Telefone und Computer senden, auf denen Benachrichtigungen "
+"eingeschaltet sind. Eine Benachrichtigung zeigt nie den Kunden."
+
+#: front-end/push/brikpanel-push-admin.php:69
+msgid "Notification text"
+msgstr "Benachrichtigungstext"
+
+#: front-end/push/brikpanel-push-admin.php:72
+msgid "Choose what an order notification shows, and in which order."
+msgstr ""
+"Wählen Sie, was eine Bestellbenachrichtigung zeigt und in welcher "
+"Reihenfolge."
+
+#: front-end/push/brikpanel-push-admin.php:347
+msgid "Number of items"
+msgstr "Anzahl der Artikel"
+
+#: front-end/push/brikpanel-push-admin.php:440
+msgctxt "heading above a sample phone notification"
+msgid "Preview"
+msgstr "Vorschau"
+
+#: front-end/push/brikpanel-push-admin.php:444
+msgctxt "time of a sample phone notification"
+msgid "now"
+msgstr "jetzt"
+
+#: front-end/push/brikpanel-push-admin.php:448
+msgid "SKUs and the campaign show when the order has them."
+msgstr "Artikelnummern und Kampagne erscheinen, wenn die Bestellung sie hat."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:614
+#, php-format
+msgid ""
+"An iPhone shows notifications only for apps on the Home Screen. Add %s there "
+"first:"
+msgstr ""
+"Ein iPhone zeigt Benachrichtigungen nur für Apps auf dem Home-Bildschirm. "
+"Fügen Sie %s zuerst dort hinzu:"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:620
+#, php-format
+msgid "Open %s from the Home Screen and turn notifications on there."
+msgstr ""
+"Öffnen Sie %s vom Home-Bildschirm aus und schalten Sie dort die "
+"Benachrichtigungen ein."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:620
+#, php-format
+msgid ""
+"Open %s from the Home Screen and tap the phone button at the top to turn "
+"notifications on."
+msgstr ""
+"Öffnen Sie %s vom Home-Bildschirm aus und tippen Sie oben auf die Telefon-"
+"Schaltfläche, um die Benachrichtigungen einzuschalten."
+
+#. translators: %1$s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:630
+#, php-format
+msgid ""
+"First add %1$s to this phone as an app. Then open the %1$s app and turn on "
+"order notifications there."
+msgstr ""
+"Fügen Sie %1$s zuerst als App zu diesem Telefon hinzu. Öffnen Sie dann die "
+"App %1$s und schalten Sie dort die Bestellbenachrichtigungen ein."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:633
+#, php-format
+msgid "%s is being added to this phone"
+msgstr "%s wird zu diesem Telefon hinzugefügt"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:634
+#, php-format
+msgid ""
+"When it is ready, open the %s app (on your home screen or in your app list) "
+"and turn on order notifications there."
+msgstr ""
+"Öffnen Sie die App %s, sobald sie bereit ist (auf dem Startbildschirm oder in"
+" der App-Liste), und schalten Sie dort die Bestellbenachrichtigungen ein."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:634
+#, php-format
+msgid ""
+"When it is ready, open the %s app (on your home screen or in your app list) "
+"and tap the phone button at the top to turn on order notifications."
+msgstr ""
+"Öffnen Sie die App %s, sobald sie bereit ist (auf dem Startbildschirm oder in"
+" der App-Liste), und tippen Sie oben auf die Telefon-Schaltfläche, um die "
+"Bestellbenachrichtigungen einzuschalten."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:644
+#, php-format
+msgid "Open the %s app"
+msgstr "Öffnen Sie die App %s"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:645
+#, php-format
+msgid ""
+"%s is installed on this phone. Open it from your home screen or app list and "
+"turn on order notifications there."
+msgstr ""
+"Die App %s ist auf diesem Telefon installiert. Öffnen Sie sie auf dem "
+"Startbildschirm oder in der App-Liste und schalten Sie dort die "
+"Bestellbenachrichtigungen ein."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:646
+#, php-format
+msgid ""
+"If %s is on your home screen, open it there and turn on order notifications."
+msgstr ""
+"Wenn %s auf Ihrem Startbildschirm ist, öffnen Sie es dort und schalten Sie "
+"die Bestellbenachrichtigungen ein."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:656
+#, php-format
+msgid "The %s app was removed from this phone"
+msgstr "Die App %s wurde von diesem Telefon entfernt"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:657
+#, php-format
+msgid ""
+"Add it to this phone again. Then open the %s app and turn on order "
+"notifications there."
+msgstr ""
+"Fügen Sie die App erneut zu diesem Telefon hinzu. Öffnen Sie dann die App %s "
+"und schalten Sie dort die Bestellbenachrichtigungen ein."
+
+#: front-end/push/brikpanel-push-admin.php:681
+msgid "Install the app"
+msgstr "App installieren"
+
+#. translators: %1$s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:1048
+#, php-format
+msgid ""
+"Notifications are off for %1$s. Turn them on in the iPhone Settings, "
+"Notifications, %1$s. If %1$s is not listed, delete it from the Home Screen "
+"and add it again."
+msgstr ""
+"Mitteilungen sind für %1$s ausgeschaltet. Schalten Sie sie in den iPhone-"
+"Einstellungen unter Mitteilungen, %1$s ein. Wenn %1$s dort fehlt, löschen Sie"
+" es vom Home-Bildschirm und fügen Sie es erneut hinzu."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:1050
+#, php-format
+msgid ""
+"An iPhone shows notifications only for apps on the Home Screen. In Safari, "
+"tap Share, then \"Add to Home Screen\", open %s from there and turn "
+"notifications on."
+msgstr ""
+"Ein iPhone zeigt Benachrichtigungen nur für Apps auf dem Home-Bildschirm. "
+"Tippen Sie in Safari auf „Teilen“, dann auf „Zum Home-Bildschirm“, öffnen Sie"
+" %s von dort aus und schalten Sie die Benachrichtigungen ein."
+
+#. translators: 1: SKU or product name, 2: quantity, e.g. "TEE-S ×2". Shown in
+#. a phone notification.
+#: front-end/push/class-brikpanel-push-sender.php:1031
+#, php-format
+msgctxt "SKU and quantity in a phone notification"
+msgid "%1$s ×%2$s"
+msgstr "%1$s ×%2$s"
+
+#. translators: %s: how many more products the order has. Shown in a phone
+#. notification after three SKUs.
+#: front-end/push/class-brikpanel-push-sender.php:1041
+#, php-format
+msgid "+%s more"
+msgid_plural "+%s more"
+msgstr[0] "+%s weiterer"
+msgstr[1] "+%s weitere"
+
+#: front-end/push/class-brikpanel-push-sender.php:1234
+msgctxt "device name: opened from the home screen, not in a browser tab"
+msgid "Home Screen app"
+msgstr "Home-Bildschirm-App"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/class-brikpanel-push-sender.php:1596
+#, php-format
+msgid ""
+"This happens when the %s app is removed from the Home Screen, notifications "
+"are turned off for it, or the browser data is cleared."
+msgstr ""
+"Das passiert, wenn die App %s vom Home-Bildschirm entfernt wird, ihre "
+"Benachrichtigungen ausgeschaltet werden oder die Browserdaten gelöscht "
+"werden."

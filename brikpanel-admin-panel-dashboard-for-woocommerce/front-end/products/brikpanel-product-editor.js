@@ -37,7 +37,7 @@
        to tell a genuine in-flight edit apart from the server's echo. */
     var VAR_INPUT_FIELDS = ['regular_price', 'sale_price', 'sale_from', 'sale_to', 'manage_stock',
         'enabled', 'stock_quantity', 'stock_status', 'sku', 'global_unique_id', 'tax_class',
-        'shipping_class', 'cogs_value', 'vendor_id', 'backorders', 'pack_units'];
+        'shipping_class', 'cogs_value', 'vendor_id', 'vendor_sku', 'backorders', 'pack_units'];
 
     /* Compare two variation field values across the boolean/int/string spellings
        the table state and the submitted payload use for the same thing (a
@@ -1031,7 +1031,13 @@
                 ? (PE.i18n.inherit_parent || '(parent)')
                 : (PE.i18n.inherit_parent_named || '(parent: %s)').replace('%s', newName);
             $('.var-vendor option[value="0"]').text(inherit);
+            refreshVarVendorSkuHints();
         });
+        // The main product's supplier code is the grey hint in every variation
+        // box that would use it, kept current while it is typed, and a row
+        // switched to another supplier loses it.
+        $(document).on('input', '#bpe-vendor-sku', refreshVarVendorSkuHints);
+        $(document).on('change', '#bpe-var-table-body .var-vendor', refreshVarVendorSkuHints);
     }
 
     /* Close every other header popover (status / catalog visibility / overflow)
@@ -4783,6 +4789,8 @@
             }
             var $vendor = $scope.find('.var-vendor');
             if ($vendor.length) v.vendor_id = parseInt($vendor.val(), 10) || 0;
+            var $vendorSku = $scope.find('.var-vendor-sku');
+            if ($vendorSku.length) v.vendor_sku = $vendorSku.val();
         });
     }
 
@@ -5785,13 +5793,32 @@
         if (productData.gtin_enabled && v.global_unique_id) return true;
         if (productData.tax_enabled && v.tax_class !== undefined && v.tax_class !== null && ('' + v.tax_class) !== 'parent') return true;
         if (productData.shipping_class_enabled && v.shipping_class) return true;
-        if (productData.vendor_field_enabled && (parseInt(v.vendor_id, 10) || 0) > 0) return true;
+        if (productData.vendor_field_enabled && ((parseInt(v.vendor_id, 10) || 0) > 0 || $.trim(v.vendor_sku || '') !== '')) return true;
         return false;
+    }
+
+    /* The grey hint in a variation's "Supplier SKU" box: the main product's
+       code, which an empty box uses on orders and stock orders, but only while
+       the variation is bought from the same supplier (the rule in
+       Brikpanel_Vendor_Product_Editor::resolve_vendor_sku()). */
+    function varVendorSkuHint(varVendorId) {
+        var parentId = parseInt(productData.parent_vendor_id, 10) || 0;
+        var ownId = parseInt(varVendorId, 10) || 0;
+        if (parentId <= 0 || (ownId > 0 && ownId !== parentId)) return '';
+        var $parentSku = $('#bpe-vendor-sku');
+        return $.trim(($parentSku.length ? $parentSku.val() : productData.parent_vendor_sku) || '');
+    }
+
+    function refreshVarVendorSkuHints() {
+        $('#bpe-var-table-body .var-vendor-sku').each(function () {
+            var $vendor = $(this).closest('tr.var-details-row').find('.var-vendor');
+            $(this).attr('placeholder', varVendorSkuHint($vendor.val()));
+        });
     }
 
     function varScopeHasDetails($scope) {
         var filled = false;
-        $scope.find('.var-sale-from, .var-sale-to, .var-sku, .var-gtin').each(function () {
+        $scope.find('.var-sale-from, .var-sale-to, .var-sku, .var-gtin, .var-vendor-sku').each(function () {
             if ($.trim($(this).val() || '') !== '') { filled = true; }
         });
         var $tax = $scope.find('.var-tax-class');
@@ -6104,6 +6131,9 @@
                     vendorOptsHtml += '<option value="' + esc('' + o.id) + '"' + (vid === o.id ? ' selected' : '') + '>' + esc(o.name) + '</option>';
                 }
                 fields += detailField(t.var_supplier, '<select class="var-vendor brikpanel-pe-vendor-select">' + vendorOptsHtml + '</select>');
+                // The supplier's own code for this variation. Empty, it uses
+                // the main product's, shown as the grey hint.
+                fields += detailField(t.var_supplier_sku, '<input type="text" class="var-vendor-sku" value="' + esc(v.vendor_sku || '') + '" placeholder="' + esc(varVendorSkuHint(vid)) + '" autocomplete="off">');
             }
             // The alt text of the variation's images: the image itself opens
             // the picker, and WordPress's media window offers no alt text on a
@@ -7236,7 +7266,7 @@
                 var $varVendor = $scope.find('.var-vendor');
                 if ($varVendor.length) {
                     varObj.vendor_id  = parseInt($varVendor.val(), 10) || 0;
-                    varObj.vendor_sku = v.vendor_sku || '';
+                    varObj.vendor_sku = $.trim(pickVar('.var-vendor-sku', v.vendor_sku));
                 }
                 tv.push(varObj);
             });

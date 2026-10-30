@@ -3,7 +3,8 @@
  * BrikPanel - phone notifications: the screens.
  *
  * - WooCommerce > Settings > BrikPanel > Notifications: the "Phone
- *   notifications" switch, then "Your devices": each person sees only their
+ *   notifications" switch, "Notification text" (which parts a notification
+ *   shows and in which order, with a preview), then "Your devices": each person sees only their
  *   own devices, can send a test or remove one, and problems on the server
  *   side (no https, outside requests blocked, a copy of the store) are listed
  *   first.
@@ -61,8 +62,15 @@ function brikpanel_push_settings_fields( $fields ) {
 			'name'    => __( 'Phone notifications', 'brikpanel' ),
 			'id'      => 'brikpanel_push_enabled',
 			'type'    => 'checkbox',
-			'desc'    => __( 'Send every new order (processing, completed or on hold) to the phones and computers where notifications are turned on. A notification shows the order number, the total and the number of items, never the customer.', 'brikpanel' ),
+			'desc'    => __( 'Send every new order (processing, completed or on hold) to the phones and computers where notifications are turned on. A notification never shows the customer.', 'brikpanel' ),
 			'default' => 'yes',
+		),
+		// What the notification says (owner decision, 30 October 2026): brikpanel_push_render_parts_field().
+		array(
+			'name' => __( 'Notification text', 'brikpanel' ),
+			'id'   => 'brikpanel_push_parts_field',
+			'type' => 'brikpanel_push_parts',
+			'desc' => __( 'Choose what an order notification shows, and in which order.', 'brikpanel' ),
 		),
 		array(
 			'type' => 'brikpanel_push_devices',
@@ -330,6 +338,161 @@ function brikpanel_push_devices_html( $user_id ) {
 }
 
 /**
+ * The names of the notification's parts, as the Settings list shows them.
+ *
+ * @return array<string,string>
+ */
+function brikpanel_push_parts_labels() {
+	return array(
+		'total'    => __( 'Total', 'brikpanel' ),
+		'items'    => __( 'Number of items', 'brikpanel' ),
+		'number'   => __( 'Order number', 'brikpanel' ),
+		'skus'     => __( 'SKU', 'brikpanel' ),
+		'campaign' => __( 'Campaign', 'brikpanel' ),
+		'store'    => __( 'Store name', 'brikpanel' ),
+	);
+}
+
+/**
+ * The preview's text for a store without orders yet: made with the same
+ * formatters as a real notification; no SKU and no campaign to show.
+ *
+ * @return array<string,string>
+ */
+function brikpanel_push_parts_example() {
+	$currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : '';
+	return array(
+		'total'    => brikpanel_money_text( 59, array( 'currency' => $currency ) ),
+		/* translators: %s: number of items. */
+		'items'    => sprintf( _n( '%s item', '%s items', 2, 'brikpanel' ), brikpanel_number( 2 ) ),
+		/* translators: %s: order number, e.g. #1234. Shown in a phone notification. */
+		'number'   => sprintf( _x( '#%s', 'order number in a phone notification', 'brikpanel' ), '1001' ),
+		'skus'     => '',
+		'campaign' => '',
+		'store'    => Brikpanel_Push_Sender::store_name(),
+	);
+}
+
+/**
+ * "Notification text": which parts an order notification shows, and in which
+ * order (apattee, 29 October 2026; owner decision, 30 October 2026). A switch
+ * and two arrows per part, like Dashboard sections, then the notification the
+ * way the store's newest order reads with them. A part that order lacks (no
+ * SKU, no campaign) shows its name in grey italics. brikpanel-push.js moves the
+ * rows and redraws the preview; brikpanel_push_parts_save() stores the choice.
+ * Inside the "Phone notifications" card's table, so it is a plain row.
+ *
+ * @param array $field WooCommerce settings field.
+ * @return void
+ */
+function brikpanel_push_render_parts_field( $field ) {
+	$chosen = brikpanel_push_parts();
+	$on     = array_flip( $chosen['on'] );
+	$labels = brikpanel_push_parts_labels();
+	// A paid order first: the sample shows the parts, not "Awaiting payment".
+	$latest = Brikpanel_Push_Sender::latest_order( array( 'processing', 'completed' ) );
+	$latest = $latest ? $latest : Brikpanel_Push_Sender::latest_order();
+	$values = $latest ? Brikpanel_Push_Sender::parts( $latest ) : brikpanel_push_parts_example();
+	$icons  = brikpanel_pwa_app_icons();
+	$title  = isset( $field['title'] ) ? (string) $field['title'] : ( isset( $field['name'] ) ? (string) $field['name'] : '' );
+	$help   = isset( $field['desc'] ) ? (string) $field['desc'] : '';
+	$up     = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="18 15 12 9 6 15"/></svg>';
+	$down   = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg>';
+	$body   = array();
+	foreach ( $chosen['on'] as $key ) {
+		if ( isset( $values[ $key ] ) && '' !== $values[ $key ] ) {
+			$body[] = '<span>' . esc_html( $values[ $key ] ) . '</span>';
+		} elseif ( isset( $labels[ $key ] ) && in_array( $key, array( 'skus', 'campaign' ), true ) ) {
+			$body[] = '<span class="is-example">' . esc_html( $labels[ $key ] ) . '</span>';
+		}
+	}
+	?>
+	<tr valign="top">
+		<th scope="row" class="titledesc">
+			<label id="brikpanel-push-parts-label"><?php echo esc_html( $title ); ?></label>
+		</th>
+		<td class="forminp">
+			<div class="brikpanel-push-parts" id="brikpanel-push-parts" data-bp-push-parts>
+				<?php if ( '' !== $help ) : ?>
+					<p class="brikpanel-push-parts__help" dir="auto"><?php echo esc_html( $help ); ?></p>
+				<?php endif; ?>
+				<ul class="brikpanel-push-parts__list" role="list" aria-labelledby="brikpanel-push-parts-label" data-bp-parts-list>
+					<?php
+					foreach ( $chosen['order'] as $key ) :
+						$text    = isset( $values[ $key ] ) ? (string) $values[ $key ] : '';
+						$example = '' === $text && in_array( $key, array( 'skus', 'campaign' ), true );
+						?>
+						<li class="brikpanel-push-parts__row<?php echo isset( $on[ $key ] ) ? '' : ' is-off'; ?>" data-part="<?php echo esc_attr( $key ); ?>" data-text="<?php echo esc_attr( $example ? $labels[ $key ] : $text ); ?>"<?php echo $example ? ' data-example="1"' : ''; ?>>
+							<label class="brikpanel-push-parts__toggle">
+								<span class="brikpanel-push-parts__switch">
+									<input type="checkbox" name="brikpanel_push_parts_on[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( isset( $on[ $key ] ) ); ?>>
+									<span class="brikpanel-push-parts__track" aria-hidden="true"></span>
+								</span>
+								<span class="brikpanel-push-parts__label" dir="auto"><?php echo esc_html( $labels[ $key ] ); ?></span>
+							</label>
+							<span class="brikpanel-push-parts__value" dir="auto"><?php echo esc_html( $text ); ?></span>
+							<span class="brikpanel-push-parts__actions">
+								<button type="button" class="brikpanel-push-parts__btn" data-bp-parts-move="up" aria-label="<?php esc_attr_e( 'Move up', 'brikpanel' ); ?>" title="<?php esc_attr_e( 'Move up', 'brikpanel' ); ?>"><?php echo $up; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?></button>
+								<button type="button" class="brikpanel-push-parts__btn" data-bp-parts-move="down" aria-label="<?php esc_attr_e( 'Move down', 'brikpanel' ); ?>" title="<?php esc_attr_e( 'Move down', 'brikpanel' ); ?>"><?php echo $down; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?></button>
+							</span>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+				<input type="hidden" id="brikpanel_push_parts_json" name="brikpanel_push_parts_json" value="<?php echo esc_attr( brikpanel_push_parts_sanitize( $chosen ) ); ?>">
+				<div class="brikpanel-push-parts__preview">
+					<p class="brikpanel-push-parts__preview-label" dir="auto"><?php echo esc_html_x( 'Preview', 'heading above a sample phone notification', 'brikpanel' ); ?></p>
+					<div class="brikpanel-push-parts__note">
+						<img class="brikpanel-push-parts__note-icon<?php echo $icons['store'] ? ' is-store' : ''; ?>" src="<?php echo esc_url( $icons['192'] ); ?>" width="20" height="20" alt="" decoding="async">
+						<span class="brikpanel-push-parts__note-app" dir="auto"><?php echo esc_html( brikpanel_pwa_app_short_name() ); ?></span>
+						<span class="brikpanel-push-parts__note-time"><?php echo esc_html_x( 'now', 'time of a sample phone notification', 'brikpanel' ); ?></span>
+						<p class="brikpanel-push-parts__note-title" dir="auto"><?php echo esc_html_x( 'New order', 'phone notification title', 'brikpanel' ); ?></p>
+						<p class="brikpanel-push-parts__note-body" dir="auto" aria-live="polite" data-bp-parts-body><?php echo implode( ' · ', $body ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- each part escaped above. ?></p>
+					</div>
+					<p class="brikpanel-push-parts__hint" dir="auto"><?php esc_html_e( 'SKUs and the campaign show when the order has them.', 'brikpanel' ); ?></p>
+				</div>
+			</div>
+		</td>
+	</tr>
+	<?php
+}
+add_action( 'woocommerce_admin_field_brikpanel_push_parts', 'brikpanel_push_render_parts_field' );
+
+/**
+ * Stores "Notification text" when the Notifications section is saved. Runs
+ * after WooCommerce's own save (which skips this row: no input carries its id)
+ * and only when the list was on the page, so a save of another section never
+ * resets it. WooCommerce checked its settings nonce before this action.
+ *
+ * @return void
+ */
+function brikpanel_push_parts_save() {
+	if ( ! current_user_can( 'manage_woocommerce' ) ) {
+		return;
+	}
+	// phpcs:disable WordPress.Security.NonceVerification.Missing -- WooCommerce verified its settings nonce before this action.
+	if ( ! isset( $_POST['brikpanel_push_parts_json'] ) ) {
+		return;
+	}
+	$posted = json_decode( (string) wp_unslash( $_POST['brikpanel_push_parts_json'] ), true ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON, each key checked against the known parts.
+	$on     = isset( $_POST['brikpanel_push_parts_on'] ) && is_array( $_POST['brikpanel_push_parts_on'] )
+		? array_map( 'sanitize_key', (array) wp_unslash( $_POST['brikpanel_push_parts_on'] ) )
+		: array();
+	// phpcs:enable
+	$order = is_array( $posted ) && isset( $posted['order'] ) && is_array( $posted['order'] ) ? $posted['order'] : array();
+	update_option(
+		'brikpanel_push_parts',
+		brikpanel_push_parts_sanitize(
+			array(
+				'order' => $order,
+				'on'    => $on,
+			)
+		),
+		false
+	);
+}
+add_action( 'woocommerce_update_options_brikpanel', 'brikpanel_push_parts_save', 11 );
+
+/**
  * "Your devices": closes WooCommerce's settings table, draws the card,
  * reopens an empty table for the closing sectionend (same as the other
  * custom settings cards).
@@ -441,6 +604,8 @@ function brikpanel_push_offer_markup( $cookie, $where ) {
 	$title = $card ? 'brikpanel-ea-card__title' : 'brikpanel-push-offer__title';
 	$body  = $card ? 'brikpanel-ea-card__body' : 'brikpanel-push-offer__body';
 	$cta   = $card ? 'brikpanel-ea-card__cta' : 'brikpanel-btn brikpanel-btn--primary brikpanel-push-offer__cta';
+	// The app carries the store's name (brikpanel_pwa_app_short_name()): the steps say it the way the phone shows it.
+	$app = brikpanel_pwa_app_short_name();
 	?>
 	<div class="<?php echo esc_attr( $text ); ?>">
 		<div class="brikpanel-push-card__view" data-bp-push-view="ask"<?php echo $ios ? ' hidden' : ''; ?>>
@@ -449,13 +614,13 @@ function brikpanel_push_offer_markup( $cookie, $where ) {
 		</div>
 		<div class="brikpanel-push-card__view" data-bp-push-view="ios"<?php echo $ios ? '' : ' hidden'; ?>>
 			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Get every new order on this iPhone', 'brikpanel' ); ?></p>
-			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php esc_html_e( 'An iPhone shows notifications only for apps on the Home Screen. Add BrikPanel there first:', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php echo esc_html( sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'An iPhone shows notifications only for apps on the Home Screen. Add %s there first:', 'brikpanel' ), $app ) ); ?></p>
 			<ol class="brikpanel-push-card__steps">
 				<li dir="auto"><?php esc_html_e( 'Tap the Share button in Safari.', 'brikpanel' ); ?>
 					<svg class="brikpanel-push-card__share" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M7 10H5.5A1.5 1.5 0 0 0 4 11.5v8A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5H17"/></svg>
 				</li>
 				<li dir="auto"><?php esc_html_e( 'Choose "Add to Home Screen".', 'brikpanel' ); ?></li>
-				<li dir="auto"><?php echo $card ? esc_html__( 'Open BrikPanel from the Home Screen and turn notifications on there.', 'brikpanel' ) : esc_html__( 'Open BrikPanel from the Home Screen and tap the phone button at the top to turn notifications on.', 'brikpanel' ); ?></li>
+				<li dir="auto"><?php echo esc_html( $card ? sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'Open %s from the Home Screen and turn notifications on there.', 'brikpanel' ), $app ) : sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'Open %s from the Home Screen and tap the phone button at the top to turn notifications on.', 'brikpanel' ), $app ) ); ?></li>
 			</ol>
 		</div>
 		<?php
@@ -465,11 +630,11 @@ function brikpanel_push_offer_markup( $cookie, $where ) {
 		?>
 		<div class="brikpanel-push-card__view" data-bp-push-view="install" hidden>
 			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Get every new order on this phone', 'brikpanel' ); ?></p>
-			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php esc_html_e( 'First add BrikPanel to this phone as an app. Then open the BrikPanel app and turn on order notifications there.', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php echo esc_html( sprintf( /* translators: %1$s: the app's name on the phone, which is the store's name. */ __( 'First add %1$s to this phone as an app. Then open the %1$s app and turn on order notifications there.', 'brikpanel' ), $app ) ); ?></p>
 		</div>
 		<div class="brikpanel-push-card__view" data-bp-push-view="installed" hidden>
-			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'BrikPanel is being added to this phone', 'brikpanel' ); ?></p>
-			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php echo $card ? esc_html__( 'When it is ready, open the BrikPanel app (on your home screen or in your app list) and turn on order notifications there.', 'brikpanel' ) : esc_html__( 'When it is ready, open the BrikPanel app (on your home screen or in your app list) and tap the phone button at the top to turn on order notifications.', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php echo esc_html( sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( '%s is being added to this phone', 'brikpanel' ), $app ) ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto"><?php echo esc_html( $card ? sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'When it is ready, open the %s app (on your home screen or in your app list) and turn on order notifications there.', 'brikpanel' ), $app ) : sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'When it is ready, open the %s app (on your home screen or in your app list) and tap the phone button at the top to turn on order notifications.', 'brikpanel' ), $app ) ); ?></p>
 		</div>
 		<?php
 		// Android, back in the browser tab once BrikPanel is installed: still the
@@ -479,9 +644,9 @@ function brikpanel_push_offer_markup( $cookie, $where ) {
 		// person who removed it.
 		?>
 		<div class="brikpanel-push-card__view" data-bp-push-view="app" hidden>
-			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'Open the BrikPanel app', 'brikpanel' ); ?></p>
-			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-app-sure><?php esc_html_e( 'BrikPanel is installed on this phone. Open it from your home screen or app list and turn on order notifications there.', 'brikpanel' ); ?></p>
-			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-app-unsure hidden><?php esc_html_e( 'If BrikPanel is on your home screen, open it there and turn on order notifications.', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php echo esc_html( sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'Open the %s app', 'brikpanel' ), $app ) ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-app-sure><?php echo esc_html( sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( '%s is installed on this phone. Open it from your home screen or app list and turn on order notifications there.', 'brikpanel' ), $app ) ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-app-unsure hidden><?php echo esc_html( sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'If %s is on your home screen, open it there and turn on order notifications.', 'brikpanel' ), $app ) ); ?></p>
 		</div>
 		<?php
 		// The app that was on this phone is gone (the browser says so). Where the
@@ -491,8 +656,8 @@ function brikpanel_push_offer_markup( $cookie, $where ) {
 		// the browser instead. brikpanel-push.js shows one of the two lines.
 		?>
 		<div class="brikpanel-push-card__view" data-bp-push-view="removed" hidden>
-			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php esc_html_e( 'The BrikPanel app was removed from this phone', 'brikpanel' ); ?></p>
-			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-removed-again hidden><?php esc_html_e( 'Add it to this phone again. Then open the BrikPanel app and turn on order notifications there.', 'brikpanel' ); ?></p>
+			<p class="<?php echo esc_attr( $title ); ?>" dir="auto"><?php echo esc_html( sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'The %s app was removed from this phone', 'brikpanel' ), $app ) ); ?></p>
+			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-removed-again hidden><?php echo esc_html( sprintf( /* translators: %s: the app's name on the phone, which is the store's name. */ __( 'Add it to this phone again. Then open the %s app and turn on order notifications there.', 'brikpanel' ), $app ) ); ?></p>
 			<p class="<?php echo esc_attr( $body ); ?>" dir="auto" data-bp-push-removed-here><?php esc_html_e( 'You can turn on order notifications in this browser instead.', 'brikpanel' ); ?></p>
 		</div>
 		<div class="brikpanel-push-card__view" data-bp-push-view="done" hidden>
@@ -516,7 +681,7 @@ function brikpanel_push_offer_markup( $cookie, $where ) {
 	</div>
 	<div class="brikpanel-push-card__actions">
 		<button type="button" class="<?php echo esc_attr( $cta ); ?>" data-bp-push-on<?php echo $ios ? ' hidden' : ''; ?>><?php esc_html_e( 'Turn on order notifications', 'brikpanel' ); ?></button>
-		<button type="button" class="<?php echo esc_attr( $cta ); ?>" data-bp-push-install hidden><?php esc_html_e( 'Install BrikPanel', 'brikpanel' ); ?></button>
+		<button type="button" class="<?php echo esc_attr( $cta ); ?>" data-bp-push-install hidden><?php esc_html_e( 'Install the app', 'brikpanel' ); ?></button>
 		<button type="button" class="brikpanel-btn brikpanel-btn--link brikpanel-push-card__btn" data-bp-push-here hidden><?php esc_html_e( 'Turn them on in this browser instead', 'brikpanel' ); ?></button>
 		<button type="button" class="brikpanel-btn brikpanel-btn--link brikpanel-push-card__btn" data-bp-push-removed hidden><?php esc_html_e( 'Removed the app? Turn them on in this browser', 'brikpanel' ); ?></button>
 		<button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-push-card__btn" data-bp-push-card-test hidden><?php esc_html_e( 'Send a test', 'brikpanel' ); ?></button>
@@ -609,9 +774,10 @@ function brikpanel_push_menu_render() {
 			</button>
 			<div class="brikpanel-push-menu__body">
 				<div class="brikpanel-push-menu__app">
-					<img class="brikpanel-push-menu__icon" src="<?php echo esc_url( brikpanel_pwa_icon_url( 'brikpanel-192.png' ) ); ?>" width="44" height="44" alt="" decoding="async">
+					<?php $app_icons = brikpanel_pwa_app_icons(); ?>
+					<img class="brikpanel-push-menu__icon<?php echo $app_icons['store'] ? ' brikpanel-push-menu__icon--store' : ''; ?>" src="<?php echo esc_url( $app_icons['192'] ); ?>" width="44" height="44" alt="" decoding="async">
 					<div class="brikpanel-push-menu__app-text">
-						<p class="brikpanel-push-menu__name"><?php echo esc_html( 'BrikPanel' ); // i18n-ignore: product name ?></p>
+						<p class="brikpanel-push-menu__name" dir="auto"><?php echo esc_html( brikpanel_pwa_app_short_name() ); ?></p>
 						<p class="brikpanel-push-menu__sub" dir="auto"><?php esc_html_e( 'Works like an app on your phone.', 'brikpanel' ); ?></p>
 					</div>
 				</div>
@@ -864,6 +1030,7 @@ add_action( 'admin_enqueue_scripts', 'brikpanel_push_enqueue' );
  * @return array<string,string>
  */
 function brikpanel_push_js_strings() {
+	$app = brikpanel_pwa_app_short_name();
 	return array(
 		'turning'     => __( 'Turning on…', 'brikpanel' ),
 		'on'          => __( 'Order notifications are on for this device.', 'brikpanel' ),
@@ -880,8 +1047,10 @@ function brikpanel_push_js_strings() {
 		'error'       => __( 'Something went wrong. Reload the page and try again.', 'brikpanel' ),
 		'confirmKeys' => __( 'Create new keys? Every phone turns notifications back on by itself the next time BrikPanel is opened on it.', 'brikpanel' ),
 		'blocked'     => __( 'Notifications are blocked for this site in this browser. Allow them in the browser\'s site settings, then try again.', 'brikpanel' ),
-		'blockedIos'  => __( 'Notifications are off for BrikPanel. Turn them on in the iPhone Settings, Notifications, BrikPanel. If BrikPanel is not listed, delete it from the Home Screen and add it again.', 'brikpanel' ),
-		'iosTab'      => __( 'An iPhone shows notifications only for apps on the Home Screen. In Safari, tap Share, then "Add to Home Screen", open BrikPanel from there and turn notifications on.', 'brikpanel' ),
+		/* translators: %1$s: the app's name on the phone, which is the store's name. */
+		'blockedIos'  => sprintf( __( 'Notifications are off for %1$s. Turn them on in the iPhone Settings, Notifications, %1$s. If %1$s is not listed, delete it from the Home Screen and add it again.', 'brikpanel' ), $app ),
+		/* translators: %s: the app's name on the phone, which is the store's name. */
+		'iosTab'      => sprintf( __( 'An iPhone shows notifications only for apps on the Home Screen. In Safari, tap Share, then "Add to Home Screen", open %s from there and turn notifications on.', 'brikpanel' ), $app ),
 		'iosOld'      => __( 'Notifications need iOS 16.4 or later. Update the iPhone first.', 'brikpanel' ),
 		'insecure'    => __( 'Notifications need the store admin on https.', 'brikpanel' ),
 		'edgeAndroid' => __( 'This browser cannot get notifications. Use Chrome on Android.', 'brikpanel' ),

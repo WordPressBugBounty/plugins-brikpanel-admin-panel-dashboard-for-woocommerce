@@ -2,6 +2,12 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.42 (2026-10-30) =
+* New: **The phone app carries your store's name and icon.** When added to a phone, the app now gets your Site Title and Site Icon (BrikPanel's icon when there is none), and the phone panel uses that name in its steps. A phone that already has the app may keep the old name until the app is added again.
+* New: **Choose what an order notification says.** Setting: Notifications → "Notification text". Switch the total, number of items, order number, SKUs, campaign and store name on or off and set their order, with a preview from your latest order. The store name is now off by default, as the app already carries it.
+* New: **Your supplier's SKU on orders.** With supplier management on, a product with a supplier's code shows it under its SKU on the order screen, such as "AliExpress SKU: AE-30418". It never shows in customer emails.
+* New: **A supplier SKU for each variation.** Variations have their own "Supplier SKU" box; left empty, it uses the main product's code when the supplier is the same. Stock Orders show the code and find products by it.
+
 = 3.3.41 (2026-10-28) =
 * New: **Order notifications on your phone.** Get a notification for every new order, also when the phone is locked. It shows the order number, total, number of items and store name, never the customer, and a tap opens the order. Each person turns it on on their own phone; Setting: Notifications → "Phone notifications" (on by default) switches it off for the whole store.
 * New: **A phone button in the top bar.** On a phone, it adds BrikPanel as an app and turns notifications on, with the extra step an iPhone (Home Screen) or Android (battery use: Unrestricted) needs. Its panel opens by itself until notifications are on or you close it with X; then the button shows a tick and the panel sends a test. Setting: Dashboard → "Top bar items" hides it.

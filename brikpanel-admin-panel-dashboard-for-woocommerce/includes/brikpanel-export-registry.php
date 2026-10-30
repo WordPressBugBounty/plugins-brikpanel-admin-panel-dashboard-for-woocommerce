@@ -184,6 +184,9 @@ function brikpanel_export_placeholder_field_ids() {
 		// Lists the person's own phones (front-end/push/brikpanel-push-admin.php).
 		// The devices live in their own table and never travel in a settings file.
 		'brikpanel_push_devices_card',
+		// "Notification text" (front-end/push/brikpanel-push-admin.php): the row
+		// behind it is brikpanel_push_parts, registered by the phone module.
+		'brikpanel_push_parts_field',
 		// Order numbers card (front-end/orders/brikpanel-order-numbers.php): a
 		// start number applied once on save, and the "Next order number" line.
 		'brikpanel_order_numbers_start',

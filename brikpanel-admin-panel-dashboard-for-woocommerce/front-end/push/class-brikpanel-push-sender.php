@@ -914,21 +914,7 @@ if ( ! class_exists( 'Brikpanel_Push_Sender' ) ) {
 				// cut a longer title (the order number went first, 27 Oct 2026).
 				/* translators: Phone notification title for a new order. */
 				$title = _x( 'New order', 'phone notification title', 'brikpanel' );
-				$parts = array();
-				if ( $order->has_status( 'on-hold' ) ) {
-					// Waits for a bank transfer or a cheque: not paid yet.
-					$parts[] = __( 'Awaiting payment', 'brikpanel' );
-				}
-				$parts[] = brikpanel_money_text( $order->get_total(), array( 'currency' => $order->get_currency() ) );
-				$items   = (int) $order->get_item_count();
-				if ( $items > 0 ) {
-					/* translators: %s: number of items. */
-					$parts[] = sprintf( _n( '%s item', '%s items', $items, 'brikpanel' ), brikpanel_number( $items ) );
-				}
-				/* translators: %s: order number, e.g. #1234. Shown in a phone notification. */
-				$parts[] = sprintf( _x( '#%s', 'order number in a phone notification', 'brikpanel' ), (string) $order->get_order_number() );
-				$parts[] = $store;
-				return self::payload( $title, implode( ' · ', array_filter( $parts, 'strlen' ) ), self::order_url( $order ), 'bp-order-' . $order->get_id(), array( 'k' => 'order', 'o' => (int) $order->get_id() ), $locale );
+				return self::payload( $title, self::order_text( $order ), self::order_url( $order ), 'bp-order-' . $order->get_id(), array( 'k' => 'order', 'o' => (int) $order->get_id() ), $locale );
 			}
 
 			if ( 'summary' === $kind ) {
@@ -939,9 +925,161 @@ if ( ! class_exists( 'Brikpanel_Push_Sender' ) ) {
 			}
 
 			if ( 'test' === $kind ) {
-				return self::payload( __( 'Test notification', 'brikpanel' ), __( 'New orders will show up like this.', 'brikpanel' ), self::settings_url(), 'bp-test', array( 'k' => 'test' ), $locale );
+				// The store's newest order, the way its notification reads with the
+				// parts chosen under "Notification text": the test shows the real thing.
+				$latest = self::latest_order();
+				$body   = $latest ? self::order_text( $latest ) : '';
+				return self::payload( __( 'Test notification', 'brikpanel' ), '' !== $body ? $body : __( 'New orders will show up like this.', 'brikpanel' ), self::settings_url(), 'bp-test', array( 'k' => 'test' ), $locale );
 			}
 			return null;
+		}
+
+		/**
+		 * The line under an order notification's title: the parts the store
+		 * chose under "Notification text", in its order, joined by " · ". An
+		 * order waiting for a bank transfer or a cheque always says so first.
+		 *
+		 * @param WC_Order $order Order.
+		 * @return string
+		 */
+		public static function order_text( $order ) {
+			$chosen = function_exists( 'brikpanel_push_parts' ) ? brikpanel_push_parts() : array( 'on' => array( 'total', 'items', 'number' ) );
+			$values = self::parts( $order, $chosen['on'] );
+			$parts  = array();
+			if ( $order->has_status( 'on-hold' ) ) {
+				// Waits for a bank transfer or a cheque: not paid yet.
+				$parts[] = __( 'Awaiting payment', 'brikpanel' );
+			}
+			foreach ( $chosen['on'] as $key ) {
+				if ( isset( $values[ $key ] ) && '' !== $values[ $key ] ) {
+					$parts[] = $values[ $key ];
+				}
+			}
+			return implode( ' · ', $parts );
+		}
+
+		/**
+		 * The parts an order notification can show, in the current language.
+		 * A part the order does not have (no campaign, no items) is ''.
+		 *
+		 * @param WC_Order      $order Order.
+		 * @param string[]|null $keys  Only these parts (null: all of them).
+		 * @return array<string,string>
+		 */
+		public static function parts( $order, $keys = null ) {
+			$keys = null === $keys ? brikpanel_push_parts_keys() : (array) $keys;
+			$out  = array();
+			foreach ( $keys as $key ) {
+				switch ( $key ) {
+					case 'total':
+						$out[ $key ] = brikpanel_money_text( $order->get_total(), array( 'currency' => $order->get_currency() ) );
+						break;
+					case 'items':
+						$items = (int) $order->get_item_count();
+						/* translators: %s: number of items. */
+						$out[ $key ] = $items > 0 ? sprintf( _n( '%s item', '%s items', $items, 'brikpanel' ), brikpanel_number( $items ) ) : '';
+						break;
+					case 'number':
+						/* translators: %s: order number, e.g. #1234. Shown in a phone notification. */
+						$out[ $key ] = sprintf( _x( '#%s', 'order number in a phone notification', 'brikpanel' ), (string) $order->get_order_number() );
+						break;
+					case 'skus':
+						$out[ $key ] = self::skus( $order );
+						break;
+					case 'campaign':
+						$out[ $key ] = self::campaign( $order );
+						break;
+					case 'store':
+						$out[ $key ] = self::store_name();
+						break;
+				}
+			}
+			return $out;
+		}
+
+		/**
+		 * What was ordered (apattee: "so we could see what was ordered"): each
+		 * product's SKU (a variation without its own gets its parent's from
+		 * WooCommerce), its short name where it has none, "×2" for a quantity,
+		 * the first three, then how many more.
+		 *
+		 * @param WC_Order $order Order.
+		 * @return string
+		 */
+		private static function skus( $order ) {
+			$codes = array();
+			$more  = 0;
+			foreach ( $order->get_items( 'line_item' ) as $item ) {
+				if ( ! $item instanceof WC_Order_Item_Product ) {
+					continue;
+				}
+				if ( count( $codes ) >= 3 ) {
+					++$more;
+					continue;
+				}
+				$product = $item->get_product();
+				$code    = $product instanceof WC_Product ? trim( (string) $product->get_sku() ) : '';
+				if ( '' === $code ) {
+					$code = self::clip( self::plain( $item->get_name() ), 24 );
+				}
+				if ( '' === $code ) {
+					continue;
+				}
+				$qty = (int) $item->get_quantity();
+				if ( $qty > 1 ) {
+					/* translators: 1: SKU or product name, 2: quantity, e.g. "TEE-S ×2". Shown in a phone notification. */
+					$code = sprintf( _x( '%1$s ×%2$s', 'SKU and quantity in a phone notification', 'brikpanel' ), $code, brikpanel_number( $qty ) );
+				}
+				$codes[] = $code;
+			}
+			if ( ! $codes ) {
+				return '';
+			}
+			$text = implode( ', ', $codes );
+			if ( $more > 0 ) {
+				/* translators: %s: how many more products the order has. Shown in a phone notification after three SKUs. */
+				$text .= ' ' . sprintf( _n( '+%s more', '+%s more', $more, 'brikpanel' ), brikpanel_number( $more ) );
+			}
+			return $text;
+		}
+
+		/**
+		 * The campaign WooCommerce credited the order to (its order attribution
+		 * keeps the last campaign link the customer came through); '' without one.
+		 *
+		 * @param WC_Order $order Order.
+		 * @return string
+		 */
+		private static function campaign( $order ) {
+			$key  = function_exists( 'brikpanel_wc_attribution_meta_key' ) ? brikpanel_wc_attribution_meta_key( 'utm_campaign' ) : '_wc_order_attribution_utm_campaign';
+			$raw  = $order->get_meta( $key );
+			$name = function_exists( 'brikpanel_campaign_normalize' ) ? brikpanel_campaign_normalize( $raw ) : ( is_scalar( $raw ) ? trim( (string) $raw ) : '' );
+			if ( '(none)' === $name ) {
+				$name = '';
+			}
+			return '' === $name ? '' : self::clip( self::plain( $name ), 30 );
+		}
+
+		/**
+		 * The store's newest order that would notify (the test reads it; the
+		 * Settings preview asks for a paid one first, so its sample has no
+		 * "Awaiting payment"); null when there is none.
+		 *
+		 * @param string[] $statuses Statuses to look in.
+		 * @return WC_Order|null
+		 */
+		public static function latest_order( array $statuses = array( 'processing', 'completed', 'on-hold' ) ) {
+			$orders = wc_get_orders(
+				array(
+					'type'    => 'shop_order',
+					'status'  => $statuses,
+					'limit'   => 1,
+					'orderby' => 'date',
+					'order'   => 'DESC',
+				)
+			);
+			$order = is_array( $orders ) && $orders ? reset( $orders ) : null;
+			return $order instanceof WC_Order ? $order : null;
 		}
 
 		/**
@@ -1071,7 +1209,9 @@ if ( ! class_exists( 'Brikpanel_Push_Sender' ) ) {
 		}
 
 		/**
-		 * A device's name in the current language ("iPhone · BrikPanel app").
+		 * A device's name in the current language ("iPhone · Home Screen app",
+		 * "Android · Chrome"). The installed app is not named: the store's own
+		 * name is already on every email and screen that lists devices.
 		 *
 		 * @param array $row Device row.
 		 * @return string
@@ -1093,7 +1233,7 @@ if ( ! class_exists( 'Brikpanel_Push_Sender' ) ) {
 				$system = __( 'Device', 'brikpanel' );
 			}
 			if ( ! empty( $row['standalone'] ) ) {
-				$app = __( 'BrikPanel app', 'brikpanel' );
+				$app = _x( 'Home Screen app', 'device name: opened from the home screen, not in a browser tab', 'brikpanel' );
 			} else {
 				$app = self::browser_label( isset( $row['browser'] ) ? (string) $row['browser'] : '' );
 			}
@@ -1448,22 +1588,23 @@ if ( ! class_exists( 'Brikpanel_Push_Sender' ) ) {
 				$store  = self::store_name();
 				$device = self::device_name( $row );
 				if ( 'gone' === $kind ) {
-					/* translators: 1: store name, 2: device name, like "iPhone · BrikPanel app". */
+					/* translators: 1: store name, 2: device name, like "iPhone · Home Screen app". */
 					$subject = sprintf( __( '[%1$s] Order notifications stopped on %2$s', 'brikpanel' ), $store, $device );
 					$heading = __( 'Order notifications stopped', 'brikpanel' );
 					$lines   = array(
-						/* translators: %s: device name, like "iPhone · BrikPanel app". */
+						/* translators: %s: device name, like "iPhone · Home Screen app". */
 						sprintf( __( 'Your phone (%s) no longer accepts order notifications from this store.', 'brikpanel' ), $device ),
-						__( 'This happens when the BrikPanel app is removed from the Home Screen, notifications are turned off for it, or the browser data is cleared.', 'brikpanel' ),
+						/* translators: %s: the app's name on the phone, which is the store's name. */
+						sprintf( __( 'This happens when the %s app is removed from the Home Screen, notifications are turned off for it, or the browser data is cleared.', 'brikpanel' ), function_exists( 'brikpanel_pwa_app_short_name' ) ? brikpanel_pwa_app_short_name() : $store ),
 						__( 'To get them again, open your store admin on that phone and turn order notifications on.', 'brikpanel' ),
 					);
 				} else {
 					$since = wp_date( brikpanel_datetime_format(), (int) strtotime( $row['pending_since'] . ' UTC' ) );
-					/* translators: 1: store name, 2: device name, like "iPhone · BrikPanel app". */
+					/* translators: 1: store name, 2: device name, like "iPhone · Home Screen app". */
 					$subject = sprintf( __( '[%1$s] Is %2$s still getting order notifications?', 'brikpanel' ), $store, $device );
 					$heading = __( 'Order notifications not confirmed', 'brikpanel' );
 					$lines   = array(
-						/* translators: 1: device name, like "iPhone · BrikPanel app", 2: date and time. */
+						/* translators: 1: device name, like "iPhone · Home Screen app", 2: date and time. */
 						sprintf( __( 'Your phone (%1$s) has not confirmed any order notification since %2$s.', 'brikpanel' ), $device, $since ),
 						__( 'If they stopped arriving, open BrikPanel on that phone: it checks the notifications and turns them back on when it can.', 'brikpanel' ),
 						__( 'If the phone was simply switched off, you can ignore this email.', 'brikpanel' ),

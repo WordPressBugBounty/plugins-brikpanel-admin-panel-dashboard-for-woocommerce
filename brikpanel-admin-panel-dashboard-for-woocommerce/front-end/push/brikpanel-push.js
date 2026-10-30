@@ -1295,3 +1295,124 @@
 		start();
 	}
 })(window, document);
+
+/**
+ * Settings > Notifications > "Notification text" (brikpanel_push_render_parts_field()):
+ * the arrows move a part, the switch turns it on or off, and the preview under
+ * the list redraws from the rows' own text (written by PHP in the store's
+ * language and money format: nothing is formatted here). Kept apart from the
+ * phone code above, so it works in a browser that cannot get notifications.
+ */
+(function (document) {
+	'use strict';
+
+	function init() {
+		var root = document.getElementById('brikpanel-push-parts');
+		if (!root || root.getAttribute('data-bp-ready')) {
+			return;
+		}
+		root.setAttribute('data-bp-ready', '1');
+		var list = root.querySelector('[data-bp-parts-list]');
+		var hidden = document.getElementById('brikpanel_push_parts_json');
+		var body = root.querySelector('[data-bp-parts-body]');
+		if (!list || !hidden || !body) {
+			return;
+		}
+		var rows = function () {
+			return Array.prototype.slice.call(list.querySelectorAll('[data-part]'));
+		};
+
+		// notify: an arrow is not a form field, so WooCommerce hears about the
+		// change only through the hidden field (its Save button and its
+		// "leave the page?" question listen to fields).
+		function refresh(notify) {
+			var all = rows();
+			var order = [];
+			var on = [];
+			var shown = 0;
+			while (body.firstChild) {
+				body.removeChild(body.firstChild);
+			}
+			all.forEach(function (row, i) {
+				var key = row.getAttribute('data-part');
+				var box = row.querySelector('input[type="checkbox"]');
+				var up = row.querySelector('[data-bp-parts-move="up"]');
+				var down = row.querySelector('[data-bp-parts-move="down"]');
+				var isOn = !!(box && box.checked);
+				order.push(key);
+				row.classList.toggle('is-off', !isOn);
+				if (up) {
+					up.disabled = i === 0;
+				}
+				if (down) {
+					down.disabled = i === all.length - 1;
+				}
+				if (!isOn) {
+					return;
+				}
+				on.push(key);
+				var text = row.getAttribute('data-text') || '';
+				if (!text) {
+					return;
+				}
+				if (shown) {
+					body.appendChild(document.createTextNode(' · '));
+				}
+				var span = document.createElement('span');
+				span.textContent = text;
+				if (row.hasAttribute('data-example')) {
+					span.className = 'is-example';
+				}
+				body.appendChild(span);
+				shown++;
+			});
+			hidden.value = JSON.stringify({ order: order, on: on });
+			if (notify) {
+				hidden.dispatchEvent(new Event('change', { bubbles: true }));
+			}
+		}
+
+		list.addEventListener('click', function (e) {
+			var btn = e.target.closest ? e.target.closest('[data-bp-parts-move]') : null;
+			if (!btn || btn.disabled) {
+				return;
+			}
+			var row = btn.closest('[data-part]');
+			if (!row) {
+				return;
+			}
+			e.preventDefault();
+			if (btn.getAttribute('data-bp-parts-move') === 'up') {
+				if (row.previousElementSibling) {
+					list.insertBefore(row, row.previousElementSibling);
+				}
+			} else if (row.nextElementSibling) {
+				list.insertBefore(row.nextElementSibling, row);
+			}
+			refresh(true);
+			// The focus stays with the part that moved, on its other arrow at an end.
+			var again = row.querySelector('[data-bp-parts-move="' + btn.getAttribute('data-bp-parts-move') + '"]');
+			var other = row.querySelector('[data-bp-parts-move]:not([data-bp-parts-move="' + btn.getAttribute('data-bp-parts-move') + '"])');
+			if (again && !again.disabled) {
+				again.focus();
+			} else if (other) {
+				other.focus();
+			}
+		});
+
+		// A switch is a form field: WooCommerce already hears it.
+		list.addEventListener('change', function (e) {
+			if (e.target && e.target.matches && e.target.matches('input[type="checkbox"]')) {
+				refresh(false);
+			}
+		});
+
+		refresh(false);
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
+	}
+})(document);

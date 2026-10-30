@@ -2881,6 +2881,7 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'var_tax_class'      => __('Tax class', 'brikpanel'),
                 'var_shipping_class' => __('Shipping class', 'brikpanel'),
                 'var_supplier'       => __('Supplier', 'brikpanel'),
+                'var_supplier_sku'   => __('Supplier SKU', 'brikpanel'),
                 'var_image'          => __('Image', 'brikpanel'),
                 'var_other_fields'   => __('Fields from your other plugins', 'brikpanel'),
                 'analyze'          => __('Re-analyze', 'brikpanel'),

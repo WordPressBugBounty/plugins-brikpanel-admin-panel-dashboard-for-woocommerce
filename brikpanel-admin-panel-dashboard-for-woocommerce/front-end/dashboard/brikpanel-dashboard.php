@@ -4737,17 +4737,14 @@ class Brikpanel_Dashboard {
     }
 
     /**
-     * The order meta key WooCommerce keeps an order-attribution field under.
-     * WooCommerce lets the prefix be changed with a filter, so it is asked.
+     * The order meta key WooCommerce keeps an order-attribution field under
+     * (brikpanel_wc_attribution_meta_key(), shared with the phone notification).
      *
      * @param string $field Field name, e.g. 'utm_campaign'.
      * @return string
      */
     private function wc_attribution_meta_key( $field ) {
-        $prefix = (string) apply_filters( 'wc_order_attribution_tracking_field_prefix', 'wc_order_attribution_' );
-        $prefix = trim( $prefix, '_' );
-        $key    = '_' . ( '' !== $prefix ? $prefix . '_' : '' ) . $field;
-        return preg_match( '/^[A-Za-z0-9_\-]{1,255}$/', $key ) ? $key : '_wc_order_attribution_' . $field;
+        return brikpanel_wc_attribution_meta_key( $field );
     }
 
     /**

@@ -1060,6 +1060,9 @@ class Brikpanel_Product_Editor {
             'vendor_field_enabled' => $bp_vendor_field_on,
             'vendor_options'       => $bp_vendor_field_on ? array_map(static fn($k, $v) => ['id' => (int) $k, 'name' => (string) $v], array_keys($bp_vendor_options), $bp_vendor_options) : [],
             'parent_vendor_id'     => $bp_vendor_field_on ? (int) $bp_current_vendor : 0,
+            // The variations' grey hint when the cost card (which holds the
+            // main product's code box) is switched off.
+            'parent_vendor_sku'    => $bp_vendor_field_on ? $bp_current_v_sku : '',
             'backorder_notify'     => $backorder_notify_on,
             // Parent backorder value — only used when the sub-option is on.
             // For variable products the parent has no real backorder state,

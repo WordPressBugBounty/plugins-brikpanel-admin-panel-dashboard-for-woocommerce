@@ -16399,16 +16399,6 @@ msgstr ""
 "Her yeni siparişte telefonunuza bir bildirim, telefon kilitliyken de. Herkes"
 " kendi telefonunda açar."
 
-#: front-end/push/brikpanel-push-admin.php:62
-msgid ""
-"Send every new order (processing, completed or on hold) to the phones and "
-"computers where notifications are turned on. A notification shows the order "
-"number, the total and the number of items, never the customer."
-msgstr ""
-"Her yeni siparişi (işleniyor, tamamlandı ya da beklemede) bildirimlerin açık"
-" olduğu telefon ve bilgisayarlara gönderir. Bildirimde sipariş numarası, "
-"tutar ve ürün sayısı yer alır, müşteri asla yer almaz."
-
 #: front-end/push/brikpanel-push-admin.php:123
 msgid ""
 "Phone notifications are off for this store. Turn on \"Phone notifications\" "
@@ -16570,14 +16560,6 @@ msgstr ""
 msgid "Get every new order on this iPhone"
 msgstr "Her yeni sipariş bu iPhone'da"
 
-#: front-end/push/brikpanel-push-admin.php:389
-msgid ""
-"An iPhone shows notifications only for apps on the Home Screen. Add "
-"BrikPanel there first:"
-msgstr ""
-"iPhone yalnızca ana ekrandaki uygulamaların bildirimlerini gösterir. Önce "
-"BrikPanel'i oraya ekleyin:"
-
 #: front-end/push/brikpanel-push-admin.php:391
 msgid "Tap the Share button in Safari."
 msgstr "Safari'de Paylaş düğmesine dokunun."
@@ -16585,10 +16567,6 @@ msgstr "Safari'de Paylaş düğmesine dokunun."
 #: front-end/push/brikpanel-push-admin.php:394
 msgid "Choose \"Add to Home Screen\"."
 msgstr "\"Ana Ekrana Ekle\"yi seçin."
-
-#: front-end/push/brikpanel-push-admin.php:395
-msgid "Open BrikPanel from the Home Screen and turn notifications on there."
-msgstr "BrikPanel'i ana ekrandan açın ve bildirimleri orada açın."
 
 #: front-end/push/brikpanel-push-admin.php:399
 msgid "Order notifications are on for this phone"
@@ -16605,10 +16583,6 @@ msgstr "Sipariş bildirimlerini aç"
 #: front-end/push/brikpanel-push-admin.php:409
 msgid "Send a test"
 msgstr "Test gönder"
-
-#: front-end/push/brikpanel-push-admin.php:410
-msgid "Install BrikPanel"
-msgstr "BrikPanel'i yükle"
 
 #: front-end/push/brikpanel-push-admin.php:412
 #: front-end/sound/brikpanel-sound.php:174 includes/brikpanel-asks.php:844
@@ -16692,25 +16666,6 @@ msgid ""
 msgstr ""
 "Bu tarayıcıda bu site için bildirimler engellendi. Tarayıcının site "
 "ayarlarından izin verip tekrar deneyin."
-
-#: front-end/push/brikpanel-push-admin.php:552
-msgid ""
-"Notifications are off for BrikPanel. Turn them on in the iPhone Settings, "
-"Notifications, BrikPanel. If BrikPanel is not listed, delete it from the "
-"Home Screen and add it again."
-msgstr ""
-"BrikPanel için bildirimler kapalı. iPhone Ayarlar, Bildirimler, BrikPanel "
-"bölümünden açın. BrikPanel listede yoksa ana ekrandan silip yeniden ekleyin."
-
-#: front-end/push/brikpanel-push-admin.php:553
-msgid ""
-"An iPhone shows notifications only for apps on the Home Screen. In Safari, "
-"tap Share, then \"Add to Home Screen\", open BrikPanel from there and turn "
-"notifications on."
-msgstr ""
-"iPhone yalnızca ana ekrandaki uygulamaların bildirimlerini gösterir. "
-"Safari'de Paylaş'a, ardından \"Ana Ekrana Ekle\"ye dokunun, BrikPanel'i "
-"oradan açın ve bildirimleri açın."
 
 #: front-end/push/brikpanel-push-admin.php:554
 msgid "Notifications need iOS 16.4 or later. Update the iPhone first."
@@ -16807,10 +16762,6 @@ msgstr "Test bildirimi"
 msgid "New orders will show up like this."
 msgstr "Yeni siparişler böyle görünecek."
 
-#: front-end/push/class-brikpanel-push-sender.php:1011
-msgid "BrikPanel app"
-msgstr "BrikPanel uygulaması"
-
 #. translators: 1: store name, 2: device name, like "iPhone · BrikPanel app".
 #: front-end/push/class-brikpanel-push-sender.php:1269
 #, php-format
@@ -16826,14 +16777,6 @@ msgstr "Sipariş bildirimleri durdu"
 #, php-format
 msgid "Your phone (%s) no longer accepts order notifications from this store."
 msgstr "Telefonunuz (%s) artık bu mağazanın sipariş bildirimlerini almıyor."
-
-#: front-end/push/class-brikpanel-push-sender.php:1274
-msgid ""
-"This happens when the BrikPanel app is removed from the Home Screen, "
-"notifications are turned off for it, or the browser data is cleared."
-msgstr ""
-"Bu, BrikPanel uygulaması ana ekrandan kaldırıldığında, bildirimleri "
-"kapatıldığında ya da tarayıcı verileri silindiğinde olur."
 
 #: front-end/push/class-brikpanel-push-sender.php:1275
 msgid ""
@@ -24794,15 +24737,6 @@ msgstr "Android, pil tasarrufu için telefon uykudayken %s bildirimlerini beklet
 msgid "Settings > Apps > %s > Battery > Unrestricted"
 msgstr "Ayarlar > Uygulamalar > %s > Pil > Kısıtlanmamış"
 
-msgid "First add BrikPanel to this phone as an app. Then open the BrikPanel app and turn on order notifications there."
-msgstr "Önce BrikPanel'i bu telefona uygulama olarak ekleyin. Sonra BrikPanel uygulamasını açın ve sipariş bildirimlerini orada açın."
-
-msgid "BrikPanel is being added to this phone"
-msgstr "BrikPanel bu telefona ekleniyor"
-
-msgid "When it is ready, open the BrikPanel app (on your home screen or in your app list) and turn on order notifications there."
-msgstr "Hazır olunca BrikPanel uygulamasını (ana ekranda ya da uygulamalar listesinde) açın ve sipariş bildirimlerini orada açın."
-
 msgid "In Firefox, notifications can wait while the phone sleeps"
 msgstr "Firefox'ta bildirimler telefon uyurken bekleyebilir"
 
@@ -24830,35 +24764,6 @@ msgstr "Telefonunuzda bir uygulama gibi çalışır."
 #: front-end/push/brikpanel-push-admin.php:578
 msgid "You can open this any time with the phone button at the top."
 msgstr "Bunu istediğiniz zaman üstteki telefon düğmesinden açabilirsiniz."
-
-#: front-end/push/brikpanel-push-admin.php:456
-msgid ""
-"Open BrikPanel from the Home Screen and tap the phone button at the top to "
-"turn notifications on."
-msgstr ""
-"BrikPanel'i ana ekrandan açın ve bildirimleri açmak için üstteki telefon "
-"düğmesine dokunun."
-
-#: front-end/push/brikpanel-push-admin.php:470
-msgid ""
-"When it is ready, open the BrikPanel app (on your home screen or in your app "
-"list) and tap the phone button at the top to turn on order notifications."
-msgstr ""
-"Hazır olunca BrikPanel uygulamasını (ana ekranda ya da uygulamalar "
-"listesinde) açın ve sipariş bildirimlerini açmak için üstteki telefon "
-"düğmesine dokunun."
-
-#: front-end/push/brikpanel-push-admin.php:479
-msgid "Open the BrikPanel app"
-msgstr "BrikPanel uygulamasını açın"
-
-#: front-end/push/brikpanel-push-admin.php:480
-msgid ""
-"BrikPanel is installed on this phone. Open it from your home screen or app "
-"list and turn on order notifications there."
-msgstr ""
-"BrikPanel uygulaması bu telefonda kurulu. Ana ekrandan ya da uygulamalar "
-"listesinden açın ve sipariş bildirimlerini orada açın."
 
 #: front-end/push/brikpanel-push-admin.php:597
 msgid "Are you sure you want to close this?"
@@ -25047,21 +24952,6 @@ msgstr ""
 "bir numarası olan sipariş onu her durumda korur. Numara, siparişin "
 "_order_number meta alanında saklanır."
 
-#: front-end/push/brikpanel-push-admin.php:484
-msgid ""
-"If BrikPanel is on your home screen, open it there and turn on order "
-"notifications."
-msgstr ""
-"BrikPanel ana ekranınızdaysa oradan açın ve sipariş bildirimlerini açın."
-
-#: front-end/push/brikpanel-push-admin.php:488
-msgid "The BrikPanel app was removed from this phone"
-msgstr "BrikPanel uygulaması bu telefondan kaldırılmış"
-
-#: front-end/push/brikpanel-push-admin.php:495
-msgid "Add it to this phone again. Then open the BrikPanel app and turn on order notifications there."
-msgstr "Uygulamayı bu telefona yeniden ekleyin. Sonra BrikPanel uygulamasını açın ve sipariş bildirimlerini orada açın."
-
 #: front-end/push/brikpanel-push-admin.php:489
 msgid "You can turn on order notifications in this browser instead."
 msgstr "Sipariş bildirimlerini bunun yerine bu tarayıcıda açabilirsiniz."
@@ -25069,3 +24959,206 @@ msgstr "Sipariş bildirimlerini bunun yerine bu tarayıcıda açabilirsiniz."
 #: front-end/push/brikpanel-push-admin.php:514
 msgid "Removed the app? Turn them on in this browser"
 msgstr "Uygulamayı kaldırdıysanız bu tarayıcıda açın"
+
+#. translators: Label in front of a supplier's own product code, e.g. "AliExpress SKU:" on an order line. %s: the supplier's name.
+#: front-end/vendors/class-brikpanel-vendor-product-editor.php:184
+#, php-format
+msgctxt "supplier name, then the product code that supplier uses"
+msgid "%s SKU:"
+msgstr "%s SKU:"
+
+#: front-end/push/brikpanel-push-admin.php:64
+msgid ""
+"Send every new order (processing, completed or on hold) to the phones and "
+"computers where notifications are turned on. A notification never shows the "
+"customer."
+msgstr ""
+"Her yeni siparişi (işleniyor, tamamlandı ya da beklemede) bildirimlerin açık "
+"olduğu telefon ve bilgisayarlara gönderir. Bildirimde müşteri asla yer almaz."
+
+#: front-end/push/brikpanel-push-admin.php:69
+msgid "Notification text"
+msgstr "Bildirim metni"
+
+#: front-end/push/brikpanel-push-admin.php:72
+msgid "Choose what an order notification shows, and in which order."
+msgstr "Sipariş bildiriminde nelerin, hangi sırayla görüneceğini seçin."
+
+#: front-end/push/brikpanel-push-admin.php:347
+msgid "Number of items"
+msgstr "Ürün sayısı"
+
+#: front-end/push/brikpanel-push-admin.php:440
+msgctxt "heading above a sample phone notification"
+msgid "Preview"
+msgstr "Önizleme"
+
+#: front-end/push/brikpanel-push-admin.php:444
+msgctxt "time of a sample phone notification"
+msgid "now"
+msgstr "şimdi"
+
+#: front-end/push/brikpanel-push-admin.php:448
+msgid "SKUs and the campaign show when the order has them."
+msgstr "SKU ve kampanya, siparişte varsa görünür."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:614
+#, php-format
+msgid ""
+"An iPhone shows notifications only for apps on the Home Screen. Add %s there "
+"first:"
+msgstr ""
+"iPhone yalnızca ana ekrandaki uygulamaların bildirimlerini gösterir. Önce %s "
+"uygulamasını oraya ekleyin:"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:620
+#, php-format
+msgid "Open %s from the Home Screen and turn notifications on there."
+msgstr "%s uygulamasını ana ekrandan açın ve bildirimleri orada açın."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:620
+#, php-format
+msgid ""
+"Open %s from the Home Screen and tap the phone button at the top to turn "
+"notifications on."
+msgstr ""
+"%s uygulamasını ana ekrandan açın ve bildirimleri açmak için üstteki telefon "
+"düğmesine dokunun."
+
+#. translators: %1$s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:630
+#, php-format
+msgid ""
+"First add %1$s to this phone as an app. Then open the %1$s app and turn on "
+"order notifications there."
+msgstr ""
+"Önce %1$s uygulamasını bu telefona ekleyin. Sonra %1$s uygulamasını açın ve "
+"sipariş bildirimlerini orada açın."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:633
+#, php-format
+msgid "%s is being added to this phone"
+msgstr "%s uygulaması bu telefona ekleniyor"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:634
+#, php-format
+msgid ""
+"When it is ready, open the %s app (on your home screen or in your app list) "
+"and turn on order notifications there."
+msgstr ""
+"Hazır olunca %s uygulamasını (ana ekranda ya da uygulamalar listesinde) açın "
+"ve sipariş bildirimlerini orada açın."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:634
+#, php-format
+msgid ""
+"When it is ready, open the %s app (on your home screen or in your app list) "
+"and tap the phone button at the top to turn on order notifications."
+msgstr ""
+"Hazır olunca %s uygulamasını (ana ekranda ya da uygulamalar listesinde) açın "
+"ve sipariş bildirimlerini açmak için üstteki telefon düğmesine dokunun."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:644
+#, php-format
+msgid "Open the %s app"
+msgstr "%s uygulamasını açın"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:645
+#, php-format
+msgid ""
+"%s is installed on this phone. Open it from your home screen or app list and "
+"turn on order notifications there."
+msgstr ""
+"%s uygulaması bu telefonda kurulu. Ana ekrandan ya da uygulamalar listesinden"
+" açın ve sipariş bildirimlerini orada açın."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:646
+#, php-format
+msgid ""
+"If %s is on your home screen, open it there and turn on order notifications."
+msgstr ""
+"%s uygulaması ana ekranınızdaysa oradan açın ve sipariş bildirimlerini açın."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:656
+#, php-format
+msgid "The %s app was removed from this phone"
+msgstr "%s uygulaması bu telefondan kaldırılmış"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:657
+#, php-format
+msgid ""
+"Add it to this phone again. Then open the %s app and turn on order "
+"notifications there."
+msgstr ""
+"Uygulamayı bu telefona yeniden ekleyin. Sonra %s uygulamasını açın ve sipariş"
+" bildirimlerini orada açın."
+
+#: front-end/push/brikpanel-push-admin.php:681
+msgid "Install the app"
+msgstr "Uygulamayı yükle"
+
+#. translators: %1$s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:1048
+#, php-format
+msgid ""
+"Notifications are off for %1$s. Turn them on in the iPhone Settings, "
+"Notifications, %1$s. If %1$s is not listed, delete it from the Home Screen "
+"and add it again."
+msgstr ""
+"%1$s için bildirimler kapalı. iPhone Ayarlar, Bildirimler, %1$s bölümünden "
+"açın. %1$s listede yoksa uygulamayı ana ekrandan silip yeniden ekleyin."
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/brikpanel-push-admin.php:1050
+#, php-format
+msgid ""
+"An iPhone shows notifications only for apps on the Home Screen. In Safari, "
+"tap Share, then \"Add to Home Screen\", open %s from there and turn "
+"notifications on."
+msgstr ""
+"iPhone yalnızca ana ekrandaki uygulamaların bildirimlerini gösterir. "
+"Safari'de Paylaş'a, ardından \"Ana Ekrana Ekle\"ye dokunun, %s uygulamasını "
+"oradan açın ve bildirimleri açın."
+
+#. translators: 1: SKU or product name, 2: quantity, e.g. "TEE-S ×2". Shown in
+#. a phone notification.
+#: front-end/push/class-brikpanel-push-sender.php:1031
+#, php-format
+msgctxt "SKU and quantity in a phone notification"
+msgid "%1$s ×%2$s"
+msgstr "%1$s ×%2$s"
+
+#. translators: %s: how many more products the order has. Shown in a phone
+#. notification after three SKUs.
+#: front-end/push/class-brikpanel-push-sender.php:1041
+#, php-format
+msgid "+%s more"
+msgid_plural "+%s more"
+msgstr[0] "+%s daha"
+msgstr[1] "+%s daha"
+
+#: front-end/push/class-brikpanel-push-sender.php:1234
+msgctxt "device name: opened from the home screen, not in a browser tab"
+msgid "Home Screen app"
+msgstr "Ana ekran uygulaması"
+
+#. translators: %s: the app's name on the phone, which is the store's name.
+#: front-end/push/class-brikpanel-push-sender.php:1596
+#, php-format
+msgid ""
+"This happens when the %s app is removed from the Home Screen, notifications "
+"are turned off for it, or the browser data is cleared."
+msgstr ""
+"Bu, %s uygulaması ana ekrandan kaldırıldığında, bildirimleri kapatıldığında "
+"ya da tarayıcı verileri silindiğinde olur."
