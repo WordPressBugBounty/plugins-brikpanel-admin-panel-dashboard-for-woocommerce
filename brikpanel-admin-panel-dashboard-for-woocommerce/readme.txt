@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.42
+Stable tag: 3.3.43
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -411,7 +411,7 @@ Yes. BrikPanel includes a built-in **WooCommerce cart abandonment** and **cart r
 
 = How does the WooCommerce cart recovery coupon popup work? =
 
-Switch on the optional email popup and BrikPanel shows a clean, on-brand sign-up offer to your visitors. Anyone who subscribes is issued their own single-use percentage **cart recovery coupon** (10% by default, and you set the rate), restricted to their email and valid for 30 days, shown right there with a one-click Copy button. You control the heading, message, button and success text, the delay before it appears, the cooldown after it is dismissed, and which of six animated reveal styles the coupon uses (Sealed envelope, Pocket card, Scratch card, Slot machine, Magnetic assembly or Classic ticket), all of which respect a visitor's reduced-motion preference. Close the popup and it folds into a small floating tab, one click from reopening.
+Switch on the optional email popup and BrikPanel shows a clean, on-brand sign-up offer to your visitors. Anyone who subscribes is issued their own single-use percentage **cart recovery coupon** (10% by default, and you set the rate), restricted to their email and valid for 30 days, shown right there with a one-click Copy button. You control the heading, message, button and success text, the delay before it appears, the cooldown after it is dismissed, and which of six pencil drawings shows the offer (Handwriting, Ring, Coupon, Envelope, Gift box or Eraser), each drawn once, respecting a visitor's reduced-motion preference. Close the popup and it folds into a small floating tab, one click from reopening.
 
 = How do I sync WooCommerce orders to Google Sheets for free? =
 
@@ -511,6 +511,19 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.43 (2026-10-31) =
+* New: **Pick the product type with one tap.** The product screen shows four buttons under the product name: Simple, Variable, Grouped and External, with other plugins' types under "More". The Products setting "Product type selector" is gone, as the buttons are always there.
+* Fix: **Grouped and external products keep their type.** Saving one in BrikPanel's product screen turned it into a simple product, and quick edit, bulk actions and the Google Sheets pull wrote prices or stock to it.
+* Fix: **One product no longer stops a Google Sheets pull.** A product the pull cannot update is skipped and logged, and the rest of the sheet still comes in.
+* New: **Grouped and external product cards.** "Products in this group" lets you search, add and drag products into order; an external product has its "Product URL" and "Button text".
+* Tweak: **A tidier product screen.** Virtual, Digital and other plugins' type options are small switches under the type buttons, attributes and sale dates open from "Add attribute" and "Schedule the sale", price and cost share a row, and help lines moved into "?" balloons. Other plugins' boxes fold and stay the way each person leaves them.
+* New: **Coupons that apply themselves.** In the coupon window, "Apply automatically" puts the coupon on every cart that meets its rules, with no code to type. When several fit, the biggest discount stays and a free shipping coupon goes on next to it. Personal codes are never pushed off.
+* New: **Discounts by number of items.** "Minimum items" and "Maximum items" make a coupon count only for carts with that many items, so 1-5 items can get 10% and 6-10 items 15%.
+* New: **Coupon links.** "Copy link" gives a store link that puts the coupon on the shopper's cart, or keeps it for the visit until the cart qualifies.
+* New: **Pencil drawings in the email popup.** Setting: Cart abandonment → Email popup → "Offer animation". The six styles are redrawn as pencil sketches that draw themselves once: Handwriting (the new default), Ring, Coupon, Envelope, Gift box and Eraser. A style you picked moves to its new drawing.
+* Tweak: **A calmer popup.** It opens without a bounce, and after signup a pencil tick and a frame drawn round the code replace the confetti. On a store with more than one language, each drawing's handwritten note can be set per language.
+* Fix: **The popup shrinks into its tab.** After signup, the card now flies into the floating tab that keeps the code, instead of only fading away.
+
 = 3.3.42 (2026-10-30) =
 * New: **The phone app carries your store's name and icon.** When added to a phone, the app now gets your Site Title and Site Icon (BrikPanel's icon when there is none), and the phone panel uses that name in its steps. A phone that already has the app may keep the old name until the app is added again.
 * New: **Choose what an order notification says.** Setting: Notifications → "Notification text". Switch the total, number of items, order number, SKUs, campaign and store name on or off and set their order, with a preview from your latest order. The store name is now off by default, as the app already carries it.
@@ -569,19 +582,3 @@ The full release history of every version is in changelog.txt, included with the
 * Tweak: **The logo address takes a path.** Appearance → "Custom brand logo" accepts a path such as /wp-content/uploads/logo.png, so the logo keeps working when the site moves from staging to live; before, the browser refused it and the form did not save. An address that is neither a full URL nor a path now shows an error instead of being saved broken, and Import settings points a logo URL of the old site at the new one.
 * New: **The cache button knows 9 more plugins.** It now also clears Easy Optimizer, FlyingPress, Perfmatters, Nginx Helper, Proxy Cache Purge, Kinsta, WP Engine and GoDaddy, next to WP Rocket, LiteSpeed Cache, WP Fastest Cache and the 13 others it already cleared. With Elementor, one click and "Clear all caches" also clear the Elementor cache.
 * Tweak: **A cache that could not be cleared is named.** When one plugin's purge fails, the message after the click says which.
-
-= 3.3.36 (2026-10-18) =
-* New: **One Customers page.** Segments and Customer Analytics are now one page, Customers, with the tabs All customers, RFM segments, Lifetime value and Cohort retention. WooCommerce's own Customers report moves to More as "Customers report", and sidebars you arranged keep their order.
-* New: **A page for every customer, guests too.** It shows their orders, total spent, products bought, abandoned carts, coupons, addresses and email list status. The customer's name on the order screen opens it, and Ctrl+K finds guests too.
-* Tweak: **Segments' order list is now the Orders explorer.** It opens from the "Orders explorer" button next to the search on the Orders list, and old links and bookmarks still work.
-* Tweak: **A faster customer list.** On large stores it loads about three times faster than Segments did. "New customers today" in the bell opens the list of those customers.
-* Fix: **Customer value on multi-currency stores.** Lifetime value and RFM count every order in the store currency, and orders anonymized by WordPress's privacy tools no longer add up to one customer.
-* New: **A sales map by region for stores that sell in one country.** When 90% of the last 30 days' paid orders come from one country, or the store sells to one country only, Order locations shows that country's map by state, province or region, with orders, customers and sales for each. Once a day the globe turns and zooms into it, and "World" brings the globe back. Maps for 49 countries.
-* Tweak: **Cities with their region.** Top cities shows each city with its region, such as "Springfield, IL", so cities with the same name are no longer added together. The Excel export gets a Region column, and a sheet of regions when the store sells in one country.
-* Fix: **The globe no longer jumps.** It started to one side and jumped to the middle each time it loaded or the dates changed, and it now uses less CPU while it spins.
-* Tweak: **Order locations is faster on WordPress posts storage.** On stores that keep orders in WordPress posts, the card loads about four times faster.
-* New: **Pack sizes for shared stock.** Under "Shared stock" in the product editor, a "Pack sizes" switch lets each variation take its own number of units, so a 5-pack takes 5. Cancellations, refunds and order edits use the same units, and a pack the stock cannot fill shows as out of stock.
-* New: **Choose what LiteSpeed clears.** Setting: Dashboard → "Cache button", shown when LiteSpeed Cache is active. With "Open a menu to choose what to clear", the top bar's cache button lists LiteSpeed's own purge options; one click stays the default.
-* Tweak: **The cache button says what it clears.** With LiteSpeed Cache, its tooltip and the message after a click name what is cleared on your site, such as the page cache and CSS/JS.
-* New: **Choose how popup coupon codes start.** Setting: Cart abandonment → Email popup → "Code starts with". Codes can start with your own text, such as WELCOME-7K2P9Q; empty keeps BRIK.
-* Fix: **Signing up again keeps the code.** A visitor who signed up again with the same email got their code back in small letters, and the popup did not keep it in the "Your code" tab.

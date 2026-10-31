@@ -3558,11 +3558,18 @@ class Brikpanel_Products_List {
             }
         }
 
-        if (isset($_POST['regular_price'])) {
+        // WooCommerce keeps no price of its own for a grouped product (it comes
+        // from the products in the group) and no stock for grouped or external
+        // products. An external product even throws on stock management, which
+        // used to fail this whole request. Such keys are ignored for them.
+        $no_own_price = $product->is_type('grouped');
+        $no_stock     = $product->is_type(['grouped', 'external']);
+
+        if (!$no_own_price && isset($_POST['regular_price'])) {
             $product->set_regular_price(wc_format_decimal(sanitize_text_field($_POST['regular_price'])));
         }
 
-        if (isset($_POST['sale_price'])) {
+        if (!$no_own_price && isset($_POST['sale_price'])) {
             $sale = sanitize_text_field($_POST['sale_price']);
             $product->set_sale_price($sale !== '' ? wc_format_decimal($sale) : '');
         }
@@ -3570,7 +3577,7 @@ class Brikpanel_Products_List {
         // A box saved with the number it opened with keeps the stored
         // quantity: orders may have lowered it since the window opened.
         $is_variable_product = $product->is_type('variable');
-        if (isset($_POST['stock']) && $_POST['stock'] !== '') {
+        if (!$no_stock && isset($_POST['stock']) && $_POST['stock'] !== '') {
             $stock    = intval($_POST['stock']);
             $keep_qty = brikpanel_stock_box_unchanged($product, $stock, $_POST['stock_original'] ?? null);
             if ($is_variable_product) {
@@ -3592,11 +3599,11 @@ class Brikpanel_Products_List {
                     $product->set_stock_status((int) $product->get_stock_quantity('edit') > 0 ? 'instock' : 'outofstock');
                 }
             }
-        } elseif (isset($_POST['stock']) && $_POST['stock'] === '' && !$is_variable_product) {
+        } elseif (!$no_stock && isset($_POST['stock']) && $_POST['stock'] === '' && !$is_variable_product) {
             $product->set_manage_stock(false);
         }
 
-        if (isset($_POST['stock_status'])) {
+        if (!$no_stock && isset($_POST['stock_status'])) {
             $stock_status = sanitize_key($_POST['stock_status']);
             if (in_array($stock_status, ['instock', 'outofstock', 'onbackorder'], true)) {
                 $product->set_stock_status($stock_status);
@@ -3704,7 +3711,7 @@ class Brikpanel_Products_List {
         // (legacy inline edits) leave the flags untouched. The drawer hides
         // these toggles for variable products entirely — that case is handled
         // through the full editor where per-variation propagation happens.
-        if ((isset($_POST['is_downloadable']) || isset($_POST['is_virtual'])) && !$product->is_type('variable')) {
+        if ((isset($_POST['is_downloadable']) || isset($_POST['is_virtual'])) && !$product->is_type(['variable', 'grouped', 'external'])) {
             $is_downloadable = !empty($_POST['is_downloadable']);
             $is_virtual      = !empty($_POST['is_virtual']) || $is_downloadable;
             $product->set_downloadable($is_downloadable);
@@ -3758,7 +3765,7 @@ class Brikpanel_Products_List {
         // prop-sync logic so the explicit value sticks. We also fire
         // `woocommerce_product_set_stock_status` so any listeners that depend
         // on the change still see it.
-        if (isset($_POST['stock_status'])) {
+        if (!$no_stock && isset($_POST['stock_status'])) {
             $requested_status = sanitize_key($_POST['stock_status']);
             if (in_array($requested_status, ['instock', 'outofstock', 'onbackorder'], true)) {
                 global $wpdb;
@@ -4674,6 +4681,13 @@ class Brikpanel_Products_List {
         // that is reported instead of changed.
         $is_stock    = in_array($action, ['set_stock', 'increase_stock'], true);
         $shared_note = __("Uses the product's shared stock. Change it on the product.", 'brikpanel');
+        // WooCommerce keeps no price, cost or stock of its own for a grouped
+        // product, no stock for an external one and ships neither: such a
+        // row is reported instead of changed (an external product even
+        // throws on stock management).
+        $group_note    = __('A grouped product takes its price and stock from the products in it. Change them there.', 'brikpanel');
+        $external_note = __('External products have no stock in WooCommerce.', 'brikpanel');
+        $no_ship_note  = __('Grouped and external products are not shipped, so they have no weight or size.', 'brikpanel');
 
         // A product_cat "remove" can strip a product's last category; those rows
         // are swept once at the end of the batch instead of checked per product.
@@ -4725,6 +4739,10 @@ class Brikpanel_Products_List {
                 // own value is empty, so we set the parent and leave overrides
                 // intact.
                 if ($is_shipping) {
+                    if ($product->is_type(['grouped', 'external'])) {
+                        $errors[] = ['id' => (int) $pid, 'message' => $no_ship_note];
+                        continue;
+                    }
                     $this->apply_bulk_action($product, $action, $value, $opts);
                     $product->save();
                     $processed++;
@@ -4772,6 +4790,14 @@ class Brikpanel_Products_List {
                     if ($has_attr_filter) continue;
                     if ($is_stock && $product->is_type('variation') && brikpanel_variation_follows_parent_stock($product)) {
                         $errors[] = ['id' => (int) $pid, 'message' => $shared_note];
+                        continue;
+                    }
+                    if (($is_price || $is_cogs || $is_stock) && $product->is_type('grouped')) {
+                        $errors[] = ['id' => (int) $pid, 'message' => $group_note];
+                        continue;
+                    }
+                    if ($is_stock && $product->is_type('external')) {
+                        $errors[] = ['id' => (int) $pid, 'message' => $external_note];
                         continue;
                     }
                     $this->apply_bulk_action($product, $action, $value, $opts);

@@ -1668,7 +1668,8 @@
         // Variable products: cost is stored per variation (edited via the
         // variation popup / quick edit), so the aggregated parent cell stays
         // read-only. Simple products get an inline-editable cost.
-        if (!p || p.type === 'variable') {
+        // A grouped product has no cost of its own (its products do).
+        if (!p || p.type === 'variable' || p.type === 'grouped') {
             return inner + flag;
         }
         var cogsVal = (p.cogs_value === '' || p.cogs_value == null) ? '' : String(p.cogs_value);
@@ -1841,6 +1842,11 @@
         var priceEditable = isVariable ?
             '<span class="brikpanel-pl-editable brikpanel-pl-price-cell" data-field="price" data-value="">' + priceDisplay + '</span>' :
             '<span class="brikpanel-pl-editable brikpanel-pl-price-cell" data-field="price" data-value="' + escAttr(p.regular_price || '') + '">' + priceDisplay + '</span>';
+        // A grouped product's price range comes from its products: nothing
+        // to type here (WooCommerce keeps no price of its own for a group).
+        if (p.type === 'grouped') {
+            priceEditable = priceDisplay;
+        }
 
         var catText;
         if (!p.categories.length) {
@@ -2722,6 +2728,15 @@
             loadDrawerVariations(product.id);
         } else {
             $('.brikpanel-pl-qe-simple-only').show();
+            // WooCommerce keeps no stock and no virtual/digital switches for
+            // grouped and external products, and no price or cost of its own
+            // for a group (the save ignores them as well).
+            if (product.type === 'grouped' || product.type === 'external') {
+                $('.brikpanel-pl-qe-simple-only').filter('[data-qe-slug="inventory"], [data-qe-slug="stock_status"], [data-qe-slug="digital"]').hide();
+            }
+            if (product.type === 'grouped') {
+                $('.brikpanel-pl-qe-simple-only').filter('[data-qe-slug="pricing"], [data-qe-slug="cogs"]').hide();
+            }
             $('#bpl-qe-variations').hide().empty();
             $('#bpl-qe-price').val(product.regular_price || '');
             $('#bpl-qe-sale-price').val(product.sale_price || '');

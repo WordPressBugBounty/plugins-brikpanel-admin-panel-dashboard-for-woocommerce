@@ -1695,97 +1695,10 @@ function brikpanel_ajax_order_item_downloads() {
 add_action( 'wp_ajax_brikpanel_order_item_downloads', 'brikpanel_ajax_order_item_downloads' );
 
 /**
- * Detect whether any WooCommerce-extending plugin is active that introduces
- * new product types beyond the core simple/variable/grouped/external set.
- *
- * Known signals:
- *  - Any class/constant shipped by the major subscription/booking plugins.
- *  - A non-core key in `wc_get_product_types()` — catches any plugin that
- *    registers its own type via the `product_type_selector` filter without
- *    needing us to hardcode its class names.
- *
- * Used to pick the *default* for `brikpanel_enable_product_types`. Admins
- * can override the result from the settings screen.
- *
- * @return bool
- */
-function brikpanel_has_custom_product_types() {
-    static $cached = null;
-    if ( null !== $cached ) {
-        return $cached;
-    }
-
-    $known_classes = [
-        'WC_Subscriptions',                 // WooCommerce Subscriptions (Automattic)
-        'WC_Subscriptions_Plugin',
-        'WCS_ATT',                          // All Products for Subscriptions
-        'Wps_Subscription',                 // Subscriptions for WooCommerce (WP Swings)
-        'Wps_Sfw_Woocommerce',
-        'YITH_WC_Subscription',             // YITH WooCommerce Subscription
-        'YITH_YWSBS_Subscription',
-        'SUMOSubscriptions',                // SUMO Subscriptions
-        'RNSSubscription',
-        'WT_WC_Subscriptions',              // WebToffee Subscriptions for WooCommerce
-        'WT_Subscription',
-        'WC_Bookings',                      // WooCommerce Bookings (adds 'booking' type)
-        'WC_Product_Bundle',                // WooCommerce Product Bundles
-        'WC_Memberships',                   // WC Memberships doesn't add product types,
-                                            // but admins with it installed still want the
-                                            // extra product-data sections surfaced here.
-    ];
-    foreach ( $known_classes as $cls ) {
-        if ( class_exists( $cls ) ) {
-            return $cached = true;
-        }
-    }
-
-    $known_constants = [
-        'WCS_INIT_TIMESTAMP',               // WC Subscriptions
-        'WPS_SFW_VERSION',                  // WP Swings
-        'YITH_YWSBS_VERSION',
-        'YITH_YWSBS_INIT',
-        'RNSSUBSCRIPTION_VERSION',          // SUMO
-        'WT_WCSBS_VERSION',                 // WebToffee Subscriptions
-    ];
-    foreach ( $known_constants as $const ) {
-        if ( defined( $const ) ) {
-            return $cached = true;
-        }
-    }
-
-    if ( function_exists( 'wc_get_product_types' ) ) {
-        $core = [ 'simple', 'variable', 'grouped', 'external' ];
-        $all  = array_keys( (array) wc_get_product_types() );
-        foreach ( $all as $type ) {
-            if ( ! in_array( $type, $core, true ) ) {
-                return $cached = true;
-            }
-        }
-    }
-
-    return $cached = false;
-}
-
-/**
- * Resolve the effective value of the "Enable product type selector" setting.
- *
- * Option default auto-switches based on whether any plugin has registered
- * custom product types. Admins can flip it on/off explicitly — once saved,
- * their explicit value wins over the auto-default.
- *
- * @return bool
- */
-function brikpanel_product_type_selector_enabled() {
-    $default = brikpanel_has_custom_product_types() ? 'yes' : 'no';
-    return get_option( 'brikpanel_enable_product_types', $default ) === 'yes';
-}
-
-/**
  * Return the product-type choices that should appear in the BrikPanel
- * editor dropdown. Starts from `wc_get_product_types()` (so any plugin
- * registering a type is included automatically) and strips 'grouped' /
- * 'external' — the BrikPanel simplified editor does not yet provide
- * first-class UI for those two core types.
+ * editor's type choice. Starts from `wc_get_product_types()` (so any plugin
+ * registering a type is included automatically). Grouped and external
+ * products have their own cards since 3.3.43.
  *
  * @return array<string, string> type_slug => label
  */
@@ -1798,7 +1711,6 @@ function brikpanel_editor_product_types() {
     }
 
     $types = (array) wc_get_product_types();
-    unset( $types['grouped'], $types['external'] );
 
     if ( empty( $types['simple'] ) ) {
         $types = array_merge( [ 'simple' => __( 'Simple product', 'brikpanel' ) ], $types );

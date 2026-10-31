@@ -130,8 +130,47 @@
         initNativeLabelBridge();
         initThirdPartyHint();
         initCogsMirror();
+        initFolds();
         loadExistingData();
         initPhone();
+    }
+
+    /* Folding cards: the SEO card and every other plugin's box start as their
+       title line on wider screens (the server prints .is-folded), and the ones
+       a person opens stay open for them on every product: the server keeps the
+       list per person (brikpanel_pe_fold_state). A phone shows these cards as
+       pages already, so nothing folds there (the CSS is desktop-only). */
+    function initFolds() {
+        $(document).on('click', '.brikpanel-pe-foldbtn, .brikpanel-pe-foldtoggle', function (e) {
+            var card = this.closest('.brikpanel-pe-foldcard');
+            if (!card || isPhoneEditor()) { return; }
+            e.preventDefault();
+            setFold(card, card.classList.contains('is-folded'), true);
+        });
+    }
+
+    function setFold(card, open, remember) {
+        card.classList.toggle('is-folded', !open);
+        $(card).find('.brikpanel-pe-foldbtn, .brikpanel-pe-foldtoggle').attr('aria-expanded', open ? 'true' : 'false');
+        var btn = card.querySelector('.brikpanel-pe-foldbtn');
+        if (btn) {
+            btn.textContent = btn.getAttribute(open ? 'data-open-label' : 'data-closed-label') || btn.textContent;
+        }
+        // A plugin's panel measured itself while folded: a resize lets it lay
+        // out again in the room it now has (Yoast's preview, a swatch grid).
+        if (open) { window.dispatchEvent(new Event('resize')); }
+        var id = card.getAttribute('data-bpe-fold');
+        if (remember && id) {
+            $.post(PE.ajax_url, { action: 'brikpanel_pe_fold_state', security: PE.nonce, box: id, open: open ? 1 : 0 });
+        }
+    }
+
+    // A required field of another plugin (ACF) that failed its check must not
+    // sit in a folded box where nobody sees the message.
+    function unfoldErrors() {
+        $('.brikpanel-pe-foldcard.is-folded').each(function () {
+            if ($(this).find('.acf-error, .has-error').length) { setFold(this, true, false); }
+        });
     }
 
     /* Discovery card shown when other plugins add fields to this product but
@@ -560,14 +599,21 @@
 
     /* Linked products (upsells & cross-sells) — opt-in card. Lightweight
        chip + AJAX search picker; only active when the card is rendered. */
+    /* Product pickers: upsells and cross-sells (Linked products card) and
+       "Products in this group" (grouped products, field `children`). Each
+       `.brikpanel-pe-linked[data-field]` on the page is one list in
+       state.linked. The group's list asks the search for products only (no
+       variations, no other groups) and is sorted by dragging: the shop page
+       lists a group's products in this order. */
     function initLinkedProducts() {
-        if (!$('#bpe-linked-card').length) return;
-        state.linked.upsells     = (productData.upsells || []).slice();
-        state.linked.cross_sells = (productData.cross_sells || []).slice();
+        var $pickers = $('.brikpanel-pe-linked[data-field]');
+        if (!$pickers.length) return;
 
-        ['upsells', 'cross_sells'].forEach(function (field) {
-            var $wrap = $('.brikpanel-pe-linked[data-field="' + field + '"]');
-            if (!$wrap.length) return;
+        $pickers.each(function () {
+            var $wrap = $(this);
+            var field = String($wrap.attr('data-field'));
+            state.linked[field] = (productData[field] || []).slice();
+            var isGroup  = field === 'children';
             var $chips   = $wrap.find('.brikpanel-pe-linked-chips');
             var $search  = $wrap.find('.brikpanel-pe-linked-search');
             var $results = $wrap.find('.brikpanel-pe-linked-results');
@@ -586,6 +632,27 @@
             }
             renderChips();
 
+            if (isGroup && typeof $chips.sortable === 'function') {
+                $chips.sortable({
+                    items: '> .brikpanel-pe-linked-chip',
+                    // The × removes the product: a drag must not start there.
+                    cancel: '.brikpanel-pe-linked-remove',
+                    tolerance: 'pointer',
+                    cursor: 'grabbing',
+                    containment: 'parent',
+                    forcePlaceholderSize: true,
+                    placeholder: 'brikpanel-pe-linked-chip-placeholder',
+                    update: function () {
+                        var list = state.linked[field];
+                        state.linked[field] = $chips.children('.brikpanel-pe-linked-chip').map(function () {
+                            return list[parseInt($(this).attr('data-i'), 10)];
+                        }).get().filter(Boolean);
+                        renderChips();
+                        state.dirty = true;
+                    }
+                });
+            }
+
             $chips.on('click', '.brikpanel-pe-linked-remove', function () {
                 var i = $(this).closest('.brikpanel-pe-linked-chip').data('i');
                 state.linked[field].splice(i, 1);
@@ -600,12 +667,14 @@
                 clearTimeout(timer);
                 if (q.length < 2) { hideResults(); return; }
                 timer = setTimeout(function () {
-                    $.get(PE.ajax_url, {
+                    var query = {
                         action: 'brikpanel_pe_search_products',
                         security: PE.nonce,
                         q: q,
                         exclude: $('#bpe-product-id').val() || 0
-                    }).done(function (res) {
+                    };
+                    if (isGroup) { query.children = 1; }
+                    $.get(PE.ajax_url, query).done(function (res) {
                         if (!res || !res.success) { hideResults(); return; }
                         var chosen = {};
                         state.linked[field].forEach(function (it) { chosen[it.id] = true; });
@@ -647,12 +716,17 @@
        "Generate variation SKUs" button. A variable product whose variation
        rows are switched off in settings shows its SKU only
        (data-bpe-sku-only): the switch would decide stock for rows nobody can
-       see. The toggle rows and the button use `hidden`, the three fields
-       jQuery's toggle(), never both on one element (rule B3). */
+       see. Grouped and external products show the SKU only too: WooCommerce
+       keeps no stock for either. The toggle rows and the button use `hidden`,
+       the three fields jQuery's toggle(), never both on one element (rule B3). */
+    function bpeIsGroupOrExternal() {
+        var t = wcGateContext().type;
+        return t === 'grouped' || t === 'external';
+    }
     function syncInventoryCard() {
         var $card = $('#bpe-inventory-card');
         if (!$card.length) return;
-        var skuOnly = $card.attr('data-bpe-sku-only') === '1';
+        var skuOnly = $card.attr('data-bpe-sku-only') === '1' || bpeIsGroupOrExternal();
         var isVar = !skuOnly && isVariableOn();
         var on = skuOnly ? false
             : (isVar ? $('#bpe-shared-stock').is(':checked') : $('#bpe-manage-stock').is(':checked'));
@@ -667,6 +741,49 @@
         // off; with tracking on backorders come from the dropdown.
         $('#bpe-backorder-notify').toggleClass('open', !skuOnly && !isVar && !on && $('#bpe-stock-status').val() === 'onbackorder');
         $('#bpe-gen-var-skus').prop('hidden', !isVar || !(state.variations && state.variations.length));
+    }
+
+    /* Cards by product type, the way WooCommerce's own editor shows its tabs.
+       A grouped product: "Products in this group", no price, tax, cost,
+       shipping, stock or virtual/digital switches (its price and stock come
+       from its products). An external product: "Product link", its price and
+       tax, no stock, shipping or virtual/digital. Neither offers cross-sells,
+       a purchase note, "Sold individually" or the "Variable product" switch
+       (a type is changed with the dropdown). jQuery toggle() throughout: the
+       phone pages read a card's inline display to hide an empty page. */
+    function syncTypeCards() {
+        var t = wcGateContext().type;
+        var grouped = t === 'grouped';
+        var external = t === 'external';
+        var other = grouped || external;
+        var isVar = isVariableOn();
+        var virtualOn = $('#bpe-virtual-toggle').is(':checked') || $('#bpe-digital-toggle').is(':checked');
+        $('#bpe-group-card').toggle(grouped);
+        $('#bpe-external-card').toggle(external);
+        $('#bpe-var-toggle-row').toggle(!other);
+        $('#bpe-pricing-card').toggle(!isVar && !grouped);
+        $('#bpe-tax-card').toggle(!grouped);
+        $('.brikpanel-pe-card[data-bpe-section="cogs"]').toggle(!grouped);
+        $('#bpe-typeopts, #bpe-sold-individually-card, #bpe-shipping-class-card').toggle(!other);
+        $('#bpe-weight-card, #bpe-dims-card').toggle(!other && !virtualOn);
+        $('#bpe-crosssells-search, #bpe-purchase-note').closest('.brikpanel-pe-field').toggle(!other);
+        syncInventoryCard();
+        syncPairs();
+    }
+
+    /* A pair (price + cost, category + brand) is one card around two section
+       cards. It follows them: one card left on screen takes the whole width
+       (a variable product has no price card), none left and the pair goes.
+       Classes, not jQuery's show/hide: on a phone the pair is display:
+       contents, which jQuery would read as hidden and turn into a block. */
+    function syncPairs() {
+        $('.brikpanel-pe-pair').each(function () {
+            var shown = $(this).children('.brikpanel-pe-card').filter(function () {
+                return this.style.display !== 'none';
+            }).length;
+            this.classList.toggle('is-solo', shown === 1);
+            this.classList.toggle('is-empty', shown === 0);
+        });
     }
 
     function initManageStock() {
@@ -825,9 +942,19 @@
     }
 
     function initSaleDates() {
-        if (typeof flatpickr !== 'function') return;
         var $from = $('#bpe-sale-from'), $to = $('#bpe-sale-to');
         if (!$from.length || !$to.length) return;
+
+        // The dates wait behind "Schedule the sale" while both are empty (the
+        // server prints the card folded then). The fields never leave the
+        // page, so the save reads them as always.
+        $('#bpe-sale-schedule').on('click', function () {
+            $('#bpe-pricing-card').removeClass('is-sale-folded');
+            $(this).attr('aria-expanded', 'true');
+            $from.trigger('focus');
+        });
+
+        if (typeof flatpickr !== 'function') return;
 
         // The fields keep WooCommerce's YYYY-MM-DD; the calendar speaks the
         // viewer's language and starts on the store's first weekday.
@@ -882,6 +1009,9 @@
             } else {
                 if (!$('#bpe-var-toggle').is(':checked')) { $('#bpe-var-toggle').prop('checked', true).trigger('change'); }
                 updateVarStartView();
+                // "Custom" means adding one now: the controls open at once.
+                $('#bpe-var-attr-controls').addClass('is-adding');
+                $('#bpe-attr-open').attr('aria-expanded', 'true');
                 $('#bpe-attr-new-name').trigger('focus');
             }
         });
@@ -1491,6 +1621,7 @@
         function syncVariableMode() {
             var isVar = $('#bpe-var-toggle').is(':checked');
             $('#bpe-pricing-card, #bpe-gtin-card').toggle(!isVar);
+            syncTypeCards();
             syncInventoryCard();
             $('#bpe-var-card').toggleClass('bpe-variable-on', isVar);
             $('#bpe-var-build').toggle(isVar);
@@ -1542,18 +1673,17 @@
         // product variable and fires no change event.
         $('#bpe-var-toggle').on('click', function (e) {
             if (this.checked) return;            // switching variations ON is harmless
-            // With the product-type selector on the page the dropdown is what
-            // the save posts, and a posted type always wins server-side — so
-            // unticking this toggle alone converts nothing and destroys nothing.
-            // Asking there would be a warning about something that will not
-            // happen. The selector's own handler below covers that route.
+            // With the product type on the page the type is what the save
+            // posts, and a posted type always wins server-side. Unticking this
+            // toggle turns the type back to simple (below), and the type's own
+            // handler asks there: asking here too would ask twice.
             if ($('#bpe-product-type').length) return;
             if (confirmVariableLoss()) return;
             e.preventDefault();
         });
 
-        // Product type selector (enabled via "Product type selector" setting).
-        // The dropdown is the canonical source of truth for which WC product
+        // Product type: the hidden select under the product name, driven by
+        // the type buttons. It is the canonical source of truth for which WC product
         // type the editor is creating. For backward compatibility, we keep
         // #bpe-var-toggle mirrored to the variable-or-not derived flag so the
         // existing pricing/inventory/variations show/hide logic continues to
@@ -1602,8 +1732,69 @@
                 }
                 lastProductType = next;
                 syncProductType();
+                // Simple ⇄ grouped ⇄ external changes no variable flag, so the
+                // toggle above stays quiet: the cards follow the type here.
+                syncTypeCards();
             });
             syncProductType();
+
+            // The type buttons (and "More" for the types other plugins add)
+            // set the select; they always show what it holds, whichever way
+            // it changed, a declined conversion included. Native change
+            // events, so listeners bound without jQuery hear them too.
+            var $typeChoice = $('input[name="bpe_type_choice"]');
+            var $typeMore = $('#bpe-type-more');
+            function setProductType(t) {
+                if (!t || $productType.val() === t) return;
+                $productType.val(t);
+                $productType[0].dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            function showProductType() {
+                var t = String($productType.val() || '');
+                var $radio = $typeChoice.filter(function () { return this.value === t; });
+                $typeChoice.prop('checked', false);
+                $radio.prop('checked', true);
+                var more = !$radio.length && $typeMore.length > 0;
+                if ($typeMore.length) {
+                    $typeMore.val(more ? t : '');
+                    $typeMore.closest('.brikpanel-pe-type-more').toggleClass('is-on', more)
+                        .find('.brikpanel-pe-type-more-text').text($typeMore.find('option:selected').text());
+                }
+                $('#bpe-type-hint').text(($radio.length ? $radio.attr('data-hint') : (more ? $typeMore.attr('data-hint') : '')) || '');
+            }
+            $typeChoice.on('change', function () {
+                if (this.checked) setProductType(this.value);
+            });
+            $typeMore.on('change', function () {
+                if (this.value) {
+                    setProductType(this.value);
+                } else {
+                    showProductType();
+                }
+            });
+            $productType.on('change', showProductType);
+            showProductType();
+
+            // "Variable product" on the variations card and the type are one
+            // choice: switching variations on makes the type variable, off
+            // makes it simple again (the save posts the type, not the switch).
+            // A plugin's type keeps its family: subscription ⇄ variable
+            // subscription.
+            $('#bpe-var-toggle').on('change', function () {
+                if ($(this).is('[data-section-hidden]')) return;
+                var t = String($productType.val() || 'simple');
+                var on = $(this).is(':checked');
+                if (on === isVariableType(t)) return;
+                var types = $productType.find('option').map(function () { return this.value; }).get();
+                var next;
+                if (on) {
+                    next = types.indexOf('variable-' + t) !== -1 ? 'variable-' + t : 'variable';
+                } else {
+                    var base = t.replace(/^variable[-_]/, '');
+                    next = base !== t && types.indexOf(base) !== -1 ? base : 'simple';
+                }
+                setProductType(next);
+            });
         }
 
         // Virtual = no physical shipping (service product). Downloadable
@@ -1612,7 +1803,8 @@
         // inconsistent "downloadable but ships physically" state by accident.
         function syncShippingVisibility() {
             var virtualOn = $('#bpe-virtual-toggle').is(':checked') || $('#bpe-digital-toggle').is(':checked');
-            $('#bpe-weight-card, #bpe-dims-card').toggle(!virtualOn);
+            // Grouped and external products never ship (syncTypeCards()).
+            $('#bpe-weight-card, #bpe-dims-card').toggle(!virtualOn && !bpeIsGroupOrExternal());
         }
         function syncVirtualLock() {
             var digitalOn = $('#bpe-digital-toggle').is(':checked');
@@ -4488,6 +4680,46 @@
             if (e.key === 'Enter') { e.preventDefault(); $('#bpe-attr-add').click(); }
         });
 
+        // Wider screens: the picker, "or create new" and the quick add wait
+        // behind "Add attribute" under the list (the CSS hides them until
+        // .is-adding) and fold away again once an attribute is in, the new
+        // row's value box taking the focus. A phone opens the same controls
+        // as a sheet (phoneBuildAttrUi()), so none of this runs there.
+        var $attrCtl = $('#bpe-var-attr-controls');
+        var $attrOpen = $('#bpe-attr-open');
+        function setAttrAdding(on) {
+            $attrCtl.toggleClass('is-adding', !!on);
+            $attrOpen.attr('aria-expanded', on ? 'true' : 'false');
+        }
+        $attrOpen.on('click', function () {
+            setAttrAdding(true);
+            var first = document.getElementById('bpe-attr-combo-trigger') || document.getElementById('bpe-attr-new-name');
+            if (first) { first.focus(); }
+        });
+        $('#bpe-attr-new').on('keydown', function (e) {
+            // The picker's own Escape closes the picker first (and prevents this).
+            if (e.key !== 'Escape' || e.isDefaultPrevented() || isPhoneEditor()) { return; }
+            setAttrAdding(false);
+            $attrOpen.trigger('focus');
+        });
+        if (typeof window.MutationObserver === 'function') {
+            new window.MutationObserver(function (records) {
+                if (!$attrCtl.hasClass('is-adding') || isPhoneEditor()) { return; }
+                var row = null;
+                records.forEach(function (r) {
+                    Array.prototype.forEach.call(r.addedNodes, function (n) {
+                        if (n.nodeType === 1 && n.classList.contains('brikpanel-pe-attr-row')) { row = n; }
+                    });
+                });
+                if (!row) { return; }
+                setAttrAdding(false);
+                window.setTimeout(function () {
+                    var box = row.querySelector('.brikpanel-pe-tag-input-wrap input[type="text"], .brikpanel-pe-tag-group input[type="text"]');
+                    if (box) { box.focus(); }
+                }, 0);
+            }).observe($list[0], { childList: true });
+        }
+
         // Editing values or toggling "use for variations" after a table was
         // generated drifts it out of sync — surface the regenerate hint.
         $list.on('input change', function () { refreshVarStaleHint(); });
@@ -6615,6 +6847,7 @@
                     },
                     failure: function () {
                         showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error');
+                        unfoldErrors();
                         phoneRevealError();
                     }
                 });
@@ -6700,6 +6933,16 @@
             data.upsell_ids     = JSON.stringify(state.linked.upsells.map(function (i) { return i.id; }));
             data.cross_sell_ids = JSON.stringify(state.linked.cross_sells.map(function (i) { return i.id; }));
         }
+        // A grouped product's products (in their order) and an external
+        // product's link: sent only for that type, while its card is here.
+        var bpeType = wcGateContext().type;
+        if (bpeType === 'grouped' && $('#bpe-group-card').length) {
+            data.grouped_ids = JSON.stringify((state.linked.children || []).map(function (i) { return i.id; }));
+        }
+        if (bpeType === 'external' && $('#bpe-external-card').length) {
+            data.product_url = String($('#bpe-product-url').val() || '').trim();
+            data.button_text = $('#bpe-button-text').val();
+        }
         if ($('#bpe-advanced-card').length) {
             data.purchase_note   = $('#bpe-purchase-note').val();
             data.reviews_allowed = $('#bpe-reviews-allowed').is(':checked') ? 1 : 0;
@@ -6747,7 +6990,8 @@
             data.is_featured = $featuredField.val() === '1' ? 1 : 0;
         }
 
-        if (!isVar) {
+        // A group has no price of its own (WooCommerce takes it from its products).
+        if (!isVar && bpeType !== 'grouped') {
             data.regular_price = parsePrice($('#bpe-price').val(), sep);
             // Sale fields are always visible now — the server treats empty
             // sale price as "no sale" and clears the scheduled dates.
@@ -6759,7 +7003,7 @@
         // stored stock, which orders may have lowered since (this autosaves
         // every minute too).
         var stockOriginal = $('#bpe-stock').attr('data-original');
-        if ($invCard.length && $invCard.attr('data-bpe-sku-only') !== '1') {
+        if ($invCard.length && $invCard.attr('data-bpe-sku-only') !== '1' && bpeType !== 'grouped' && bpeType !== 'external') {
             if (isVariableOn()) {
                 // Variable product (the toggle, so also one with no variations
                 // yet): WooCommerce's shared stock, from the "Shared stock" switch.
@@ -8393,7 +8637,6 @@
         if (!PH.ready || PH.built) { return; }
         PH.built = true;
         document.documentElement.classList.add('bpe-ph');
-        phoneFoldSaleDates();
         phoneBuildSections();
         phoneBuildVarTools();
         phoneBuildAttrUi();
@@ -8415,7 +8658,6 @@
         phoneTeardownAttrUi();
         phoneTeardownVarTools();
         phoneTeardownSections();
-        phoneUnfoldSaleDates();
         PH.built = false;
         document.documentElement.classList.remove('bpe-ph', 'bp-kbd-open');
         $('#bpe-var-table-body').find('.brikpanel-pe-ph-varsum, .brikpanel-pe-ph-varopen, .brikpanel-pe-ph-active').remove();
@@ -8453,6 +8695,10 @@
             if (n > 0) { sub += ' · ' + countText(PE.i18n.ph_variations, n); }
         } else if ($type.length && $type.val() && $type.val() !== 'simple') {
             sub = phText($type.find('option:selected')[0]);
+        } else if (!$type.length && wcGateContext().type !== 'simple' && productData.type_label) {
+            // A grouped or external product with no type dropdown on the page:
+            // WooCommerce's name for its type, as the server printed it.
+            sub = String(productData.type_label);
         } else {
             sub = phT('ph_simple');
         }
@@ -8660,35 +8906,6 @@
         S.open({ title: phT('ph_status_title'), body: body, foot: done, onClose: phoneSyncStatus });
     }
 
-    // ---- The price card ----------------------------------------------------
-    // A sale's start and end dates wait behind "Schedule the sale" while both
-    // are empty: most sales have none. The fields stay in the page (hidden),
-    // so the save reads them as always.
-    function phoneFoldSaleDates() {
-        var from = document.getElementById('bpe-sale-from');
-        var to = document.getElementById('bpe-sale-to');
-        var card = document.getElementById('bpe-pricing-card');
-        if (!from || !to || !card || phTrim(from.value) || phTrim(to.value)) { return; }
-        var row = $(from).closest('.brikpanel-pe-row').addClass('brikpanel-pe-ph-saledates');
-        row.next('.brikpanel-pe-help-text').addClass('brikpanel-pe-ph-salehelp');
-        var link = phMake('button', 'brikpanel-btn brikpanel-btn--link brikpanel-pe-ph-salelink', phT('ph_schedule_sale'));
-        link.type = 'button';
-        link.addEventListener('click', function () {
-            card.classList.remove('is-ph-sale-folded');
-            if (link.parentNode) { link.parentNode.removeChild(link); }
-            phFocus(from);
-        });
-        row.before(link);
-        card.classList.add('is-ph-sale-folded');
-    }
-
-    function phoneUnfoldSaleDates() {
-        var $card = $('#bpe-pricing-card').removeClass('is-ph-sale-folded');
-        $card.find('.brikpanel-pe-ph-salelink').remove();
-        $card.find('.brikpanel-pe-ph-saledates').removeClass('brikpanel-pe-ph-saledates');
-        $card.find('.brikpanel-pe-ph-salehelp').removeClass('brikpanel-pe-ph-salehelp');
-    }
-
     // ---- Images ------------------------------------------------------------
     // On a phone the gallery is tiles: the featured image twice as large (its
     // medium size), an Add tile at the end, and a tap opens the image's actions.
@@ -8805,8 +9022,11 @@
 
     // A card's own heading, for its row and its page.
     function phoneCardTitle(card) {
-        var el = card.querySelector('.brikpanel-pe-wc-fields-head > label, .brikpanel-pe-ext-title, .postbox-header .hndle');
-        if (!el) { el = card.querySelector(':scope > label'); }
+        // A folding box's title sits in its toggle button, which the copy
+        // below strips, so the title's own span is read first.
+        var el = card.querySelector('.postbox-header .brikpanel-pe-foldtoggle > span')
+            || card.querySelector('.brikpanel-pe-wc-fields-head > label, .brikpanel-pe-ext-title, .postbox-header .hndle');
+        if (!el) { el = card.querySelector(':scope > label, :scope > .brikpanel-pe-foldhead > label'); }
         if (!el) { return ''; }
         var copy = el.cloneNode(true);
         $(copy).find('.brikpanel-pe-seo-plugin-badge, button, input, select, .screen-reader-text, .brikpanel-pe-attr-row-controls').remove();
@@ -8870,7 +9090,7 @@
                 var text = phMake('span', 'brikpanel-pe-ph-rowtext');
                 var b = phMake('b', '', p.kind === 'own' ? phT(p.group.title) : p.title);
                 // The SEO card names the plugin that draws it in its heading.
-                var badge = p.kind === 'inplace' ? p.el.querySelector(':scope > label .brikpanel-pe-seo-plugin-badge') : null;
+                var badge = p.kind === 'inplace' ? p.el.querySelector(':scope > label .brikpanel-pe-seo-plugin-badge, :scope > .brikpanel-pe-foldhead > label .brikpanel-pe-seo-plugin-badge') : null;
                 if (badge && phText(badge)) {
                     b.appendChild(phMake('span', 'brikpanel-pe-ph-rowtag', phText(badge)));
                 }

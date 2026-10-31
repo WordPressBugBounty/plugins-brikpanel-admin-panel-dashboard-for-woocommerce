@@ -3027,7 +3027,6 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'ph_add_attribute'  => __('Add attribute', 'brikpanel'),
                 'ph_used_for_variations' => __('Used for variations', 'brikpanel'),
                 'ph_no_values'      => __('No values yet', 'brikpanel'),
-                'ph_schedule_sale'  => __('Schedule the sale', 'brikpanel'),
                 /* translators: %s: units of the variation in stock. */
                 'ph_in_stock'       => brikpanel_js_plural(_n_noop('%s in stock', '%s in stock', 'brikpanel')),
                 /* translators: %s: units one sale of a pack takes from the shared stock, e.g. "Pack of 5". */
@@ -3070,7 +3069,19 @@ function brikpanel_enqueue_woo_assets($hook) {
             'currency'        => get_woocommerce_currency_symbol(),
             'per_page'        => 20,
             'enabled_fields'  => class_exists('Brikpanel_Coupons') ? Brikpanel_Coupons::enabled_fields() : [],
+            // Coupon links (front-end/coupons/brikpanel-auto-coupons.php): the
+            // store's home page plus ?bp-coupon=CODE.
+            'link_base'       => home_url('/'),
+            'link_var'        => class_exists('Brikpanel_Auto_Coupons') ? Brikpanel_Auto_Coupons::LINK_VAR : 'bp-coupon',
+            // Other plugins' settings for a coupon live on WooCommerce's own
+            // coupon screen; the drawer links there when there are any.
+            'plugin_settings' => class_exists('Brikpanel_Coupons') && Brikpanel_Coupons::coupon_plugin_settings(),
+            'coupon_edit_url' => admin_url('post.php?post=__ID__&action=edit'),
             'i18n'      => [
+                'auto_badge'              => __('Auto', 'brikpanel'),
+                'auto_title'              => __('Added to carts automatically', 'brikpanel'),
+                'link_copied'             => __('Link copied to clipboard.', 'brikpanel'),
+                'copy_failed'             => __('Could not copy. The link is selected, press Ctrl/Cmd+C.', 'brikpanel'),
                 'no_coupons'              => __('No coupons found.', 'brikpanel'),
                 'error'                   => __('An error occurred. Please try again.', 'brikpanel'),
                 'saved'                   => __('Saved!', 'brikpanel'),

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.42
+ * Version: 3.3.43
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.42');
+define('BRIKPANEL_VERSION', '3.3.43');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -1532,6 +1532,17 @@ brikpanel_require('front-end/cart-share/brikpanel-cart-share.php');
 // exist while that module is switched off.
 // =============================================================================
 brikpanel_require('includes/brikpanel-coupon-hold.php');
+
+// =============================================================================
+// AUTOMATIC COUPONS — "Apply automatically", the minimum/maximum items rule
+// and coupon links (?bp-coupon=CODE), set in the coupon window.
+//
+// Loaded outside the is_admin gate: the rule runs inside WooCommerce's coupon
+// validation and the coupons are added when the cart's totals are worked out
+// (front-end, AJAX and Store API requests). A store with no automatic coupon
+// pays one autoloaded option read.
+// =============================================================================
+brikpanel_require('front-end/coupons/brikpanel-auto-coupons.php');
 
 // =============================================================================
 // STORE SUMMARY (on-demand Markdown digest, triggered from dashboard "Copy

@@ -2,6 +2,19 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.43 (2026-10-31) =
+* New: **Pick the product type with one tap.** The product screen shows four buttons under the product name: Simple, Variable, Grouped and External, with other plugins' types under "More". The Products setting "Product type selector" is gone, as the buttons are always there.
+* Fix: **Grouped and external products keep their type.** Saving one in BrikPanel's product screen turned it into a simple product, and quick edit, bulk actions and the Google Sheets pull wrote prices or stock to it.
+* Fix: **One product no longer stops a Google Sheets pull.** A product the pull cannot update is skipped and logged, and the rest of the sheet still comes in.
+* New: **Grouped and external product cards.** "Products in this group" lets you search, add and drag products into order; an external product has its "Product URL" and "Button text".
+* Tweak: **A tidier product screen.** Virtual, Digital and other plugins' type options are small switches under the type buttons, attributes and sale dates open from "Add attribute" and "Schedule the sale", price and cost share a row, and help lines moved into "?" balloons. Other plugins' boxes fold and stay the way each person leaves them.
+* New: **Coupons that apply themselves.** In the coupon window, "Apply automatically" puts the coupon on every cart that meets its rules, with no code to type. When several fit, the biggest discount stays and a free shipping coupon goes on next to it. Personal codes are never pushed off.
+* New: **Discounts by number of items.** "Minimum items" and "Maximum items" make a coupon count only for carts with that many items, so 1-5 items can get 10% and 6-10 items 15%.
+* New: **Coupon links.** "Copy link" gives a store link that puts the coupon on the shopper's cart, or keeps it for the visit until the cart qualifies.
+* New: **Pencil drawings in the email popup.** Setting: Cart abandonment → Email popup → "Offer animation". The six styles are redrawn as pencil sketches that draw themselves once: Handwriting (the new default), Ring, Coupon, Envelope, Gift box and Eraser. A style you picked moves to its new drawing.
+* Tweak: **A calmer popup.** It opens without a bounce, and after signup a pencil tick and a frame drawn round the code replace the confetti. On a store with more than one language, each drawing's handwritten note can be set per language.
+* Fix: **The popup shrinks into its tab.** After signup, the card now flies into the floating tab that keeps the code, instead of only fading away.
+
 = 3.3.42 (2026-10-30) =
 * New: **The phone app carries your store's name and icon.** When added to a phone, the app now gets your Site Title and Site Icon (BrikPanel's icon when there is none), and the phone panel uses that name in its steps. A phone that already has the app may keep the old name until the app is added again.
 * New: **Choose what an order notification says.** Setting: Notifications → "Notification text". Switch the total, number of items, order number, SKUs, campaign and store name on or off and set their order, with a preview from your latest order. The store name is now off by default, as the app already carries it.

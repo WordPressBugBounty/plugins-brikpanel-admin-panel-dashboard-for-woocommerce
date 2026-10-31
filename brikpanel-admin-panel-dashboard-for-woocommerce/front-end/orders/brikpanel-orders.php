@@ -449,13 +449,6 @@ function brikpanel_settings_fields() {
             'default' => 'yes',
         ],
         [
-            'name'    => __('Product type selector', 'brikpanel'),
-            'id'      => 'brikpanel_enable_product_types',
-            'type'    => 'checkbox',
-            'desc'    => __('Show a product type dropdown in the simplified editor so you can create subscription, variable subscription, bundle and other types registered by third-party plugins. When off, only simple and variable products can be created. Auto-enabled if a subscription/bookings/bundles plugin is active.', 'brikpanel'),
-            'default' => function_exists('brikpanel_has_custom_product_types') && brikpanel_has_custom_product_types() ? 'yes' : 'no',
-        ],
-        [
             'name'     => __('Visible editor sections', 'brikpanel'),
             'id'       => 'brikpanel_pe_visible_sections_field',
             'type'     => 'brikpanel_section_order',

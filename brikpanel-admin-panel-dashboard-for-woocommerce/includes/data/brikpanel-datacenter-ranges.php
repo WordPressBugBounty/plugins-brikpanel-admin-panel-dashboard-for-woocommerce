@@ -2,12 +2,12 @@
 /**
  * Cloud and hosting provider address ranges (generated, do not edit).
  *
- * Built 2026-10-30 by tools/build-datacenter-ranges.php from the providers' own
+ * Built 2026-10-31 by tools/build-datacenter-ranges.php from the providers' own
  * published lists and their announced network prefixes. Sorted and merged,
  * one "first last" address pair per range (IPv6 cut to its top 64 bits).
  * Read by brikpanel_ip_is_datacenter().
  *
- * Source prefixes: aws 4464, gcp 1135, oracle 1118, do 1236, linode 5505, vultr 494, hetzner 97, ovh 803, scaleway 30, contabo 573, alibaba 1310, tencent 1165, huawei 669, azure 1355.
+ * Source prefixes: aws 4477, gcp 1135, oracle 1118, do 1236, linode 5505, vultr 494, hetzner 97, ovh 804, scaleway 30, contabo 573, alibaba 1310, tencent 1165, huawei 669, azure 1356.
  *
  * @package BrikPanel
  */
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 return [
-	'built' => '2026-10-30',
+	'built' => '2026-10-31',
 	'v4'    => [
 		'1.12.0.0 1.12.15.255',
 		'1.12.34.0 1.12.35.255',
@@ -732,7 +732,7 @@ return [
 		'51.61.0.0 51.61.255.255',
 		'51.68.0.0 51.68.255.255',
 		'51.72.0.0 51.74.17.255',
-		'51.74.128.0 51.74.191.255',
+		'51.74.64.0 51.74.191.255',
 		'51.75.0.0 51.75.255.255',
 		'51.77.0.0 51.77.255.255',
 		'51.79.0.0 51.79.255.255',
@@ -3027,6 +3027,7 @@ return [
 		'198.17.79.0 198.17.79.255',
 		'198.22.19.0 198.22.19.255',
 		'198.27.64.0 198.27.127.255',
+		'198.29.77.0 198.29.77.255',
 		'198.41.96.0 198.41.107.255',
 		'198.47.13.0 198.47.13.255',
 		'198.49.8.0 198.49.8.255',
@@ -3193,6 +3194,7 @@ return [
 		'206.187.24.0 206.187.31.255',
 		'206.187.48.0 206.187.59.255',
 		'206.187.68.0 206.187.71.255',
+		'206.187.80.0 206.187.83.255',
 		'206.189.0.0 206.189.255.255',
 		'206.191.224.0 206.191.255.255',
 		'206.195.220.0 206.195.221.255',
@@ -3410,6 +3412,7 @@ return [
 		'2001:19f0:c800:: 2001:19f0:cbff:ffff:ffff:ffff:ffff:ffff',
 		'2001:3bc0:b1d:: 2001:3bc0:b1d:ffff:ffff:ffff:ffff:ffff',
 		'2001:3fc0:800:: 2001:3fc0:8ff:ffff:ffff:ffff:ffff:ffff',
+		'2001:3fc1:4000:: 2001:3fc1:4fff:ffff:ffff:ffff:ffff:ffff',
 		'2001:3fc1:8000:: 2001:3fc1:8fff:ffff:ffff:ffff:ffff:ffff',
 		'2001:3fc2:8000:: 2001:3fc2:8fff:ffff:ffff:ffff:ffff:ffff',
 		'2001:3fc3:800:: 2001:3fc3:8ff:ffff:ffff:ffff:ffff:ffff',
@@ -4638,7 +4641,7 @@ return [
 		'2600:f0f0:4100:: 2600:f0f0:4110:ffff:ffff:ffff:ffff:ffff',
 		'2600:f0f0:4140:: 2600:f0f0:4141:ffff:ffff:ffff:ffff:ffff',
 		'2600:f0f0:4144:: 2600:f0f0:4145:ffff:ffff:ffff:ffff:ffff',
-		'2600:f0f0:4200:: 2600:f0f0:42ff:ffff:ffff:ffff:ffff:ffff',
+		'2600:f0f0:4200:: 2600:f0f0:4327:ffff:ffff:ffff:ffff:ffff',
 		'2600:f0f0:5400:: 2600:f0f0:540a:ffff:ffff:ffff:ffff:ffff',
 		'2600:f0f0:5500:: 2600:f0f0:5500:ffff:ffff:ffff:ffff:ffff',
 		'2600:f0f0:5502:: 2600:f0f0:5503:ffff:ffff:ffff:ffff:ffff',
@@ -4948,6 +4951,7 @@ return [
 		'2606:7b40:1dd1:fc00:: 2606:7b40:1dd1:fc0f:ffff:ffff:ffff:ffff',
 		'2606:7b40:1dd2:fc00:: 2606:7b40:1dd2:fc0f:ffff:ffff:ffff:ffff',
 		'2606:7b40:1dd3:fc00:: 2606:7b40:1dd3:fc0f:ffff:ffff:ffff:ffff',
+		'2606:7b40:1dd4:5c00:: 2606:7b40:1dd4:5c0f:ffff:ffff:ffff:ffff',
 		'2606:7b40:1dd4:7400:: 2606:7b40:1dd4:740f:ffff:ffff:ffff:ffff',
 		'2606:7b40:1dd4:9000:: 2606:7b40:1dd4:900f:ffff:ffff:ffff:ffff',
 		'2606:7b40:1dd4:c000:: 2606:7b40:1dd4:c00f:ffff:ffff:ffff:ffff',

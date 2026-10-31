@@ -335,11 +335,38 @@ class Brikpanel_Cart_Abandonment {
 		return strtr( (string) $text, 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' );
 	}
 
-	/** Selected offer-badge animation style, whitelisted against known styles. */
+	/**
+	 * Selected "Offer animation", whitelisted against the known keys.
+	 *
+	 * The keys are older than the pencil drawings: 3.3.43 redrew every one, so
+	 * a saved choice keeps working. slot = handwriting (the default since
+	 * 3.3.43), assembly = ring, classic = coupon cut out by scissors,
+	 * envelope = envelope (the default before), pocket = gift box,
+	 * scratch = eraser.
+	 *
+	 * @return string
+	 */
 	public static function popup_style() {
-		$style = (string) get_option( 'brikpanel_cartab_popup_style', 'envelope' );
-		$known = [ 'pocket', 'scratch', 'slot', 'envelope', 'assembly', 'classic' ];
-		return in_array( $style, $known, true ) ? $style : 'envelope';
+		$style = (string) get_option( 'brikpanel_cartab_popup_style', 'slot' );
+		$known = [ 'slot', 'assembly', 'classic', 'envelope', 'pocket', 'scratch' ];
+		return in_array( $style, $known, true ) ? $style : 'slot';
+	}
+
+	/**
+	 * The handwritten note each drawing writes beside itself, as style => slot
+	 * of the popup's own wording. Handwriting has none: its word is the
+	 * discount badge word.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function popup_note_slots() {
+		return [
+			'assembly' => 'noteRing',
+			'classic'  => 'noteCoupon',
+			'envelope' => 'noteEnvelope',
+			'pocket'   => 'noteGift',
+			'scratch'  => 'noteEraser',
+		];
 	}
 
 	/**
@@ -560,7 +587,19 @@ class Brikpanel_Cart_Abandonment {
 			'copy'              => __( 'Copy', 'brikpanel' ),
 			'copied'            => __( 'Copied!', 'brikpanel' ),
 			'offBadge'          => __( 'OFF', 'brikpanel' ),
-			'scratchMe'         => __( 'Scratch me', 'brikpanel' ),
+			// The handwritten notes beside the offer drawings, one per drawing
+			// (popup_note_slots()). Short: the popup fits them in by shrinking
+			// and leaves out a note that still does not fit.
+			/* translators: Handwritten note beside a discount that a pencil ring has just been drawn round, in the store's signup popup. One to three words. */
+			'noteRing'          => _x( 'just for you', 'popup handwritten note', 'brikpanel' ),
+			/* translators: Handwritten note pointing at a hand-drawn discount coupon that a pair of scissors cuts out. One to three words. */
+			'noteCoupon'        => _x( 'cut & save', 'popup handwritten note', 'brikpanel' ),
+			/* translators: Handwritten note pointing at a card with the discount that rises out of an opened envelope. One to three words. */
+			'noteEnvelope'      => _x( 'for you', 'popup handwritten note', 'brikpanel' ),
+			/* translators: Handwritten note pointing at a discount tag that comes out of a gift box. One to three words. */
+			'noteGift'          => _x( 'a little gift', 'popup handwritten note', 'brikpanel' ),
+			/* translators: Handwritten note pointing at a discount that an eraser has just rubbed free of pencil shading. One or two words. */
+			'noteEraser'        => _x( 'surprise!', 'popup handwritten note', 'brikpanel' ),
 		];
 	}
 
@@ -5507,8 +5546,13 @@ class Brikpanel_Cart_Abandonment {
 			$fields['copy']         = [ 'label' => __( 'Copy button', 'brikpanel' ),        'type' => 'text', 'group' => 'system' ];
 			$fields['copied']       = [ 'label' => __( 'Copy button, once copied', 'brikpanel' ), 'type' => 'text', 'group' => 'system' ];
 			$fields['offBadge']     = [ 'label' => __( 'Discount badge word', 'brikpanel' ), 'type' => 'text', 'group' => 'system' ];
-			if ( 'scratch' === self::popup_style() ) {
-				$fields['scratchMe'] = [ 'label' => __( 'Scratch card label', 'brikpanel' ), 'type' => 'text', 'group' => 'system' ];
+			// One box per drawing, all in the form, only the chosen drawing's
+			// shown (the settings script follows the "Offer animation" select).
+			// All in the form because the save checks slots against this list:
+			// a note typed in the same save that switches the drawing must not
+			// be dropped for belonging to the old one.
+			foreach ( self::popup_note_slots() as $style => $slot ) {
+				$fields[ $slot ] = [ 'label' => __( 'Handwritten note', 'brikpanel' ), 'type' => 'text', 'group' => 'system', 'sketch' => $style, 'max' => 40 ];
 			}
 		}
 
@@ -5674,15 +5718,18 @@ class Brikpanel_Cart_Abandonment {
 							$id    = 'bp-cpl-' . sanitize_html_class( $locale . '-' . $slot );
 							$value = isset( $values[ $slot ] ) ? (string) $values[ $slot ] : '';
 							$hint  = isset( $placeholders[ $slot ] ) ? (string) $placeholders[ $slot ] : '';
+							$max   = isset( $field['max'] ) ? (int) $field['max'] : 500;
+							// A drawing's note box: only the chosen drawing's is shown.
+							$sketch = isset( $field['sketch'] ) ? (string) $field['sketch'] : '';
 							?>
-							<div class="bp-cpl-field">
+							<div class="bp-cpl-field"<?php echo '' !== $sketch ? ' data-cpl-sketch="' . esc_attr( $sketch ) . '"' . ( self::popup_style() !== $sketch ? ' hidden' : '' ) : ''; ?>>
 								<label class="bp-cpl-label" for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $field['label'] ); ?></label>
 								<?php if ( 'textarea' === $field['type'] ) : ?>
 									<textarea id="<?php echo esc_attr( $id ); ?>"
 										class="bp-cpl-input bp-cpl-textarea"
 										name="<?php echo esc_attr( $base ) . '[' . esc_attr( $slot ) . ']'; ?>"
 										rows="2"
-										maxlength="500"
+										maxlength="<?php echo esc_attr( $max ); ?>"
 										placeholder="<?php echo esc_attr( $hint ); ?>"><?php echo esc_textarea( $value ); ?></textarea>
 								<?php else : ?>
 									<input type="text"
@@ -5690,7 +5737,7 @@ class Brikpanel_Cart_Abandonment {
 										class="bp-cpl-input"
 										name="<?php echo esc_attr( $base ) . '[' . esc_attr( $slot ) . ']'; ?>"
 										value="<?php echo esc_attr( $value ); ?>"
-										maxlength="500"
+										maxlength="<?php echo esc_attr( $max ); ?>"
 										placeholder="<?php echo esc_attr( $hint ); ?>"
 										autocomplete="off">
 								<?php endif; ?>
@@ -5798,6 +5845,10 @@ class Brikpanel_Cart_Abandonment {
 					continue;
 				}
 				$value = self::sanitize_popup_text( null, [ 'id' => self::POPUP_I18N_OPTION ], $text );
+				// A handwritten note is a few words written onto a drawing.
+				if ( isset( $fields[ $slot ]['max'] ) ) {
+					$value = brikpanel_substr( $value, 0, (int) $fields[ $slot ]['max'] );
+				}
 				if ( '' === $value ) {
 					unset( $bucket[ $slot ] );
 				} else {
@@ -5987,17 +6038,18 @@ class Brikpanel_Cart_Abandonment {
 		];
 		$fields[] = [
 			'title'    => __( 'Offer animation', 'brikpanel' ),
-			'desc_tip' => __( 'Visual style of the animated discount badge at the top of the popup. Only shown while a popup discount is set.', 'brikpanel' ),
+			'desc_tip' => __( 'A pencil drawing of the discount at the top of the popup. It draws itself once when the popup opens. Only shown while a popup discount is set.', 'brikpanel' ),
 			'id'       => 'brikpanel_cartab_popup_style',
 			'type'     => 'select',
-			'default'  => 'envelope',
+			'default'  => 'slot',
+			// Keys kept from the older animations (see popup_style()).
 			'options'  => [
-				'envelope' => __( 'Sealed envelope: the seal pops and the coupon rises', 'brikpanel' ),
-				'pocket'   => __( 'Pocket card: coupon springs out of a pocket', 'brikpanel' ),
-				'scratch'  => __( 'Scratch card: a coin scratches the foil away', 'brikpanel' ),
-				'slot'     => __( 'Slot machine: reels spin and land on the discount', 'brikpanel' ),
-				'assembly' => __( 'Magnetic assembly: pieces fly in and form the coupon', 'brikpanel' ),
-				'classic'  => __( 'Classic ticket: floating coupon with a shine sweep', 'brikpanel' ),
+				'slot'     => __( 'Handwriting: the discount writes itself in pencil', 'brikpanel' ),
+				'assembly' => __( 'Ring: the discount is circled in pencil, with a note', 'brikpanel' ),
+				'classic'  => __( 'Coupon: scissors cut out a hand-drawn coupon', 'brikpanel' ),
+				'envelope' => __( 'Envelope: the seal comes off and a card rises', 'brikpanel' ),
+				'pocket'   => __( 'Gift box: the lid pops off and the discount tag comes out', 'brikpanel' ),
+				'scratch'  => __( 'Eraser: an eraser rubs the pencil shading off the discount', 'brikpanel' ),
 			],
 			'css'      => 'width:340px;',
 		];

@@ -71,6 +71,9 @@ function brikpanel_prime_keys_always() {
 		'brikpanel_cartab_enabled',
 		'brikpanel_vendors_enabled',
 		'brikpanel_cart_share_enabled',
+		// Automatic coupons' index (front-end/coupons/brikpanel-auto-coupons.php),
+		// read whenever a cart loads; most stores never write it.
+		'brikpanel_auto_coupons',
 		'brikpanel_cart_share_frontend_button',
 
 		// Google Sheets schedule configuration, read at file scope on every

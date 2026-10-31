@@ -205,7 +205,7 @@
    SEOPress is the exception and says so with .brikpanel-pe-seo-panel-native: its
    panel is a three-column layout tuned and measured at the full width in 3.2.92,
    and squeezing it back would undo that work. */
-.brikpanel-pe-widescreen .brikpanel-pe-seo-card:not(.brikpanel-pe-seo-panel-native) > *{max-width:var(--pe-prose-max)}
+.brikpanel-pe-widescreen .brikpanel-pe-seo-card:not(.brikpanel-pe-seo-panel-native) > :not(.brikpanel-pe-foldhead){max-width:var(--pe-prose-max)}
 
 /* A textarea sitting on its own in a card is prose, not a document: the
    purchase note is a couple of sentences mailed to the buyer, and at 1450px it
@@ -331,12 +331,24 @@
 .brikpanel-pe-toggle-label{display:flex;flex-direction:column;gap:.125rem;min-width:0;flex:1}
 .brikpanel-pe-toggle-help{font-size:.75rem;font-weight:400;color:var(--pe-text-secondary, #616161);line-height:1.4}
 .brikpanel-pe-switch input:disabled+.brikpanel-pe-slider{cursor:not-allowed;opacity:.6}
-/* Options other plugins add next to Virtual and Downloadable, below the
-   Digital section: a divider above them, and one between every two rows that
-   are on screen, also when a row hidden by its product-type rule sits between. */
-.brikpanel-pe-plugin-opts{padding-top:.5rem;border-top:1px solid var(--pe-border)}
-.brikpanel-pe-collapse.open+.brikpanel-pe-plugin-opts{margin-top:1rem}
-.brikpanel-pe-plugin-opts>.brikpanel-pe-toggle-row:not([hidden])~.brikpanel-pe-toggle-row:not([hidden]){margin-top:.25rem;padding-top:.75rem;border-top:1px solid var(--pe-border)}
+/* Virtual, Digital and the options other plugins add beside them, under the
+   product type: small switches on one line that wraps (the attribute rows'
+   switch size), each with its "?" ; the downloads open below them. */
+.brikpanel-pe-typeopts{margin-top:.25rem;padding-top:.875rem;border-top:1px solid var(--pe-border)}
+.brikpanel-pe-typeopts-row{display:flex;flex-wrap:wrap;align-items:center;gap:.625rem 1.75rem}
+.brikpanel-pe-typeopts-plugins{display:contents}
+.brikpanel-pe-typeopts-plugins[hidden]{display:none}
+.brikpanel-pe-typeopt{display:inline-flex;align-items:center;gap:.125rem;min-width:0}
+.brikpanel-pe-typeopt[hidden]{display:none}
+.brikpanel-pe-typeopt-switch{display:inline-flex;align-items:center;gap:.5rem;min-width:0;margin:0;font-size:.8125rem;font-weight:450;line-height:1.4;color:var(--pe-text);cursor:pointer;user-select:none}
+.brikpanel-pe-typeopt-switch input{position:absolute;width:0;height:0;opacity:0}
+.brikpanel-pe-typeopt-slider{position:relative;display:inline-block;flex:none;width:32px;height:18px;background:#ccc;border-radius:18px;transition:background .15s ease}
+.brikpanel-pe-typeopt-slider::before{content:"";position:absolute;top:3px;inset-inline-start:3px;width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s ease}
+.brikpanel-pe-typeopt-switch input:checked+.brikpanel-pe-typeopt-slider{background:var(--pe-primary)}
+.brikpanel-pe-typeopt-switch input:checked+.brikpanel-pe-typeopt-slider::before{transform:translateX(14px)}
+html[dir="rtl"] .brikpanel-pe-typeopt-switch input:checked+.brikpanel-pe-typeopt-slider::before{transform:translateX(-14px)}
+.brikpanel-pe-typeopt-switch input:focus-visible+.brikpanel-pe-typeopt-slider{outline:2px solid var(--pe-input-focus);outline-offset:2px}
+.brikpanel-pe-typeopt-switch input:disabled+.brikpanel-pe-typeopt-slider{opacity:.6;cursor:not-allowed}
 
 /* Switch */
 .brikpanel-pe-switch{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
@@ -351,6 +363,49 @@
 .brikpanel-pe-collapse>*{overflow:hidden;min-width:0}
 .brikpanel-pe-collapse.open{grid-template-rows:1fr;opacity:1;margin-top:.75rem}
 .brikpanel-pe-collapse.open>.brikpanel-pe-var-wizard{overflow:visible}
+
+/* Sale dates: behind "Schedule the sale" while both are empty (the server
+   prints .is-sale-folded, the link takes it away). */
+/* The editor's own text link ("+ Add new category"), on a button. */
+.brikpanel-pe-sale-schedule{padding:0;font-family:inherit;line-height:1.4;background:none;border:0}
+#bpe-pricing-card.is-sale-folded .brikpanel-pe-sale-dates{display:none}
+#bpe-pricing-card:not(.is-sale-folded) .brikpanel-pe-sale-schedule{display:none}
+
+/* Pairs: two section cards that share one card, the price with the cost of
+   goods (one row of three boxes) and the category with the brand (side by
+   side). Wider screens only; on a phone the pair is no box at all and the
+   two cards look as they always did. The script marks a pair .is-solo when
+   one card is left (no price card on a variable product) and .is-empty when
+   none is. */
+.brikpanel-pe-pair{display:contents}
+.brikpanel-pe-pair.is-empty{display:none}
+@media screen and (min-width:783px){
+.brikpanel-pe-pair:not(.is-empty){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem 1.5rem;align-items:start;padding:1.25rem 1.5rem;background:var(--pe-card,#fff);border:1px solid var(--pe-border,#e3e3e3);border-radius:var(--pe-radius,.75rem);box-shadow:var(--pe-shadow,0 1px 3px rgba(0,0,0,.08))}
+.brikpanel-pe-pair>.brikpanel-pe-card{min-width:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none}
+.brikpanel-pe-pair--price:not(.is-empty){grid-template-columns:minmax(0,2fr) minmax(0,1fr);column-gap:1rem}
+/* Beside the price the cost is one box filling its third. */
+.brikpanel-pe-pair--price:not(.is-solo):not(.is-stacked)>[data-bpe-section="cogs"]>.brikpanel-pe-row{grid-template-columns:minmax(0,1fr)}
+.brikpanel-pe-pair.is-solo:not(.is-empty),
+.brikpanel-pe-pair--price.is-stacked:not(.is-empty),
+.brikpanel-pe-widescreen .brikpanel-pe-col-side .brikpanel-pe-pair:not(.is-empty){grid-template-columns:minmax(0,1fr)}
+}
+
+/* Folding cards: the SEO card (Edit / Close beside its title, the search
+   preview stays) and every other plugin's box (its title line is the
+   button). Folded on wider screens only: a phone shows them as pages. */
+.brikpanel-pe-foldhead{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.75rem}
+.brikpanel-pe-foldhead>label{display:flex;align-items:center;gap:.5rem;min-width:0;margin:0;font-size:.8125rem;font-weight:600;color:var(--pe-text)}
+.brikpanel-pe-foldtoggle{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;margin:0;padding:0;font:inherit;color:var(--pe-text);text-align:start;background:none;border:0;cursor:pointer}
+.brikpanel-pe-foldtoggle:focus-visible{outline:2px solid var(--pe-input-focus);outline-offset:4px;border-radius:4px}
+.brikpanel-pe-foldchev{flex:none;color:var(--pe-text-secondary);transition:transform .2s cubic-bezier(.4,0,.2,1)}
+.brikpanel-pe-foldcard:not(.is-folded) .brikpanel-pe-foldchev{transform:rotate(180deg)}
+@media screen and (min-width:783px){
+.brikpanel-pe-foldcard.is-folded .brikpanel-pe-foldbody,
+.brikpanel-pe-metabox-card.is-folded .postbox>.inside{display:none}
+.brikpanel-pe-foldcard.is-folded .brikpanel-pe-seo-preview{margin-bottom:0}
+.brikpanel-pe-metaboxes-wrap.is-folded .postbox-header{margin:0!important}
+}
+@media (prefers-reduced-motion:reduce){.brikpanel-pe-foldchev{transition:none}}
 
 /* Buttons */
 .brikpanel-pe-btn{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;padding:.5rem 1rem;font-size:.8125rem;font-weight:550;border:none;border-radius:var(--pe-radius-sm);cursor:pointer;transition:background .15s ease,box-shadow .1s ease;white-space:nowrap;line-height:1.3}
@@ -387,7 +442,11 @@
 
 /* Images */
 .brikpanel-pe-images{display:flex;flex-direction:column;gap:.75rem}
-.brikpanel-pe-dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:2rem;border:2px dashed var(--pe-border);border-radius:var(--pe-radius);background:#fafafa;cursor:pointer;transition:border-color .15s ease,background .15s ease;min-height:120px}
+/* An empty product's images: a quieter, shorter drop area (it was the tallest
+   empty box on the page), and no room kept for a gallery that has nothing. */
+.brikpanel-pe-dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.375rem;padding:1.5rem;border:2px dashed var(--pe-border);border-radius:var(--pe-radius);background:#fafafa;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.brikpanel-pe-dropzone>svg{width:32px;height:32px}
+.brikpanel-pe-gallery:empty{display:none}
 .brikpanel-pe-dropzone:hover,.brikpanel-pe-dropzone.dragover{border-color:var(--pe-text-placeholder);background:#f5f5f5}
 .brikpanel-pe-dropzone p{font-size:.8125rem;color:var(--pe-text-secondary, #616161);margin:0}
 .brikpanel-pe-gallery{display:flex;flex-wrap:wrap;gap:.5rem}
@@ -432,8 +491,13 @@
 
 /* Categories — hierarchy */
 .brikpanel-pe-cat-wrap{border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm);overflow:hidden}
-.brikpanel-pe-cat-search{width:100%;padding:.5rem .75rem;font-size:.8125rem;border:none;border-bottom:1px solid var(--pe-border);outline:none;background:#fafafa;box-sizing:border-box}
-.brikpanel-pe-cat-search:focus{background:var(--pe-card)}
+/* The search line on top of the category and brand lists: part of the list's
+   box, divided from it by one hairline, with a magnifier. The selector is this
+   long because WordPress 7's own input rule (grey 1px frame, 40px tall) used
+   to win and drew a second box inside the list's box. */
+.brikpanel-pe .brikpanel-pe-cat-wrap input.brikpanel-pe-cat-search{display:block;box-sizing:border-box;width:100%;height:auto;min-height:0;margin:0;padding:.5625rem .75rem;padding-inline-start:2.125rem;font-size:.8125rem;line-height:1.5;color:var(--pe-text);background:#fafafa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat left .75rem center/14px 14px;border:0;border-bottom:1px solid var(--pe-border);border-radius:0;box-shadow:none;outline:none}
+html[dir="rtl"] .brikpanel-pe .brikpanel-pe-cat-wrap input.brikpanel-pe-cat-search{background-position:right .75rem center}
+.brikpanel-pe .brikpanel-pe-cat-wrap input.brikpanel-pe-cat-search:focus{background-color:var(--pe-card);box-shadow:none}
 .brikpanel-pe-cat-list{max-height:200px;overflow-y:auto;padding:.5rem}
 .brikpanel-pe-cat-tree{list-style:none;margin:0;padding:0}
 /* Shown instead of the tree when the taxonomy has no terms at all, so an
@@ -612,7 +676,15 @@
 .brikpanel-pe-attr-count[hidden]{display:none}
 
 /* Add-attribute controls: existing-attribute select + new-name input + quick add */
-.brikpanel-pe-attr-add{margin-bottom:1rem}
+.brikpanel-pe-attr-add{margin-top:.75rem}
+/* "Add attribute" under the list; the controls above open behind it on wider
+   screens (#bpe-var-attr-controls.is-adding, the editor script), as a sheet on
+   a phone, which brings its own button. */
+.brikpanel-pe-attr-open{margin-top:.75rem}
+@media screen and (min-width:783px){
+#bpe-var-attr-controls:not(.is-adding)>.brikpanel-pe-attr-add{display:none}
+#bpe-var-attr-controls.is-adding>.brikpanel-pe-attr-open{display:none}
+}
 /* Searchable attribute picker — custom popover dropdown that replaces the
    plain native <select>. Trigger looks like a field; panel holds a search box
    and a scrollable, hoverable option list. */
@@ -772,8 +844,28 @@
 .brikpanel-pe-select{width:100%;padding:.625rem .75rem;font-size:.875rem;color:var(--pe-text);background:var(--pe-card);border:1px solid var(--pe-input-border);border-radius:var(--pe-radius-sm);outline:none;transition:border-color .15s ease,box-shadow .15s ease;box-sizing:border-box;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%23616161' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
 .brikpanel-pe-select:focus{border-color:var(--pe-input-focus);box-shadow:0 0 0 1px var(--pe-input-focus)}
 
-/* Product type field — sits right under the name inside the first card */
+/* Product type — right under the name inside the first card: one row of
+   buttons (the core types, and "More" for the ones other plugins add), the
+   chosen one white on the grey track like the pill bars, and a line under it
+   saying what the chosen type is for. The hidden select #bpe-product-type
+   holds the value. Two columns on a phone; an odd "More" takes a full row. */
 .brikpanel-pe-type-field{margin-top:.75rem}
+.brikpanel-pe-type-label{display:block;font-size:.8125rem;font-weight:600;color:var(--pe-text);margin-bottom:.375rem}
+.brikpanel-pe-type-switch{display:grid;grid-template-columns:repeat(var(--bpe-type-n,4),minmax(0,1fr));gap:4px;padding:4px;background:var(--pe-bg);border-radius:10px}
+.brikpanel-pe-type-switch .brikpanel-pe-type-option{position:relative;display:block;min-width:0;margin:0;font-size:.8125rem;font-weight:550;color:var(--pe-text-secondary);cursor:pointer}
+.brikpanel-pe-type-switch .brikpanel-pe-type-option input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.brikpanel-pe-type-face{display:flex;align-items:center;justify-content:center;gap:.5rem;height:2.25rem;padding:0 .5rem;border-radius:7px;transition:background .12s ease,color .12s ease,box-shadow .12s ease}
+.brikpanel-pe-type-face>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brikpanel-pe-type-icon{flex:none}
+.brikpanel-pe-type-option:hover .brikpanel-pe-type-face{color:var(--pe-text)}
+.brikpanel-pe-type-option input:checked+.brikpanel-pe-type-face,.brikpanel-pe-type-more.is-on .brikpanel-pe-type-face{background:var(--pe-card);color:var(--pe-text);box-shadow:0 1px 2px rgba(0,0,0,.08),0 0 0 1px var(--pe-border)}
+.brikpanel-pe-type-option input:focus-visible+.brikpanel-pe-type-face,.brikpanel-pe-type-more select:focus-visible+.brikpanel-pe-type-face{box-shadow:0 0 0 2px var(--pe-input-focus)}
+.brikpanel-pe-type-switch .brikpanel-pe-type-more select{position:absolute;inset:0;width:100%;height:100%;max-width:none;min-height:0;margin:0;padding:0;opacity:0;cursor:pointer}
+.brikpanel-pe-type-hint{margin:.5rem 0 0}
+@media (max-width:600px){
+.brikpanel-pe-type-switch{grid-template-columns:repeat(2,minmax(0,1fr))}
+.brikpanel-pe-type-switch .brikpanel-pe-type-more:nth-child(odd){grid-column:1/-1}
+}
 
 /* ============================================================
    Third-party metabox + WC Product Data — full design override
@@ -795,6 +887,17 @@
 .brikpanel-pe-wc-fields-content input[type="text"],.brikpanel-pe-wc-fields-content input[type="number"],.brikpanel-pe-wc-fields-content input[type="url"],.brikpanel-pe-wc-fields-content input[type="email"],.brikpanel-pe-wc-fields-content input[type="search"],.brikpanel-pe-wc-fields-content textarea,.brikpanel-pe-wc-fields-content select{width:100%!important;max-width:100%!important;padding:0 .75rem!important;font-size:.875rem!important;color:var(--pe-text)!important;background-color:var(--pe-card)!important;border:1px solid var(--pe-input-border)!important;border-radius:var(--pe-radius-sm)!important;outline:none!important;box-sizing:border-box!important;transition:border-color .15s ease,box-shadow .15s ease!important;height:var(--brikpanel-control-h,2.5rem)!important;min-height:var(--brikpanel-control-h,2.5rem)!important;line-height:1.5!important;box-shadow:none!important;margin:0!important}
 /* Fields other plugins add: one line tall like the editor's own boxes (40px, they were 43), a textarea as tall as its rows; a select keeps an arrow (the `background` shorthand here used to erase it, field test D5). */
 .brikpanel-pe-metabox-content textarea,.brikpanel-pe-wc-fields-content textarea,.brikpanel-pe-metabox-content select[multiple],.brikpanel-pe-wc-fields-content select[multiple]{height:auto!important;padding:.625rem .75rem!important}
+/* A price or a code does not need the card's whole width: the short fields of
+   the WooCommerce tabs other plugins add ("Additional product data", e.g. the
+   multi-currency prices) keep the measure of the editor's own two-up fields,
+   as the widescreen rules above do. URLs and textareas keep the full width. */
+.brikpanel-pe-wc-fields .brikpanel-pe-wc-fields-content input[type="text"],
+.brikpanel-pe-wc-fields .brikpanel-pe-wc-fields-content input[type="number"],
+.brikpanel-pe-wc-fields .brikpanel-pe-wc-fields-content input[type="email"],
+.brikpanel-pe-wc-fields .brikpanel-pe-wc-fields-content input[type="search"],
+.brikpanel-pe-wc-fields .brikpanel-pe-wc-fields-content input[type="tel"],
+.brikpanel-pe-wc-fields .brikpanel-pe-wc-fields-content input[type="date"],
+.brikpanel-pe-wc-fields .brikpanel-pe-wc-fields-content select:not([multiple]){max-width:var(--pe-field-max)!important}
 .brikpanel-pe-metabox-content select:not([multiple]),.brikpanel-pe-wc-fields-content select:not([multiple]){-webkit-appearance:none!important;appearance:none!important;padding-inline-end:2rem!important;background-image:var(--brikpanel-control-arrow,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23616161' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"))!important;background-repeat:no-repeat!important;background-position:right .75rem center!important;background-size:12px 12px!important;cursor:pointer}
 body.rtl .brikpanel-pe-metabox-content select:not([multiple]),body.rtl .brikpanel-pe-wc-fields-content select:not([multiple]){background-position:left .75rem center!important}
 .brikpanel-pe-metabox-content input:focus,.brikpanel-pe-metabox-content textarea:focus,.brikpanel-pe-metabox-content select:focus,
@@ -1120,7 +1223,6 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
    native metabox (Yoast / Rank Math / AIOSEO / SEOPress) inline. Share the same
    `.brikpanel-pe-metaboxes-wrap` reset so the plugin's markup lays out inside
    the BrikPanel card frame instead of its own postbox chrome. */
-.brikpanel-pe-seo-card--plugin > label{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
 .brikpanel-pe-seo-plugin-badge{display:inline-flex;align-items:center;padding:.125rem .5rem;border-radius:999px;background:#f1f1f1;color:var(--pe-text-secondary);font-size:.6875rem;font-weight:550;text-transform:none;letter-spacing:normal}
 .brikpanel-pe-seo-plugin-inner{margin-top:.75rem}
 .brikpanel-pe-seo-plugin-inner .brikpanel-pe-seo-plugin-box{margin:0!important}
@@ -1673,6 +1775,11 @@ tr.brikpanel-pe-var-row-placeholder td{height:44px;background:#fafafa;border:1px
 .brikpanel-pe-linked-results{position:absolute;left:0;right:0;z-index:20;margin-top:.25rem;max-height:240px;overflow-y:auto;background:var(--pe-card);border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm);box-shadow:0 4px 12px rgba(0,0,0,.1)}
 .brikpanel-pe-linked-option{display:block;width:100%;text-align:left;padding:.5rem .75rem;border:0;background:transparent;color:var(--pe-text);font-size:.8125rem;cursor:pointer}
 .brikpanel-pe-linked-option:hover{background:#f7f7f7}
+/* "Products in this group": the chips are dragged into the order the shop
+   page lists them in (jQuery UI sortable on a pointer device). */
+.brikpanel-pe-group-picker .brikpanel-pe-linked-chip{cursor:grab}
+.brikpanel-pe-group-picker .brikpanel-pe-linked-chip.ui-sortable-helper{cursor:grabbing;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.brikpanel-pe-linked-chip-placeholder{display:inline-flex;min-width:64px;height:28px;border:1px dashed var(--pe-input-border);border-radius:1rem;background:var(--pe-bg);visibility:visible!important}
 
 /* Inline edit input in product list */
 .brikpanel-pe-inline-input{width:70px;padding:2px 6px;font-size:.8125rem;border:1px solid var(--pe-input-focus);border-radius:4px;outline:none;box-shadow:0 0 0 1px var(--pe-input-focus)}
@@ -1794,7 +1901,7 @@ body.brikpanel-product-editor-page{overflow-x:clip}
 .brikpanel-pe-var-defaults .brikpanel-pe-var-defaults-toggle{width:100%;justify-content:center}
 .brikpanel-pe-var-defaults-pop{left:0;right:0;min-width:0;max-width:none}
 .brikpanel-pe-card{padding:1rem}
-.brikpanel-pe-field input[type="text"],.brikpanel-pe-field input[type="number"],.brikpanel-pe-field textarea{font-size:1rem;padding:.75rem}
+.brikpanel-pe-field input[type="text"],.brikpanel-pe-field input[type="number"],.brikpanel-pe-field input[type="url"],.brikpanel-pe-field textarea{font-size:1rem;padding:.75rem}
 .brikpanel-pe-btn{padding:.625rem 1rem;font-size:.875rem}
 .brikpanel-pe-inline-form{flex-wrap:wrap}
 /* Rich-text toolbar: let the formatting buttons wrap onto a second row instead
@@ -2157,10 +2264,15 @@ html.bp-kbd-open .brikpanel-pe-ph-bar{transform:translateY(110%);visibility:hidd
 .brikpanel-pe-ph-switchrow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding-top:8px;border-top:1px solid #e3e3e3;cursor:pointer}
 .brikpanel-pe-ph-switchrow-text{color:#303030;font-size:16px;font-weight:600}
 
-/* ---- The price card: the sale dates wait behind "Schedule the sale" ---- */
-#bpe-pricing-card.is-ph-sale-folded .brikpanel-pe-ph-saledates,
-#bpe-pricing-card.is-ph-sale-folded .brikpanel-pe-ph-salehelp{display:none}
-.brikpanel-pe-ph-salelink{min-height:44px;margin-top:4px;padding-inline:0}
+/* ---- Touch sizes for the editor's own small controls -------------------- */
+.brikpanel-pe-sale-schedule{min-height:44px;margin-top:4px}
+.brikpanel-pe-typeopt-switch{min-height:44px}
+/* Nothing folds on a phone: these cards are pages here, and "Add attribute"
+   is the phone's own button. */
+.brikpanel-pe-foldbtn,
+.brikpanel-pe-foldchev,
+.brikpanel-pe-attr-open{display:none}
+.brikpanel-pe-foldtoggle{cursor:default}
 
 /* ---- Images: tiles, the featured one twice as large, Add at the end ----- */
 .brikpanel-pe-images .brikpanel-pe-dropzone{display:none}
