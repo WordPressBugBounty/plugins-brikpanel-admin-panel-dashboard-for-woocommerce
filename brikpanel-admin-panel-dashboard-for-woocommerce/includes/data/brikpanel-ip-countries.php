@@ -2,8 +2,8 @@
 /**
  * Visitor country list (generated, do not edit).
  *
- * Built 2026-10-25 by tools/build-ip-countries.php from DB-IP's free "IP to
- * Country Lite" database, 2026-10 edition (CC BY 4.0, https://db-ip.com).
+ * Built 2026-11-03 by tools/build-ip-countries.php from DB-IP's free "IP to
+ * Country Lite" database, 2026-11 edition (CC BY 4.0, https://db-ip.com).
  * The two sorted text files beside this one hold the list:
  *
  *   brikpanel-ip-countries-v4.txt  one line per IPv4 range: its first address
@@ -25,10 +25,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 return [
-	'built'   => '2026-10-25',
-	'source'  => 'DB-IP IP to Country Lite 2026-10',
+	'built'   => '2026-11-03',
+	'source'  => 'DB-IP IP to Country Lite 2026-11',
 	'license' => 'CC BY 4.0',
-	'sha256'  => '097426b8ddae89157d444a59ac1847e873f7943c32d52becc4371c8b0273af80',
-	'v4'      => 362122,
-	'v6'      => 92615,
+	'sha256'  => 'e5c8459d638a272ece7f4d7cfa49dce18d91b4f403f6940ba9249bf0db3781fd',
+	'v4'      => 362998,
+	'v6'      => 91219,
 ];

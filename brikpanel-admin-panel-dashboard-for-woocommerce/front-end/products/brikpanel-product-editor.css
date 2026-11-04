@@ -98,6 +98,8 @@
    `--pe-*` tokens live on `.brikpanel-pe` and an unresolved var() would render
    the note transparent. */
 .brikpanel-pe-typenote{display:flex;align-items:flex-start;gap:.5rem;padding:.75rem 1rem;background:var(--pe-card,#fff);border:1px solid var(--pe-border,#e3e3e3);border-radius:var(--pe-radius-sm,.5rem);box-shadow:var(--pe-shadow,0 1px 3px rgba(0,0,0,.08));font-size:.8125rem;color:var(--pe-text-secondary,#616161)}
+/* The editor script shows the note when a bundle type is picked on the page. */
+.brikpanel-pe-typenote[hidden]{display:none}
 .brikpanel-pe-typenote svg{flex:0 0 auto;margin-top:.125rem;color:var(--pe-text-placeholder,#8a8a8a)}
 .brikpanel-pe-typenote a{color:var(--pe-text,#303030);text-decoration:underline}
 .brikpanel-pe-typenote a:hover{color:var(--pe-primary-hover,#1a1a1a)}

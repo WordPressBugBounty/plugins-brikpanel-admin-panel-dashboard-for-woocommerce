@@ -52,12 +52,13 @@ class Brikpanel_Product_Editor {
 
     /**
      * What the last capture_wc_product_data_fields() call put in the card:
-     * whether any section is on screen, and the ids of every third-party panel
-     * rendered (shown or kept hidden).
+     * whether any section is on screen, the ids of every third-party panel
+     * rendered (shown or kept hidden), and the picked ones that arrived with no
+     * field to post (a script on WooCommerce's screen fills them).
      *
-     * @var array{any_visible: bool, panels: string[]}
+     * @var array{any_visible: bool, panels: string[], empty_panels: string[]}
      */
-    private static $capture_info = ['any_visible' => false, 'panels' => []];
+    private static $capture_info = ['any_visible' => false, 'panels' => [], 'empty_panels' => []];
 
     /**
      * User-facing, non-fatal warnings collected during a single save request
@@ -1729,15 +1730,23 @@ class Brikpanel_Product_Editor {
             // left completely untouched on save — see unrendered_type_panels() —
             // so tell the merchant where those settings live instead of leaving
             // them wondering why the section is missing.
+            //
+            // The other plugins' types with a settings box of their own, for the
+            // price box below and for the editor script, which follows a type
+            // change made on the page (a new product made a bundle). After the
+            // field capture: it knows which picked boxes came empty.
+            $bpe_type_guard        = self::type_guard_lists($product, array_keys($product_type_options));
             $bpe_unrendered_panels = $is_edit ? self::unrendered_type_panels($product) : [];
             $bpe_thrower_paths     = $is_edit ? self::unrepresented_owner_paths($product) : [];
-            $bpe_unrepresented     = !empty($bpe_unrendered_panels) || !empty($bpe_thrower_paths);
+            $bpe_unrepresented     = !empty($bpe_unrendered_panels) || !empty($bpe_thrower_paths)
+                || in_array($product_type_current, $bpe_type_guard['unrepresented'], true);
             // Deliberately NOT get_edit_post_link(): our own modify_edit_link()
             // filter rewrites every product edit link to this very page, so the
             // note would link the merchant back to where they already are. The
             // `brikpanel=0` flag is what makes the native URL survive
-            // handle_redirects() for this one request.
-            $bpe_native_edit_url   = $is_edit ? self::native_edit_url($product_id) : '';
+            // handle_redirects() for this one request. A new product has its
+            // draft already, so the note can point there too.
+            $bpe_native_edit_url   = $product_id ? self::native_edit_url($product_id) : '';
 
             // Hidden attribute rows for Blocksy's swatches editor. Ahead of the
             // card so they are parsed before Blocksy looks for them, and outside
@@ -1778,8 +1787,11 @@ class Brikpanel_Product_Editor {
                 brikpanel_header_end();
                 ?>
 
-                <?php if ($bpe_unrepresented) : ?>
-                <div class="brikpanel-pe-typenote">
+                <?php
+                // On the page whenever some type would need it: the script shows it
+                // when the merchant picks such a type and hides it again.
+                if ($bpe_unrepresented || $bpe_type_guard['unrepresented']) : ?>
+                <div class="brikpanel-pe-typenote" id="bpe-typenote"<?php echo $bpe_unrepresented ? ' data-shown-for="' . esc_attr($product_type_current) . '"' : ' hidden'; ?>>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                     <span>
                         <?php esc_html_e('Some settings for this product type can only be edited in the WooCommerce product editor. They are left untouched when you save here.', 'brikpanel'); ?>
@@ -2384,7 +2396,13 @@ class Brikpanel_Product_Editor {
                             <label for="bpe-price"><?php esc_html_e('Price', 'brikpanel'); ?></label>
                             <div class="brikpanel-pe-input-group">
                                 <span class="brikpanel-pe-input-prefix"><?php echo esc_html($currency); ?></span>
-                                <input type="text" id="bpe-price" value="<?php echo esc_attr($reg_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00"<?php echo $require_price ? ' data-required="1"' : ''; ?> data-price="1">
+                                <?php
+                                // A bundle's price is its plugin's business (worked out
+                                // from its contents, or a fixed price set on purpose):
+                                // never required here. The script follows type changes.
+                                $bpe_price_required = $require_price && !in_array($product_type_current, $bpe_type_guard['own_panel'], true);
+                                ?>
+                                <input type="text" id="bpe-price" value="<?php echo esc_attr($reg_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00"<?php echo $bpe_price_required ? ' data-required="1"' : ''; ?> data-price="1">
                             </div>
                             <div class="brikpanel-pe-field-error"></div>
                         </div>
@@ -3294,7 +3312,16 @@ class Brikpanel_Product_Editor {
         </div><!-- .brikpanel-pe -->
         </div><!-- .wrap -->
 
-        <script>var brikpanelProductData = <?php echo $js_data; ?>;</script>
+        <?php
+        // Worked out after the field capture (see $bpe_type_guard), so added to
+        // the data here rather than where it is first built.
+        $bpe_type_guard_js = wp_json_encode([
+            'own_panel'     => isset($bpe_type_guard['own_panel']) ? array_values($bpe_type_guard['own_panel']) : [],
+            'unrepresented' => isset($bpe_type_guard['unrepresented']) ? array_values($bpe_type_guard['unrepresented']) : [],
+            'require_price' => $require_price,
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        ?>
+        <script>var brikpanelProductData = <?php echo $js_data; ?>;brikpanelProductData.type_guard = <?php echo $bpe_type_guard_js; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON with the HEX flags, as $js_data. ?>;</script>
         <?php
     }
 
@@ -5439,19 +5466,7 @@ class Brikpanel_Product_Editor {
         if (!$product || !method_exists($product, 'get_type')) return [];
 
         $type = (string) $product->get_type();
-        if ($type === '') return [];
-
-        // Types this editor has a first-class form for are never "unrepresented",
-        // whatever panels plugins gate to them. Variation Gallery and Variation
-        // Swatches both register `show_if_variable` panels, for instance, and
-        // treating those as a gap would silence the save hook on every variable
-        // product in the store — the exact regression this guard exists to avoid
-        // causing. Their per-variation data is saved on the variation hooks
-        // BrikPanel already dispatches.
-        $native_types = ['simple', 'variable', 'grouped', 'external'];
-        $is_native    = in_array($type, $native_types, true)
-            || (function_exists('brikpanel_is_variable_product_type') && brikpanel_is_variable_product_type($type));
-        if ($is_native) return [];
+        if ($type === '' || self::is_native_editor_type($type)) return [];
 
         // Same request, same answer: the render path and the save path both ask,
         // and each answer costs one `woocommerce_product_data_tabs` fire.
@@ -5460,24 +5475,14 @@ class Brikpanel_Product_Editor {
 
         $unrendered = [];
         try {
-            $tab_meta = self::guard_tab_meta();
-            $gate     = 'show_if_' . $type;
-
-            $candidates = [];
-            foreach ((array) $tab_meta['classes'] as $target => $tab_classes) {
-                if (in_array($gate, (array) $tab_classes, true)) {
-                    $candidates[] = (string) $target;
-                }
-            }
+            $candidates = self::type_panel_candidates($type);
 
             // Resolve the merchant's section list only when a gated panel exists.
             // augment_sections_auto() can enumerate every panel in the store, and
             // no product type should pay for that just to be told it has nothing
             // gated to it.
             if ($candidates) {
-                $selected = (array) get_option('brikpanel_pe_wc_tabs_selected', []);
-                $selected = self::augment_sections_for_multicurrency($selected, 'product');
-                $selected = self::augment_sections_auto($selected, 'product');
+                $selected = self::picked_sections();
 
                 foreach ($candidates as $target) {
                     // Rendered by the editor → its fields are in the POST, so the
@@ -5510,6 +5515,290 @@ class Brikpanel_Product_Editor {
     }
 
     /**
+     * Types this editor has a first-class form for. They are never
+     * "unrepresented", whatever panels plugins gate to them: Variation Gallery
+     * and Variation Swatches both register `show_if_variable` panels, and
+     * treating those as a gap would silence the save hooks on every variable
+     * product in the store. Their per-variation data is saved on the variation
+     * hooks BrikPanel already dispatches.
+     *
+     * @param string $type Product type slug.
+     * @return bool
+     */
+    private static function is_native_editor_type($type) {
+        return in_array($type, ['simple', 'variable', 'grouped', 'external'], true)
+            || (function_exists('brikpanel_is_variable_product_type') && brikpanel_is_variable_product_type($type));
+    }
+
+    /**
+     * The panels another plugin gates to one product type: its own settings
+     * box for that type (`show_if_{type}`).
+     *
+     * WooCommerce's own tabs are left out. A plugin may add its type's class to
+     * one of them (Product Bundles: `$tabs['inventory']['class'][] =
+     * 'show_if_bundle'`), and enumerating the tabs filter on an empty array turns
+     * that into a bare entry whose target is the tab's key. That is no panel of
+     * the plugin's own, it can never be picked or posted, and counting it would
+     * mark the type unrepresentable for good: a subscription plugin doing the
+     * same would be held off every save of its products.
+     *
+     * @param string $type Product type slug.
+     * @return string[] Panel target ids, empty for the editor's own types.
+     */
+    private static function type_panel_candidates($type) {
+        $type = (string) $type;
+        if ($type === '' || self::is_native_editor_type($type)) return [];
+
+        static $cache = [];
+        if (isset($cache[$type])) return $cache[$type];
+
+        $core = array_merge(
+            self::core_panel_targets(),
+            ['general', 'inventory', 'shipping', 'linked_product', 'attribute', 'variations', 'advanced']
+        );
+        $gate       = 'show_if_' . $type;
+        $candidates = [];
+        try {
+            foreach ((array) self::guard_tab_meta()['classes'] as $target => $tab_classes) {
+                $target = (string) $target;
+                if ($target === '' || in_array($target, $core, true)) continue;
+                if (in_array($gate, (array) $tab_classes, true)) $candidates[] = $target;
+            }
+        } catch (\Throwable $e) {
+            $candidates = [];
+        }
+        $cache[$type] = $candidates;
+        return $candidates;
+    }
+
+    /**
+     * The product-data sections on the editor's form: the ones picked in
+     * settings plus the ones surfaced automatically. Resolved once a request;
+     * augment_sections_auto() can enumerate every panel in the store.
+     *
+     * @return string[] Section keys (`tab:{target}`, `core:{label}`…).
+     */
+    private static function picked_sections() {
+        static $picked = null;
+        if ($picked === null) {
+            $picked = (array) get_option('brikpanel_pe_wc_tabs_selected', []);
+            $picked = self::augment_sections_for_multicurrency($picked, 'product');
+            $picked = self::augment_sections_auto($picked, 'product');
+        }
+        return $picked;
+    }
+
+    /**
+     * Panels the submitted form really carried fields in, as the editor script
+     * reports them (`bp_filled_panels`). A picked panel can still reach the page
+     * empty: Easy Product Bundles prints an empty div that its own script fills,
+     * and that script only loads on WooCommerce's screen. Such a panel posts
+     * nothing, so its plugin must be treated as if the panel were not there.
+     *
+     * Read inside ajax_save_product(), after its nonce and capability check.
+     *
+     * @return string[]|null Panel ids, null when the request did not say (the
+     *                       answer from the picked sections alone then stands).
+     */
+    private static function posted_filled_panels() {
+        if (!isset($_POST['bp_filled_panels']) || !is_string($_POST['bp_filled_panels'])) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- see the docblock.
+            return null;
+        }
+        $ids = json_decode(wp_unslash($_POST['bp_filled_panels']), true, 2); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- ids are compared, never output.
+        if (!is_array($ids)) return null;
+        $out = [];
+        foreach (array_slice($ids, 0, 300) as $id) {
+            if (is_string($id) && $id !== '' && strlen($id) <= 200) $out[] = $id;
+        }
+        return $out;
+    }
+
+    /**
+     * Run $fn in the product context WooCommerce gives its product-data hooks
+     * ($post, $thepostid, $product_object, the product screen), the way the
+     * render path and the save dispatch below do. Restored afterwards.
+     *
+     * @param WC_Product $product
+     * @param callable   $fn
+     * @return mixed What $fn returns.
+     */
+    private static function in_product_context($product, callable $fn) {
+        global $post, $thepostid, $product_object, $current_screen, $pagenow;
+        $orig = [
+            'post' => $post, 'tp' => $thepostid ?? null, 'po' => $product_object ?? null,
+            'cs' => $current_screen, 'pn' => $pagenow ?? null,
+        ];
+        $post           = get_post($product->get_id());
+        $thepostid      = $product->get_id();
+        $product_object = $product;
+        if (function_exists('set_current_screen')) set_current_screen('product');
+        $pagenow = 'post.php';
+        try {
+            return $fn();
+        } finally {
+            $post           = $orig['post'];
+            $thepostid      = $orig['tp'];
+            $product_object = $orig['po'];
+            $current_screen = $orig['cs'];
+            $pagenow        = $orig['pn'];
+        }
+    }
+
+    /**
+     * Which plugins this save keeps off WooCommerce's product save hooks.
+     *
+     * `panels`: this type's own panels the submitted form did not carry, either
+     * not picked (unrendered_type_panels()) or picked but posted empty
+     * (posted_filled_panels()). Their plugins read a missing field as "cleared",
+     * on `woocommerce_process_product_meta_{type}` (Easy Product Bundles, WPC
+     * Product Bundles: one save emptied the bundle) as much as on the object
+     * hook (Product Bundles, Composite). `owners`: the plugins those panels
+     * belong to. `throwers`: unrepresented_owner_paths(), kept for the object
+     * hook only, as before.
+     *
+     * @param WC_Product|null $product Product being saved, with its new type.
+     * @return array{panels: string[], owners: string[], throwers: string[]}
+     */
+    private static function save_hook_guard($product) {
+        $guard = ['panels' => [], 'owners' => [], 'throwers' => []];
+        if (!$product || !method_exists($product, 'get_type') || !$product->get_id()) return $guard;
+        if (self::is_native_editor_type((string) $product->get_type())) return $guard;
+
+        try {
+            return self::in_product_context($product, static function () use ($product, $guard) {
+                $type   = (string) $product->get_type();
+                $panels = self::unrendered_type_panels($product);
+                $filled = self::posted_filled_panels();
+                if ($filled !== null) {
+                    $picked = self::picked_sections();
+                    foreach (self::type_panel_candidates($type) as $target) {
+                        if (in_array($target, $panels, true) || in_array($target, $filled, true)) continue;
+                        if (in_array('tab:' . $target, $picked, true)) $panels[] = $target;
+                    }
+                }
+                $guard['panels']   = array_values(array_unique($panels));
+                $guard['owners']   = $guard['panels'] ? self::tab_owner_paths($guard['panels']) : [];
+                $guard['throwers'] = self::unrepresented_owner_paths($product);
+                return $guard;
+            });
+        } catch (\Throwable $e) {
+            // Never let the guard break a save: fall back to firing as before.
+            return $guard;
+        }
+    }
+
+    /**
+     * The other plugins' product types, as the editor script needs them to
+     * follow a type change made on the page (a new product turned into a
+     * bundle): `own_panel` have a settings box of their own, so their price is
+     * the plugin's business and not required here; `unrepresented` have that box
+     * missing or empty on this form, so the "settings live in WooCommerce" note
+     * shows for them. Called on the render path after the field capture.
+     *
+     * @param WC_Product|null $product   Product being edited.
+     * @param string[]        $types     Registered type slugs.
+     * @return array{own_panel: string[], unrepresented: string[]}
+     */
+    private static function type_guard_lists($product, array $types) {
+        $lists = ['own_panel' => [], 'unrepresented' => []];
+        $types = array_values(array_filter(array_map('strval', $types), static function ($t) {
+            return $t !== '' && !self::is_native_editor_type($t);
+        }));
+        if (!$types || !($product instanceof WC_Product) || !$product->get_id()) return $lists;
+
+        try {
+            return self::in_product_context($product, static function () use ($types, $lists) {
+                $empty = isset(self::$capture_info['empty_panels']) ? (array) self::$capture_info['empty_panels'] : [];
+                $picked = null;
+                foreach ($types as $type) {
+                    $candidates = self::type_panel_candidates($type);
+                    if (!$candidates) continue;
+                    $lists['own_panel'][] = $type;
+                    if ($picked === null) $picked = self::picked_sections();
+                    foreach ($candidates as $target) {
+                        if (!in_array('tab:' . $target, $picked, true) || in_array($target, $empty, true)) {
+                            $lists['unrepresented'][] = $type;
+                            break;
+                        }
+                    }
+                }
+                return $lists;
+            });
+        } catch (\Throwable $e) {
+            return $lists;
+        }
+    }
+
+    /**
+     * Whether a captured panel holds a field the merchant could fill: a named
+     * input, select or textarea that is not hidden. A nonce or a hidden value
+     * alone does not count, the same rule as the editor script's
+     * filledThirdPartyPanels().
+     *
+     * @param \DOMElement $node Panel root.
+     * @return bool
+     */
+    private static function panel_has_named_field(\DOMElement $node) {
+        foreach (['input', 'select', 'textarea'] as $tag) {
+            foreach ($node->getElementsByTagName($tag) as $field) {
+                if (!($field instanceof \DOMElement) || trim($field->getAttribute('name')) === '') continue;
+                if ($tag === 'input' && strtolower($field->getAttribute('type')) === 'hidden') continue;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Take the callbacks declared by $paths off $hooks; put them back with
+     * reattach_callbacks(). Detached in place through remove_action(), see
+     * do_action_excluding_paths() for why a rebuilt WP_Hook is not used.
+     *
+     * @param string[] $hooks
+     * @param string[] $paths Plugin dirs/files whose callbacks come off.
+     * @return array<int, array{hook: string, function: mixed, priority: int, accepted_args: int}>
+     */
+    private static function detach_callbacks(array $hooks, array $paths) {
+        global $wp_filter;
+        $detached = [];
+        if (!$paths) return $detached;
+        foreach ($hooks as $hook) {
+            if (empty($wp_filter[$hook]) || !is_object($wp_filter[$hook])
+                || !isset($wp_filter[$hook]->callbacks) || !is_array($wp_filter[$hook]->callbacks)) {
+                continue;
+            }
+            foreach ($wp_filter[$hook]->callbacks as $priority => $entries) {
+                if (!is_array($entries)) continue;
+                foreach ($entries as $entry) {
+                    if (!isset($entry['function'])) continue;
+                    $owner = self::callback_owner_path($entry['function']);
+                    if ($owner === '' || !in_array($owner, $paths, true)) continue;
+                    $detached[] = [
+                        'hook'          => $hook,
+                        'function'      => $entry['function'],
+                        'priority'      => (int) $priority,
+                        'accepted_args' => isset($entry['accepted_args']) ? (int) $entry['accepted_args'] : 1,
+                    ];
+                }
+            }
+        }
+        foreach ($detached as $cb) {
+            remove_action($cb['hook'], $cb['function'], $cb['priority']);
+        }
+        return $detached;
+    }
+
+    /**
+     * @param array<int, array{hook: string, function: mixed, priority: int, accepted_args: int}> $detached From detach_callbacks().
+     * @return void
+     */
+    private static function reattach_callbacks(array $detached) {
+        foreach ($detached as $cb) {
+            add_action($cb['hook'], $cb['function'], $cb['priority'], $cb['accepted_args']);
+        }
+    }
+
+    /**
      * Plugins that cannot describe their own product-data tab in BrikPanel's
      * context, and so must be kept off this product's save hook.
      *
@@ -5539,12 +5828,7 @@ class Brikpanel_Product_Editor {
         if (!$product || !method_exists($product, 'get_type')) return [];
 
         $type = (string) $product->get_type();
-        if ($type === '') return [];
-
-        $native_types = ['simple', 'variable', 'grouped', 'external'];
-        $is_native    = in_array($type, $native_types, true)
-            || (function_exists('brikpanel_is_variable_product_type') && brikpanel_is_variable_product_type($type));
-        if ($is_native) return [];
+        if ($type === '' || self::is_native_editor_type($type)) return [];
 
         static $cache = [];
         if (isset($cache[$type])) return $cache[$type];
@@ -5668,44 +5952,12 @@ class Brikpanel_Product_Editor {
      * @return void
      */
     private static function do_action_excluding_paths($hook, array $args, array $skip_paths) {
-        global $wp_filter;
-
-        if (empty($skip_paths) || empty($wp_filter[$hook]) || !is_object($wp_filter[$hook])
-            || !isset($wp_filter[$hook]->callbacks) || !is_array($wp_filter[$hook]->callbacks)) {
-            do_action_ref_array($hook, $args);
-            return;
-        }
-
-        $detached = [];
-        foreach ($wp_filter[$hook]->callbacks as $priority => $entries) {
-            if (!is_array($entries)) continue;
-            foreach ($entries as $entry) {
-                if (!isset($entry['function'])) continue;
-                $owner = self::callback_owner_path($entry['function']);
-                if ($owner === '' || !in_array($owner, $skip_paths, true)) continue;
-                $detached[] = [
-                    'function'      => $entry['function'],
-                    'priority'      => $priority,
-                    'accepted_args' => isset($entry['accepted_args']) ? (int) $entry['accepted_args'] : 1,
-                ];
-            }
-        }
-
-        // The owner has no listener on this hook: nothing to hold back.
-        if (!$detached) {
-            do_action_ref_array($hook, $args);
-            return;
-        }
-
+        // The owner has no listener on this hook: nothing is held back.
+        $detached = self::detach_callbacks([$hook], $skip_paths);
         try {
-            foreach ($detached as $cb) {
-                remove_action($hook, $cb['function'], $cb['priority']);
-            }
             do_action_ref_array($hook, $args);
         } finally {
-            foreach ($detached as $cb) {
-                add_action($hook, $cb['function'], $cb['priority'], $cb['accepted_args']);
-            }
+            self::reattach_callbacks($detached);
         }
     }
 
@@ -6801,7 +7053,7 @@ class Brikpanel_Product_Editor {
         $selected = (array) get_option('brikpanel_pe_wc_tabs_selected', []);
         $selected = self::augment_sections_for_multicurrency($selected, 'product');
         $selected = self::augment_sections_auto($selected, 'product');
-        self::$capture_info = ['any_visible' => false, 'panels' => []];
+        self::$capture_info = ['any_visible' => false, 'panels' => [], 'empty_panels' => []];
         if (empty($selected)) {
             self::$render_product = null;
             return '';
@@ -6901,6 +7153,7 @@ class Brikpanel_Product_Editor {
         // Bundles, Composite…): never put on the page unpicked, see below.
         $unrendered     = self::unrendered_type_panels($product);
         $seen_panel_ids = [];
+        $empty_panels   = [];
         if (has_action('woocommerce_product_data_panels')) {
             // Buffer-safe, per-callback fire — see capture_hook_chunks(). Each
             // plugin's output is parsed on its own so a panel that dies mid-tag
@@ -6963,6 +7216,16 @@ class Brikpanel_Product_Editor {
                             // section. Render it so its builder can hydrate client-side.
                             $is_registered_tab = isset($target_to_label[$id]);
                             if (!$has_controls && !$is_registered_tab) continue;
+
+                            // A picked panel with no named field the merchant could
+                            // fill posts nothing (Easy Product Bundles' box is an
+                            // empty div its script fills on WooCommerce's screen
+                            // only). Remembered for the "settings live in
+                            // WooCommerce" note; the save learns the same from the
+                            // editor script (bp_filled_panels).
+                            if ($is_picked && !self::panel_has_named_field($node)) {
+                                $empty_panels[$id] = true;
+                            }
 
                             // Preserve the panel wrapper itself (its id, classes and
                             // data-* attributes) rather than unwrapping it. Many custom
@@ -7036,7 +7299,7 @@ class Brikpanel_Product_Editor {
             }
         }
 
-        self::$capture_info = ['any_visible' => $any_visible, 'panels' => array_keys($seen_panel_ids)];
+        self::$capture_info = ['any_visible' => $any_visible, 'panels' => array_keys($seen_panel_ids), 'empty_panels' => array_keys($empty_panels)];
 
         // Restore globals
         $post           = $orig_post;
@@ -7813,8 +8076,15 @@ class Brikpanel_Product_Editor {
         // that is the shared stock its variations sell from. It used to fall
         // back to the sum of the variations' stock, which only made sense while
         // the Inventory card stayed hidden for variable products.
-        $regular_price = $product->get_regular_price();
-        $sale_price    = $product->get_sale_price();
+        //
+        // A type another plugin adds (a bundle, a composite) may work its price
+        // out from its contents when it is shown. The price box shows what is
+        // stored instead, as WooCommerce's own editor does: a shown total that
+        // the save wrote back became the stored price, and Bopo sells a bundle
+        // with a stored price at that fixed price.
+        $price_context = self::is_native_editor_type((string) $product->get_type()) ? 'view' : 'edit';
+        $regular_price = $product->get_regular_price($price_context);
+        $sale_price    = $product->get_sale_price($price_context);
         $stock_qty     = $product->get_stock_quantity('edit');
 
         if ($is_variable && $regular_price === '') {
@@ -9157,12 +9427,16 @@ class Brikpanel_Product_Editor {
         // Price (simple and external products). A group has no price of its
         // own: WooCommerce syncs it from the products in the group. A product
         // that has just become a group drops the price it had as a simple one.
+        //
+        // The price keys come only while the price box is on the page. A store
+        // that hides the Pricing section sends none, and an absent key used to
+        // read as "no price": every save cleared the product's price.
         if ($is_grouped) {
             $product->set_regular_price('');
             $product->set_sale_price('');
             $product->set_date_on_sale_from(null);
             $product->set_date_on_sale_to(null);
-        } elseif (!$is_variable) {
+        } elseif (!$is_variable && array_key_exists('regular_price', $_POST)) {
             $product->set_regular_price(wc_format_decimal(sanitize_text_field($_POST['regular_price'] ?? '')));
             $sale = sanitize_text_field($_POST['sale_price'] ?? '');
             $product->set_sale_price($sale !== '' ? wc_format_decimal($sale) : '');
@@ -9511,6 +9785,22 @@ class Brikpanel_Product_Editor {
                 $product->set_button_text(wc_clean(wp_unslash($_POST['button_text'])));
             }
         }
+
+        // A plugin whose own settings box for this product type is not on the
+        // form (not picked, or posted empty) comes off WooCommerce's product
+        // save hooks for the rest of this save. Its listeners read a missing
+        // field as "cleared": one save from here emptied an Easy Product Bundles
+        // or WPC Product Bundles bundle, on `woocommerce_process_product_meta_
+        // {type}`. Taken off before the first post write, because that write
+        // already fires `woocommerce_process_product_meta` through
+        // WC_Admin_Meta_Boxes::save_meta_boxes() (see the unhook at the top of
+        // this handler), and put back next to WooCommerce's own handlers.
+        $bp_type_guard    = self::save_hook_guard($product);
+        $bp_type_detached = self::detach_callbacks([
+            'woocommerce_process_product_meta',
+            'woocommerce_process_product_meta_' . (string) $product->get_type(),
+            'woocommerce_admin_process_product_object',
+        ], $bp_type_guard['owners']);
 
         // Save parent product
         $product->save();
@@ -9931,17 +10221,34 @@ class Brikpanel_Product_Editor {
         // before variations and the rest of the save. See
         // dispatch_foreign_hooks().
         // CURCY reads WooCommerce's native sale keys (see
-        // with_multicurrency_save_context()).
-        $curcy_native = [
-            '_sale_price'          => wc_format_decimal(sanitize_text_field(wp_unslash($_POST['sale_price'] ?? ''))),
-            '_sale_price_dates_to' => preg_match('/^\d{4}-\d{2}-\d{2}$/', sanitize_text_field(wp_unslash($_POST['sale_to'] ?? ''))) ? sanitize_text_field(wp_unslash($_POST['sale_to'])) : '',
-        ];
+        // with_multicurrency_save_context()). With no price keys in this save
+        // (the price box was not on the page) they mirror what is stored: CURCY
+        // empties its per-currency sale prices when the native sale price is
+        // empty, on bundle types too (woosb, bundle, composite).
+        if (array_key_exists('regular_price', $_POST)) {
+            $curcy_native = [
+                '_sale_price'          => wc_format_decimal(sanitize_text_field(wp_unslash($_POST['sale_price'] ?? ''))),
+                '_sale_price_dates_to' => preg_match('/^\d{4}-\d{2}-\d{2}$/', sanitize_text_field(wp_unslash($_POST['sale_to'] ?? ''))) ? sanitize_text_field(wp_unslash($_POST['sale_to'])) : '',
+            ];
+        } else {
+            $bp_sale_to   = $product->get_date_on_sale_to('edit');
+            $curcy_native = [
+                '_sale_price'          => (string) $product->get_sale_price('edit'),
+                '_sale_price_dates_to' => $bp_sale_to ? $bp_sale_to->date('Y-m-d') : '',
+            ];
+        }
+        // A type panel no owner could be found for: its own type hook stays
+        // quiet, like the object hook below (losing a save is recoverable,
+        // losing a bundle's contents is not).
+        $bp_skip_type_hook = !empty($bp_type_guard['panels']) && empty($bp_type_guard['owners']);
         $this->dispatch_foreign_hooks(
-            function () use ($saved_id, $post_obj, $post_type_key, $_seopress_classic_save, $curcy_native) {
+            function () use ($saved_id, $post_obj, $post_type_key, $_seopress_classic_save, $curcy_native, $bp_skip_type_hook) {
                 do_action('woocommerce_process_product_meta', $saved_id, $post_obj);
-                self::with_multicurrency_save_context('product', $curcy_native, static function () use ($post_type_key, $saved_id) {
-                    do_action('woocommerce_process_product_meta_' . $post_type_key, $saved_id);
-                });
+                if (!$bp_skip_type_hook) {
+                    self::with_multicurrency_save_context('product', $curcy_native, static function () use ($post_type_key, $saved_id) {
+                        do_action('woocommerce_process_product_meta_' . $post_type_key, $saved_id);
+                    });
+                }
 
                 // SEOPress's Classic save fallback, detached at the top of this
                 // save so it could not follow save_post onto the variations.
@@ -9990,15 +10297,13 @@ class Brikpanel_Product_Editor {
         // declares a panel for us to miss, so the class-based check above cannot
         // see it. Its own product type would otherwise be left unguarded by the
         // very listener that empties it. Both sources feed one mute list.
+        //
+        // Both were worked out once, before the first post write
+        // (save_hook_guard()); the panel owners are already off this hook.
         $refreshed = wc_get_product($saved_id);
         if ($refreshed) {
-            $unrendered_panels = self::unrendered_type_panels($refreshed);
-            $thrower_paths     = self::unrepresented_owner_paths($refreshed);
-            $muted_paths       = array_values(array_unique(array_merge(
-                $unrendered_panels ? self::tab_owner_paths($unrendered_panels) : [],
-                $thrower_paths
-            )));
-            $unrepresented     = !empty($unrendered_panels) || !empty($thrower_paths);
+            $muted_paths   = array_values(array_unique(array_merge($bp_type_guard['owners'], $bp_type_guard['throwers'])));
+            $unrepresented = !empty($bp_type_guard['panels']) || !empty($bp_type_guard['throwers']);
             if (!$unrepresented || !empty($muted_paths)) {
                 $this->dispatch_foreign_hooks(
                     static function () use ($refreshed, $muted_paths) {
@@ -10018,9 +10323,11 @@ class Brikpanel_Product_Editor {
             $refreshed->save();
         }
         // Every product-meta dispatch inside the spoof window is done; restore
-        // WC core's data/image save handlers (see the unhook before save_post).
+        // WC core's data/image save handlers (see the unhook before save_post)
+        // and the plugins save_hook_guard() took off.
         if (!empty($_removed['data']))   add_action('woocommerce_process_product_meta', $_wc_data_save, 10, 2);
         if (!empty($_removed['images'])) add_action('woocommerce_process_product_meta', $_wc_img_save, 20, 2);
+        self::reattach_callbacks($bp_type_detached);
 
         // Cost of goods, re-asserted *after* every save handler has run.
         // Cost plugins hook the product save at the very end of the chain

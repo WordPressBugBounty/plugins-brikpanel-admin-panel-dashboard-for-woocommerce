@@ -769,6 +769,35 @@
         $('#bpe-crosssells-search, #bpe-purchase-note').closest('.brikpanel-pe-field').toggle(!other);
         syncInventoryCard();
         syncPairs();
+        syncPluginBoxType(t);
+    }
+
+    /* Types another plugin adds with a settings box of their own (Bopo, Easy
+       Product Bundles, WPC bundles). Their price is the plugin's business:
+       worked out from the bundle's contents, or a fixed price set on purpose,
+       so the price box is never required for them. Where that box is missing
+       or empty on this form, the note under the title says the settings live
+       in WooCommerce. Both follow a type change made here (a new product made a
+       bundle). The lists come from the server (type_guard_lists()). */
+    function syncPluginBoxType(t) {
+        var tg = productData.type_guard;
+        if (!tg) return;
+        var ownPanel = (tg.own_panel || []).indexOf(t) !== -1;
+        var $p = $('#bpe-price');
+        if ($p.length) {
+            var required = !!tg.require_price && !ownPanel;
+            if (required) {
+                $p.attr('data-required', '1').data('required', 1);
+            } else if ($p.data('required')) {
+                $p.removeAttr('data-required').data('required', 0);
+                // A "required" message from before the change must not stay.
+                $p.removeClass('has-error').closest('.brikpanel-pe-field').find('.brikpanel-pe-field-error').text('');
+            }
+        }
+        var note = document.getElementById('bpe-typenote');
+        if (note) {
+            note.hidden = (tg.unrepresented || []).indexOf(t) === -1 && note.getAttribute('data-shown-for') !== t;
+        }
     }
 
     /* A pair (price + cost, category + brand) is one card around two section
@@ -1073,13 +1102,21 @@
         // data-required="1" on the field *wrapper div*, not the input. A bare
         // [data-required] selector would match those wrappers too — see the
         // note in validateAll().
-        $(':input[data-required]').on('blur', function () { validateField($(this)); });
-        // "Require a price to publish" off: the price box is optional, so all it
-        // can show is the sale-price warning from validateSalePrice(). Leaving
-        // the price box re-checks it; leaving the sale price box only re-checks
-        // a warning already on screen, so typing the sale price first does not
-        // flag the price box before the merchant gets to it.
-        $('#bpe-price').not('[data-required]').on('blur', function () { validateSalePrice(); });
+        $(':input[data-required]').not('#bpe-price').on('blur', function () { validateField($(this)); });
+        // "Require a price to publish" off, or a bundle's price (its plugin's
+        // business): the price box is optional, so all it can show is the
+        // sale-price warning from validateSalePrice(). Required or not can change
+        // with the product type (syncPluginBoxType()), so it is read on leaving.
+        // Leaving the sale price box only re-checks a warning already on screen,
+        // so typing the sale price first does not flag the price box before the
+        // merchant gets to it.
+        $('#bpe-price').on('blur', function () {
+            if ($(this).data('required')) {
+                validateField($(this));
+            } else {
+                validateSalePrice();
+            }
+        });
         $('#bpe-sale-price').on('blur', function () {
             var $p = $('#bpe-price');
             if (!$p.data('required') && $p.hasClass('has-error')) validateSalePrice();
@@ -3121,6 +3158,24 @@
             if (ids.indexOf(this.id) === -1) ids.push(this.id);
         });
         $('.brikpanel-pe-metaboxes-wrap .postbox[id]').each(function () { ids.push(this.id); });
+        return ids;
+    }
+
+    // Ids of the other plugins' product-data panels on this form that hold a
+    // field the merchant could fill (a named input, select or textarea, not a
+    // hidden one). A picked panel can reach the page empty: Easy Product
+    // Bundles prints an empty box its own script fills on WooCommerce's screen
+    // only. Its plugin must not be let loose on a save that carries none of
+    // its fields, or the bundle is emptied (see save_hook_guard()).
+    function filledThirdPartyPanels() {
+        var ids = [];
+        $('.brikpanel-pe-wc-fields').find('.brikpanel-pe-wc-panel[id]').each(function () {
+            if ($(this).closest('[data-bp-unpicked]').length || ids.indexOf(this.id) !== -1) return;
+            var filled = $(this).find(':input[name]').filter(function () {
+                return this.type !== 'hidden' && this.tagName !== 'BUTTON' && $.trim(this.name) !== '';
+            }).length > 0;
+            if (filled) ids.push(this.id);
+        });
         return ids;
     }
 
@@ -6991,7 +7046,9 @@
         }
 
         // A group has no price of its own (WooCommerce takes it from its products).
-        if (!isVar && bpeType !== 'grouped') {
+        // No price box on the page (the Pricing section switched off): no price
+        // keys either, an empty value cleared the product's price on every save.
+        if (!isVar && bpeType !== 'grouped' && $('#bpe-price').length) {
             data.regular_price = parsePrice($('#bpe-price').val(), sep);
             // Sale fields are always visible now — the server treats empty
             // sale price as "no sale" and clears the scheduled dates.
@@ -7235,6 +7292,10 @@
                 if (this.checked) collectNamedInput(this.name, 'on');
             });
         }
+
+        // Which other plugins' panels this form really carried fields in: the
+        // server keeps a bundle plugin off the save when its box was empty here.
+        data.bp_filled_panels = JSON.stringify(filledThirdPartyPanels());
 
         // Everything EXCEPT the per-variation extras, which need re-indexing
         // and therefore get their own pass immediately below.

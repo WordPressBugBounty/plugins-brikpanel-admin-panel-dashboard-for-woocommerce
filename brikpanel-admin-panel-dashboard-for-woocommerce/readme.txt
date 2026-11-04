@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.43
+Stable tag: 3.3.44
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -511,6 +511,12 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.44 (2026-11-03) =
+* Fix: **Bundles made with other plugins keep their contents.** Saving an Easy Product Bundles or WPC Product Bundles bundle in BrikPanel's product screen emptied it. A product type whose own settings are in WooCommerce's editor is now left untouched, also with "Auto-show fields other plugins add" on.
+* Fix: **Bundles no longer need a price.** Their price box is optional and shows the stored price, so a Bopo bundle keeps the price it works out instead of becoming a fixed-price bundle.
+* Tweak: **The "Open in WooCommerce" note for new bundles.** Picking a bundle type for a new product now shows the note that links to its settings.
+* Fix: **A hidden Pricing section no longer clears prices.** With Pricing off in Products → "Visible editor sections", every save emptied the product's price.
+
 = 3.3.43 (2026-10-31) =
 * New: **Pick the product type with one tap.** The product screen shows four buttons under the product name: Simple, Variable, Grouped and External, with other plugins' types under "More". The Products setting "Product type selector" is gone, as the buttons are always there.
 * Fix: **Grouped and external products keep their type.** Saving one in BrikPanel's product screen turned it into a simple product, and quick edit, bulk actions and the Google Sheets pull wrote prices or stock to it.
@@ -563,22 +569,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **Other plugins' product options in the product editor.** Options that plugins add next to Virtual and Downloadable, such as Germanized's "Service", the "Subscription" of YITH and WP Swings, or Tutor LMS's "For Tutor", now show as switches below Virtual and Digital, only for the product types they apply to. When a plugin does not accept a change made here, a message says so. Setting: Products → "Show other plugins' product options", on by default.
 * Fix: **Saving keeps other plugins' product options.** Saving a product in the BrikPanel editor switched off most of these options, such as Germanized's "Service" or YITH's "Subscription", even when you had not touched them. They now keep their value, with the new setting on or off.
 * New: **Order weights in the export.** Excel and CSV files have a "Total weight" column after Items, in the store's unit of weight, with the same total as the order screen. In Excel, the Products sheet also shows each line's weight. The cell stays empty when no product in the order has a weight.
-
-= 3.3.37 (2026-10-20) =
-* New: **Export orders to Excel or CSV.** The new Export button on the Orders list downloads the selected orders, or all orders the list shows with its current tab, search and filters. In Excel, orders with addresses and totals are on one sheet and their products with variations and SKUs on another; CSV has one row per order.
-* Fix: **The Orders title row fits on phones.** Buttons that plugins add beside "Add order", such as Orders Tracking's, no longer run off the screen: when the row is full, they move into a "…" menu with Export.
-* Fix: **AgenWebsite Shipping's "Pengiriman Massal" button.** It no longer squeezes the orders list, which hid the Payment method column. It now sits next to "Bulk actions" when orders are selected, and on phones it is the first item in that menu.
-* Fix: **The selection bar no longer blocks taps on phones.** While no order was selected, the hidden bar still caught taps at the bottom of the Orders list.
-* Tweak: **Other plugins' column headings wrap.** On the Orders list, a text heading wider than its column's content wraps onto two lines, so the content sets the column's width.
-* Tweak: **"Ship to" shows a phone only when it differs.** The expanded order panel no longer repeats the billing phone under Ship to; a different shipping phone still shows.
-* New: **Coupons has its own row in the sidebar.** It stands where Marketing was, and Marketing moved into "More" with the pages marketing plugins add to it. Sidebars you arranged change once, and your visibility rules for Marketing and its Coupons item carry over.
-* Fix: **Headings with nothing to open are hidden.** A sidebar heading no longer shows for someone who cannot open any link under it, for example when Advanced Access Manager or BrikPanel's own role rules hide those links. Divider lines no longer count as links, and "Site management" follows the same rule.
-* New: **See which products have missing images.** Store Health's "Product image health" card lists each product with a missing image, where it was (main image, gallery or a variation) and why: deleted from the Media Library, or the file is missing on the server. The product's name opens it.
-* New: **Remove deleted images.** A button on the same card removes images deleted from the Media Library from the products that still list them, and "Undo last correction" puts them back.
-* Fix: **Missing image files are counted.** An image uploaded on WordPress 6.0 or later whose file was deleted from the server was not counted. Images served from elsewhere, such as S3 or a CDN, are not counted as missing, BrikPanel's variation galleries are checked too, and the check is about twice as fast.
-* Fix: **Other plugins' bulk actions in the product list.** Actions that plugins add to WooCommerce's product list, such as Epos Now's "Send to Slynk" or Yoast's "Bulk edit", now appear under "Bulk actions" when products are selected and in Bulk update.
-* Fix: **Attributes with non-Latin names show by name.** Abandoned carts, shared cart links, Google Sheets, the orders list, Low stock, Ctrl+K search, Suppliers and stock orders showed an attribute named in Cyrillic or another non-Latin script as a code such as "pa_%d0%b2…" or a slug. They now show "Вид: Спортен", carts saved before included, and the attribute's terms screen has the BrikPanel look.
-* Fix: **Variation names for non-Latin attributes.** WooCommerce named such a variation with the option's slug ("Hoodie - спортен"); it now gets the option's name ("Hoodie - Спортен"), and orders, emails and the classic cart no longer repeat the option under it. Existing variations are corrected the next time WooCommerce reads them, and past orders keep the name they were sold with.
-* Tweak: **The logo address takes a path.** Appearance → "Custom brand logo" accepts a path such as /wp-content/uploads/logo.png, so the logo keeps working when the site moves from staging to live; before, the browser refused it and the form did not save. An address that is neither a full URL nor a path now shows an error instead of being saved broken, and Import settings points a logo URL of the old site at the new one.
-* New: **The cache button knows 9 more plugins.** It now also clears Easy Optimizer, FlyingPress, Perfmatters, Nginx Helper, Proxy Cache Purge, Kinsta, WP Engine and GoDaddy, next to WP Rocket, LiteSpeed Cache, WP Fastest Cache and the 13 others it already cleared. With Elementor, one click and "Clear all caches" also clear the Elementor cache.
-* Tweak: **A cache that could not be cleared is named.** When one plugin's purge fails, the message after the click says which.

@@ -2,6 +2,12 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.44 (2026-11-03) =
+* Fix: **Bundles made with other plugins keep their contents.** Saving an Easy Product Bundles or WPC Product Bundles bundle in BrikPanel's product screen emptied it. A product type whose own settings are in WooCommerce's editor is now left untouched, also with "Auto-show fields other plugins add" on.
+* Fix: **Bundles no longer need a price.** Their price box is optional and shows the stored price, so a Bopo bundle keeps the price it works out instead of becoming a fixed-price bundle.
+* Tweak: **The "Open in WooCommerce" note for new bundles.** Picking a bundle type for a new product now shows the note that links to its settings.
+* Fix: **A hidden Pricing section no longer clears prices.** With Pricing off in Products → "Visible editor sections", every save emptied the product's price.
+
 = 3.3.43 (2026-10-31) =
 * New: **Pick the product type with one tap.** The product screen shows four buttons under the product name: Simple, Variable, Grouped and External, with other plugins' types under "More". The Products setting "Product type selector" is gone, as the buttons are always there.
 * Fix: **Grouped and external products keep their type.** Saving one in BrikPanel's product screen turned it into a simple product, and quick edit, bulk actions and the Google Sheets pull wrote prices or stock to it.
