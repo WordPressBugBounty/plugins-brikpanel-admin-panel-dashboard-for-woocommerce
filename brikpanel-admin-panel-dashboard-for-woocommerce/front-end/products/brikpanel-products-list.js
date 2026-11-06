@@ -1847,6 +1847,11 @@
         if (p.type === 'grouped') {
             priceEditable = priceDisplay;
         }
+        // A WPML translation takes its price from the original product
+        // (WooCommerce Multilingual copies it there): nothing to type here.
+        if (p.translation_of) {
+            priceEditable = '<span class="brikpanel-pl-price-cell brikpanel-pl-price-locked" title="' + escAttr(PL.i18n.price_from_original) + '">' + priceDisplay + '</span>';
+        }
 
         var catText;
         if (!p.categories.length) {
@@ -1889,6 +1894,18 @@
                     '" aria-label="' + escAttr(vTitle) + '">' + escHtml(String(vCount)) + '</span>';
             }
             typeLabel = '<span class="brikpanel-pl-type-badge">' + escHtml(PL.i18n.variable) + vBadge + '</span>';
+        }
+
+        // WPML: which language the row is in, a small tag after the name (the
+        // list shows every language, so the same product can appear twice).
+        // The code is what shows; the language's name is its tooltip and what
+        // a screen reader says.
+        var langTag = '';
+        if (p.lang && p.lang.code) {
+            langTag = '<span class="brikpanel-pl-lang" title="' + escAttr(p.lang.name) + '">' +
+                '<span class="screen-reader-text">' + escHtml(BF ? BF.format(PL.i18n.lang_label, [p.lang.name]) : p.lang.name) + '</span>' +
+                '<span aria-hidden="true">' + escHtml(String(p.lang.code).toUpperCase()) + '</span>' +
+                '</span>';
         }
 
         var trashActions = '';
@@ -2076,7 +2093,7 @@
             // "…" goes at the end of the name's own language, or an English
             // name on a right-to-left screen lost its first words instead.
             '<td class="brikpanel-pl-cell-name brikpanel-pl-col brikpanel-pl-col-name">' +
-                '<div class="brikpanel-pl-name-line">' + featuredStarHtml + '<a href="' + escAttr(editHref) + '" class="brikpanel-pl-product-name-link" title="' + escAttr(p.name) + '"' + (PL.open_in_new_tab ? ' target="_blank" rel="noopener"' : '') + '><span class="brikpanel-pl-product-name-text" dir="auto">' + escHtml(p.name) + '</span></a>' + typeLabel + '</div>' +
+                '<div class="brikpanel-pl-name-line">' + featuredStarHtml + '<a href="' + escAttr(editHref) + '" class="brikpanel-pl-product-name-link" title="' + escAttr(p.name) + '"' + (PL.open_in_new_tab ? ' target="_blank" rel="noopener"' : '') + '><span class="brikpanel-pl-product-name-text" dir="auto">' + escHtml(p.name) + '</span></a>' + langTag + typeLabel + '</div>' +
                 rowMetaHtml +
                 phoneLinesHtml +
             '</td>' +
@@ -2740,6 +2757,12 @@
             $('#bpl-qe-variations').hide().empty();
             $('#bpl-qe-price').val(product.regular_price || '');
             $('#bpl-qe-sale-price').val(product.sale_price || '');
+            // A WPML translation takes its price from the original product:
+            // the boxes lock and a line says where to change it.
+            var priceLocked = !!product.translation_of;
+            $('#bpl-qe-price, #bpl-qe-sale-price').prop('disabled', priceLocked);
+            $('#bpl-qe-price-lock').prop('hidden', !priceLocked);
+            $('#bpl-qe-price-lock-link').attr('href', priceLocked ? (product.original_edit_url || '#') : '#');
             var qeStock = (product.stock !== null && product.stock !== undefined) ? String(product.stock) : '';
             $('#bpl-qe-stock').val(qeStock).attr('data-original', qeStock);
             // COGS — only writes when the field is rendered (slug visible).
@@ -2873,7 +2896,8 @@
         }
 
         if (!isVariable) {
-            if ($('#bpl-qe-price').length) {
+            // Locked for a WPML translation: its price comes from the original.
+            if ($('#bpl-qe-price').length && !$('#bpl-qe-price').prop('disabled')) {
                 mainData.regular_price = $('#bpl-qe-price').val();
                 mainData.sale_price = $('#bpl-qe-sale-price').val();
             }
@@ -2939,7 +2963,8 @@
                     var varId = parseInt($item.data('var-id'));
                     var varData = { action: 'brikpanel_save_variation', security: PL.nonce, variation_id: varId };
 
-                    $item.find('.brikpanel-pl-qe-var-input').each(function () {
+                    // A locked box (a WPML translation's price) is not sent.
+                    $item.find('.brikpanel-pl-qe-var-input').not(':disabled').each(function () {
                         varData[$(this).data('field')] = $(this).val();
                         if ($(this).data('field') === 'stock') {
                             varData.stock_original = $(this).attr('data-original') || '';
@@ -3925,6 +3950,15 @@
                 '<small class="brikpanel-pl-toggle-help" id="bpl-qe-shared-stock-help">' + escHtml(PL.i18n.shared_stock_help) + '</small>' +
                 '</div>';
         }
+        // A WPML translation takes its variations' prices from the original
+        // product: those boxes lock, one line says where to change them.
+        var lockRow = getProductById(productId);
+        var priceLocked = !!(lockRow && lockRow.translation_of);
+        var lockAttr = priceLocked ? ' disabled' : '';
+        if (priceLocked) {
+            html += '<p class="brikpanel-pl-qe-lock-note">' + escHtml(PL.i18n.price_from_original) +
+                ' <a href="' + escAttr(lockRow.original_edit_url || '#') + '">' + escHtml(PL.i18n.edit_original) + '</a></p>';
+        }
         html += '<div class="brikpanel-pl-qe-var-list">';
         var cogsVisible = !!PL.qe_cogs_visible;
         for (var i = 0; i < variations.length; i++) {
@@ -3934,8 +3968,8 @@
             html += '<div class="brikpanel-pl-qe-var-item" data-var-id="' + v.id + '">';
             html += '<div class="brikpanel-pl-qe-var-name">' + escHtml(v.name) + '</div>';
             html += '<div class="brikpanel-pl-qe-var-fields">';
-            html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.price_label || 'Price') + '</label><input type="text" class="brikpanel-pl-qe-var-input" data-field="regular_price" value="' + escAttr(v.regular_price || '') + '"></div>';
-            html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.sale_label || 'Sale') + '</label><input type="text" class="brikpanel-pl-qe-var-input" data-field="sale_price" value="' + escAttr(v.sale_price || '') + '"></div>';
+            html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.price_label || 'Price') + '</label><input type="text" class="brikpanel-pl-qe-var-input" data-field="regular_price" value="' + escAttr(v.regular_price || '') + '"' + lockAttr + '></div>';
+            html += '<div class="brikpanel-pl-qe-field"><label>' + escHtml(PL.i18n.sale_label || 'Sale') + '</label><input type="text" class="brikpanel-pl-qe-var-input" data-field="sale_price" value="' + escAttr(v.sale_price || '') + '"' + lockAttr + '></div>';
             if (cogsVisible) {
                 // Same falsy guard as the simple-product field: a saved "0"
                 // cost arrives as either string "0" or number 0 (WC native
@@ -4472,6 +4506,7 @@
         $('#bpl-progress-percent').text(fmtPct(0));
         $('#bpl-progress-fill').css('width', '0%');
         $('#bpl-progress-errors').hide().text('');
+        $('#bpl-progress-note').prop('hidden', true).text('');
         $('#bpl-progress-cancel').show().prop('disabled', false);
         $('#bpl-progress-done').hide();
         $('#bpl-progress-backdrop').addClass('open').attr('aria-hidden', 'false');
@@ -4502,6 +4537,15 @@
                 .text(countText(PL.i18n.bulk_errors_count, errorCount))
                 .show();
         }
+
+        // WPML translations a price action left to their original product:
+        // not an error (the original's new price reaches them), said apart.
+        var leftToOriginal = (bulkJob && bulkJob.translationsSkipped) || 0;
+        if (leftToOriginal > 0) {
+            $('#bpl-progress-note')
+                .text(countText(PL.i18n.bulk_translations_skipped, leftToOriginal))
+                .prop('hidden', false);
+        }
     }
 
     function closeProgressModal() {
@@ -4509,7 +4553,7 @@
     }
 
     function runBulkJob(jobType, params) {
-        bulkJob = { id: null, cancelled: false, totalErrors: 0 };
+        bulkJob = { id: null, cancelled: false, totalErrors: 0, translationsSkipped: 0 };
         openProgressModal(jobType, 0);
 
         var prepareData = $.extend({
@@ -4571,6 +4615,9 @@
             processedSoFar += d.processed || 0;
             if (d.errors && d.errors.length) {
                 bulkJob.totalErrors += d.errors.length;
+            }
+            if (d.translations_skipped) {
+                bulkJob.translationsSkipped += parseInt(d.translations_skipped, 10) || 0;
             }
             updateProgressModal(processedSoFar, d.total);
 

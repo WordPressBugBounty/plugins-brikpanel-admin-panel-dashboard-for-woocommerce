@@ -53,12 +53,14 @@ class Brikpanel_Product_Editor {
     /**
      * What the last capture_wc_product_data_fields() call put in the card:
      * whether any section is on screen, the ids of every third-party panel
-     * rendered (shown or kept hidden), and the picked ones that arrived with no
-     * field to post (a script on WooCommerce's screen fills them).
+     * rendered (shown, kept hidden or folded), the picked ones that arrived with
+     * no field to post (a script on WooCommerce's screen fills them), and the
+     * sections for the folded "Fields from your other plugins" box with how many
+     * of them this product's type shows.
      *
-     * @var array{any_visible: bool, panels: string[], empty_panels: string[]}
+     * @var array{any_visible: bool, panels: string[], empty_panels: string[], fold_html: string, fold_visible: int, fold_hold: bool, fold_found: bool}
      */
-    private static $capture_info = ['any_visible' => false, 'panels' => [], 'empty_panels' => []];
+    private static $capture_info = ['any_visible' => false, 'panels' => [], 'empty_panels' => [], 'fold_html' => '', 'fold_visible' => 0, 'fold_hold' => false, 'fold_found' => false];
 
     /**
      * User-facing, non-fatal warnings collected during a single save request
@@ -235,8 +237,9 @@ class Brikpanel_Product_Editor {
      *    render_smartcrawl_analysis() applies through its own filters.
      */
     /**
-     * Turn on "Auto-show fields other plugins add" from the editor's discovery
-     * card. Writing the same option the settings screen writes keeps one source
+     * Turn on "Auto-show fields other plugins add" from the "Always show these
+     * fields" link at the end of the folded "Fields from your other plugins"
+     * box. Writing the same option the settings screen writes keeps one source
      * of truth, and turning it back off is the existing, documented undo.
      *
      * `manage_woocommerce` rather than `edit_products`: this changes a
@@ -830,6 +833,19 @@ class Brikpanel_Product_Editor {
         $dim_unit    = get_option('woocommerce_dimension_unit', 'cm');
         $back_url    = $this->get_back_url();
 
+        // Switched-off sections the folded "Hidden sections" box at the end
+        // of the page carries (hidden_box_sections()). They are built like
+        // the shown ones ($bpe_build) and printed in the box, never in the
+        // section order; every other use of $visible stays as it was.
+        $bpe_held  = $this->hidden_box_sections((int) $product_id);
+        $bpe_build = array_merge($visible, array_keys($bpe_held));
+
+        // WPML: a translation takes its prices from the original product, which
+        // WooCommerce Multilingual copies to it. Its price boxes (and its
+        // variations') open locked, with a line and a link to the original.
+        $bpe_lock_original = ($product_id && function_exists('brikpanel_wpml_original_of')) ? brikpanel_wpml_original_of($product_id) : 0;
+        $bpe_lock_note     = $bpe_lock_original ? brikpanel_wpml_price_lock_note($bpe_lock_original) : null;
+
         // Who owns the SEO surface on this page. Resolved once, up here,
         // because two places downstream must agree on the answer: the SEO card
         // and the third-party metabox pass that decides which `mb:` picks to
@@ -1196,8 +1212,22 @@ class Brikpanel_Product_Editor {
             $wc_extras_position = 'middle';
         }
         if ($product_id) {
-            $wc_extras  = $this->capture_wc_product_data_fields($product_id, $product);
+            // With the setting off, the fields other plugins add come in the
+            // folded "Fields from your other plugins" box instead of staying
+            // off the page (owner, November 2026: closed until clicked, like
+            // a theme's own box). For the people the card before it was for,
+            // the ones who may change store settings. A store known to have no
+            // such fields skips the capture (thirdparty_fold_known_empty()).
+            $bpe_tp_fold = self::thirdparty_fold_wanted();
+            $wc_extras  = $this->capture_wc_product_data_fields($product_id, $product, $bpe_tp_fold);
             $wc_capture = self::$capture_info;
+            $bpe_tp_box = '';
+            if ($bpe_tp_fold) {
+                self::thirdparty_fold_remember(!empty($wc_capture['fold_found']));
+                if ($wc_capture['fold_html'] !== '') {
+                    $bpe_tp_box = self::thirdparty_fold_box((string) $wc_capture['fold_html'], (int) $wc_capture['fold_visible']);
+                }
+            }
             // Blocksy's swatches editor reads the product's attributes out of
             // WooCommerce's Attributes panel, which this editor replaces: give
             // it the hidden rows it looks for (native_attribute_mirror_rows()).
@@ -1213,7 +1243,7 @@ class Brikpanel_Product_Editor {
             if (apply_filters('brikpanel_pe_native_attribute_mirror', in_array('ct_product_variation_swatches', $wc_capture['panels'], true), $wc_capture['panels'], $product)) {
                 $bpe_native_attrs = self::native_attribute_mirror($product);
             }
-            if ($wc_extras !== '') {
+            if ($wc_extras !== '' || $bpe_tp_box !== '') {
                 // Recreate the native editor's ancestor chain around the
                 // captured third-party panels:
                 //
@@ -1260,7 +1290,9 @@ class Brikpanel_Product_Editor {
                 // it when absent" handler always finds its field in the payload
                 // and never wipes it. When the card does not render (auto off and
                 // nothing picked) the nonce is absent, so no third-party handler
-                // runs at all.
+                // runs at all. The same holds when the card is only the folded
+                // box: the editor script leaves the whole card, nonce included,
+                // out of the save until the box is opened (data-bpe-hold below).
                 $wc_meta_nonce_field = wp_nonce_field('woocommerce_save_data', 'woocommerce_meta_nonce', false, false);
 
                 // Labels of WooCommerce's own General / Inventory / Shipping
@@ -1322,35 +1354,36 @@ class Brikpanel_Product_Editor {
                 // editor JS shows it again when a type change reveals a
                 // section. Inline display, not [hidden]: the phone layout reads
                 // a card's style.display to decide whether to list it.
-                $wc_extras_card = '<div class="brikpanel-pe-card brikpanel-pe-wc-fields"' . ($wc_capture['any_visible'] ? '' : ' style="display:none"') . '>'
-                    . '<div class="brikpanel-pe-wc-fields-head">'
-                    . '<label>' . esc_html__('Additional product data', 'brikpanel') . '</label>'
-                    . $wc_extras_hide
-                    . '</div>'
+                //
+                // With the folded box the box is the card's title line: the
+                // fields another plugin adds are in the same card, inside the
+                // same ancestor chain, so their scripts find what they look
+                // for. When the box is all the card holds and it is closed, the
+                // editor script leaves the card out of the save
+                // (data-bpe-hold): a store with the setting off saves exactly as
+                // it did before the box, until someone opens it.
+                $bpe_tp_shown = $wc_capture['any_visible'] || ($bpe_tp_box !== '' && $wc_capture['fold_visible'] > 0);
+                $bpe_tp_held  = $bpe_tp_box !== '' && !empty($wc_capture['fold_hold']);
+                $wc_extras_card = '<div class="brikpanel-pe-card brikpanel-pe-wc-fields' . ($bpe_tp_box !== '' ? ' brikpanel-pe-wc-fields--fold' : '') . '"'
+                    . ($bpe_tp_shown ? '' : ' style="display:none"')
+                    . ($bpe_tp_held ? ' data-bpe-hold="1"' : '') . '>'
+                    . ($bpe_tp_box === ''
+                        ? '<div class="brikpanel-pe-wc-fields-head">'
+                            . '<label>' . esc_html__('Additional product data', 'brikpanel') . '</label>'
+                            . $wc_extras_hide
+                            . '</div>'
+                        : '')
                     . '<div class="brikpanel-pe-wc-fields-content">'
                     . $wc_meta_nonce_field
                     . $wc_native_label_bridge
                     . '<div id="post" class="brikpanel-pe-wc-postsim">'
                     . '<div id="woocommerce-product-data" class="brikpanel-pe-wc-datawrap">'
-                    . '<div class="inside"><div class="panel-wrap product_data">' . $wc_extras . '</div></div>'
+                    . '<div class="inside"><div class="panel-wrap product_data">' . $wc_extras . $bpe_tp_box . '</div></div>'
                     . '</div>'
                     . '</div>'
                     . '</div>'
                     . '</div>';
             }
-
-            // If other plugins add fields to this product that are NOT being
-            // shown, say so rather than leaving the merchant staring at an
-            // editor that silently drops them — the reported failure mode was
-            // going back to the native editor for lack of any hint that a
-            // setting existed.
-            //
-            // Deliberately NOT gated on the card above being empty: a section
-            // that is surfaced automatically regardless of the setting (the
-            // multi-currency price fields) makes the card non-empty while every
-            // third-party tab on the store is still hidden. Gating on "card is
-            // empty" made the hint unreachable on exactly those stores.
-            $wc_extras_card .= $this->thirdparty_hint_card();
         }
         ?>
         <?php
@@ -1394,6 +1427,20 @@ class Brikpanel_Product_Editor {
                 ],
             ];
             ?>
+            <?php
+            // The editor's settings (WooCommerce > Settings > BrikPanel >
+            // Products), one tap from the header (owner, November 2026). For
+            // people who may change them; a saved product rides along, so the
+            // settings page offers the way back to it.
+            $bpe_settings_url = '';
+            if (current_user_can('manage_woocommerce')) {
+                $bpe_settings_args = ['page' => 'wc-settings', 'tab' => 'brikpanel', 'section' => 'products'];
+                if ($is_edit) {
+                    $bpe_settings_args['bp_back'] = (int) $product_id;
+                }
+                $bpe_settings_url = add_query_arg($bpe_settings_args, admin_url('admin.php'));
+            }
+            ?>
             <!-- Header -->
             <div class="brikpanel-pe-header" id="bpe-header" data-bp-fit-row="<?php echo esc_attr(wp_json_encode($bpe_header_fit)); ?>">
                 <?php
@@ -1410,7 +1457,20 @@ class Brikpanel_Product_Editor {
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         <span class="brikpanel-pe-back-label"><?php esc_html_e('Products', 'brikpanel'); ?></span>
                     </a>
-                    <h1><?php echo esc_html($page_title); ?></h1>
+                    <?php
+                    // The title and the editor's settings gear are one item: the
+                    // gear sits close after the screen's name, as this screen's
+                    // settings (owner, November 2026: first in the row it stood
+                    // before the way back to Products, with too much room).
+                    ?>
+                    <div class="brikpanel-pe-heading">
+                        <h1><?php echo esc_html($page_title); ?></h1>
+                        <?php if ($bpe_settings_url !== '') : ?>
+                        <a href="<?php echo esc_url($bpe_settings_url); ?>" class="brikpanel-pe-settings-link" id="bpe-settings-link" aria-label="<?php esc_attr_e('Product editor settings', 'brikpanel'); ?>" title="<?php esc_attr_e('Product editor settings', 'brikpanel'); ?>">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                     <?php
                     // Publish-date control — always available, sits right after the
                     // page title. Lets the merchant view and edit the product's
@@ -1719,7 +1779,7 @@ class Brikpanel_Product_Editor {
                     <span class="brikpanel-pe-ph-name" id="bpe-ph-name" dir="auto"><?php echo esc_html($bpe_ph_name); ?></span>
                     <span class="brikpanel-pe-ph-sub" id="bpe-ph-sub" dir="auto"><?php echo esc_html($bpe_ph_sub); ?></span>
                 </div>
-                <button type="button" class="brikpanel-pe-ph-iconbtn" id="bpe-ph-more" aria-haspopup="dialog" aria-label="<?php esc_attr_e('More actions', 'brikpanel'); ?>"<?php echo $is_edit ? '' : ' hidden'; ?>>
+                <button type="button" class="brikpanel-pe-ph-iconbtn" id="bpe-ph-more" aria-haspopup="dialog" aria-label="<?php esc_attr_e('More actions', 'brikpanel'); ?>"<?php echo ($is_edit || $bpe_settings_url !== '') ? '' : ' hidden'; ?>>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                 </button>
             </div>
@@ -2047,7 +2107,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['images'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('slug', $visible, true)) : ob_start();
+                <?php if (in_array('slug', $bpe_build, true)) : ob_start();
                     // Build a read-only URL prefix (e.g. https://shop.com/product/)
                     // so the merchant sees exactly what the slug appends to. When
                     // the product permalink base contains a dynamic token like
@@ -2349,6 +2409,9 @@ class Brikpanel_Product_Editor {
                                   // Delete in a scroll box nobody noticed. When even the slim row
                                   // does not fit (tablet, phone, long translations) the rows turn
                                   // into cards: front-end/shared/brikpanel-fit-table.js. ?>
+                            <?php if ($bpe_lock_note) : ?>
+                            <p class="brikpanel-pe-lock-note"><?php echo esc_html($bpe_lock_note['text']); ?> <a href="<?php echo esc_url($bpe_lock_note['url']); ?>"><?php echo esc_html($bpe_lock_note['link']); ?></a></p>
+                            <?php endif; ?>
                             <div class="brikpanel-pe-var-table-wrap">
                                 <table class="brikpanel-pe-var-table" id="bpe-var-table">
                                     <thead>
@@ -2400,9 +2463,9 @@ class Brikpanel_Product_Editor {
                                 // A bundle's price is its plugin's business (worked out
                                 // from its contents, or a fixed price set on purpose):
                                 // never required here. The script follows type changes.
-                                $bpe_price_required = $require_price && !in_array($product_type_current, $bpe_type_guard['own_panel'], true);
+                                $bpe_price_required = $require_price && !$bpe_lock_original && !in_array($product_type_current, $bpe_type_guard['own_panel'], true);
                                 ?>
-                                <input type="text" id="bpe-price" value="<?php echo esc_attr($reg_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00"<?php echo $bpe_price_required ? ' data-required="1"' : ''; ?> data-price="1">
+                                <input type="text" id="bpe-price" value="<?php echo esc_attr($reg_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00"<?php echo $bpe_price_required ? ' data-required="1"' : ''; ?> data-price="1"<?php echo $bpe_lock_original ? ' disabled' : ''; ?>>
                             </div>
                             <div class="brikpanel-pe-field-error"></div>
                         </div>
@@ -2410,22 +2473,25 @@ class Brikpanel_Product_Editor {
                             <label for="bpe-sale-price"><?php esc_html_e('Sale price', 'brikpanel'); ?></label>
                             <div class="brikpanel-pe-input-group">
                                 <span class="brikpanel-pe-input-prefix"><?php echo esc_html($currency); ?></span>
-                                <input type="text" id="bpe-sale-price" value="<?php echo esc_attr($sale_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00" data-price="1">
+                                <input type="text" id="bpe-sale-price" value="<?php echo esc_attr($sale_price); ?>" placeholder="0<?php echo esc_attr($decimal_sep); ?>00" data-price="1"<?php echo $bpe_lock_original ? ' disabled' : ''; ?>>
                             </div>
-                            <button type="button" class="brikpanel-pe-link brikpanel-pe-sale-schedule" id="bpe-sale-schedule" aria-controls="bpe-sale-dates" aria-expanded="false"><?php esc_html_e('Schedule the sale', 'brikpanel'); ?></button>
+                            <button type="button" class="brikpanel-pe-link brikpanel-pe-sale-schedule" id="bpe-sale-schedule" aria-controls="bpe-sale-dates" aria-expanded="false"<?php echo $bpe_lock_original ? ' disabled' : ''; ?>><?php esc_html_e('Schedule the sale', 'brikpanel'); ?></button>
                         </div>
                     </div>
 
                     <div class="brikpanel-pe-row brikpanel-pe-sale-dates" id="bpe-sale-dates">
                         <div class="brikpanel-pe-field">
                             <label for="bpe-sale-from"><?php esc_html_e('Sale start date', 'brikpanel'); ?><?php echo self::help_tip('bpe-tip-sale-dates', __('Schedule your sale in advance. Leave the dates empty to start it immediately or keep it running indefinitely.', 'brikpanel')); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in help_tip(). ?></label>
-                            <input type="text" id="bpe-sale-from" value="<?php echo esc_attr($data['sale_from']); ?>" placeholder="<?php esc_attr_e('YYYY-MM-DD (optional)', 'brikpanel'); ?>" autocomplete="off">
+                            <input type="text" id="bpe-sale-from" value="<?php echo esc_attr($data['sale_from']); ?>" placeholder="<?php esc_attr_e('YYYY-MM-DD (optional)', 'brikpanel'); ?>" autocomplete="off"<?php echo $bpe_lock_original ? ' disabled' : ''; ?>>
                         </div>
                         <div class="brikpanel-pe-field">
                             <label for="bpe-sale-to"><?php esc_html_e('Sale end date', 'brikpanel'); ?></label>
-                            <input type="text" id="bpe-sale-to" value="<?php echo esc_attr($data['sale_to']); ?>" placeholder="<?php esc_attr_e('YYYY-MM-DD (optional)', 'brikpanel'); ?>" autocomplete="off">
+                            <input type="text" id="bpe-sale-to" value="<?php echo esc_attr($data['sale_to']); ?>" placeholder="<?php esc_attr_e('YYYY-MM-DD (optional)', 'brikpanel'); ?>" autocomplete="off"<?php echo $bpe_lock_original ? ' disabled' : ''; ?>>
                         </div>
                     </div>
+                    <?php if ($bpe_lock_note) : ?>
+                    <p class="brikpanel-pe-lock-note"><?php echo esc_html($bpe_lock_note['text']); ?> <a href="<?php echo esc_url($bpe_lock_note['url']); ?>"><?php echo esc_html($bpe_lock_note['link']); ?></a></p>
+                    <?php endif; ?>
                 </div>
                 <?php $section_html['pricing'] = ob_get_clean(); endif; ?>
 
@@ -2607,7 +2673,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['inventory'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('gtin', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('gtin', $bpe_build, true)) : ob_start(); ?>
                 <!-- GTIN / Barcode (opt-in via settings; hidden for variable
                      products, which carry a GTIN per variation instead). -->
                 <div class="brikpanel-pe-card" id="bpe-gtin-card">
@@ -2621,7 +2687,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['gtin'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('tax', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('tax', $bpe_build, true)) : ob_start(); ?>
                 <!-- Tax (status & class) — opt-in via settings. -->
                 <div class="brikpanel-pe-card" id="bpe-tax-card">
                     <div class="brikpanel-pe-row">
@@ -2645,7 +2711,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['tax'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('sold_individually', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('sold_individually', $bpe_build, true)) : ob_start(); ?>
                 <!-- Sold individually — opt-in via settings. -->
                 <div class="brikpanel-pe-card" id="bpe-sold-individually-card">
                     <div class="brikpanel-pe-toggle-row">
@@ -2660,7 +2726,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['sold_individually'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('linked', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('linked', $bpe_build, true)) : ob_start(); ?>
                 <!-- Linked products (upsells & cross-sells) — opt-in via settings. -->
                 <div class="brikpanel-pe-card" id="bpe-linked-card">
                     <div class="brikpanel-pe-field">
@@ -2688,7 +2754,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['linked'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('advanced', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('advanced', $bpe_build, true)) : ob_start(); ?>
                 <!-- Advanced (purchase note, reviews, menu order) — opt-in via settings. -->
                 <div class="brikpanel-pe-card" id="bpe-advanced-card">
                     <div class="brikpanel-pe-field">
@@ -2800,7 +2866,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['brand'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('tags', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('tags', $bpe_build, true)) : ob_start(); ?>
                 <!-- Tags -->
                 <div class="brikpanel-pe-card">
                     <label><?php esc_html_e('Tags', 'brikpanel'); ?></label>
@@ -2845,7 +2911,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['description'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('weight', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('weight', $bpe_build, true)) : ob_start(); ?>
                 <!-- Shipping Weight -->
                 <div class="brikpanel-pe-card" id="bpe-weight-card">
                     <div class="brikpanel-pe-toggle-row">
@@ -2868,7 +2934,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['weight'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('dimensions', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('dimensions', $bpe_build, true)) : ob_start(); ?>
                 <!-- Shipping Dimensions -->
                 <div class="brikpanel-pe-card" id="bpe-dims-card">
                     <div class="brikpanel-pe-toggle-row">
@@ -2908,7 +2974,7 @@ class Brikpanel_Product_Editor {
                 </div>
                 <?php $section_html['dimensions'] = ob_get_clean(); endif; ?>
 
-                <?php if (in_array('shipping_class', $visible, true)) : ob_start(); ?>
+                <?php if (in_array('shipping_class', $bpe_build, true)) : ob_start(); ?>
                 <!-- Shipping class — opt-in via settings. -->
                 <div class="brikpanel-pe-card" id="bpe-shipping-class-card">
                     <div class="brikpanel-pe-field">
@@ -3281,6 +3347,9 @@ class Brikpanel_Product_Editor {
                 if (function_exists('brikpanel_render_editor_boxes')) {
                     brikpanel_render_editor_boxes('bottom', (int) $product_id, $product);
                 }
+
+                // Last on the page: the switched-off sections, folded.
+                $this->render_hidden_box($section_html, $bpe_held, (int) $product_id);
                 ?>
             <?php if ($bpe_widescreen) : ?>
             </div><!-- .brikpanel-pe-col-main -->
@@ -3345,13 +3414,15 @@ class Brikpanel_Product_Editor {
 
     /**
      * A folding card's id: `seo` for the SEO card, `mb:<metabox id>` for
-     * another plugin's box (the same names the sections list uses).
+     * another plugin's box (the same names the sections list uses), `plugins`
+     * for the "Fields from your other plugins" box and `hidden` for the
+     * "Hidden sections" box.
      *
      * @param mixed $id
      * @return bool
      */
     private static function is_fold_box_id($id) {
-        return is_string($id) && (bool) preg_match('/^(seo|mb:[A-Za-z0-9_.:-]{1,150})$/', $id);
+        return is_string($id) && (bool) preg_match('/^(seo|plugins|hidden|mb:[A-Za-z0-9_.:-]{1,150})$/', $id);
     }
 
     /**
@@ -4946,172 +5017,315 @@ class Brikpanel_Product_Editor {
     const OPEN_BOXES_META = 'brikpanel_pe_open_boxes';
 
     /**
-     * The "off" half of the show/hide control: other plugins add fields to this
-     * product and they are not being shown, so offer to show them. Rendered in
-     * the slot the "Additional product data" card would have occupied, so the
-     * fields appear exactly where the card promised.
+     * Whether the store shows other plugins' product-data fields through the
+     * settings ("Auto-show fields other plugins add", or sections picked in
+     * "Additional product data sections"). Reads the stored options, not the
+     * runtime selection: a section added at runtime regardless of the settings
+     * (the multi-currency prices) is not the merchant turning this on.
      *
-     * Deliberately NOT dismissible. It was, and that was a dead end: hiding the
-     * fields turned the setting off AND dismissed this card, leaving no way
-     * back into the editor at all. The pair is a toggle now, so whichever state
-     * the store is in, the way to the other state is on screen.
-     *
-     * @return string HTML, or '' when there is nothing to offer.
+     * @return bool
      */
-    private function thirdparty_hint_card() {
-        // Same capability gate as the hide button: only offer the switch to
-        // someone allowed to throw it. A product editor who cannot change store
-        // settings gets the editor as configured, not a card they cannot act on.
-        if (!current_user_can('manage_woocommerce')) {
-            return '';
-        }
+    private static function thirdparty_setting_on() {
+        return get_option('brikpanel_pe_wc_tabs_auto', 'no') === 'yes'
+            || !empty((array) get_option('brikpanel_pe_wc_tabs_selected', []));
+    }
 
-        $found = self::unsurfaced_thirdparty_sections();
-        $total = (int) $found['total'];
-        if ($total < 1) {
-            return '';
-        }
-
-        $shown  = array_slice($found['names'], 0, 4);
-        $hidden = $total - count($shown);
-        $names  = implode(', ', $shown);
-        if ($hidden > 0 && $names !== '') {
-            $names .= ' ' . sprintf(
-                /* translators: %d: how many further field groups are not listed by name */
-                _n('and %d more', 'and %d more', $hidden, 'brikpanel'),
-                $hidden
-            );
-        }
-
-        // Its own heading, not "Additional product data": when a section is
-        // surfaced automatically (multi-currency prices) that card is already
-        // on screen under that exact label, and two identical headings in a row
-        // read as a duplicate rather than as an offer.
-        return '<div class="brikpanel-pe-card brikpanel-pe-tp-hint">'
-            . '<label>' . esc_html__('Fields from your other plugins', 'brikpanel') . '</label>'
-            . '<p class="brikpanel-pe-tp-hint__lead">' . esc_html(sprintf(
-                /* translators: %d: number of field groups other plugins add to this product */
-                _n(
-                    '%d group of fields from another plugin is not being shown here.',
-                    '%d groups of fields from your other plugins are not being shown here.',
-                    $total,
-                    'brikpanel'
-                ),
-                $total
-            )) . '</p>'
-            . ($names !== '' ? '<p class="brikpanel-pe-tp-hint__names">' . esc_html($names) . '</p>' : '')
-            . '<div class="brikpanel-pe-tp-hint__actions">'
-            . '<button type="button" class="brikpanel-pe-btn secondary brikpanel-pe-tp-hint__enable">'
-            . esc_html__('Show these fields', 'brikpanel') . '</button>'
+    /**
+     * The "Fields from your other plugins" box: with the setting off, the
+     * fields other plugins add to this product, folded to their title line
+     * like another plugin's own box (owner, November 2026). A click opens it
+     * and each person's choice is kept (open_boxes()). It stands where the
+     * "Additional product data" card stands, inside the same card and ancestor
+     * chain, so the plugins' scripts work in it as they do in that card.
+     *
+     * It took the place of a card that offered a store-wide switch ("Show these
+     * fields"); that switch lives on as the link at the end of the box, so a
+     * store that wants the fields open for everyone, and the hand-picked list a
+     * "Hide these fields" press parked, are still one click away.
+     *
+     * @param string $groups_html Captured sections (capture_wc_product_data_fields(), fold_html).
+     * @param int    $count       Sections shown for this product's type.
+     * @return string Markup, the sections as captured.
+     */
+    private static function thirdparty_fold_box($groups_html, $count) {
+        $open = isset(self::open_boxes()['plugins']);
+        return '<div class="brikpanel-pe-tpfold brikpanel-pe-foldcard' . ($open ? '' : ' is-folded') . '" data-bpe-fold="plugins">'
+            . '<div class="brikpanel-pe-tpfold-head">'
+            . self::fold_toggle_html('bpe-fold-plugins', __('Fields from your other plugins', 'brikpanel'), $count, $open)
+            . '</div>'
+            . '<div class="brikpanel-pe-foldbody brikpanel-pe-tpfold-body" id="bpe-fold-plugins">'
+            . $groups_html
+            . '<p class="brikpanel-pe-foldfoot"><button type="button" class="brikpanel-pe-foldlink brikpanel-pe-tpfold__always">'
+            . esc_html__('Always show these fields', 'brikpanel') . '</button></p>'
             . '</div>'
             . '</div>';
     }
 
     /**
-     * Fingerprint of everything that can change the answer to "does this store
-     * have third-party product-data sections that are not being shown?".
+     * The switched-off sections the "Hidden sections" box carries:
+     * `slug => ['short' => …, 'full' => …]`, in the settings order.
      *
-     * Active plugins decide WHICH sections exist; the two settings decide
-     * whether they are surfaced. Any change to either invalidates the cached
-     * answer — and, because the fingerprint is part of the cache key, a stale
-     * entry is simply never read rather than having to be deleted.
+     * Only the small sections this editor ships switched off
+     * (brikpanel_pe_section_default_hidden(): permalink, barcode, tax, weight,
+     * dimensions, tags, shipping class, sold individually, linked products,
+     * advanced). A main section a store switched off itself (images, prices,
+     * stock, descriptions, variations, SEO…) stays off: those are the page's
+     * own frame, and the link at the end of the box leads to the settings list
+     * where it is turned back on.
+     *
+     * For people who may change store settings, the same people the box's
+     * settings link and the button before it were for: a store that keeps
+     * sections off for its staff keeps them off.
+     *
+     * @param int $product_id Product being edited (0 for a new one).
+     * @return array<string, array{short: string, full: string}>
+     */
+    private function hidden_box_sections($product_id) {
+        if (!current_user_can('manage_woocommerce') || !function_exists('brikpanel_pe_section_default_hidden')) {
+            return [];
+        }
+        return array_intersect_key(
+            $this->suggested_hidden_sections((int) $product_id),
+            array_flip(brikpanel_pe_section_default_hidden())
+        );
+    }
+
+    /**
+     * The "Hidden sections" box under the last section: the switched-off
+     * sections, folded to their title line like another plugin's box, to edit
+     * here without turning them on (owner, November 2026: whoever wants to edit
+     * without dealing with the settings can). A click opens it, and each
+     * person's choice is kept (open_boxes()).
+     *
+     * The editor's own sections ship partly switched off to keep the page
+     * short, and nothing on the page said so: a store looking for shipping
+     * weight or linked products thought they were broken (wp.org sizulku,
+     * November 2026, after the tags and permalink requests).
+     *
+     * While it stays folded the editor script leaves its fields out of every
+     * save (`data-bpe-hold`), so a product saves exactly as it did before the
+     * box existed; opened once, they save like any shown section. The link at
+     * its end opens the settings list where sections are turned on for good.
+     *
+     * Follows the "Suggest hidden sections in the product editor" setting (on
+     * by default).
+     *
+     * @param array<string,string> $section_html Built section markup, by slug.
+     * @param array                $held         hidden_box_sections().
+     * @param int                  $product_id   Product being edited, for the way back from the settings.
+     * @return void Prints the box, or nothing when there is nothing to offer.
+     */
+    private function render_hidden_box(array $section_html, array $held, $product_id) {
+        $cards = '';
+        $count = 0;
+        foreach ($held as $slug => $label) {
+            if (isset($section_html[$slug]) && $section_html[$slug] !== '') {
+                // Its short name, for the box's summary on a phone.
+                $name   = ' data-bpe-name="' . esc_attr($label['short']) . '"';
+                $cards .= (string) preg_replace_callback('/<([a-z][a-z0-9]*)\b/i', static function ($m) use ($name) {
+                    return '<' . $m[1] . $name;
+                }, self::mark_section($section_html[$slug], $slug), 1);
+                $count++;
+            }
+        }
+        if (!$count) {
+            return;
+        }
+        $open = isset(self::open_boxes()['hidden']);
+        $url  = add_query_arg(
+            [
+                'page'    => 'wc-settings',
+                'tab'     => 'brikpanel',
+                'section' => 'products',
+                'bp_back' => (int) $product_id,
+            ],
+            admin_url('admin.php')
+        ) . '#bp-jump-brikpanel_pe_visible_sections_field';
+
+        $html = '<div class="brikpanel-pe-card brikpanel-pe-foldcard brikpanel-pe-hiddenbox' . ($open ? '' : ' is-folded') . '" data-bpe-fold="hidden"' . ($open ? '' : ' data-bpe-hold="1"') . '>'
+            . '<div class="brikpanel-pe-hiddenbox__head">' . self::fold_toggle_html('bpe-fold-hidden', __('Hidden sections', 'brikpanel'), $count, $open) . '</div>'
+            . '<div class="brikpanel-pe-foldbody brikpanel-pe-hiddenbox__body" id="bpe-fold-hidden">'
+            . $cards
+            . '<p class="brikpanel-pe-foldfoot"><a class="brikpanel-pe-foldlink" href="' . esc_url($url) . '">' . esc_html__('Choose which sections show', 'brikpanel') . '</a></p>'
+            . '</div>'
+            . '</div>';
+        // Escaped as printed: the sections are this editor's own fields, so
+        // an allow-list of form markup keeps every one of them intact.
+        echo wp_kses($html, self::section_kses());
+    }
+
+    /**
+     * The title line of a folding box built here ("Fields from your other
+     * plugins", "Hidden sections"): one button with the name, how many parts
+     * are inside and the chevron, like another plugin's box.
+     *
+     * @param string $controls Id of the part it opens.
+     * @param string $title    Box name, not escaped yet.
+     * @param int    $count    Parts inside (0: no count).
+     * @param bool   $open     Starts open.
+     * @return string Escaped markup.
+     */
+    private static function fold_toggle_html($controls, $title, $count, $open) {
+        $num = function_exists('brikpanel_number') ? brikpanel_number((int) $count) : (string) (int) $count;
+        return '<button type="button" class="brikpanel-pe-foldtoggle" aria-expanded="' . ($open ? 'true' : 'false') . '" aria-controls="' . esc_attr($controls) . '">'
+            . '<span class="brikpanel-pe-foldname"><span class="brikpanel-pe-foldtitle">' . esc_html($title) . '</span>'
+            . ($count > 0 ? '<span class="brikpanel-pe-foldcount">' . esc_html($num) . '</span>' : '')
+            . '</span>'
+            . '<svg class="brikpanel-pe-foldchev" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false"><path d="M5 7.5l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            . '</button>';
+    }
+
+    /**
+     * Allowed markup for render_hidden_box(): the form parts this editor's own
+     * small sections are made of, with the attributes they use.
+     *
+     * @return array<string, array<string, bool>>
+     */
+    private static function section_kses() {
+        static $tags = null;
+        if ($tags !== null) {
+            return $tags;
+        }
+        $common = [
+            'class' => true, 'id' => true, 'style' => true, 'hidden' => true, 'title' => true, 'dir' => true,
+            'role' => true, 'tabindex' => true, 'data-*' => true,
+            'aria-label' => true, 'aria-hidden' => true, 'aria-expanded' => true, 'aria-controls' => true,
+            'aria-describedby' => true, 'aria-haspopup' => true, 'aria-live' => true,
+        ];
+        $field = $common + [
+            'name' => true, 'value' => true, 'placeholder' => true, 'disabled' => true, 'readonly' => true,
+            'required' => true, 'autocomplete' => true, 'spellcheck' => true, 'inputmode' => true, 'maxlength' => true,
+        ];
+        $svg = [
+            'class' => true, 'width' => true, 'height' => true, 'viewbox' => true, 'fill' => true, 'stroke' => true,
+            'stroke-width' => true, 'stroke-linecap' => true, 'stroke-linejoin' => true, 'aria-hidden' => true,
+            'focusable' => true, 'd' => true,
+        ];
+        $tags = [
+            'div'      => $common,
+            'p'        => $common,
+            'span'     => $common,
+            'small'    => $common,
+            'strong'   => $common,
+            'em'       => $common,
+            'br'       => [],
+            'a'        => $common + ['href' => true, 'target' => true, 'rel' => true],
+            'label'    => $common + ['for' => true],
+            'button'   => $common + ['type' => true, 'disabled' => true],
+            'input'    => $field + ['type' => true, 'checked' => true, 'step' => true, 'min' => true, 'max' => true],
+            'select'   => $field + ['multiple' => true],
+            'option'   => $common + ['value' => true, 'selected' => true, 'disabled' => true],
+            'optgroup' => $common + ['label' => true],
+            'textarea' => $field + ['rows' => true, 'cols' => true],
+            'svg'      => $svg,
+            'path'     => $svg,
+        ];
+        return $tags;
+    }
+
+    /**
+     * BrikPanel's own editor sections that are switched off: `slug =>
+     * ['short' => …, 'full' => …]`, in the order the settings list shows them.
+     * hidden_box_sections() picks the ones the "Hidden sections" box carries.
+     *
+     * The short name is the settings label without its closing note in
+     * brackets ("Linked products (upsells & cross-sells)" becomes "Linked
+     * products"), so no new names need translating. Plugin boxes (`mb:`) are
+     * not counted: the box is about this editor's own sections.
+     *
+     * A section a developer filter keeps off (`brikpanel_editor_visible_sections`)
+     * is not counted either: switching it on in the settings would still show
+     * nothing.
+     *
+     * @param int $product_id Product being edited.
+     * @return array<string, array{short: string, full: string}>
+     */
+    private function suggested_hidden_sections($product_id) {
+        if ('yes' !== get_option('brikpanel_pe_suggest_hidden_sections', 'yes')
+            || !function_exists('brikpanel_pe_section_options')
+            || !function_exists('brikpanel_pe_get_section_order')
+            || !function_exists('brikpanel_pe_get_visible_sections_ordered')) {
+            return [];
+        }
+
+        $labels     = brikpanel_pe_section_options();
+        $shown      = $this->get_visible_sections();
+        $switched   = brikpanel_pe_get_visible_sections_ordered();
+        $candidates = [];
+        foreach (brikpanel_pe_get_section_order() as $slug) {
+            if (isset($labels[$slug]) && !in_array($slug, $shown, true) && !in_array($slug, $switched, true)) {
+                $candidates[] = $slug;
+            }
+        }
+        if (!$candidates) {
+            return [];
+        }
+
+        // One dry run of the same filter get_visible_sections() applies, with
+        // every candidate switched on, keeps the ones that would really show.
+        /** This filter is documented in get_visible_sections(). */
+        $would_show = apply_filters('brikpanel_editor_visible_sections', array_merge($switched, $candidates), $product_id);
+        $would_show = is_array($would_show) ? $would_show : [];
+
+        $out = [];
+        foreach ($candidates as $slug) {
+            if (!in_array($slug, $would_show, true)) {
+                continue;
+            }
+            $full  = (string) $labels[$slug];
+            $short = trim((string) preg_replace('/\s*\([^()]*\)\s*$/u', '', $full));
+            $out[$slug] = ['short' => $short !== '' ? $short : $full, 'full' => $full];
+        }
+        return $out;
+    }
+
+    /**
+     * Fingerprint of everything that can change the answer to "does this store
+     * have product-data fields from other plugins?": the active plugins decide
+     * which exist, the BrikPanel version which hooks are read
+     * (core_product_data_sub_hooks()). A change to either is a new key, so a
+     * stale answer is never read rather than having to be deleted.
      *
      * @return string
      */
-    private static function thirdparty_hint_fingerprint() {
+    private static function thirdparty_fold_fingerprint() {
         $plugins = (array) get_option('active_plugins', []);
         if (is_multisite()) {
             $plugins = array_merge($plugins, array_keys((array) get_site_option('active_sitewide_plugins', [])));
         }
         sort($plugins);
-
-        // The version is part of it because an update can change which hooks
-        // are scanned (core_product_data_sub_hooks()), and with it the answer.
-        return substr(md5(implode('|', $plugins)
-            . '|' . (defined('BRIKPANEL_VERSION') ? BRIKPANEL_VERSION : '')
-            . '|' . (string) get_option('brikpanel_pe_wc_tabs_auto', 'no')
-            . '|' . wp_json_encode((array) get_option('brikpanel_pe_wc_tabs_selected', []))
-        ), 0, 12);
+        return substr(md5(implode('|', $plugins) . '|' . (defined('BRIKPANEL_VERSION') ? BRIKPANEL_VERSION : '')), 0, 12);
     }
 
     /**
-     * Labels of the third-party product-data sections this store has but is not
-     * showing, for the editor's discovery card. Empty when there is nothing to
-     * offer (no such plugin, or the merchant already surfaced them).
+     * Whether an earlier editor load found no field from another plugin to
+     * fold, so this one can skip the capture: most stores have none, and the
+     * capture fires every product-data hook. Learnt from the capture itself
+     * (thirdparty_fold_remember()), never from a probe beforehand: a plugin that
+     * prints part of its panel through require_once (Measurement Price
+     * Calculator's pricing table) only prints it on the first fire, and a probe
+     * before the capture would leave that part out of the box and let the next
+     * save wipe it (see $render_product).
      *
-     * Performance is the whole design here. collect_wc_product_data_sections()
-     * fires WooCommerce hooks and parses their HTML, and with the settings off
-     * the editor otherwise does NONE of that work (capture_wc_product_data_fields()
-     * returns early on an empty selection). So the answer is cached against the
-     * fingerprint above: the expensive pass runs once per plugin-set, and every
-     * later editor load costs a single option read.
-     *
-     * @return array{total:int,names:string[]} `total` counts every hidden
-     *         section; `names` holds only the ones worth naming (see below).
+     * @return bool
      */
-    private static function unsurfaced_thirdparty_sections() {
-        $none = ['total' => 0, 'names' => []];
+    private static function thirdparty_fold_known_empty() {
+        return 'no' === get_transient('bpe_tp_fold_' . self::thirdparty_fold_fingerprint());
+    }
 
-        // Only meaningful while the merchant has surfaced nothing. Reads the
-        // stored options rather than the runtime selection on purpose: a
-        // section auto-added at runtime regardless of the settings (the
-        // multi-currency prices) must not read as "they already turned this on".
-        if (get_option('brikpanel_pe_wc_tabs_auto', 'no') === 'yes'
-            || !empty((array) get_option('brikpanel_pe_wc_tabs_selected', []))) {
-            return $none;
+    /**
+     * Stores what a capture found, for thirdparty_fold_known_empty().
+     *
+     * @param bool $found Whether the store showed any section to fold, also
+     *                    one this product's type leaves out.
+     * @return void
+     */
+    private static function thirdparty_fold_remember($found) {
+        $key  = 'bpe_tp_fold_' . self::thirdparty_fold_fingerprint();
+        $want = $found ? 'yes' : 'no';
+        if (get_transient($key) !== $want) {
+            set_transient($key, $want, DAY_IN_SECONDS);
         }
-
-        $key    = 'bpe_tp_hint_' . self::thirdparty_hint_fingerprint();
-        $cached = get_transient($key);
-        if (is_array($cached) && isset($cached['total'], $cached['names'])) {
-            return $cached;
-        }
-
-        // Two shapes, named differently on purpose:
-        //
-        //   `tab:` — a whole tab another plugin added. Its label IS that
-        //            plugin's name for it ("Product input fields"), so it is
-        //            exactly what the merchant needs to recognise it.
-        //   `core:` — third-party fields living inside one of WooCommerce's own
-        //            tabs. Here the label is the CORE tab's name ("General",
-        //            "Inventory"), which would read as "another plugin adds
-        //            General" — untrue and confusing. What identifies these is
-        //            the field names the picker appends in parentheses, so use
-        //            those instead, and list nothing when there are none.
-        //
-        // Tabs come first so the recognisable names lead the list.
-        $tab_labels  = [];
-        $core_labels = [];
-        try {
-            foreach (self::collect_wc_product_data_sections() as $section_key => $label) {
-                $label = (string) $label;
-                if (strpos($section_key, 'tab:') === 0) {
-                    $tab_labels[] = trim(preg_replace('/\s*\([^()]*\)\s*$/', '', $label));
-                } elseif (strpos($section_key, 'core:') === 0) {
-                    if (preg_match('/\(([^()]*)\)\s*$/', $label, $m)) {
-                        $core_labels[] = trim($m[1]);
-                    } else {
-                        // Counted but unnamed: better silent than misleading.
-                        $core_labels[] = '';
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            // A third party fataling during enumeration must never take the
-            // editor down over a hint. Cache the empty answer so we do not pay
-            // for the same failure on every page load.
-            $tab_labels = $core_labels = [];
-        }
-
-        // Blanks are dropped from the names but still counted, so the total the
-        // card states always matches what the button will actually turn on.
-        $total  = count($tab_labels) + count($core_labels);
-        $names  = array_values(array_unique(array_filter(array_merge($tab_labels, $core_labels))));
-        $result = ['total' => $total, 'names' => $names];
-
-        set_transient($key, $result, DAY_IN_SECONDS);
-
-        return $result;
     }
 
     public static function collect_wc_product_data_sections() {
@@ -5184,7 +5398,7 @@ class Brikpanel_Product_Editor {
                 self::collect_custom_tab_meta();
                 foreach ($core_sub_hooks as $hooks) {
                     foreach ($hooks as $hook) {
-                        if (has_action($hook)) self::render_hook_capture($hook);
+                        if (has_action($hook)) self::capture_core_subhook($hook);
                     }
                 }
                 if (has_action('woocommerce_product_data_panels')) {
@@ -5219,7 +5433,8 @@ class Brikpanel_Product_Editor {
                 // fully-saved product (Germanized fatals on get_manufacturer on
                 // an empty shop) or leave an output buffer open (Sales Countdown
                 // Timer) — capture_isolated_hook() swallows both safely.
-                $section .= self::capture_isolated_hook($hook);
+                // WooCommerce's own fields are left out (capture_core_subhook).
+                $section .= self::capture_core_subhook($hook, false);
             }
             if ($section !== '') {
                 // Append the names of the fields a plugin added to this native
@@ -5249,7 +5464,7 @@ class Brikpanel_Product_Editor {
                 $shield = [];
                 $panels_html = self::shield_scripts($panels_html, $shield);
                 $dom = new \DOMDocument();
-                $loaded = @$dom->loadHTML('<?xml encoding="UTF-8"><div id="bpe-wrap">' . $panels_html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                $loaded = self::load_panels_dom($dom, $panels_html);
                 if ($loaded) {
                     $wrap = $dom->getElementById('bpe-wrap');
                     if ($wrap) {
@@ -5968,6 +6183,26 @@ class Brikpanel_Product_Editor {
      * @return string Absolute path, '' when it cannot be determined.
      */
     private static function callback_owner_path($function) {
+        $file = self::callback_file($function);
+        if ($file === '') return '';
+
+        // Collapse to the plugin root so every file of that plugin matches.
+        foreach ([defined('WP_PLUGIN_DIR') ? WP_PLUGIN_DIR : '', defined('WPMU_PLUGIN_DIR') ? WPMU_PLUGIN_DIR : ''] as $base) {
+            if ($base === '' || strpos($file, $base . '/') !== 0) continue;
+            $rest = substr($file, strlen($base) + 1);
+            $slash = strpos($rest, '/');
+            return $slash === false ? $file : $base . '/' . substr($rest, 0, $slash);
+        }
+        return $file;
+    }
+
+    /**
+     * The file that declares a hook callback.
+     *
+     * @param callable|mixed $function Callback from a WP_Hook entry.
+     * @return string Absolute path, '' when it cannot be determined.
+     */
+    private static function callback_file($function) {
         try {
             if (is_string($function) && function_exists($function)) {
                 $ref = new \ReflectionFunction($function);
@@ -5980,20 +6215,79 @@ class Brikpanel_Product_Editor {
             } else {
                 return '';
             }
-            $file = (string) $ref->getFileName();
+            return (string) $ref->getFileName();
         } catch (\Throwable $e) {
             return '';
         }
-        if ($file === '') return '';
+    }
 
-        // Collapse to the plugin root so every file of that plugin matches.
-        foreach ([defined('WP_PLUGIN_DIR') ? WP_PLUGIN_DIR : '', defined('WPMU_PLUGIN_DIR') ? WPMU_PLUGIN_DIR : ''] as $base) {
-            if ($base === '' || strpos($file, $base . '/') !== 0) continue;
-            $rest = substr($file, strlen($base) + 1);
-            $slash = strpos($rest, '/');
-            return $slash === false ? $file : $base . '/' . substr($rest, 0, $slash);
+    /**
+     * Fire one of WooCommerce's own product-data hooks (the lists in
+     * core_product_data_sub_hooks()) for capture, leaving WooCommerce's own
+     * callbacks on it out.
+     *
+     * What these hooks print is offered as "fields from your other plugins".
+     * WooCommerce prints a field of its own on one of them, the
+     * stock-notification checkbox on `woocommerce_product_options_stock_status`,
+     * and counted as another plugin's it would put the discovery card on every
+     * store. So WooCommerce's callbacks are detached for the fire and put back
+     * right after, in `finally`; every other plugin's callback runs exactly as
+     * WooCommerce would run it.
+     *
+     * @param string $hook   Core product-data hook.
+     * @param bool   $render True: render_hook_capture() (the product being
+     *                       edited, fired once). False: capture_isolated_hook()
+     *                       (the settings picker's probe product).
+     * @return string Captured HTML.
+     */
+    private static function capture_core_subhook($hook, $render = true) {
+        $detached = self::detach_woocommerce_callbacks($hook);
+        try {
+            return $render ? self::render_hook_capture($hook) : self::capture_isolated_hook($hook);
+        } finally {
+            self::reattach_callbacks($detached);
         }
-        return $file;
+    }
+
+    /**
+     * Take WooCommerce's own callbacks off a hook, for capture_core_subhook().
+     *
+     * Matched on the real path of the declaring file, so a WooCommerce folder
+     * reached through a symlink still counts as WooCommerce.
+     *
+     * @param string $hook Action hook.
+     * @return array<int, array{hook: string, function: mixed, priority: int, accepted_args: int}> For reattach_callbacks().
+     */
+    private static function detach_woocommerce_callbacks($hook) {
+        global $wp_filter;
+        static $wc_dir = null;
+        if ($wc_dir === null) {
+            $wc_dir = defined('WC_PLUGIN_FILE') ? (string) realpath(dirname(WC_PLUGIN_FILE)) : '';
+        }
+        $detached = [];
+        if ($wc_dir === '' || empty($wp_filter[$hook]) || !is_object($wp_filter[$hook])
+            || !isset($wp_filter[$hook]->callbacks) || !is_array($wp_filter[$hook]->callbacks)) {
+            return $detached;
+        }
+        foreach ($wp_filter[$hook]->callbacks as $priority => $entries) {
+            if (!is_array($entries)) continue;
+            foreach ($entries as $entry) {
+                if (!isset($entry['function'])) continue;
+                $file = self::callback_file($entry['function']);
+                $real = $file !== '' ? realpath($file) : false;
+                if ($real === false || strpos($real, $wc_dir . DIRECTORY_SEPARATOR) !== 0) continue;
+                $detached[] = [
+                    'hook'          => $hook,
+                    'function'      => $entry['function'],
+                    'priority'      => (int) $priority,
+                    'accepted_args' => isset($entry['accepted_args']) ? (int) $entry['accepted_args'] : 1,
+                ];
+            }
+        }
+        foreach ($detached as $cb) {
+            remove_action($cb['hook'], $cb['function'], $cb['priority']);
+        }
+        return $detached;
     }
 
     /**
@@ -6410,6 +6704,22 @@ class Brikpanel_Product_Editor {
      */
     public static function multicurrency_card_active() {
         return self::multicurrency_autosurface_active();
+    }
+
+    /**
+     * Whether this editor load puts the folded "Fields from your other
+     * plugins" box on the page: the person may change store settings, the
+     * setting that shows those fields is off, and the store is not known to
+     * have none. The asset bootstrap asks too (brikpanel-enqueue.php): the
+     * box carries other plugins' panels, and those panels need their scripts
+     * as much as in the open card.
+     *
+     * @return bool
+     */
+    public static function thirdparty_fold_wanted() {
+        return current_user_can('manage_woocommerce')
+            && !self::thirdparty_setting_on()
+            && !self::thirdparty_fold_known_empty();
     }
 
     private static function multicurrency_autosurface_active() {
@@ -6997,10 +7307,15 @@ class Brikpanel_Product_Editor {
      * field on a hook missing from this list is never rendered, and its
      * "save or clear when absent" handler then wipes the value on every save
      * (Measurement Price Calculator's Area / Volume on
-     * `woocommerce_product_options_dimensions`). Deliberately absent:
-     * `woocommerce_product_options_stock_status`, where WooCommerce core
-     * itself prints its stock-notification checkbox (saved on
-     * woocommerce_admin_process_product_object with its own presence check).
+     * `woocommerce_product_options_dimensions`).
+     *
+     * Always fired through capture_core_subhook(), which leaves WooCommerce's
+     * own callbacks out. `woocommerce_product_options_stock_status` used to be
+     * left off this list because WooCommerce prints its stock-notification
+     * checkbox there, and skipping the hook hid every plugin field printed in
+     * the same spot, under Stock status: AgenWebsite Multi Warehouse's
+     * per-warehouse stock box could not be shown or even offered (wp.org
+     * sizulku, November 2026).
      */
     private static function core_product_data_sub_hooks() {
         return [
@@ -7016,6 +7331,7 @@ class Brikpanel_Product_Editor {
                 'woocommerce_product_options_global_unique_id',
                 'woocommerce_product_options_stock',
                 'woocommerce_product_options_stock_fields',
+                'woocommerce_product_options_stock_status',
                 'woocommerce_product_options_sold_individually',
                 'woocommerce_product_options_inventory_product_data',
             ],
@@ -7043,9 +7359,17 @@ class Brikpanel_Product_Editor {
      * ones); if there are none, nothing is emitted (default-off behaviour
      * requested by admins). When the card renders, the sections that were not
      * picked are on the page too, hidden, so their values survive the save.
-     * self::$capture_info says what ended up in the card.
+     * With $fold (the setting is off, see render_page()) the sections the store
+     * does not show go to the "Fields from your other plugins" box instead
+     * (self::$capture_info['fold_html']). self::$capture_info says what ended
+     * up in the card.
+     *
+     * @param int             $product_id Product being edited.
+     * @param WC_Product|null $product    The product.
+     * @param bool            $fold       Collect the unshown sections for the box.
+     * @return string The card's shown (and kept-only) sections.
      */
-    private function capture_wc_product_data_fields($product_id, $product) {
+    private function capture_wc_product_data_fields($product_id, $product, $fold = false) {
         // Section discovery below must fire the product-data hooks for THIS
         // product, once, and hand the output to the render (see $render_product).
         self::$render_product = ($product instanceof WC_Product && (int) $product->get_id() === (int) $product_id) ? $product : null;
@@ -7053,8 +7377,22 @@ class Brikpanel_Product_Editor {
         $selected = (array) get_option('brikpanel_pe_wc_tabs_selected', []);
         $selected = self::augment_sections_for_multicurrency($selected, 'product');
         $selected = self::augment_sections_auto($selected, 'product');
-        self::$capture_info = ['any_visible' => false, 'panels' => [], 'empty_panels' => []];
-        if (empty($selected)) {
+        // Folded: every section the store does not show goes in the box. When
+        // the card goes out with the save anyway (a section shown regardless of
+        // the setting: the multi-currency prices), a folded section still
+        // travels as a kept-only copy until the box is opened ($fold_keep), as
+        // it did before the box; otherwise the editor script holds the whole
+        // card back until then (render_page()).
+        $fold      = (bool) $fold;
+        $fold_shut = $fold && !isset(self::open_boxes()['plugins']);
+        $fold_keep = $fold_shut && !empty($selected);
+        $fold_out  = '';
+        $fold_seen = 0;
+        // Any section another plugin has here, also one this product's type
+        // leaves out: what thirdparty_fold_remember() learns about the store.
+        $fold_found = false;
+        self::$capture_info = ['any_visible' => false, 'panels' => [], 'empty_panels' => [], 'fold_html' => '', 'fold_visible' => 0, 'fold_hold' => false, 'fold_found' => false];
+        if (empty($selected) && !$fold) {
             self::$render_product = null;
             return '';
         }
@@ -7116,8 +7454,9 @@ class Brikpanel_Product_Editor {
                 if (!has_action($hook)) continue;
                 // Buffer-safe fire (see capture_isolated_hook): never let a
                 // misbehaving 3rd-party field render abort the editor or leak an
-                // output buffer that corrupts the page.
-                $html = self::render_hook_capture($hook);
+                // output buffer that corrupts the page. WooCommerce's own
+                // fields are left out (capture_core_subhook).
+                $html = self::capture_core_subhook($hook);
                 if ($html !== '') $section .= $html;
             }
             if ($section !== '') {
@@ -7128,11 +7467,24 @@ class Brikpanel_Product_Editor {
                 // `data-bp-unpicked` marks a section that is on the page only so
                 // its values round-trip: the editor JS neither counts its events
                 // as edits nor lets its copy of a field win over a shown one.
-                $hidden_attr = $is_picked ? '' : ' style="display:none" aria-hidden="true" data-bp-unpicked="1"';
-                $output .= '<div class="brikpanel-pe-wc-tab-group" data-tab="' . esc_attr($label) . '"' . $hidden_attr . '>'
+                // A folded one (`data-bpe-folded`) is shown once its box opens.
+                if ($is_picked) {
+                    $hidden_attr = '';
+                } elseif ($fold) {
+                    $hidden_attr = ' data-bpe-folded="1"' . ($fold_keep ? ' data-bp-unpicked="1"' : '');
+                    $fold_seen++;
+                } else {
+                    $hidden_attr = ' style="display:none" aria-hidden="true" data-bp-unpicked="1"';
+                }
+                $group_html = '<div class="brikpanel-pe-wc-tab-group" data-tab="' . esc_attr($label) . '"' . $hidden_attr . '>'
                     . '<h4 class="brikpanel-pe-wc-tab-title">' . esc_html($label) . '</h4>'
                     . $section
                     . '</div>';
+                if (!$is_picked && $fold) {
+                    $fold_out .= $group_html;
+                } else {
+                    $output .= $group_html;
+                }
             }
         }
 
@@ -7175,7 +7527,7 @@ class Brikpanel_Product_Editor {
                 $panels_html  = self::shield_scripts($panels_html, $script_store);
 
                 $dom = new \DOMDocument();
-                $loaded = @$dom->loadHTML('<?xml encoding="UTF-8"><div id="bpe-wrap">' . $panels_html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+                $loaded = self::load_panels_dom($dom, $panels_html);
 
                 if ($loaded) {
                     $wrap = $dom->getElementById('bpe-wrap');
@@ -7204,7 +7556,10 @@ class Brikpanel_Product_Editor {
                             // those plugins off the save hooks instead.
                             $tab_key   = 'tab:' . $id;
                             $is_picked = in_array($tab_key, $selected, true);
-                            if (!$is_picked && in_array($id, $unrendered, true)) continue;
+                            if (!$is_picked && in_array($id, $unrendered, true)) {
+                                $fold_found = $fold_found || $fold;
+                                continue;
+                            }
 
                             $has_controls = false;
                             foreach (['input', 'select', 'textarea', 'button'] as $tag) {
@@ -7270,7 +7625,18 @@ class Brikpanel_Product_Editor {
                                 . '<a href="#' . esc_attr($id) . '" tabindex="-1"><span>' . esc_html($label) . '</span></a>'
                                 . '</li></ul>';
 
-                            if (!$is_picked) {
+                            if (!$is_picked && $fold) {
+                                // Folded: shown when its box opens, for the
+                                // product types its tab is for (as below).
+                                $gate        = self::wc_tab_gate_classes($tab_meta['classes'][$id] ?? []);
+                                $group_attrs = ' data-bpe-folded="1"' . ($fold_keep ? ' data-bp-unpicked="1"' : '')
+                                    . ($gate ? ' data-wc-tab-class="' . esc_attr(implode(' ', $gate)) . '"' : '');
+                                if ($gate && !self::wc_tab_shown_for($gate, $visibility)) {
+                                    $group_attrs .= ' hidden';
+                                } else {
+                                    $fold_seen++;
+                                }
+                            } elseif (!$is_picked) {
                                 $group_attrs = ' style="display:none" aria-hidden="true" data-bp-unpicked="1"';
                             } else {
                                 // WooCommerce shows a plugin's tab only for the
@@ -7288,18 +7654,33 @@ class Brikpanel_Product_Editor {
                                 }
                             }
 
-                            $output .= '<div class="brikpanel-pe-wc-tab-group" data-tab="' . esc_attr($label) . '"' . $group_attrs . '>'
+                            $group_html = '<div class="brikpanel-pe-wc-tab-group" data-tab="' . esc_attr($label) . '"' . $group_attrs . '>'
                                 . '<h4 class="brikpanel-pe-wc-tab-title">' . esc_html($label) . '</h4>'
                                 . $tab_nav
                                 . $panel_html
                                 . '</div>';
+                            if (!$is_picked && $fold) {
+                                $fold_out .= $group_html;
+                            } else {
+                                $output .= $group_html;
+                            }
                         }
                     }
                 }
             }
         }
 
-        self::$capture_info = ['any_visible' => $any_visible, 'panels' => array_keys($seen_panel_ids), 'empty_panels' => array_keys($empty_panels)];
+        self::$capture_info = [
+            'any_visible'  => $any_visible,
+            'panels'       => array_keys($seen_panel_ids),
+            'empty_panels' => array_keys($empty_panels),
+            'fold_html'    => $fold_out,
+            'fold_visible' => $fold_seen,
+            // Without the box nothing would be on the page: the editor script
+            // holds the card back until the box is opened.
+            'fold_hold'    => $fold_shut && empty($selected) && $fold_out !== '',
+            'fold_found'   => $fold_found || $fold_out !== '',
+        ];
 
         // Restore globals
         $post           = $orig_post;
@@ -7309,6 +7690,27 @@ class Brikpanel_Product_Editor {
         self::$render_hook_memo = [];
 
         return $output;
+    }
+
+    /**
+     * Parse captured panel markup into $dom, inside a `#bpe-wrap` div. Other
+     * plugins' panels are seldom valid HTML (an id printed twice, a bare "&"),
+     * and libxml reports every slip as a PHP warning; reading them from its own
+     * error list instead keeps a store's error log free of another plugin's
+     * markup. The parse itself is the same.
+     *
+     * @param \DOMDocument $dom  Empty document.
+     * @param string       $html Captured panels.
+     * @return bool Whether it parsed.
+     */
+    private static function load_panels_dom(\DOMDocument $dom, $html) {
+        $prev = libxml_use_internal_errors(true);
+        try {
+            return $dom->loadHTML('<?xml encoding="UTF-8"><div id="bpe-wrap">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+        }
     }
 
     /**
@@ -9431,12 +9833,18 @@ class Brikpanel_Product_Editor {
         // The price keys come only while the price box is on the page. A store
         // that hides the Pricing section sends none, and an absent key used to
         // read as "no price": every save cleared the product's price.
+        //
+        // A WPML translation takes its price from the original product (WooCommerce
+        // Multilingual copies it there): the editor shows the boxes locked, and a
+        // price posted anyway is ignored. Its variations follow the same rule in
+        // save_variations().
+        $bpe_price_locked = function_exists('brikpanel_wpml_original_of') && brikpanel_wpml_original_of($product_id);
         if ($is_grouped) {
             $product->set_regular_price('');
             $product->set_sale_price('');
             $product->set_date_on_sale_from(null);
             $product->set_date_on_sale_to(null);
-        } elseif (!$is_variable && array_key_exists('regular_price', $_POST)) {
+        } elseif (!$is_variable && !$bpe_price_locked && array_key_exists('regular_price', $_POST)) {
             $product->set_regular_price(wc_format_decimal(sanitize_text_field($_POST['regular_price'] ?? '')));
             $sale = sanitize_text_field($_POST['sale_price'] ?? '');
             $product->set_sale_price($sale !== '' ? wc_format_decimal($sale) : '');
@@ -9663,10 +10071,17 @@ class Brikpanel_Product_Editor {
         // and variations are stored (Brikpanel_Video::apply_changes()), and
         // only for images the saved product really has.
 
-        // Categories
-        $cat_ids_raw = sanitize_text_field($_POST['category_ids'] ?? '');
-        $cat_ids = $cat_ids_raw ? array_map('intval', explode(',', $cat_ids_raw)) : [];
-        $product->set_category_ids($cat_ids);
+        // Categories, when the editor sent them: it does while the Category
+        // section is on the form. With the section switched off in the
+        // settings the key is absent and the product keeps its categories;
+        // reading the absence as "none" moved every saved product to
+        // Uncategorized (November 2026). A new product saved without any
+        // still gets WooCommerce's default category, as before.
+        if (isset($_POST['category_ids'])) {
+            $cat_ids_raw = sanitize_text_field(wp_unslash($_POST['category_ids']));
+            $cat_ids = $cat_ids_raw ? array_map('intval', explode(',', $cat_ids_raw)) : [];
+            $product->set_category_ids($cat_ids);
+        }
 
         // Brand — assigned after WC_Product::save() further down, since
         // wp_set_object_terms() needs the (possibly newly-created) product ID.
@@ -10602,6 +11017,12 @@ class Brikpanel_Product_Editor {
             $response['native_attr_mirror'] = ['html' => $mirror_rows, 'hash' => md5($mirror_rows)];
         }
 
+        // WPML: an original's new price, stock and variations reach its
+        // translations, as after a save on WooCommerce's own edit screen.
+        if (!empty($saved_id) && function_exists('brikpanel_wpml_sync_translations')) {
+            brikpanel_wpml_sync_translations($saved_id);
+        }
+
         $this->send_clean_json(true, $response);
 
         } catch (\Throwable $e) {
@@ -11411,6 +11832,11 @@ class Brikpanel_Product_Editor {
             return;
         }
 
+        // A WPML translation's variations take their prices and sale dates from
+        // the original product's (WooCommerce Multilingual copies them): the
+        // editor shows those boxes locked, and posted values are left unsaved.
+        $price_locked = function_exists('brikpanel_wpml_original_of') && brikpanel_wpml_original_of($product->get_id());
+
         // Determine the non-variation (spec) attributes for the merged save:
         //   - If the new "Product attributes" section was posted, use its
         //     contents (the user is editing specs explicitly).
@@ -12054,17 +12480,22 @@ class Brikpanel_Product_Editor {
             $var_enabled = !array_key_exists('enabled', $var_data) || !empty($var_data['enabled']);
             $variation->set_status($var_enabled ? 'publish' : 'private');
 
-            // Price
-            $var_price = isset($var_data['regular_price']) ? wc_format_decimal(sanitize_text_field($var_data['regular_price'])) : '';
-            $variation->set_regular_price($var_price);
+            // Price (a WPML translation's comes from its original, see above)
+            if (!$price_locked) {
+                $var_price = isset($var_data['regular_price']) ? wc_format_decimal(sanitize_text_field($var_data['regular_price'])) : '';
+                $variation->set_regular_price($var_price);
 
-            $var_sale = isset($var_data['sale_price']) && $var_data['sale_price'] !== '' ? wc_format_decimal(sanitize_text_field($var_data['sale_price'])) : '';
-            $variation->set_sale_price($var_sale);
+                $var_sale = isset($var_data['sale_price']) && $var_data['sale_price'] !== '' ? wc_format_decimal(sanitize_text_field($var_data['sale_price'])) : '';
+                $variation->set_sale_price($var_sale);
+            }
 
             // Sale schedule dates per variation. Written only when the payload
             // carries the key: the dates live in the row's details panel, and a
             // missing key has to leave a stored schedule alone, not clear it.
             // An empty value that IS sent still clears (the date's × button).
+            if ($price_locked) {
+                unset($var_data['sale_from'], $var_data['sale_to']);
+            }
             if (array_key_exists('sale_from', $var_data)) {
                 $var_sale_from_raw = sanitize_text_field((string) $var_data['sale_from']);
                 $var_sale_from     = preg_match('/^\d{4}-\d{2}-\d{2}$/', $var_sale_from_raw) ? $var_sale_from_raw : '';
@@ -12743,6 +13174,11 @@ class Brikpanel_Product_Editor {
 
         switch ($field) {
             case 'price':
+                // A WPML translation takes its price from the original product.
+                if (function_exists('brikpanel_wpml_original_of') && brikpanel_wpml_original_of($product_id)) {
+                    $note = function_exists('brikpanel_wpml_price_lock_note') ? brikpanel_wpml_price_lock_note() : ['text' => __('Invalid field.', 'brikpanel')];
+                    wp_send_json_error(['message' => $note['text']]);
+                }
                 $product->set_regular_price(wc_format_decimal($value));
                 break;
             case 'stock':
@@ -12768,6 +13204,10 @@ class Brikpanel_Product_Editor {
         }
 
         $product->save();
+        // WPML: an original's new price or stock reaches its translations.
+        if (function_exists('brikpanel_wpml_sync_translations')) {
+            brikpanel_wpml_sync_translations($product_id);
+        }
         wp_send_json_success(['message' => __('Updated', 'brikpanel')]);
     }
 

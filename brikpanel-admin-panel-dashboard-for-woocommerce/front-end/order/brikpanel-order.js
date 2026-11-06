@@ -159,6 +159,27 @@
 			}
 		});
 
+		// Print: the order summary in a new tab, the print window opening there
+		// by itself (front-end/orders/brikpanel-order-print.php). It sits before
+		// the status so Save stays last; at the 'is-meta-icons' level it keeps
+		// only its printer, like Screen Options. No address, no button: a new
+		// order is not saved yet, and some users may not print.
+		if (cfg.print_url && !isNew) {
+			var printLink = document.createElement('a');
+			printLink.className = 'brikpanel-order-header__print';
+			printLink.href = cfg.print_url;
+			printLink.target = '_blank';
+			printLink.rel = 'noopener';
+			printLink.setAttribute('aria-label', cfg.i18n.print_summary || '');
+			printLink.title = cfg.i18n.print_summary || '';
+			printLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>';
+			var printLabel = document.createElement('span');
+			printLabel.className = 'brikpanel-order-header__print-label';
+			printLabel.textContent = cfg.i18n.print || '';
+			printLink.appendChild(printLabel);
+			right.appendChild(printLink);
+		}
+
 		right.appendChild(statusWrap);
 		right.appendChild(saveBtn);
 
@@ -287,7 +308,7 @@
 
 		// The bar gives way in priority order, measured on its real width (field
 		// test B10, CLAUDE.md "Başlık satırı kuralı"): the order number and Save
-		// never do. First Screen Options drops its text, then the date goes, then
+		// never do. First Screen Options and Print drop their text, then the date goes, then
 		// the word after the back arrow, then the status label ends in "…"; the
 		// number is cut only when nothing else is left. Breakpoints guessed this
 		// before, and a long order number with a long status pushed Save off the

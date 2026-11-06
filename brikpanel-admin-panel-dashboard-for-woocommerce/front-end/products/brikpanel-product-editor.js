@@ -131,15 +131,17 @@
         initThirdPartyHint();
         initCogsMirror();
         initFolds();
+        initHiddenBox();
         loadExistingData();
         initPhone();
     }
 
-    /* Folding cards: the SEO card and every other plugin's box start as their
-       title line on wider screens (the server prints .is-folded), and the ones
-       a person opens stay open for them on every product: the server keeps the
-       list per person (brikpanel_pe_fold_state). A phone shows these cards as
-       pages already, so nothing folds there (the CSS is desktop-only). */
+    /* Folding cards: the SEO card, every other plugin's box and the two boxes
+       built here ("Fields from your other plugins", "Hidden sections") start
+       as their title line on wider screens (the server prints .is-folded), and
+       the ones a person opens stay open for them on every product: the server
+       keeps the list per person (brikpanel_pe_fold_state). A phone shows these
+       cards as pages already, so nothing folds there (the CSS is desktop-only). */
     function initFolds() {
         $(document).on('click', '.brikpanel-pe-foldbtn, .brikpanel-pe-foldtoggle', function (e) {
             var card = this.closest('.brikpanel-pe-foldcard');
@@ -150,6 +152,7 @@
     }
 
     function setFold(card, open, remember) {
+        if (open) { releaseHold(card); }
         card.classList.toggle('is-folded', !open);
         $(card).find('.brikpanel-pe-foldbtn, .brikpanel-pe-foldtoggle').attr('aria-expanded', open ? 'true' : 'false');
         var btn = card.querySelector('.brikpanel-pe-foldbtn');
@@ -165,6 +168,40 @@
         }
     }
 
+    /* The two boxes built here keep their fields out of every save until they
+       are opened on this page: the server marks a closed one data-bpe-hold,
+       so a product saves exactly as it did before the boxes existed (stores
+       that never open them, and every autosave). Opened once, here or as a
+       page on a phone, its fields save like any shown field. Where the card
+       goes out with the save anyway (the multi-currency prices beside the
+       box), its folded sections travel as kept-only copies ([data-bp-unpicked])
+       until then, as they did before the box, and become shown ones when it
+       opens. */
+    function isHeld(el) {
+        return !!(el && el.closest && el.closest('[data-bpe-hold]:not([data-bpe-opened])'));
+    }
+
+    // Like $(sel), without what sits in a held box.
+    function onForm(sel) {
+        return $(sel).filter(function () { return !isHeld(this); });
+    }
+
+    var tpTypesSync = null;
+    var tpQuietUntil = 0;
+    function releaseHold(root) {
+        if (!root || !root.closest) return;
+        var held = root.closest('[data-bpe-hold]:not([data-bpe-opened])');
+        if (held) held.setAttribute('data-bpe-opened', '1');
+        $(root).find('[data-bpe-hold]:not([data-bpe-opened])').attr('data-bpe-opened', '1');
+        var $kept = $(root).find('[data-bpe-folded][data-bp-unpicked]');
+        if (!$kept.length) return;
+        $kept.removeAttr('data-bp-unpicked aria-hidden');
+        // What their own scripts do while they load is not the merchant's edit.
+        tpQuietUntil = Date.now() + 4000;
+        lazyLoadTabs($kept);
+        if (tpTypesSync) tpTypesSync();
+    }
+
     // A required field of another plugin (ACF) that failed its check must not
     // sit in a folded box where nobody sees the message.
     function unfoldErrors() {
@@ -173,15 +210,16 @@
         });
     }
 
-    /* Discovery card shown when other plugins add fields to this product but
-       the setting that surfaces them is off. Enabling reloads rather than
-       injecting the panels over AJAX: those panels come with their own scripts,
+    /* The store-wide show / hide pair for other plugins' fields: "Hide these
+       fields" on the open card, "Always show these fields" at the end of the
+       folded "Fields from your other plugins" box. Both reload rather than
+       move the panels over AJAX: those panels come with their own scripts,
        styles and DOM ancestors, and a reload is the one way to guarantee they
        initialise exactly as they do on a normal load. */
     function initThirdPartyHint() {
         bindToggle('.brikpanel-pe-wc-fields', '.brikpanel-pe-wc-fields__hide',
             'brikpanel_pe_disable_thirdparty_fields', 'tp_hide_working');
-        bindToggle('.brikpanel-pe-tp-hint', '.brikpanel-pe-tp-hint__enable',
+        bindToggle('.brikpanel-pe-wc-fields', '.brikpanel-pe-tpfold__always',
             'brikpanel_pe_enable_thirdparty_fields', 'tp_hint_working');
 
         function bindToggle(cardSel, btnSel, action, busyKey) {
@@ -302,11 +340,16 @@
        classes the plugin listens on; firing a click here triggers the lazy
        render. The panel itself stays visible via CSS regardless. */
     function initThirdPartyTabLazyLoad() {
+        lazyLoadTabs($(document));
+    }
+
+    // Also for the sections a folded box shows once it opens (releaseHold()).
+    function lazyLoadTabs($root) {
         // Not for sections that are only on the page so their values survive
         // the save ([data-bp-unpicked]): WooCommerce never opens a tab the
         // merchant did not open, and every plugin handles that unloaded state
         // on save. Loading them would also fire their scripted changes as edits.
-        var $sims = $('.brikpanel-pe-wc-tabsim').filter(function () {
+        var $sims = $root.find('.brikpanel-pe-wc-tabsim').filter(function () {
             return !$(this).closest('[data-bp-unpicked]').length;
         });
         if (!$sims.length) return;
@@ -372,22 +415,60 @@
     function initThirdPartyTabTypes() {
         var card = document.querySelector('.brikpanel-pe-wc-fields');
         if (!card) return;
-        var groups = [].slice.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group[data-wc-tab-class]:not([data-bp-unpicked])'));
-        if (!groups.length) return;
+        // The sections in the folded box count too: closed, its title line is
+        // what the merchant sees of them, with how many this type shows.
+        var gatedSel = '.brikpanel-pe-wc-tab-group[data-wc-tab-class]:not([data-bp-unpicked]), .brikpanel-pe-wc-tab-group[data-wc-tab-class][data-bpe-folded]';
+        var fold = card.querySelector('.brikpanel-pe-tpfold');
+        if (!card.querySelector(gatedSel) && !fold) return;
 
         function sync() {
             var c = wcGateContext();
-            groups.forEach(function (g) {
+            [].forEach.call(card.querySelectorAll(gatedSel), function (g) {
                 g.hidden = !wcGateShown(wcGateClasses(g), c);
             });
-            var any = [].some.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group'), function (g) {
-                return !g.hidden && !g.hasAttribute('data-bp-unpicked') && g.style.display !== 'none';
+            var shown = function (g) { return !g.hidden && g.style.display !== 'none'; };
+            var folded = [].filter.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group[data-bpe-folded]'), shown).length;
+            var any = folded > 0 || [].some.call(card.querySelectorAll('.brikpanel-pe-wc-tab-group:not([data-bpe-folded])'), function (g) {
+                return shown(g) && !g.hasAttribute('data-bp-unpicked');
             });
             card.style.display = any ? '' : 'none';
+            setFoldCount(fold, folded);
             remountSwatchesIfShown();
             phoneSummaries();
         }
+        tpTypesSync = sync;
         $(document).on('change', '#bpe-var-toggle, #bpe-product-type, #bpe-virtual-toggle, #bpe-digital-toggle', sync);
+        sync();
+    }
+
+    // A folded box's count, the parts this product shows (the server writes
+    // the first one).
+    function setFoldCount(box, n) {
+        var el = box ? box.querySelector('.brikpanel-pe-foldcount') : null;
+        if (!el) return;
+        var text = fmtCount(n);
+        if (el.textContent !== text) el.textContent = text;
+    }
+
+    /* "Hidden sections": a section the product's type does without (no weight
+       on a virtual product, no barcode on a variable one) is hidden by its own
+       rule inside the box too; the count follows, and with nothing left the
+       box goes. */
+    function initHiddenBox() {
+        var box = document.querySelector('.brikpanel-pe-hiddenbox');
+        if (!box) return;
+        var body = box.querySelector('.brikpanel-pe-hiddenbox__body');
+        function sync() {
+            var n = [].filter.call(body.children, function (c) {
+                return c.hasAttribute('data-bpe-section') && c.style.display !== 'none';
+            }).length;
+            setFoldCount(box, n);
+            box.style.display = n ? '' : 'none';
+            phoneSummaries();
+        }
+        $(document).on('change', '#bpe-var-toggle, #bpe-product-type, #bpe-virtual-toggle, #bpe-digital-toggle', function () {
+            window.setTimeout(sync, 0);
+        });
         sync();
     }
 
@@ -477,6 +558,8 @@
 
     // Called with the save payload; returns the swatch value being sent.
     function swatchesBeforeSend(data) {
+        // Its panel in a box still closed: not on this form (see isHeld()).
+        if (swatches.panel && isHeld(swatches.panel)) return null;
         if (document.getElementById('bpe-native-attrs')) data.native_attr_mirror = 1;
         if (!swatches.panel) return null;
         if (!data.hasOwnProperty('ct-woo-attributes-list') && swatches.loaded !== null) {
@@ -1166,6 +1249,10 @@
             // A scripted event has no originalEvent (jQuery .trigger()) or is
             // untrusted (dispatchEvent); a real edit is always trusted.
             if (wcFieldsBooting && (!e.originalEvent || !e.originalEvent.isTrusted)) return;
+            // Same for the sections a folded box has just shown: their scripts
+            // load them first (releaseHold()).
+            if (Date.now() < tpQuietUntil && (!e.originalEvent || !e.originalEvent.isTrusted)
+                && $(e.target).closest('[data-bpe-folded]').length) return;
             // A section kept only for its values cannot be edited: whatever its
             // own scripts do there is not the merchant's change.
             if ($(e.target).closest('[data-bp-unpicked]').length) return;
@@ -3154,7 +3241,7 @@
         // Sections kept only for their values ([data-bp-unpicked]) do not count:
         // the merchant never saw them, so a theme's handler stays detached.
         $('.brikpanel-pe-wc-fields').find('.brikpanel-pe-wc-panel[id], .panel[id]').each(function () {
-            if ($(this).closest('[data-bp-unpicked]').length) return;
+            if ($(this).closest('[data-bp-unpicked]').length || isHeld(this)) return;
             if (ids.indexOf(this.id) === -1) ids.push(this.id);
         });
         $('.brikpanel-pe-metaboxes-wrap .postbox[id]').each(function () { ids.push(this.id); });
@@ -3170,7 +3257,7 @@
     function filledThirdPartyPanels() {
         var ids = [];
         $('.brikpanel-pe-wc-fields').find('.brikpanel-pe-wc-panel[id]').each(function () {
-            if ($(this).closest('[data-bp-unpicked]').length || ids.indexOf(this.id) !== -1) return;
+            if ($(this).closest('[data-bp-unpicked]').length || isHeld(this) || ids.indexOf(this.id) !== -1) return;
             var filled = $(this).find(':input[name]').filter(function () {
                 return this.type !== 'hidden' && this.tagName !== 'BUTTON' && $.trim(this.name) !== '';
             }).length > 0;
@@ -6260,7 +6347,8 @@
             return '<label class="brikpanel-pe-var-detail' + (cls ? ' ' + cls : '') + '"' + (off ? ' hidden' : '') + '><span class="brikpanel-pe-var-detail-label">' + esc(label) + '</span>' + control + '</label>';
         };
         var dateField = function (cls, label, val) {
-            return detailField(label, '<span class="var-date-field"><input type="text" class="' + cls + ' var-date" value="' + esc(val || '') + '" placeholder="' + esc(t.date_placeholder) + '" autocomplete="off">' +
+            var dateLock = PE.price_locked ? ' disabled' : '';
+            return detailField(label, '<span class="var-date-field"><input type="text"' + dateLock + ' class="' + cls + ' var-date" value="' + esc(val || '') + '" placeholder="' + esc(t.date_placeholder) + '" autocomplete="off">' +
                 '<button type="button" class="var-date-clear" aria-label="' + esc(t.var_clear_date) + '" title="' + esc(t.var_clear_date) + '"' + (val ? '' : ' hidden') + '>' + clearSvg + '</button></span>');
         };
         state.variations.forEach(function (v, idx) {
@@ -6328,8 +6416,12 @@
                 buildVarImageCell(v.images, idx) + enabledSwitch +
                 '<span class="var-name-text-wrap">' + nameCellHtml + orphanBadge + '</span></span></td>';
 
-            var priceTd = '<td class="var-num-cell" data-bp-label="' + esc(t.var_price) + '"><input type="text" class="var-price" value="' + esc(pv) + '" data-price="1" placeholder="0' + sep + '00" aria-label="' + esc(t.var_price) + '"></td>';
-            var saleTd = '<td class="var-num-cell" data-bp-label="' + esc(t.var_sale_price) + '"><input type="text" class="var-sale-price" value="' + esc(sv) + '" data-price="1" placeholder="0' + sep + '00" aria-label="' + esc(t.var_sale_price) + '"></td>';
+            // A WPML translation takes its variations' prices from the original
+            // product (WooCommerce Multilingual copies them): locked here, the
+            // note above the table says where to change them.
+            var priceLock = PE.price_locked ? ' disabled' : '';
+            var priceTd = '<td class="var-num-cell" data-bp-label="' + esc(t.var_price) + '"><input type="text" class="var-price" value="' + esc(pv) + '" data-price="1" placeholder="0' + sep + '00" aria-label="' + esc(t.var_price) + '"' + priceLock + '></td>';
+            var saleTd = '<td class="var-num-cell" data-bp-label="' + esc(t.var_sale_price) + '"><input type="text" class="var-sale-price" value="' + esc(sv) + '" data-price="1" placeholder="0' + sep + '00" aria-label="' + esc(t.var_sale_price) + '"' + priceLock + '></td>';
 
             var statusOpts = '<option value="instock"' + (varStatus === 'instock' ? ' selected' : '') + '>' + esc(t.in_stock) + '</option>' +
                 '<option value="outofstock"' + (varStatus === 'outofstock' ? ' selected' : '') + '>' + esc(t.out_of_stock) + '</option>' +
@@ -6963,28 +7055,28 @@
         // Only send the GTIN when the field is actually rendered (the section
         // is opt-in). Omitting the key lets the server leave any existing
         // value untouched instead of wiping it.
-        var $gtinField = $('#bpe-gtin');
+        var $gtinField = onForm('#bpe-gtin');
         if ($gtinField.length) data.global_unique_id = $gtinField.val();
 
         // Permalink slug — opt-in section. Only sent when its card is rendered so
         // a disabled section never rewrites the stored slug. An empty value tells
         // the server to let WordPress regenerate it from the product name.
-        var $slugField = $('#bpe-slug');
+        var $slugField = onForm('#bpe-slug');
         if ($slugField.length) data.slug = $slugField.val();
 
         // Opt-in WC-core sections — only send a key when its card is rendered
         // so a disabled section never wipes the stored value server-side.
-        if ($('#bpe-tax-card').length) {
+        if (onForm('#bpe-tax-card').length) {
             data.tax_status = $('#bpe-tax-status').val();
             data.tax_class  = $('#bpe-tax-class').val();
         }
-        if ($('#bpe-shipping-class-card').length) {
+        if (onForm('#bpe-shipping-class-card').length) {
             data.shipping_class = $('#bpe-shipping-class').val();
         }
-        if ($('#bpe-sold-individually-card').length) {
+        if (onForm('#bpe-sold-individually-card').length) {
             data.sold_individually = $('#bpe-sold-individually').is(':checked') ? 1 : 0;
         }
-        if ($('#bpe-linked-card').length) {
+        if (onForm('#bpe-linked-card').length) {
             data.upsell_ids     = JSON.stringify(state.linked.upsells.map(function (i) { return i.id; }));
             data.cross_sell_ids = JSON.stringify(state.linked.cross_sells.map(function (i) { return i.id; }));
         }
@@ -6998,7 +7090,7 @@
             data.product_url = String($('#bpe-product-url').val() || '').trim();
             data.button_text = $('#bpe-button-text').val();
         }
-        if ($('#bpe-advanced-card').length) {
+        if (onForm('#bpe-advanced-card').length) {
             data.purchase_note   = $('#bpe-purchase-note').val();
             data.reviews_allowed = $('#bpe-reviews-allowed').is(':checked') ? 1 : 0;
             data.menu_order      = $('#bpe-menu-order').val();
@@ -7121,13 +7213,13 @@
         // sending '' wiped the product's weight and dimensions on every save
         // (found while testing field test B6). Same rule as COGS and the
         // vendor above; switching a rendered toggle off still clears.
-        var $weightToggle = $('#bpe-weight-toggle');
+        var $weightToggle = onForm('#bpe-weight-toggle');
         if ($weightToggle.length) {
             data.weight = $weightToggle.is(':checked') ? parsePrice($('#bpe-weight').val(), sep) : '';
         }
 
         // Dimensions
-        var $dimsToggle = $('#bpe-dims-toggle');
+        var $dimsToggle = onForm('#bpe-dims-toggle');
         if ($dimsToggle.length) {
             if ($dimsToggle.is(':checked')) {
                 data.length = parsePrice($('#bpe-length').val(), sep);
@@ -7184,8 +7276,14 @@
         // below, whose bracketed names could otherwise reuse the key).
         var altSent = collectAltPayload(data, isVar);
 
-        var cats = []; $('input[name="category_ids[]"]:checked').each(function () { cats.push($(this).val()); });
-        data.category_ids = cats.join(',');
+        // Categories go only while the Category section is on the form, like
+        // the brand below. With the section switched off in the settings the
+        // absent list read as "no category", and every save, autosaves too,
+        // moved the product to Uncategorized.
+        if (onForm('#bpe-cat-list').length) {
+            var cats = []; $('input[name="category_ids[]"]:checked').each(function () { cats.push($(this).val()); });
+            data.category_ids = cats.join(',');
+        }
 
         // Brand IDs — only sent when the brand section is rendered. Omitting
         // the field tells the server to leave existing brand assignments
@@ -7303,7 +7401,8 @@
         // ([data-bp-unpicked]) go last, and a name already taken from a shown
         // section is not read again from them: a stale hidden copy must never
         // overwrite what the merchant just edited.
-        var $named = $('.brikpanel-pe-metaboxes-wrap :input[name], .brikpanel-pe-wc-fields :input[name], .brikpanel-pe-ext-card :input[name], #acf-form-data :input[name]');
+        var $named = $('.brikpanel-pe-metaboxes-wrap :input[name], .brikpanel-pe-wc-fields :input[name], .brikpanel-pe-ext-card :input[name], #acf-form-data :input[name]')
+            .filter(function () { return !isHeld(this); });
         var $keptOnly = $named.filter(function () { return !!$(this).closest('[data-bp-unpicked]').length; });
         var shownNames = {};
         $named.not($keptOnly).each(function () {
@@ -7738,6 +7837,15 @@
                         $('#bpe-view-product').prop('hidden', true);
                     }
                     $('#bpe-header-overflow').prop('hidden', false);
+                    // The settings page then offers the way back to it.
+                    var settingsLink = document.getElementById('bpe-settings-link');
+                    if (settingsLink) {
+                        try {
+                            var settingsUrl = new URL(settingsLink.href, window.location.href);
+                            settingsUrl.searchParams.set('bp_back', String(r.data.product_id));
+                            settingsLink.href = settingsUrl.toString();
+                        } catch (e) { /* keeps the link without the way back */ }
+                    }
                     // A new product becomes an existing one with this save.
                     if (PE.i18n.edit_product) {
                         $('#bpe-header h1, #bpe-ph-h1').text(PE.i18n.edit_product);
@@ -8512,6 +8620,9 @@
         sliders: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M3.5 6h8M14.5 6h2M3.5 14h2M8.5 14h8"/><circle cx="13" cy="6" r="1.7"/><circle cx="7" cy="14" r="1.7"/></svg>',
         globe: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6.5"/><path d="M3.5 10h13M10 3.5c1.8 1.9 2.6 4 2.6 6.5S11.8 14.6 10 16.5C8.2 14.6 7.4 12.5 7.4 10S8.2 5.4 10 3.5Z"/></svg>',
         plug: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7.5 3.5v3.5M12.5 3.5v3.5M5.5 7h9v2.5a4.5 4.5 0 0 1-9 0V7ZM10 14v2.5"/></svg>',
+        gear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+        // An eye struck through: the "Hidden sections" box.
+        eyeoff: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3l14 14M8.2 8.3a2.5 2.5 0 0 0 3.5 3.5M6.1 5.3C3.8 6.6 2.5 10 2.5 10s2.7 5.5 7.5 5.5c1.4 0 2.6-.4 3.6-1M10 4.5c4.8 0 7.5 5.5 7.5 5.5s-.6 1.2-1.7 2.5"/></svg>',
         // A picture with a line of text under it: the image's alt text.
         alt: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.5" y="3.5" width="13" height="9.5" rx="1.5"/><path d="m5.5 11.5 3-3 2.5 2.5 1.5-1.5 2 2"/><path d="M4.5 16.5h11"/></svg>'
     };
@@ -8613,7 +8724,7 @@
             var ovf = document.getElementById('bpe-header-overflow');
             if (ovf) {
                 new window.MutationObserver(function () {
-                    $('#bpe-ph-more').prop('hidden', !!ovf.hidden);
+                    $('#bpe-ph-more').prop('hidden', !!ovf.hidden && !document.getElementById('bpe-settings-link'));
                 }).observe(ovf, { attributes: true, attributeFilter: ['hidden'] });
             }
         }
@@ -8786,17 +8897,48 @@
     }
 
     // "..." on top: the header's secondary actions (View product, Duplicate,
-    // Add new), each pressing the real one, in this tap (a new tab opens).
+    // Add new), each pressing the real one, in this tap (a new tab opens),
+    // then the editor's settings (the header's gear).
     function phoneMoreMenu() {
         var S = phSheet();
         if (!S) { return; }
         var items = [];
+        var trigger = this;
+        // A product not saved yet has none of them, as on a wider screen
+        // (the whole group is hidden there until the first save).
+        var ovf = document.getElementById('bpe-header-overflow');
         [['bpe-view-product', 'external'], ['bpe-duplicate', 'copy'], ['bpe-add-new', 'plus']].forEach(function (pair) {
             var el = document.getElementById(pair[0]);
-            if (!el || el.hidden || el.disabled) { return; }
+            if (!el || el.hidden || el.disabled || (ovf && ovf.hidden)) { return; }
             items.push({ label: phText(el), icon: PH_ICON[pair[1]], run: function () { el.click(); } });
         });
+        var settings = document.getElementById('bpe-settings-link');
+        if (settings) {
+            items.push({ label: settings.getAttribute('aria-label') || '', icon: PH_ICON.gear, run: function () { phoneLeaveTo(settings.href, trigger); } });
+        }
         if (items.length) { S.actions({ label: phT('ph_more_actions'), items: items, returnFocus: this }); }
+    }
+
+    // Off to another page from a phone: unsaved changes ask first, in a
+    // sheet, as the back button does (a phone shows the browser's own
+    // "leave page?" box unreliably or not at all).
+    function phoneLeaveTo(href, returnFocus) {
+        var go = function () { window.location.href = href; };
+        if (!state.dirty) {
+            go();
+            return;
+        }
+        phoneAsk({
+            title: phT('ph_discard_title'),
+            text: phT('ph_discard_text'),
+            ok: phT('ph_discard'),
+            cancel: phT('ph_keep_editing'),
+            danger: true,
+            returnFocus: returnFocus
+        }, function () {
+            state.dirty = false;
+            go();
+        });
     }
 
     // The list this product was opened from, when it is the page right
@@ -9085,7 +9227,7 @@
     function phoneCardTitle(card) {
         // A folding box's title sits in its toggle button, which the copy
         // below strips, so the title's own span is read first.
-        var el = card.querySelector('.postbox-header .brikpanel-pe-foldtoggle > span')
+        var el = card.querySelector('.postbox-header .brikpanel-pe-foldtoggle > span, .brikpanel-pe-foldtoggle .brikpanel-pe-foldtitle')
             || card.querySelector('.brikpanel-pe-wc-fields-head > label, .brikpanel-pe-ext-title, .postbox-header .hndle');
         if (!el) { el = card.querySelector(':scope > label, :scope > .brikpanel-pe-foldhead > label'); }
         if (!el) { return ''; }
@@ -9104,7 +9246,7 @@
             var cards = [];
             g.sections.forEach(function (slug) {
                 var card = content.querySelector('[data-bpe-section="' + slug + '"]');
-                if (card && card.parentNode && !card.closest('.brikpanel-pe-ph-page')) { cards.push(card); }
+                if (card && card.parentNode && !card.closest('.brikpanel-pe-ph-page, .brikpanel-pe-hiddenbox')) { cards.push(card); }
             });
             if (!cards.length) { return; }
             var page = phMake('section', 'brikpanel-pe-ph-page');
@@ -9123,6 +9265,18 @@
             PH.pages[g.id] = { el: page, kind: 'own', group: g, cards: cards };
             details.push(g.id);
         });
+
+        // The "Hidden sections" box: one page with its sections, last among
+        // the editor's own. Opening the page opens the box (releaseHold()).
+        var hiddenBox = content.querySelector('.brikpanel-pe-hiddenbox');
+        if (hiddenBox && !hiddenBox.closest('.brikpanel-pe-ph-page, .brikpanel-pe-ph-inplace')) {
+            var hbTitle = phoneCardTitle(hiddenBox);
+            hiddenBox.classList.add('brikpanel-pe-ph-inplace');
+            hiddenBox.setAttribute('data-page', 'hidden');
+            hiddenBox.insertBefore(phonePageBar(hbTitle, 'name', phoneGoBack), hiddenBox.firstChild);
+            PH.pages.hidden = { el: hiddenBox, kind: 'inplace', title: hbTitle, icon: 'eyeoff' };
+            details.push('hidden');
+        }
 
         var n = 0;
         $(content).find(PH_FOREIGN).each(function () {
@@ -9147,7 +9301,7 @@
                 var row = phMake('button', 'brikpanel-pe-ph-row');
                 row.type = 'button';
                 row.setAttribute('data-page', id);
-                row.appendChild(phIcon(p.kind === 'own' ? p.group.icon : (p.el.classList.contains('brikpanel-pe-seo-card') ? 'globe' : 'plug')));
+                row.appendChild(phIcon(p.kind === 'own' ? p.group.icon : (p.icon || (p.el.classList.contains('brikpanel-pe-seo-card') ? 'globe' : 'plug'))));
                 var text = phMake('span', 'brikpanel-pe-ph-rowtext');
                 var b = phMake('b', '', p.kind === 'own' ? phT(p.group.title) : p.title);
                 // The SEO card names the plugin that draws it in its heading.
@@ -9218,9 +9372,20 @@
         var names = function (sel) {
             return $(sel).map(function () { return phText($(this).closest('label')[0]); }).get().filter(Boolean);
         };
+        // A section in the "Hidden sections" box is not on its group's page.
+        var inPage = function (sel) {
+            return $(sel).filter(function () { return !$(this).closest('.brikpanel-pe-hiddenbox').length; });
+        };
+        if (id === 'hidden') {
+            return [].filter.call(p.el.querySelectorAll('[data-bpe-name]'), function (c) { return c.style.display !== 'none'; })
+                .map(function (c) { return phTrim(c.getAttribute('data-bpe-name')); })
+                .filter(Boolean).join(', ');
+        }
         if (id === 'organization') {
             var parts = names('#bpe-cat-list input:checked').concat(names('#bpe-brand-list input:checked'));
-            (state.tags || []).forEach(function (tg) { parts.push(String(tg)); });
+            if (inPage('#bpe-tags-wrap').length) {
+                (state.tags || []).forEach(function (tg) { parts.push(String(tg)); });
+            }
             return parts.length ? parts.join(', ') : phT('ph_no_category');
         }
         if (id === 'description') {
@@ -9237,13 +9402,13 @@
                 return phText($(sel).closest('.brikpanel-pe-input-group').find('.brikpanel-pe-input-suffix')[0]);
             };
             var out = [];
-            var w = phTrim($('#bpe-weight').val() || '');
+            var w = phTrim(inPage('#bpe-weight').val() || '');
             if (w) { out.push(phTrim(w + ' ' + unitOf('#bpe-weight'))); }
-            var dims = ['#bpe-length', '#bpe-width', '#bpe-height'].map(function (s) { return phTrim($(s).val() || ''); });
+            var dims = ['#bpe-length', '#bpe-width', '#bpe-height'].map(function (s) { return phTrim(inPage(s).val() || ''); });
             if (dims.some(Boolean)) {
                 out.push(phTrim(dims.map(function (d) { return d || '0'; }).join(' × ') + ' ' + unitOf('#bpe-length')));
             }
-            var $sc = $('#bpe-shipping-class');
+            var $sc = inPage('#bpe-shipping-class');
             if ($sc.length && $sc.val()) { out.push(phText($sc.find('option:selected')[0])); }
             out = out.concat(pluginOpts);
             return out.length ? out.join(' · ') : phT('ph_not_set');
@@ -9326,6 +9491,7 @@
         phoneVarFlushClose();
         PH.open = id;
         PH.returnTo = p.row || document.activeElement;
+        releaseHold(p.el);
         phoneLock(true);
         p.el.classList.add('is-ph-open');
         p.el.scrollTop = 0;

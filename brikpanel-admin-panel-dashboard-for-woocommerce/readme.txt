@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.44
+Stable tag: 3.3.45
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -73,19 +73,20 @@ Hit `Ctrl + K` (or `Cmd + K` on Mac) anywhere in wp-admin and an order search ov
 
 Open wp-admin on your phone and tap the phone button: BrikPanel works like a **WooCommerce mobile app** on Android and iPhone, with no app store and no account. Get a **push notification for every new order**, even when the phone is locked, with the order number, total and items, never the customer.
 
-= Modern WooCommerce Order Management & Export =
+= Modern WooCommerce Order Management, Export & Packing Slips =
 
 BrikPanel replaces the cluttered default orders page with a clean **woocommerce order list plugin** screen.
 
 * **30-day overview bar**: total orders, completed, refunded, revenue
-* **WooCommerce order export**: download the selected or filtered orders as Excel or CSV, with addresses, products, variations, SKUs and totals
+* **WooCommerce order export**: the selected or filtered orders as Excel or CSV, with addresses, products, variations, SKUs and totals
+* **Print packing slips and order summaries** with product images, one order or many at once
 * **Inline status change** without opening the edit page
 * **WooCommerce sequential order numbers** with an optional prefix, like WEB-1001
 * Create your own order statuses, like **Return Draft** or **Change**
 * Reskinned order edit page with copy-to-clipboard for billing/shipping
 * **Sold downloadable products** on the order edit page
 
-A real **woocommerce order management plugin**, not a reskin. Disable from settings anytime.
+A real **woocommerce order management plugin**, not a reskin.
 
 = WooCommerce Product List Plugin: Built for People Who Actually Edit Products =
 
@@ -226,11 +227,11 @@ WooCommerce's built-in analytics are slow, refresh on a delay, and have no live 
 
 == WooCommerce HPOS Compatibility & Performance ==
 
-* **Light on your storefront**: admin screens load only inside wp-admin; shoppers only get the scripts of the storefront features you keep on
+* **Light on your storefront**: admin screens load only inside wp-admin; shoppers get only the storefront features you keep on
 * **Hardened performance for low-resource hosting**: heavy queries are batched, cached and run through Action Scheduler so the dashboard, customer analytics and bulk editor stay responsive on shared hosting
-* **HPOS (High-Performance Order Storage)** fully supported with dual code paths
+* **HPOS (High-Performance Order Storage)** fully supported
 * WooCommerce 9.2 and newer; works alongside Admin Menu Editor, Slider Revolution, Yoast SEO, RankMath, WPML, Polylang
-* Translation-ready (`.pot` file included), with all JavaScript / jQuery strings routed through `wp_localize_script`
+* Translated into 9 languages, `.pot` file included
 * DB writes use prepared statements; visitor tracking IPs stored only as truncated salted SHA-256 hashes; admin activity excluded from analytics; front-end tracking can be disabled entirely from settings
 
 == Installation ==
@@ -260,21 +261,29 @@ Visitor countries: [IP Geolocation by DB-IP](https://db-ip.com), from its free I
 
 Yes. Every feature on this page is in the free version. There is no premium tier, no feature lock and no trial period. We also make a separate paid plugin, BrikMentor, and BrikPanel shows a small notice about it, which you can switch off under WooCommerce → Settings → BrikPanel → General. We have built 1000+ WooCommerce stores for our clients, learned from every one of them and decided to release BrikPanel.
 
+= Does the free version limit the dashboard to two metrics? =
+
+No. That limit and the locked Pro widgets belonged to the paid tier of 2025, and old copies of this page on other sites still show them. BrikPanel has had no paid tier since early 2026: every dashboard metric and report is free.
+
+= Is BrikPanel translated? =
+
+Yes. German, Spanish (Spain), French (France), Italian, Dutch, Polish, Brazilian Portuguese, Russian and Turkish are built in and fully translated. If your WordPress language is one of these, BrikPanel uses it automatically. The language list on this page shows only community translations from translate.wordpress.org, so it looks shorter.
+
 = Does BrikPanel hide WooCommerce's own ads? =
 
 Yes, by default. WooCommerce.com places ads in your admin, like the promo card above the Orders list, the sale badge on the Extensions menu and extension suggestions. BrikPanel turns them off with WooCommerce's own switches. To show them again, untick "Hide WooCommerce ads" under WooCommerce → Settings → BrikPanel → General.
 
 = Is BrikPanel a self-hosted WooCommerce analytics solution? =
 
-Yes. BrikPanel gives you a complete WooCommerce analytics suite that runs entirely on your own server with no external dependencies. Sales analytics, product reports, conversion tracking, customer LTV, RFM segmentation, cohort retention and customer data are all included, nothing is sent to any third-party SaaS.
+Yes. BrikPanel gives you a complete WooCommerce analytics suite that runs entirely on your own server with no external dependencies. Sales analytics, product reports, conversion tracking, customer LTV, RFM segmentation, cohort retention and customer data are all included.
 
 = Does BrikPanel include a WooCommerce sales report? =
 
-Yes. The BrikPanel dashboard ships a complete **WooCommerce sales report** out of the box, total sales, total orders and average order value (AOV), each with a ±% period-over-period delta, plus refunds and net revenue. Filter the sales report by today, yesterday, last 7 days, last 30 days, or any custom date range. The sales chart is rendered with Chart.js and pairs with the order status donut and conversion funnel for a full sales report you can read at a glance, without ever leaving wp-admin and without paying for an external analytics service.
+Yes. The BrikPanel dashboard ships a complete **WooCommerce sales report** out of the box, total sales, total orders and average order value (AOV), each with a ±% period-over-period delta, plus refunds and net revenue. Filter the sales report by today, yesterday, last 7 days, last 30 days, or any custom date range. The sales chart is rendered with Chart.js and pairs with the order status donut and conversion funnel for a full sales report you can read at a glance, without leaving wp-admin.
 
 = Does BrikPanel offer custom WooCommerce reports, KPIs and a profit report? =
 
-Yes. The dashboard goes far beyond the built-in screens with a complete set of **WooCommerce reports** and **WooCommerce sales analytics** computed from your own store data: sales, orders, AOV and conversion rate live, plus customer LTV, RFM segments and cohort retention refreshed nightly. Each headline metric (sales, orders, AOV, visitors, conversion rate, net profit) is shown as a **WooCommerce KPI** card with a period-over-period delta, and a real **profit report** (revenue minus COGS, ad spend and manual expenses) sits right next to revenue. Because the LTV, RFM, cohort and geographic views are not part of core, BrikPanel effectively ships **advanced reports** for **WooCommerce** and **custom WooCommerce reports** as a free, self-hosted **WooCommerce reporting** layer, with no external SaaS and nothing sent off your server.
+Yes. The dashboard goes far beyond the built-in screens with a complete set of **WooCommerce reports** and **WooCommerce sales analytics** computed from your own store data: sales, orders, AOV and conversion rate live, plus customer LTV, RFM segments and cohort retention refreshed nightly. Each headline metric (sales, orders, AOV, visitors, conversion rate, net profit) is shown as a **WooCommerce KPI** card with a period-over-period delta, and a real **profit report** (revenue minus COGS, ad spend and manual expenses) sits right next to revenue. Because the LTV, RFM, cohort and geographic views are not part of core, BrikPanel effectively ships **advanced reports** for **WooCommerce** and **custom WooCommerce reports** as a free, self-hosted **WooCommerce reporting** layer.
 
 = Can I customize the dashboard widgets, sales charts and graphs? =
 
@@ -286,7 +295,7 @@ Yes. When your store takes orders in more than one currency, BrikPanel converts 
 
 = Where does BrikPanel read Cost of Goods (COGS) from? Can I use my own cost field? =
 
-BrikPanel reads product cost from **WooCommerce's own native Cost of Goods Sold field** (`_cogs_total_value`, WooCommerce 9.5+) — the same field the WooCommerce product screen edits — so any plugin or import pipeline that writes the native cost is picked up automatically, including direct database writes. Costs saved by older BrikPanel versions are migrated into the native field automatically. Variation costs follow WooCommerce's semantics, including the "additive" flag that adds a variation's cost on top of the parent's. If you keep cost somewhere else entirely, hook the `brikpanel_product_cogs` filter (parameters: resolved cost or null, product id, variation id) to point BrikPanel's per-product cost reads at your own source.
+BrikPanel reads product cost from **WooCommerce's own native Cost of Goods Sold field** (`_cogs_total_value`, WooCommerce 9.5+), so any plugin or import pipeline that writes the native cost is picked up automatically, including direct database writes. Costs saved by older BrikPanel versions are migrated into the native field automatically. Variation costs follow WooCommerce's semantics, including the "additive" flag that adds a variation's cost on top of the parent's. If you keep cost somewhere else entirely, hook the `brikpanel_product_cogs` filter (parameters: resolved cost or null, product id, variation id) to point BrikPanel's per-product cost reads at your own source.
 
 = Can I turn off BrikPanel's front-end visitor tracking? =
 
@@ -302,7 +311,7 @@ Yes. Tick **Wait for cookie consent** under **WooCommerce → Settings → BrikP
 
 Consent takes effect immediately, with no page reload. When it is withdrawn, tracking stops at once and BrikPanel deletes its own cookies and browser storage for that visitor and drops them from the Live view. The anonymous daily totals already recorded are untouched, because they contain no visitor identifier to erase.
 
-Tested against the most-installed consent banners. Working with no setup at all: **Complianz**, **CookieYes**, **GDPR Cookie Compliance (Moove)**, **WPConsent**, **Cookiebot**, **iubenda** and **Beautiful Cookie Consent Banner** — they all speak the WordPress Consent API, so ticking the setting is the only step. **Cookie Notice / Compliance by Hu-manity** needs its Compliance mode connected, because its free unconnected mode never reports a category decision. **CookieAdmin**, **Real Cookie Banner** and **Termly** do not use the WordPress Consent API at all; bridge them with a few lines, using the pattern below (this exact snippet was tested against CookieAdmin, swap the cookie name and button ids for another banner):
+Tested against the most-installed consent banners. Working with no setup at all: **Complianz**, **CookieYes**, **GDPR Cookie Compliance (Moove)**, **WPConsent**, **Cookiebot**, **iubenda** and **Beautiful Cookie Consent Banner**: they all speak the WordPress Consent API, so ticking the setting is the only step. **Cookie Notice / Compliance by Hu-manity** needs its Compliance mode connected, because its free unconnected mode never reports a category decision. **CookieAdmin**, **Real Cookie Banner** and **Termly** do not use the WordPress Consent API at all; bridge them with a few lines, using the pattern below (this exact snippet was tested against CookieAdmin, swap the cookie name and button ids for another banner):
 
 `add_filter( 'brikpanel_frontend_tracking_allowed', function ( $allowed ) {`
 `    return isset( $_COOKIE['my_banner_cookie'] ) && $_COOKIE['my_banner_cookie'] === 'accepted';`
@@ -321,7 +330,7 @@ This setting governs analytics. Abandoned-cart email capture is a separate featu
 
 = Does the signup popup appear on top of my cookie banner? =
 
-No. **Wait for cookie banner** under **WooCommerce → Settings → BrikPanel → Cart abandonment** is on by default, and the popup then holds back until the visitor has answered the banner. Accepting and declining both release it, because signing up for an offer is not tracking. On a store with no cookie banner nothing changes at all: the popup opens after its normal delay, exactly as before.
+No. **Wait for cookie banner** under **WooCommerce → Settings → BrikPanel → Cart abandonment** is on by default, and the popup then holds back until the visitor has answered the banner. Accepting and declining both release it, because signing up for an offer is not tracking. On a store with no cookie banner nothing changes at all: the popup opens after its normal delay.
 
 It cannot be lost. Whatever happens with the banner, the popup opens no later than 30 seconds after the page loads, and the small floating tab that holds a visitor's own coupon code is never held back.
 
@@ -338,7 +347,7 @@ Yes, both ways: network-activate it to run on every store in the network, or act
 
 = Does BrikPanel show customer LTV, RFM segments and cohort retention? =
 
-Yes. BrikPanel ships a full **WooCommerce customer analytics** suite directly in the dashboard. Customer Lifetime Value (LTV) is calculated for every customer with average, top, and full distribution histogram. RFM segmentation scores every customer on Recency, Frequency and Monetary and groups them into 10 segments such as Champions, Loyal Customers, At Risk, About to Sleep, Hibernating and Lost. Cohort retention shows a month-by-month grid plus an average retention trend line. All three are computed from your own store data, no external service involved.
+Yes. BrikPanel ships a full **WooCommerce customer analytics** suite directly in the dashboard. Customer Lifetime Value (LTV) is calculated for every customer with average, top, and full distribution histogram. RFM segmentation scores every customer on Recency, Frequency and Monetary and groups them into 10 segments such as Champions, Loyal Customers, At Risk, About to Sleep, Hibernating and Lost. Cohort retention shows a month-by-month grid plus an average retention trend line. All three are computed from your own store data.
 
 = Is BrikPanel a free Shopify alternative for WooCommerce? =
 
@@ -354,7 +363,7 @@ The default **WooCommerce product list** is built for browsing, but searching, s
 
 = Can I search products by my own SKU field, like a supplier or manufacturer code? =
 
-Yes. The product list search matches the product title, the description and the WooCommerce SKU out of the box, including a variation SKU, which returns the parent product. If your warehouse also stamps a supplier code, a manufacturer part number or an EAN onto each product in its own custom field, point BrikPanel at it with the `brikpanel_product_search_meta_keys` filter, which receives the list of meta keys (just `_sku` by default) and the search term. Add your own key to the list and staff can find a product by typing it, on simple and variable products alike, because a match on a variation returns the parent. Up to ten keys are scanned. The filter is documented with a copyable example under WooCommerce, Settings, BrikPanel, Developers.
+Yes. The product list search matches the product title, the description and the WooCommerce SKU out of the box, including a variation SKU, which returns the parent product. If your warehouse also stamps a supplier code, a manufacturer part number or an EAN onto each product in its own custom field, point BrikPanel at it with the `brikpanel_product_search_meta_keys` filter, which receives the list of meta keys (just `_sku` by default) and the search term. Add your own key to the list and staff can find a product by typing it, on simple and variable products alike. Up to ten keys are scanned. The filter is documented with a copyable example under WooCommerce, Settings, BrikPanel, Developers.
 
 = How do I bulk edit WooCommerce products including variations? =
 
@@ -423,7 +432,7 @@ Yes. BrikPanel includes a complete **WooCommerce to Google Sheets** integration 
 
 = How do I see real ROAS and net profit in WooCommerce? =
 
-Connect **Google Ads** and/or **Meta Ads** from the BrikPanel Ad Platforms page. BrikPanel then pulls your daily ad spend: **Ad Spend** is shown per platform in the Expenses card on the dashboard, a **WooCommerce ROAS** card (store revenue ÷ ad spend summed across every connected platform for the active date range) is added, and **Net Profit** subtracts it (revenue − refunds − COGS − ad spend − manual and other expenses). COGS comes from WooCommerce's native cost field on each product and variation and expenses from the BrikPanel expenses table, so the **woocommerce roas** and net profit numbers are real, not estimates. The ROAS card is multi-currency aware: if an ad account reports in a different currency than the store, ROAS shows "Ad currency differs from store" instead of printing a misleading converted number, and that spend is left out of Net Profit.
+Connect **Google Ads** and/or **Meta Ads** from the BrikPanel Ad Platforms page. BrikPanel then pulls your daily ad spend: **Ad Spend** is shown per platform in the Expenses card on the dashboard, a **WooCommerce ROAS** card (store revenue ÷ ad spend summed across every connected platform for the active date range) is added, and **Net Profit** subtracts it (revenue − refunds − COGS − ad spend − manual and other expenses). COGS comes from WooCommerce's native cost field on each product and variation and expenses from the BrikPanel expenses table, so the **woocommerce roas** and net profit numbers are real, not estimates. Spend billed in another currency is converted with the rate you set under **WooCommerce → Settings → BrikPanel → Currency**; until then it is left out of ROAS and Net Profit.
 
 = Is BrikPanel a free Triple Whale alternative for WooCommerce? =
 
@@ -431,7 +440,7 @@ For self-hosted stores, yes. BrikPanel gives you the **WooCommerce ROAS** and **
 
 = Does BrikPanel connect to Google Ads and Meta (Facebook / Instagram) Ads? =
 
-Yes. BrikPanel connects to both **Google Ads** and **Meta Ads** through a secure OAuth proxy (the plugin only ever stores encrypted tokens, never your password). It pulls daily spend per platform, backfills history, and re-syncs recent days automatically so the dashboard ROAS and net profit stay accurate. The integration is spend-and-profit focused, it does not install a Facebook pixel or do multi-touch attribution; it gives you true **woocommerce roas** and net profit without a paid SaaS.
+Yes. BrikPanel connects to both **Google Ads** and **Meta Ads** through a secure OAuth proxy (the plugin only ever stores encrypted tokens, never your password). It pulls daily spend per platform, backfills history, and re-syncs recent days automatically so the dashboard ROAS and net profit stay accurate. The integration is spend-and-profit focused, it does not install a Facebook pixel or do multi-touch attribution; it gives you true **woocommerce roas** and net profit.
 
 = Is there a free WooCommerce variation editor for bulk price and stock updates? =
 
@@ -447,7 +456,7 @@ No. BrikPanel is a real **woocommerce admin dashboard plugin** with custom datab
 
 = Can I use BrikPanel as a WordPress admin theme or admin skin for my store? =
 
-In practice, yes. BrikPanel is built specifically for WooCommerce, but for store owners it behaves like a focused **WordPress admin theme**: it reskins the WooCommerce parts of wp-admin into a clean, Shopify-style **custom admin panel**, replaces the default toolbar, and restyles the product, order, customer and coupon screens. If you have been looking for a **wp admin theme** or an **admin skin** that makes the WooCommerce admin genuinely pleasant to work in (rather than a generic restyle that breaks on the next WooCommerce update), this is built for exactly that. You can also **hide admin menu** items for non-technical clients with the simplified mode (Modern navigation, on by default) and the Navigation menu editor, leaving only BrikPanel and WooCommerce in the sidebar.
+In practice, yes. BrikPanel is built specifically for WooCommerce, but for store owners it behaves like a focused **WordPress admin theme**: it reskins the WooCommerce parts of wp-admin into a clean, Shopify-style **custom admin panel**, replaces the default toolbar, and restyles the product, order, customer and coupon screens. If you have been looking for a **wp admin theme** or an **admin skin** that makes the WooCommerce admin genuinely pleasant to work in, this is built for exactly that. You can also **hide admin menu** items for non-technical clients with the simplified mode (Modern navigation, on by default) and the Navigation menu editor, leaving only BrikPanel and WooCommerce in the sidebar.
 
 = Does BrikPanel work with Yoast SEO, RankMath, Elementor, WPML, and Polylang? =
 
@@ -459,7 +468,7 @@ Yes. BrikPanel is compatible with WooCommerce Subscriptions, Subscriptions for W
 
 = Where does BrikPanel store data? =
 
-Everything stays in your WordPress database. Visitor tracking writes to `wp_brikpanel_visitors` (daily totals), `wp_brikpanel_visited_pages`, `wp_brikpanel_referrers`, `wp_brikpanel_visitor_countries` and `wp_brikpanel_cart_tracking`, all anonymous counters with no visitor identifier in them. Other features have their own tables, created when BrikPanel is activated (expenses, suppliers, customer metrics, abandoned carts). Live visitor data is stored in a transient that auto-expires every 2 minutes and is never written to the database permanently. By default, your store, order, customer and visitor data is never sent anywhere. BrikPanel only contacts an external service for optional features you switch on yourself, described in the next question.
+Everything stays in your WordPress database. Visitor tracking writes to `wp_brikpanel_visitors` (daily totals), `wp_brikpanel_visited_pages`, `wp_brikpanel_referrers`, `wp_brikpanel_visitor_countries` and `wp_brikpanel_cart_tracking`, all anonymous counters with no visitor identifier in them. Other features have their own tables, created when BrikPanel is activated (expenses, suppliers, customer metrics, abandoned carts). Live visitor data is stored in a transient that auto-expires every 2 minutes and is never written to the database permanently. By default, none of this data is sent anywhere; see the next question.
 
 = What data does BrikPanel send outside my site? =
 
@@ -472,7 +481,7 @@ By default, nothing. BrikPanel only contacts an external service for features yo
 
 = Does deleting BrikPanel delete my data? =
 
-No. Deactivating or deleting BrikPanel keeps your expenses, suppliers, purchase orders, visitor history and settings, so a reinstall picks up where you left off. Deactivating stops its background jobs. Regular ones, such as syncs and nightly scans, start again when you activate it; an import or export that was running, such as a Google Ads history import, must be started again.
+No. Deactivating or deleting BrikPanel keeps your expenses, suppliers, purchase orders, visitor history and settings, so a reinstall picks up where you left off. Deactivating stops its background jobs: syncs and nightly scans start again when you reactivate it, but an import or export that was running must be started again.
 
 = Will BrikPanel always be free? =
 
@@ -510,6 +519,20 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.45 (2026-11-06) =
+* New: **Print order summaries.** Select orders and pick "Print order summary" under Bulk actions, or use Print at the top of an order. Each order gets its own page with your logo, both addresses, product images, options, SKUs, quantities and totals, plus the fields picked in Orders → "Order custom fields". "Save as PDF" in the print window turns it into a PDF.
+* New: **Hidden sections in a folded box.** At the end of the product screen, a "Hidden sections" box holds the sections that come switched off, such as shipping weight, tags and linked products. Open it to edit them right there, without turning them on in the settings. Each user's box stays open or closed the way they left it. Setting: Products → "Suggest hidden sections in the product editor", on by default.
+* New: **Fields from your other plugins in a folded box.** With "Auto-show fields other plugins add" off, the fields other plugins add to a product now wait in a folded "Fields from your other plugins" box instead of staying off the page. Open it to edit them, or use "Always show these fields" to keep them open for everyone. Products save exactly as before until the box is opened.
+* Fix: **Fields under "Stock status" show up.** Boxes that other plugins add below Stock status in WooCommerce's Inventory tab, such as stock per warehouse, could not be shown in BrikPanel's product screen. They now appear in the "Fields from your other plugins" box.
+* Fix: **Categories stay when the Category section is off.** With the Category section switched off in Products → "Visible editor sections", every save in BrikPanel's product screen, automatic saves too, moved the product to Uncategorized. Its categories are now kept.
+* Tweak: **Editor settings one click away.** A small gear next to the product screen's title opens the product editor's settings (Products), with a link back to the product. On a phone it is in the "..." menu.
+* New: **The cache button clears CloudPanel's Varnish.** With CloudPanel's CLP Varnish Cache plugin on, the top bar's cache button also purges Varnish, the same way the plugin's own "Entire Cache" purge does. If Varnish cannot be reached, it says so and still clears the other caches.
+* Fix: **Order status emails in the customer's language (WPML).** An email for a custom order status now goes out in the order's language, status name included, instead of the language of the admin who changed the status. The store's own copy stays in the admin's language.
+* New: **Translatable status names and email texts (WPML).** Custom order status names and their email subject, heading and text can be translated in WPML → String Translation.
+* Fix: **Past orders keep their exchange rate (WooCommerce Multilingual).** A rate change, typed or automatic, converted every past order again at the new rate. Each order now keeps the rate it was converted at.
+* Tweak: **Each product row shows its language (WPML).** The product list shows a small language code next to the product name.
+* Fix: **A translation's price comes from its original (WPML).** Quick edit, bulk edit, the product screen and the Google Sheets pull no longer change a translation's price on its own, and a new price on the original now reaches its translations.
 
 = 3.3.44 (2026-11-03) =
 * Fix: **Bundles made with other plugins keep their contents.** Saving an Easy Product Bundles or WPC Product Bundles bundle in BrikPanel's product screen emptied it. A product type whose own settings are in WooCommerce's editor is now left untouched, also with "Auto-show fields other plugins add" on.
@@ -563,9 +586,3 @@ The full release history of every version is in changelog.txt, included with the
 = 3.3.39 (2026-10-23) =
 * Fix: **The dashboard follows new orders while it stays open.** Orders, revenue, "Today so far" and the last order now change by themselves when an order comes in, along with the new order notification. Before, they only changed after reloading the page.
 * New: **"1 new order" bar on the Orders list.** While the list stays open, the summary above it updates by itself and a bar counts the orders that came in since, with a Show button that opens the same tab again. The rows never move on their own.
-
-= 3.3.38 (2026-10-22) =
-* New: **Unused images in Store Health.** A new card finds the images that no product, variation, page, setting, review or other plugin uses any more and shows them in a grid with a large preview. Move the ones you pick to the trash: their files stay on the server for 30 days, so nothing breaks, and one click brings them back. The check runs only when you start it.
-* New: **Other plugins' product options in the product editor.** Options that plugins add next to Virtual and Downloadable, such as Germanized's "Service", the "Subscription" of YITH and WP Swings, or Tutor LMS's "For Tutor", now show as switches below Virtual and Digital, only for the product types they apply to. When a plugin does not accept a change made here, a message says so. Setting: Products → "Show other plugins' product options", on by default.
-* Fix: **Saving keeps other plugins' product options.** Saving a product in the BrikPanel editor switched off most of these options, such as Germanized's "Service" or YITH's "Subscription", even when you had not touched them. They now keep their value, with the new setting on or off.
-* New: **Order weights in the export.** Excel and CSV files have a "Total weight" column after Items, in the store's unit of weight, with the same total as the order screen. In Excel, the Products sheet also shows each line's weight. The cell stays empty when no product in the order has a weight.

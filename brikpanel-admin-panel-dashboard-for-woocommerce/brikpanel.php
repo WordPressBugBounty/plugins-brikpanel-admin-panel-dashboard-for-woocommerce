@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.44
+ * Version: 3.3.45
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.44');
+define('BRIKPANEL_VERSION', '3.3.45');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -813,6 +813,8 @@ function brikpanel_init_admin() {
     brikpanel_require('front-end/orders/brikpanel-order-merge.php');
     // Export button on the orders list (Excel / CSV).
     brikpanel_require('front-end/orders/brikpanel-order-export.php');
+    // Printable order summary: orders list bulk action + order page Print button.
+    brikpanel_require('front-end/orders/brikpanel-order-print.php');
     brikpanel_require('front-end/currency/brikpanel-currency-settings.php');
     brikpanel_require('front-end/order/brikpanel-order-fields.php');
     brikpanel_require('front-end/order/brikpanel-order-shipping-cost.php');
@@ -1294,6 +1296,10 @@ brikpanel_require('includes/brikpanel-helpers.php');
 // browser (field test E2/E9). Needs the date format helpers above.
 brikpanel_require('includes/brikpanel-format.php');
 brikpanel_require('includes/brikpanel-languages.php');
+// WPML: the order's language for status emails, the product list's language
+// tag, and the rule that a translation's price comes from its original.
+// Every helper returns at once on a store without WPML.
+brikpanel_require('includes/brikpanel-wpml.php');
 brikpanel_require('includes/brikpanel-currency.php');
 brikpanel_require('includes/brikpanel-profit.php');
 

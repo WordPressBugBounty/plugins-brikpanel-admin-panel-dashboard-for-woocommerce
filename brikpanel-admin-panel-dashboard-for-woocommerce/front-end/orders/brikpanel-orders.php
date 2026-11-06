@@ -452,7 +452,19 @@ function brikpanel_settings_fields() {
             'name'     => __('Visible editor sections', 'brikpanel'),
             'id'       => 'brikpanel_pe_visible_sections_field',
             'type'     => 'brikpanel_section_order',
-            'desc'     => __('Toggle a section to show or hide it. Use the arrows to reorder; the product editor renders sections in the order shown here. Metaboxes registered by other plugins (Yoast SEO, Rank Math, All in One SEO, SEOPress, custom post types, etc.) appear in this list automatically, tagged "Plugin". Enable and position any you want to edit right inside the BrikPanel editor.', 'brikpanel'),
+            // Kept short (owner, November 2026: switching a section on here
+            // should be simple and plain).
+            'desc'     => __('Turn a section on to show it on every product. Use the arrows to change the order. Boxes added by other plugins appear here too, tagged "Plugin".', 'brikpanel'),
+        ],
+        [
+            // Read by the product editor's folded "Hidden sections" box
+            // (owner's request, November 2026: a store could not find the
+            // shipping and linked products sections, which ship switched off).
+            'name'    => __('Suggest hidden sections in the product editor', 'brikpanel'),
+            'id'      => 'brikpanel_pe_suggest_hidden_sections',
+            'type'    => 'checkbox',
+            'desc'    => __('Show a folded "Hidden sections" box at the end of the product page, with the switched-off sections such as shipping weight and linked products. Open it to edit them without turning them on.', 'brikpanel'),
+            'default' => 'yes',
         ],
         [
             'name'    => __('Use the full screen width', 'brikpanel'),

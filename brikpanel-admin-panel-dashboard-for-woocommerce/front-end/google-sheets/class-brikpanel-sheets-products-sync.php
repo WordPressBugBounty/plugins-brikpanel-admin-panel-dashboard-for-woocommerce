@@ -1223,6 +1223,13 @@ class Brikpanel_Sheets_Products_Sync {
 				// edits each variation row instead.
 				// A grouped product is the same: its price comes from its products.
 				$is_variable_parent = $product->is_type( array( 'variable', 'grouped' ) );
+				// A WPML translation (or one of its variations) takes its price
+				// from the original product, which WooCommerce Multilingual
+				// copies to it: a price typed on its row is left unsaved, and
+				// the next push writes the real one back over it.
+				if ( function_exists( 'brikpanel_wpml_original_of' ) && brikpanel_wpml_original_of( $product_id ) ) {
+					$is_variable_parent = true;
+				}
 
 				if ( isset( $col_map['regular_price'] ) && ! $is_variable_parent ) {
 					$raw = $row[ (int) $col_map['regular_price'] ] ?? '';
@@ -1348,6 +1355,10 @@ class Brikpanel_Sheets_Products_Sync {
 
 				if ( $setter_dirty ) {
 					$product->save();
+					// WPML: an original's new price or stock reaches its translations.
+					if ( function_exists( 'brikpanel_wpml_sync_translations' ) ) {
+						brikpanel_wpml_sync_translations( $product_id );
+					}
 					$row_changed = true;
 					// Regular/sale edits move the derived 'price' column too, so push
 					// the freshly-built row back to the sheet to keep every dependent

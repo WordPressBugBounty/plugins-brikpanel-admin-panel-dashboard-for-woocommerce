@@ -12007,18 +12007,6 @@ msgstr "No hay detalles adicionales para este pedido."
 msgid "Order custom fields"
 msgstr "Campos personalizados del pedido"
 
-#: front-end/order/brikpanel-order-fields.php:380
-msgid ""
-"Show a chosen list of order custom fields (extra checkout fields and other "
-"order meta) as a clean \"Additional details\" card on the order page. The "
-"card only appears for orders that actually have one of these fields filled "
-"in."
-msgstr ""
-"Muestra una lista elegida de campos personalizados del pedido (campos "
-"adicionales de pago y otros metadatos del pedido) como una tarjeta limpia de"
-" \"Detalles adicionales\" en la página del pedido. La tarjeta solo aparece "
-"para los pedidos que realmente tienen uno de estos campos rellenado."
-
 #: front-end/order/brikpanel-order-fields.php:383
 msgid "Fields to display"
 msgstr "Campos a mostrar"
@@ -13252,21 +13240,6 @@ msgstr ""
 #: front-end/orders/brikpanel-orders.php:452
 msgid "Visible editor sections"
 msgstr "Secciones visibles del editor"
-
-#: front-end/orders/brikpanel-orders.php:455
-msgid ""
-"Toggle a section to show or hide it. Use the arrows to reorder; the product "
-"editor renders sections in the order shown here. Metaboxes registered by "
-"other plugins (Yoast SEO, Rank Math, All in One SEO, SEOPress, custom post "
-"types, etc.) appear in this list automatically, tagged \"Plugin\". Enable "
-"and position any you want to edit right inside the BrikPanel editor."
-msgstr ""
-"Activa o desactiva una sección para mostrarla u ocultarla. Usa las flechas "
-"para reordenarlas; el editor de productos muestra las secciones en el orden "
-"que ves aquí. Las cajas meta registradas por otros plugins (Yoast SEO, Rank "
-"Math, All in One SEO, SEOPress, tipos de contenido personalizados, etc.) "
-"aparecen automáticamente en esta lista, etiquetadas como \"Plugin\". Activa "
-"y coloca las que quieras editar directamente en el editor de BrikPanel."
 
 #: front-end/orders/brikpanel-orders.php:458
 msgid "Use the full screen width"
@@ -15818,31 +15791,10 @@ msgstr ""
 msgid "…"
 msgstr "…"
 
-#. translators: %d: how many further field groups are not listed by name
-#: front-end/products/brikpanel-product-editor.php:4797
-#, php-format
-msgid "and %d more"
-msgid_plural "and %d more"
-msgstr[0] "y %d más"
-msgstr[1] "y %d más"
-
 #: front-end/products/brikpanel-product-editor.php:4807
 #: includes/brikpanel-enqueue.php:2886
 msgid "Fields from your other plugins"
 msgstr "Campos de tus otros plugins"
-
-#. translators: %d: number of field groups other plugins add to this product
-#: front-end/products/brikpanel-product-editor.php:4810
-#, php-format
-msgid "%d group of fields from another plugin is not being shown here."
-msgid_plural ""
-"%d groups of fields from your other plugins are not being shown here."
-msgstr[0] "%d grupo de campos de otro plugin no se muestra aquí."
-msgstr[1] "%d grupos de campos de tus otros plugins no se muestran aquí."
-
-#: front-end/products/brikpanel-product-editor.php:4821
-msgid "Show these fields"
-msgstr "Mostrar estos campos"
 
 #: front-end/products/brikpanel-product-editor.php:5839
 msgid "Variation options"
@@ -25684,3 +25636,163 @@ msgstr "Caja de regalo: la tapa salta y sale la etiqueta del descuento"
 #: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6052
 msgid "Eraser: an eraser rubs the pencil shading off the discount"
 msgstr "Goma: una goma borra el sombreado a lápiz del descuento"
+
+#: front-end/orders/brikpanel-orders.php:461
+msgid "Suggest hidden sections in the product editor"
+msgstr "Sugerir secciones ocultas en el editor de productos"
+
+#: front-end/products/brikpanel-product-editor.php:5067
+msgid "Hidden sections"
+msgstr "Secciones ocultas"
+
+#. translators: 1: quantity ordered, 2: quantity refunded.
+#: front-end/orders/brikpanel-order-print.php:977
+#, php-format
+msgid "%1$s ordered, %2$s refunded"
+msgstr "Pedido: %1$s, reembolsado: %2$s"
+
+#. translators: %s: number of orders on the page.
+#: front-end/orders/brikpanel-order-print.php:773
+#, php-format
+msgid "%s order summary"
+msgid_plural "%s order summaries"
+msgstr[0] "%s resumen de pedido"
+msgstr[1] "%s resúmenes de pedidos"
+
+#. translators: %s: number of selected orders left out.
+#: front-end/orders/brikpanel-order-print.php:802
+#, php-format
+msgid "%s selected order is not here: it was deleted or you cannot open it."
+msgid_plural ""
+"%s selected orders are not here: they were deleted or you cannot open them."
+msgstr[0] ""
+"%s pedido seleccionado no está aquí: se eliminó o no puedes abrirlo."
+msgstr[1] ""
+"%s pedidos seleccionados no están aquí: se eliminaron o no puedes abrirlos."
+
+#. translators: %s: the coupon codes used on the order, separated by commas.
+#: front-end/orders/brikpanel-order-print.php:569
+#, php-format
+msgid "Discount (%s)"
+msgstr "Descuento (%s)"
+
+#: front-end/orders/brikpanel-order-print.php:238
+#: front-end/orders/brikpanel-order-print.php:275
+msgid "No orders to print."
+msgstr "No hay pedidos para imprimir."
+
+#: front-end/orders/brikpanel-order-print.php:220
+#: front-end/orders/brikpanel-order-print.php:739
+#: front-end/orders/brikpanel-order-print.php:854
+msgid "Order summary"
+msgstr "Resumen del pedido"
+
+#. translators: %s: order number.
+#: front-end/orders/brikpanel-order-print.php:770
+#, php-format
+msgid "Order summary #%s"
+msgstr "Resumen del pedido #%s"
+
+#: front-end/orders/brikpanel-order-print.php:164
+#: includes/brikpanel-enqueue.php:1613
+msgid "Print order summary"
+msgstr "Imprimir resumen del pedido"
+
+#. translators: 1: number of orders on this page, 2: number of orders selected.
+#: front-end/orders/brikpanel-order-print.php:787
+#, php-format
+msgid ""
+"Showing the first %1$s of %2$s selected orders. Print the rest in another "
+"batch."
+msgstr ""
+"Se muestran los primeros %1$s de %2$s pedidos seleccionados. Imprime el resto"
+" en otra tanda."
+
+#: front-end/orders/brikpanel-order-print.php:262
+msgid "This print link has expired. Go back to the orders and print again."
+msgstr ""
+"Este enlace de impresión ha caducado. Vuelve a los pedidos e imprime de "
+"nuevo."
+
+#: front-end/orders/brikpanel-order-print.php:705
+msgid "To save a PDF, choose \"Save as PDF\" in the print window."
+msgstr ""
+"Para guardar un PDF, elige «Guardar como PDF» en la ventana de impresión."
+
+#: front-end/orders/brikpanel-order-print.php:266
+msgid "You are not allowed to print orders."
+msgstr "No tienes permiso para imprimir pedidos."
+
+#: front-end/orders/brikpanel-order-print.php:708
+#: includes/brikpanel-enqueue.php:1612
+msgctxt "button that prints an order summary"
+msgid "Print"
+msgstr "Imprimir"
+
+#: front-end/orders/brikpanel-order-print.php:934
+msgctxt "order summary column for ticking off picked items"
+msgid "Picked"
+msgstr "Preparado"
+
+#: front-end/order/brikpanel-order-fields.php:380
+msgid ""
+"Show a chosen list of order custom fields (extra checkout fields and other "
+"order meta) as a clean \"Additional details\" card on the order page. The "
+"card only appears for orders that actually have one of these fields filled "
+"in. The same fields also print under the billing address on the order "
+"summary."
+msgstr ""
+"Muestra una lista elegida de campos personalizados del pedido (campos "
+"adicionales de pago y otros metadatos del pedido) como una tarjeta limpia de "
+"\"Detalles adicionales\" en la página del pedido. La tarjeta solo aparece "
+"para los pedidos que realmente tienen uno de estos campos rellenado. Los "
+"mismos campos también se imprimen bajo la dirección de facturación en el "
+"resumen del pedido."
+
+#: front-end/orders/brikpanel-orders.php:457
+msgid "Turn a section on to show it on every product. Use the arrows to change the order. Boxes added by other plugins appear here too, tagged \"Plugin\"."
+msgstr "Activa una sección para mostrarla en todos los productos. Usa las flechas para cambiar el orden. Las cajas de otros plugins también aparecen aquí, marcadas como \"Plugin\"."
+
+#: front-end/products/brikpanel-section-order.php:444
+msgid "Back to the product"
+msgstr "Volver al producto"
+
+#: front-end/orders/brikpanel-orders.php:466
+msgid "Show a folded \"Hidden sections\" box at the end of the product page, with the switched-off sections such as shipping weight and linked products. Open it to edit them without turning them on."
+msgstr "Muestra al final de la página del producto un cuadro plegado \"Secciones ocultas\" con las secciones desactivadas, como el peso del envío y los productos vinculados. Ábrelo para editarlas sin activarlas."
+
+#: front-end/products/brikpanel-product-editor.php:5020
+msgid "Always show these fields"
+msgstr "Mostrar siempre estos campos"
+
+#: front-end/products/brikpanel-product-editor.php:5110
+msgid "Choose which sections show"
+msgstr "Elegir qué secciones se muestran"
+
+#: front-end/products/brikpanel-product-editor.php:1502
+msgid "Product editor settings"
+msgstr "Ajustes del editor de productos"
+
+#: includes/brikpanel-enqueue.php:2119
+#: includes/brikpanel-wpml.php:239
+msgid "This is a translation. Its price comes from the original product."
+msgstr "Esta es una traducción. Su precio viene del producto original."
+
+#: includes/brikpanel-enqueue.php:2120
+#: includes/brikpanel-wpml.php:240
+msgid "Edit the original"
+msgstr "Editar el original"
+
+#. translators: %s: a language name, e.g. Finnish. Read out for the small language code after a product name.
+#: includes/brikpanel-enqueue.php:2122
+#, php-format
+msgid "Language: %s"
+msgstr "Idioma: %s"
+
+#. translators: %s: number of WPML translations a bulk price change did not change.
+#: includes/brikpanel-enqueue.php:2124
+#, php-format
+msgid "%s translation was left as it is: its price comes from the original product."
+msgid_plural "%s translations were left as they are: their price comes from the original product."
+msgstr[0] "%s traducción se ha quedado como estaba: su precio viene del producto original."
+msgstr[1] "%s traducciones se han quedado como estaban: su precio viene del producto original."

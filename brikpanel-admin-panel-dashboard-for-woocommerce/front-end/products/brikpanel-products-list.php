@@ -1687,6 +1687,14 @@ class Brikpanel_Products_List {
                             <input type="text" id="bpl-qe-sale-price">
                         </div>
                     </div>
+                    <?php
+                    // WPML: shown (and the boxes above locked) when the product
+                    // opened is a translation, whose price comes from its original.
+                    if (function_exists('brikpanel_wpml_products_translated') && brikpanel_wpml_products_translated()) :
+                        $bpl_lock = brikpanel_wpml_price_lock_note();
+                        ?>
+                        <p class="brikpanel-pl-qe-lock-note" id="bpl-qe-price-lock" hidden><?php echo esc_html($bpl_lock['text']); ?> <a href="#" id="bpl-qe-price-lock-link"><?php echo esc_html($bpl_lock['link']); ?></a></p>
+                    <?php endif; ?>
                 </div>
                 <?php
                 break;
@@ -2712,6 +2720,7 @@ class Brikpanel_Products_List {
                             <span id="bpl-progress-percent">0%</span>
                         </div>
                         <p class="bpl-progress-errors" id="bpl-progress-errors"></p>
+                        <p class="bpl-progress-note" id="bpl-progress-note" hidden></p>
                     </div>
                     <div class="bpl-progress-footer">
                         <button type="button" class="brikpanel-pl-btn secondary" id="bpl-progress-cancel"><?php esc_html_e('Cancel', 'brikpanel'); ?></button>
@@ -3194,6 +3203,13 @@ class Brikpanel_Products_List {
         // count cells below read them from there.
         brikpanel_prime_variation_ids(wp_list_pluck($query->posts, 'ID'));
 
+        // WPML: every row's language and, for a translation, its original, in
+        // one query. Empty on a store without WPML (or with one language).
+        $wpml_rows  = function_exists('brikpanel_wpml_product_languages')
+            ? brikpanel_wpml_product_languages(wp_list_pluck($query->posts, 'ID'))
+            : [];
+        $wpml_names = $wpml_rows ? brikpanel_wpml_languages() : [];
+
         try {
             foreach ($query->posts as $post) {
                 $product = wc_get_product($post->ID);
@@ -3358,6 +3374,22 @@ class Brikpanel_Products_List {
                     'extra_cells'    => (object) $extra_cells,
                     'extra_actions'  => $extra_actions,
                 ];
+
+                // WPML: the small language tag next to the name, and on a
+                // translation the original whose price it takes (the price
+                // cell and the quick-edit price boxes lock, with a link there).
+                if (isset($wpml_rows[$post->ID])) {
+                    $row_lang = $wpml_rows[$post->ID]['lang'];
+                    $original = (int) $wpml_rows[$post->ID]['original'];
+                    $products[count($products) - 1]['lang'] = [
+                        'code' => $row_lang,
+                        'name' => isset($wpml_names[$row_lang]) ? (string) $wpml_names[$row_lang]['name'] : strtoupper($row_lang),
+                    ];
+                    $products[count($products) - 1]['translation_of'] = $original;
+                    $products[count($products) - 1]['original_edit_url'] = $original
+                        ? admin_url('admin.php?page=brikpanel-product-editor&product_id=' . $original)
+                        : '';
+                }
             }
         } finally {
             if ($loop_published) {
@@ -3564,6 +3596,13 @@ class Brikpanel_Products_List {
         // used to fail this whole request. Such keys are ignored for them.
         $no_own_price = $product->is_type('grouped');
         $no_stock     = $product->is_type(['grouped', 'external']);
+
+        // A WPML translation takes its price from the original product, as
+        // WooCommerce Multilingual keeps it (its own editor locks the fields).
+        // The list shows the boxes locked; a price posted anyway is ignored.
+        if (function_exists('brikpanel_wpml_original_of') && brikpanel_wpml_original_of($product_id)) {
+            $no_own_price = true;
+        }
 
         if (!$no_own_price && isset($_POST['regular_price'])) {
             $product->set_regular_price(wc_format_decimal(sanitize_text_field($_POST['regular_price'])));
@@ -3804,6 +3843,12 @@ class Brikpanel_Products_List {
                     do_action('woocommerce_product_set_stock_status', $pid, $requested_status, wc_get_product($pid));
                 }
             }
+        }
+
+        // WPML: an original's new price (and what else WooCommerce
+        // Multilingual keeps in step) reaches its translations.
+        if (function_exists('brikpanel_wpml_sync_translations')) {
+            brikpanel_wpml_sync_translations($product_id);
         }
 
         // Return updated product data
@@ -4455,6 +4500,8 @@ class Brikpanel_Products_List {
             'total'       => $total,
             'done'        => $done,
             'errors'      => $result['errors'],
+            // WPML translations a price action left to their original.
+            'translations_skipped' => (int) ($result['translations_skipped'] ?? 0),
         ]);
     }
 
@@ -4688,6 +4735,16 @@ class Brikpanel_Products_List {
         $group_note    = __('A grouped product takes its price and stock from the products in it. Change them there.', 'brikpanel');
         $external_note = __('External products have no stock in WooCommerce.', 'brikpanel');
         $no_ship_note  = __('Grouped and external products are not shipped, so they have no weight or size.', 'brikpanel');
+        // A WPML translation takes its price from its original product, which
+        // WooCommerce Multilingual copies to it: a price action leaves the
+        // translation as it is and counts it, so the result can say so (it is
+        // not an error: the original's new price reaches it). One query reads
+        // the batch.
+        $check_translations   = $is_price && function_exists('brikpanel_wpml_original_of');
+        $translations_skipped = 0;
+        if ($check_translations) {
+            brikpanel_wpml_product_languages($parent_ids);
+        }
 
         // A product_cat "remove" can strip a product's last category; those rows
         // are swept once at the end of the batch instead of checked per product.
@@ -4733,6 +4790,11 @@ class Brikpanel_Products_List {
 
                 $product = wc_get_product($pid);
                 if (!$product) continue;
+
+                if ($check_translations && brikpanel_wpml_original_of($pid)) {
+                    $translations_skipped++;
+                    continue;
+                }
 
                 // Weight/dimensions are stored on the product post (the parent
                 // default for variable products); variations inherit when their
@@ -4830,7 +4892,24 @@ class Brikpanel_Products_List {
             }
         }
 
-        return ['processed' => $processed, 'errors' => $errors];
+        // WPML: the originals this batch changed hand their new values to
+        // their translations (once per product, after the variations).
+        if ($processed && function_exists('brikpanel_wpml_sync_translations') && brikpanel_wpml_products_translated()) {
+            $touched = [];
+            foreach ($parent_ids as $pid) {
+                $pid = (int) $pid;
+                $touched[('product_variation' === get_post_type($pid)) ? (int) wp_get_post_parent_id($pid) : $pid] = true;
+            }
+            foreach (array_keys($touched) as $tid) {
+                try {
+                    brikpanel_wpml_sync_translations($tid);
+                } catch (\Throwable $e) {
+                    $errors[] = ['id' => $tid, 'message' => $e->getMessage()];
+                }
+            }
+        }
+
+        return ['processed' => $processed, 'errors' => $errors, 'translations_skipped' => $translations_skipped];
     }
 
     /**
@@ -5590,6 +5669,13 @@ class Brikpanel_Products_List {
             wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
         }
 
+        // A variation of a WPML translation takes its price and sale dates from
+        // the original product's variation (WooCommerce Multilingual keeps
+        // them in step). The list locks the boxes; posted values are ignored.
+        if (function_exists('brikpanel_wpml_original_of') && brikpanel_wpml_original_of($parent_id)) {
+            unset($_POST['regular_price'], $_POST['sale_price'], $_POST['sale_from'], $_POST['sale_to']);
+        }
+
         if (isset($_POST['regular_price'])) {
             $v->set_regular_price(wc_format_decimal(sanitize_text_field($_POST['regular_price'])));
         }
@@ -5671,6 +5757,11 @@ class Brikpanel_Products_List {
         }
 
         WC_Product_Variable::sync($v->get_parent_id());
+
+        // WPML: the original's variations reach its translations.
+        if (function_exists('brikpanel_wpml_sync_translations')) {
+            brikpanel_wpml_sync_translations($parent_id);
+        }
 
         $fresh = wc_get_product($var_id);
         wp_send_json_success([

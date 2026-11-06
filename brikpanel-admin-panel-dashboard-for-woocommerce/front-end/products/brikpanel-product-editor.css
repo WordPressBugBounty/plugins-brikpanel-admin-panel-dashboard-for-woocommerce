@@ -42,6 +42,22 @@
 .brikpanel-pe-featured-star:focus-visible{outline:2px solid var(--pe-text,#303030);outline-offset:1px}
 .brikpanel-pe-featured-star.is-on{color:#eab308}
 .brikpanel-pe-featured-star.is-on:hover{color:#ca8a04;background:#fef9c3}
+/* The editor's settings, close after the screen's name (owner, November 2026):
+   a small quiet gear, its name in the tooltip and for screen readers. The title
+   and the gear are one item of the title group with their own small gap, not a
+   negative margin: the header's fit (fit-row.js) adds up the items and the
+   gap, and a margin it cannot see read as overflow. The title still gives way
+   ("…") inside it, as the last resort. It takes 28px of the row: at 1440px an
+   edited product's header had 30px left before View product, Duplicate and
+   Add new fold away, so the drawn box is 24px and a larger, invisible area
+   (::before) takes the clicks and taps. WordPress's own focus ring for links
+   is replaced by the editor's. */
+.brikpanel-pe-heading{display:flex;align-items:center;gap:.25rem;flex:0 1 auto;min-width:0;max-width:100%}
+.brikpanel-pe-settings-link{position:relative;display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;color:var(--pe-text-secondary,#616161);border-radius:var(--pe-radius-sm,.375rem);text-decoration:none;transition:color .15s ease,background .15s ease}
+.brikpanel-pe-settings-link::before{content:"";position:absolute;inset:-.25rem}
+.brikpanel-pe-settings-link:hover,.brikpanel-pe-settings-link:focus{background:#f1f1f1;color:var(--pe-text,#303030);box-shadow:none}
+/* The focus ring inside the box: drawn outside, it touched the title's last letter. */
+.brikpanel-pe-settings-link:focus-visible{outline:2px solid var(--pe-text,#303030);outline-offset:-2px}
 
 /* Header overflow ("More actions") menu — while the header has room the wrapper
    and its menu are display:contents, so View product / Duplicate / Add new sit
@@ -306,6 +322,13 @@
 .brikpanel-pe-input-group input{border:none!important;box-shadow:none!important;border-radius:0!important;flex:1;min-width:0}
 .brikpanel-pe-input-prefix,.brikpanel-pe-input-suffix{display:flex;align-items:center;padding:0 .75rem;font-size:.875rem;font-weight:500;color:var(--pe-text-secondary);background:#f7f7f7;border-right:1px solid var(--pe-border);white-space:nowrap;user-select:none}
 .brikpanel-pe-input-suffix{border-right:none;border-left:1px solid var(--pe-border)}
+/* WPML: a translation's price boxes are locked (its prices come from the
+   original product). Read as locked: the field's fill turns grey like its
+   prefix, the text stays readable. */
+.brikpanel-pe-input-group input:disabled,.brikpanel-pe-var-table input.var-price:disabled,.brikpanel-pe-var-table input.var-sale-price:disabled,.brikpanel-pe-var-table input.var-date:disabled{background-color:#f7f7f7;color:#616161;cursor:not-allowed}
+.brikpanel-pe-lock-note{margin:.75rem 0 0;font-size:.8125rem;line-height:1.45;color:#616161}
+.brikpanel-pe-lock-note a{color:#303030;font-weight:550;text-decoration:underline;text-underline-offset:2px}
+.brikpanel-pe-var-table-section .brikpanel-pe-lock-note{margin:0 0 .75rem}
 .brikpanel-pe-slug-prefix{max-width:60%;overflow:hidden;text-overflow:ellipsis;display:inline-block;line-height:calc(2.5rem - 2px)}
 .brikpanel-pe-input-group.small{height:2rem}
 /* min-height:0 is the load-bearing part: WP admin forces min-height:40px on
@@ -973,9 +996,12 @@ body.rtl .brikpanel-pe-metabox-content select:not([multiple]),body.rtl .brikpane
    - .acf-icon-picker-list-icon (icon-grid items render the chosen icon as
      the cell's background-image)
    - .tabs button / .nav-tab (third-party panel tabs use their own active
-     state; our flat-button look erases the active highlight). */
-.brikpanel-pe-metabox-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert),.brikpanel-pe-metabox-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert),.brikpanel-pe-metabox-content input[type="button"],.brikpanel-pe-metabox-content input[type="submit"],.brikpanel-pe-wc-fields-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert),.brikpanel-pe-wc-fields-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert){display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.375rem!important;padding:.5rem 1rem!important;font-size:.8125rem!important;font-weight:550!important;border:none!important;border-radius:var(--pe-radius-sm)!important;cursor:pointer!important;background:var(--pe-card)!important;color:var(--pe-text)!important;box-shadow:inset 0 0 0 1px var(--pe-border),0 1px 0 rgba(0,0,0,.05)!important;transition:background .15s ease!important;height:auto!important;line-height:1.3!important}
-.brikpanel-pe-metabox-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):hover,.brikpanel-pe-metabox-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):hover,.brikpanel-pe-wc-fields-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):hover,.brikpanel-pe-wc-fields-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):hover{background:#f7f7f7!important}
+     state; our flat-button look erases the active highlight)
+   - .brikpanel-pe-foldtoggle / .brikpanel-pe-foldlink (the title line and
+     the link of the folded "Fields from your other plugins" box, which sits
+     in the same card as the plugins' fields). */
+.brikpanel-pe-metabox-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert),.brikpanel-pe-metabox-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert),.brikpanel-pe-metabox-content input[type="button"],.brikpanel-pe-metabox-content input[type="submit"],.brikpanel-pe-wc-fields-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):not(.brikpanel-pe-foldtoggle):not(.brikpanel-pe-foldlink),.brikpanel-pe-wc-fields-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert){display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:.375rem!important;padding:.5rem 1rem!important;font-size:.8125rem!important;font-weight:550!important;border:none!important;border-radius:var(--pe-radius-sm)!important;cursor:pointer!important;background:var(--pe-card)!important;color:var(--pe-text)!important;box-shadow:inset 0 0 0 1px var(--pe-border),0 1px 0 rgba(0,0,0,.05)!important;transition:background .15s ease!important;height:auto!important;line-height:1.3!important}
+.brikpanel-pe-metabox-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):hover,.brikpanel-pe-metabox-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):hover,.brikpanel-pe-wc-fields-content button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):not(.brikpanel-pe-foldtoggle):not(.brikpanel-pe-foldlink):hover,.brikpanel-pe-wc-fields-content .button:not(.wp-color-result):not(.acf-icon-picker-list-icon):not(.nav-tab):not(.ct-revert):hover{background:#f7f7f7!important}
 
 /* Tab-like navigation (WPCode etc.) */
 .brikpanel-pe-metabox-content ul[class*="tabs"],.brikpanel-pe-metabox-content .wpcode-admin-tabs{display:flex!important;flex-wrap:wrap!important;gap:2px!important;list-style:none!important;margin:0 0 .75rem!important;padding:.25rem!important;background:#f7f7f7!important;border-radius:var(--pe-radius-sm)!important;border:1px solid var(--pe-border)!important}
@@ -2124,14 +2150,36 @@ ul.ui-autocomplete.wp-tags-autocomplete .ui-menu-item-wrapper:hover{background:#
    image can't blow the panel height open. */
 .brikpanel-pe-wc-fields-content .image-preview img{max-width:120px!important;max-height:120px!important;width:auto!important;height:auto!important;border:1px solid var(--pe-border);border-radius:var(--pe-radius-sm);object-fit:cover}
 
-/* Discovery card: other plugins add fields to this product but the setting
-   that surfaces them is off. Sits in the slot those fields will occupy once
-   enabled, so the promise and the payoff share a place on the page.
-   Deliberately quiet — this is an offer, not a warning. */
-.brikpanel-pe-tp-hint__lead{margin:0;font-size:.8125rem;color:var(--pe-text-secondary,#616161);line-height:1.5}
-.brikpanel-pe-tp-hint__names{margin:.375rem 0 0;font-size:.8125rem;color:var(--pe-text,#303030);font-weight:550}
-.brikpanel-pe-tp-hint__actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.875rem}
+/* Message beside the store-wide show / hide pair when its request fails. */
 .brikpanel-pe-tp-msg{margin:.75rem 0 0;font-size:.75rem;color:var(--pe-error,#d72c0d)}
+
+/* The two folding boxes built here (owner, November 2026: closed until
+   clicked, like a theme's own box). "Fields from your other plugins" sits in
+   the product-data card, so other plugins' scripts find their ancestors there;
+   "Hidden sections" ends the page with the switched-off sections. Title line:
+   name, how many parts, chevron. */
+.brikpanel-pe-foldname{display:inline-flex;align-items:center;gap:.5rem;min-width:0}
+.brikpanel-pe-foldtitle{font-size:.8125rem;font-weight:600;line-height:1.3;color:var(--pe-text,#303030)}
+.brikpanel-pe-foldcount{flex:none;min-width:1.25rem;padding:.0625rem .375rem;border-radius:999px;background:#f1f1f1;color:var(--pe-text-secondary,#616161);font-size:.75rem;font-weight:550;line-height:1.4;text-align:center;font-variant-numeric:tabular-nums}
+.brikpanel-pe-foldfoot{margin:0;font-size:.8125rem;line-height:1.5}
+.brikpanel-pe-foldlink{display:inline;margin:0;padding:0;border:0;background:none;box-shadow:none;color:var(--pe-text-secondary,#616161);font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.brikpanel-pe-foldlink:hover{color:var(--pe-text,#303030)}
+.brikpanel-pe-foldlink:focus-visible{outline:2px solid var(--pe-input-focus,#303030);outline-offset:2px;border-radius:2px}
+.brikpanel-pe-foldlink:disabled{cursor:default;text-decoration:none}
+
+/* "Fields from your other plugins": below the sections the card shows anyway
+   (the multi-currency prices) it starts after a divider, alone it is the
+   card's title line. Open, its sections follow, each after a divider. */
+.brikpanel-pe-wc-tab-group:not([hidden]):not([data-bp-unpicked])~.brikpanel-pe-tpfold{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--pe-border)}
+.brikpanel-pe-tpfold-body{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--pe-border,#e3e3e3)}
+.brikpanel-pe-tpfold-body>.brikpanel-pe-foldfoot{margin-top:1.25rem}
+
+/* "Hidden sections": the sections lose their own card and stand one under
+   the other, a divider between two shown ones (a section the product's type
+   does without is hidden by an inline display, see initHiddenBox()). */
+.brikpanel-pe-hiddenbox__body{display:flex;flex-direction:column;gap:1.25rem;margin-top:1rem;padding-top:1.25rem;border-top:1px solid var(--pe-border,#e3e3e3)}
+.brikpanel-pe-hiddenbox__body>.brikpanel-pe-card{margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none}
+.brikpanel-pe-hiddenbox__body>[data-bpe-section]:not([style*="none"])~[data-bpe-section]:not([style*="none"]){padding-top:1.25rem;border-top:1px solid var(--pe-border,#e3e3e3)}
 
 /* Header row for the third-party fields card: title on the left, the undo on
    the right. The card's own `>label:first-child` rule no longer matches now
@@ -2341,7 +2389,12 @@ html[dir="rtl"] .brikpanel-pe .brikpanel-pe-ph-inplace:not(.is-ph-open){transfor
 .brikpanel-pe-ph-inplace>label,
 .brikpanel-pe-ph-inplace .brikpanel-pe-wc-fields-head>label,
 .brikpanel-pe-ph-inplace .postbox-header,
+.brikpanel-pe-ph-inplace .brikpanel-pe-tpfold-head,
+.brikpanel-pe-ph-inplace>.brikpanel-pe-hiddenbox__head,
 .brikpanel-pe-ph-inplace>.brikpanel-pe-ext-title{display:none}
+/* With the title line gone the page bar is the heading: no divider under it. */
+.brikpanel-pe-ph-inplace .brikpanel-pe-tpfold-body,
+.brikpanel-pe-ph-inplace>.brikpanel-pe-hiddenbox__body{margin-top:0;padding-top:0;border-top:0}
 
 /* ---- Variations: one line each on the card, a page each ---------------- */
 .brikpanel-pe-ph-varhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 4px}

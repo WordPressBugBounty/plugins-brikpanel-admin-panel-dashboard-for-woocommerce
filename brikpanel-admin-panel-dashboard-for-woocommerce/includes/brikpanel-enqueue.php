@@ -1555,6 +1555,12 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'order_date'     => ($order && $order->get_date_created()) ? $order->get_date_created()->date_i18n( brikpanel_datetime_format() ) : '',
                 'statuses'       => $all_statuses,
                 'orders_url'     => $order_screen['legacy'] ? admin_url( 'edit.php?post_type=shop_order' ) : admin_url( 'admin.php?page=wc-orders' ),
+                // The header's Print button (front-end/orders/brikpanel-order-print.php).
+                // Empty for an order not saved yet and for a user the summary is
+                // not for, which leaves the button out.
+                'print_url'      => ( $order instanceof WC_Order && ! $order_screen['new'] && function_exists( 'brikpanel_order_print_active' ) && brikpanel_order_print_active() )
+                    ? brikpanel_order_print_url( [ $order_id ] )
+                    : '',
                 'is_new'         => (bool) $order_screen['new'],
                 'item_downloads' => (object) $item_downloads,
                 'downloads_nonce' => wp_create_nonce( 'brikpanel_order_item_downloads' ),
@@ -1603,6 +1609,8 @@ function brikpanel_enqueue_woo_assets($hook) {
                     'whatsapp_followup'   => __( 'Send the customer a follow-up on WhatsApp', 'brikpanel' ),
                     'access_granted'      => __( 'Download access granted', 'brikpanel' ),
                     'access_revoked'      => __( 'Download access revoked', 'brikpanel' ),
+                    'print'               => _x( 'Print', 'button that prints an order summary', 'brikpanel' ),
+                    'print_summary'       => __( 'Print order summary', 'brikpanel' ),
                 ],
             ] );
         }
@@ -2107,6 +2115,17 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'm_in_stock'          => brikpanel_js_plural(_n_noop('%s in stock', '%s in stock', 'brikpanel')),
                 /* translators: %s: number of selected products. */
                 'm_selected'          => brikpanel_js_plural(_n_noop('%s selected', '%s selected', 'brikpanel')),
+                // WPML: a translation's price comes from its original product.
+                'price_from_original' => __('This is a translation. Its price comes from the original product.', 'brikpanel'),
+                'edit_original'       => __('Edit the original', 'brikpanel'),
+                /* translators: %s: a language name, e.g. Finnish. Read out for the small language code after a product name. */
+                'lang_label'          => __('Language: %s', 'brikpanel'),
+                /* translators: %s: number of WPML translations a bulk price change did not change. */
+                'bulk_translations_skipped' => brikpanel_js_plural(_n_noop(
+                    '%s translation was left as it is: its price comes from the original product.',
+                    '%s translations were left as they are: their price comes from the original product.',
+                    'brikpanel'
+                )),
             ],
         ]);
     }
@@ -2150,8 +2169,13 @@ function brikpanel_enqueue_woo_assets($hook) {
         // product-data panel, hidden, so their stored values survive the save
         // (Brikpanel_Product_Editor::capture_wc_product_data_fields()). Those
         // panels print inline scripts that need their plugin's assets.
+        // The folded "Fields from your other plugins" box (the setting off,
+        // for people who may change store settings) carries those panels too,
+        // shown once it opens; only a saved product has it.
+        $bp_fold_pid     = isset($_GET['product_id']) ? absint($_GET['product_id']) : 0;
         $wc_card_renders = !empty((array) get_option('brikpanel_pe_wc_tabs_selected', []))
-            || (class_exists('Brikpanel_Product_Editor') && Brikpanel_Product_Editor::multicurrency_card_active());
+            || (class_exists('Brikpanel_Product_Editor') && Brikpanel_Product_Editor::multicurrency_card_active())
+            || ($bp_fold_pid && class_exists('Brikpanel_Product_Editor') && Brikpanel_Product_Editor::thirdparty_fold_wanted());
         $auto_seo = class_exists('Brikpanel_Product_Editor')
             ? Brikpanel_Product_Editor::get_active_seo_plugin()
             : null;
@@ -2642,9 +2666,13 @@ function brikpanel_enqueue_woo_assets($hook) {
             true
         );
 
+        // WPML: the product opened is a translation, whose prices come from its
+        // original product; the variation rows lock their price boxes.
+        $bpe_open_id = isset($_GET['product_id']) ? absint($_GET['product_id']) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only: which product the screen shows.
         wp_localize_script('brikpanel_product_editor_scripts', 'brikpanelPE', [
             'ajax_url'    => admin_url('admin-ajax.php'),
             'admin_url'   => admin_url(),
+            'price_locked' => ($bpe_open_id && function_exists('brikpanel_wpml_original_of') && brikpanel_wpml_original_of($bpe_open_id)) ? '1' : '',
             'nonce'       => wp_create_nonce('brikpanel_product_editor_nonce'),
             'currency'    => get_woocommerce_currency_symbol(),
             'decimal_sep' => wc_get_price_decimal_separator(),

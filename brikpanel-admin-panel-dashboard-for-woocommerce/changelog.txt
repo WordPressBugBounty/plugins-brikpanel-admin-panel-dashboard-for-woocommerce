@@ -2,6 +2,20 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.45 (2026-11-06) =
+* New: **Print order summaries.** Select orders and pick "Print order summary" under Bulk actions, or use Print at the top of an order. Each order gets its own page with your logo, both addresses, product images, options, SKUs, quantities and totals, plus the fields picked in Orders → "Order custom fields". "Save as PDF" in the print window turns it into a PDF.
+* New: **Hidden sections in a folded box.** At the end of the product screen, a "Hidden sections" box holds the sections that come switched off, such as shipping weight, tags and linked products. Open it to edit them right there, without turning them on in the settings. Each user's box stays open or closed the way they left it. Setting: Products → "Suggest hidden sections in the product editor", on by default.
+* New: **Fields from your other plugins in a folded box.** With "Auto-show fields other plugins add" off, the fields other plugins add to a product now wait in a folded "Fields from your other plugins" box instead of staying off the page. Open it to edit them, or use "Always show these fields" to keep them open for everyone. Products save exactly as before until the box is opened.
+* Fix: **Fields under "Stock status" show up.** Boxes that other plugins add below Stock status in WooCommerce's Inventory tab, such as stock per warehouse, could not be shown in BrikPanel's product screen. They now appear in the "Fields from your other plugins" box.
+* Fix: **Categories stay when the Category section is off.** With the Category section switched off in Products → "Visible editor sections", every save in BrikPanel's product screen, automatic saves too, moved the product to Uncategorized. Its categories are now kept.
+* Tweak: **Editor settings one click away.** A small gear next to the product screen's title opens the product editor's settings (Products), with a link back to the product. On a phone it is in the "..." menu.
+* New: **The cache button clears CloudPanel's Varnish.** With CloudPanel's CLP Varnish Cache plugin on, the top bar's cache button also purges Varnish, the same way the plugin's own "Entire Cache" purge does. If Varnish cannot be reached, it says so and still clears the other caches.
+* Fix: **Order status emails in the customer's language (WPML).** An email for a custom order status now goes out in the order's language, status name included, instead of the language of the admin who changed the status. The store's own copy stays in the admin's language.
+* New: **Translatable status names and email texts (WPML).** Custom order status names and their email subject, heading and text can be translated in WPML → String Translation.
+* Fix: **Past orders keep their exchange rate (WooCommerce Multilingual).** A rate change, typed or automatic, converted every past order again at the new rate. Each order now keeps the rate it was converted at.
+* Tweak: **Each product row shows its language (WPML).** The product list shows a small language code next to the product name.
+* Fix: **A translation's price comes from its original (WPML).** Quick edit, bulk edit, the product screen and the Google Sheets pull no longer change a translation's price on its own, and a new price on the original now reaches its translations.
+
 = 3.3.44 (2026-11-03) =
 * Fix: **Bundles made with other plugins keep their contents.** Saving an Easy Product Bundles or WPC Product Bundles bundle in BrikPanel's product screen emptied it. A product type whose own settings are in WooCommerce's editor is now left untouched, also with "Auto-show fields other plugins add" on.
 * Fix: **Bundles no longer need a price.** Their price box is optional and shows the stored price, so a Bopo bundle keeps the price it works out instead of becoming a fixed-price bundle.

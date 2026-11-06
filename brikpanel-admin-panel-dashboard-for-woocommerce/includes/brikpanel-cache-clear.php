@@ -33,6 +33,9 @@ class Brikpanel_Cache_Clear {
     /** LiteSpeed's purge entries taken from this request's admin bar, see capture_litespeed_items(). */
     private static $litespeed_items = [];
 
+    /** CLP Varnish Cache's settings reader once found on this request, see clp_varnish_manager(). */
+    private static $clp_varnish_manager = null;
+
     public static function instance() {
         if ( self::$instance === null ) {
             self::$instance = new self();
@@ -432,6 +435,22 @@ class Brikpanel_Cache_Clear {
                 },
             ],
 
+            'clp-varnish-cache' => [
+                'label'  => 'CLP Varnish Cache',
+                // CloudPanel's own plugin for its Varnish (wp.org
+                // clp-varnish-cache). Listed while that Varnish is switched
+                // on, the condition its own automatic purge goes by. The
+                // plugin loads in wp-admin only, admin-ajax included.
+                'detect' => static function () {
+                    $manager = self::clp_varnish_manager();
+                    return null !== $manager && is_callable( [ $manager, 'is_enabled' ] ) && $manager->is_enabled();
+                },
+                // Its "Purge > Entire Cache", see clp_varnish_purge_all().
+                'clear'  => static function () {
+                    return self::clp_varnish_purge_all();
+                },
+            ],
+
             'kinsta' => [
                 'label'  => 'Kinsta',
                 'detect' => static function () {
@@ -564,6 +583,99 @@ class Brikpanel_Cache_Clear {
             $parts[] = isset( $def['part'] ) ? $def['part'] : $def['label'];
         }
         return $parts;
+    }
+
+    // =========================================================================
+    // CLP VARNISH CACHE (CLOUDPANEL)
+    // =========================================================================
+
+    /**
+     * CLP Varnish Cache's settings reader, or null where the plugin is not
+     * loaded (it loads in wp-admin only, admin-ajax included).
+     *
+     * The reader its admin holds comes first: on an admin page it has already
+     * read the settings file for the plugin's own admin bar menu (the admin
+     * bar is built at in_admin_header 0, the top bar at 10), so finding the
+     * cache on every admin page costs no second file read. Once found, it is
+     * kept for the rest of the request.
+     *
+     * @return object|null
+     */
+    private static function clp_varnish_manager() {
+        if ( null !== self::$clp_varnish_manager ) {
+            return self::$clp_varnish_manager;
+        }
+        global $clp_varnish_cache_admin;
+        $manager = null;
+        if ( is_object( $clp_varnish_cache_admin ) && is_callable( [ $clp_varnish_cache_admin, 'get_clp_cache_manager' ] ) ) {
+            $from_admin = $clp_varnish_cache_admin->get_clp_cache_manager();
+            if ( is_object( $from_admin ) ) {
+                $manager = $from_admin;
+            }
+        }
+        if ( null === $manager && class_exists( 'ClpVarnishCacheManager' ) ) {
+            $manager = new ClpVarnishCacheManager();
+        }
+        self::$clp_varnish_manager = $manager;
+        return $manager;
+    }
+
+    /**
+     * What CLP Varnish Cache's own "Purge > Entire Cache" does: a PURGE for
+     * the store's host and a PURGE for the tag every page of the site carries
+     * (its cache tag prefix), both to the Varnish server in its settings,
+     * which CloudPanel writes there (127.0.0.1:6081). The host is the home
+     * URL's, as in the plugin's own automatic purge.
+     *
+     * The requests are sent here instead of through the plugin's manager:
+     * its purge prints an error and ends the whole request whenever Varnish
+     * answers anything but 200, which would cut off this purge's reply, the
+     * caches after it in an "all" purge, and a settings save that runs
+     * purge_all(). wp_remote_request, not the "safe" variant: the server is a
+     * local address by design, read from the plugin's settings file, never
+     * from the request.
+     *
+     * @return bool True when Varnish answered 200 to every request sent.
+     */
+    private static function clp_varnish_purge_all() {
+        $manager = self::clp_varnish_manager();
+        if ( null === $manager || ! is_callable( [ $manager, 'get_server' ] ) ) {
+            return false;
+        }
+        $server = trim( (string) $manager->get_server() );
+        $url    = 'http://' . $server;
+        if ( '' === $server || ! wp_parse_url( $url, PHP_URL_HOST ) ) {
+            return false;
+        }
+
+        $requests = [];
+        $host     = wp_parse_url( home_url(), PHP_URL_HOST );
+        if ( is_string( $host ) && '' !== $host ) {
+            $requests[] = [ 'Host' => $host ];
+        }
+        $prefix = is_callable( [ $manager, 'get_cache_tag_prefix' ] ) ? trim( (string) $manager->get_cache_tag_prefix() ) : '';
+        if ( '' !== $prefix ) {
+            $requests[] = [ 'X-Cache-Tags' => $prefix ];
+        }
+        if ( ! $requests ) {
+            return false;
+        }
+
+        // Both go out even when the first one fails: the tag alone already
+        // empties every page of the site.
+        $ok = true;
+        foreach ( $requests as $headers ) {
+            $response = wp_remote_request( $url, [
+                'method'      => 'PURGE',
+                'headers'     => $headers,
+                'timeout'     => 5,
+                'redirection' => 0,
+            ] );
+            if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+                $ok = false;
+            }
+        }
+        return $ok;
     }
 
     // =========================================================================
