@@ -7094,6 +7094,10 @@
             data.purchase_note   = $('#bpe-purchase-note').val();
             data.reviews_allowed = $('#bpe-reviews-allowed').is(':checked') ? 1 : 0;
             data.menu_order      = $('#bpe-menu-order').val();
+            // The number the box opened with (or last saved): the server keeps
+            // the stored one when the box was not changed (Sort mode may have
+            // moved the product since).
+            data.menu_order_original = $('#bpe-menu-order').attr('data-original');
         }
 
         // Product type — only when the selector is enabled. Server falls
@@ -7770,6 +7774,11 @@
                 // kept a quantity orders may have lowered since the page opened.
                 // A box the merchant typed into while the save was out keeps
                 // what they typed.
+                // A changed Menu order box was saved: it is the number to compare
+                // with next time. An unchanged one stays as the page opened it.
+                if (data.menu_order !== undefined && data.menu_order !== data.menu_order_original) {
+                    $('#bpe-menu-order').attr('data-original', String(parseInt(data.menu_order, 10) || 0));
+                }
                 if (r.data.stock && typeof r.data.stock === 'object') {
                     var $stockBox = $('#bpe-stock');
                     var sentQty = (data.stock_quantity === undefined) ? $stockBox.val() : String(data.stock_quantity);

@@ -21453,15 +21453,15 @@ msgstr "Wybierz plik"
 
 #: includes/brikpanel-enqueue.php:2087
 msgid "Saving order..."
-msgstr "Zapisywanie zamówienia..."
+msgstr "Zapisywanie kolejności..."
 
 #: includes/brikpanel-enqueue.php:2088
 msgid "Order saved"
-msgstr "Zamówienie zapisane"
+msgstr "Kolejność zapisana"
 
 #: includes/brikpanel-enqueue.php:2089
 msgid "Could not save order. Please try again."
-msgstr "Nie udało się zapisać zamówienia. Spróbuj ponownie."
+msgstr "Nie udało się zapisać kolejności. Spróbuj ponownie."
 
 #: includes/brikpanel-enqueue.php:2090 includes/brikpanel-enqueue.php:2784
 msgid "Drag to reorder"
@@ -25974,3 +25974,44 @@ msgid_plural "%s translations were left as they are: their price comes from the 
 msgstr[0] "%s tłumaczenie pozostało bez zmian: cena pochodzi z oryginalnego produktu."
 msgstr[1] "%s tłumaczenia pozostały bez zmian: cena pochodzi z oryginalnego produktu."
 msgstr[2] "%s tłumaczeń pozostało bez zmian: cena pochodzi z oryginalnego produktu."
+
+#: front-end/products/brikpanel-products-list.php:2308
+msgid "A store manager can start a custom order here."
+msgstr "Kierownik sklepu może tutaj rozpocząć niestandardową kolejność."
+
+#: includes/brikpanel-enqueue.php:2113
+msgid "Could not start the custom order. Please try again."
+msgstr "Nie udało się rozpocząć niestandardowej kolejności. Spróbuj ponownie."
+
+#: front-end/products/brikpanel-products-list.php:3587
+#: includes/brikpanel-enqueue.php:2112
+msgid "Custom order started. Your store still lists the newest products first until you move one."
+msgstr "Rozpoczęto niestandardową kolejność. Twój sklep nadal pokazuje najpierw najnowsze produkty, dopóki któregoś nie przeniesiesz."
+
+#: front-end/products/brikpanel-products-list.php:3580
+msgid "Products are numbered newest first, but your theme or another plugin still sets the store's sort order. Set its default product sorting to custom ordering."
+msgstr "Produkty są ponumerowane od najnowszych, ale motyw lub inna wtyczka nadal ustala kolejność w sklepie. Ustaw tam domyślne sortowanie produktów na niestandardową kolejność."
+
+#: front-end/products/brikpanel-products-list.php:2306
+msgid "Start a custom order: your products keep their newest-first order, you can move any of them, and new products still appear on top."
+msgstr "Rozpocznij niestandardową kolejność: produkty zachowają kolejność od najnowszych, możesz przenieść dowolny z nich, a nowe produkty nadal będą pojawiać się na górze."
+
+#: front-end/products/brikpanel-products-list.php:2315
+msgid "Start custom order"
+msgstr "Rozpocznij niestandardową kolejność"
+
+#: includes/brikpanel-enqueue.php:2111
+msgid "Starting custom order..."
+msgstr "Rozpoczynanie niestandardowej kolejności..."
+
+#: includes/brikpanel-enqueue.php:2114
+msgid "Your products already have a saved order. Starting a custom order replaces it with newest first. Continue?"
+msgstr "Twoje produkty mają już zapisaną kolejność. Rozpoczęcie niestandardowej kolejności zastąpi ją kolejnością od najnowszych. Kontynuować?"
+
+#: front-end/products/brikpanel-products-list.php:2304
+msgid "Your store lists the newest products first, so the order you set here does not show there yet."
+msgstr "Twój sklep pokazuje najpierw najnowsze produkty, więc ustawiona tutaj kolejność jeszcze się tam nie pojawia."
+
+#: front-end/products/brikpanel-products-list.php:2312
+msgid "Your store sorts products another way, so the order you set here does not show there. To use it, set Default product sorting to \"Default sorting (custom ordering + name)\" under Appearance > Customize."
+msgstr "Twój sklep sortuje produkty w inny sposób, więc ustawiona tutaj kolejność się tam nie pojawia. Aby jej użyć, w Wygląd > Dostosuj ustaw Domyślne sortowanie produktów na „Domyślne sortowanie (niestandardowe sortowanie + nazwa)”."

@@ -16420,7 +16420,7 @@ msgstr "Tek bir istekte yeniden sıralamak için çok fazla ürün."
 
 #: front-end/products/brikpanel-products-list.php:3516
 msgid "Order saved."
-msgstr "Sipariş kaydedildi."
+msgstr "Sıra kaydedildi."
 
 #: front-end/products/brikpanel-products-list.php:3851
 msgid "Product updated!"
@@ -21099,15 +21099,15 @@ msgstr "Dosya seç"
 
 #: includes/brikpanel-enqueue.php:2087
 msgid "Saving order..."
-msgstr "Sipariş kaydediliyor..."
+msgstr "Sıra kaydediliyor..."
 
 #: includes/brikpanel-enqueue.php:2088
 msgid "Order saved"
-msgstr "Sipariş kaydedildi"
+msgstr "Sıra kaydedildi"
 
 #: includes/brikpanel-enqueue.php:2089
 msgid "Could not save order. Please try again."
-msgstr "Sipariş kaydedilemedi. Lütfen tekrar deneyin."
+msgstr "Sıra kaydedilemedi. Lütfen tekrar deneyin."
 
 #: includes/brikpanel-enqueue.php:2090 includes/brikpanel-enqueue.php:2784
 msgid "Drag to reorder"
@@ -25547,3 +25547,44 @@ msgid "%s translation was left as it is: its price comes from the original produ
 msgid_plural "%s translations were left as they are: their price comes from the original product."
 msgstr[0] "%s çeviri olduğu gibi bırakıldı: fiyatı ana üründen gelir."
 msgstr[1] "%s çeviri olduğu gibi bırakıldı: fiyatı ana üründen gelir."
+
+#: front-end/products/brikpanel-products-list.php:2308
+msgid "A store manager can start a custom order here."
+msgstr "Bir mağaza yöneticisi burada özel sıra başlatabilir."
+
+#: includes/brikpanel-enqueue.php:2113
+msgid "Could not start the custom order. Please try again."
+msgstr "Özel sıra başlatılamadı. Lütfen tekrar deneyin."
+
+#: front-end/products/brikpanel-products-list.php:3587
+#: includes/brikpanel-enqueue.php:2112
+msgid "Custom order started. Your store still lists the newest products first until you move one."
+msgstr "Özel sıra başlatıldı. Siz bir ürünü taşıyana kadar mağazanız en yeni ürünleri önce göstermeye devam eder."
+
+#: front-end/products/brikpanel-products-list.php:3580
+msgid "Products are numbered newest first, but your theme or another plugin still sets the store's sort order. Set its default product sorting to custom ordering."
+msgstr "Ürünler en yeniden eskiye numaralandı, ancak mağazanın sıralamasını hâlâ temanız ya da başka bir eklenti belirliyor. Oradaki varsayılan ürün sıralamasını özel sıra yapın."
+
+#: front-end/products/brikpanel-products-list.php:2306
+msgid "Start a custom order: your products keep their newest-first order, you can move any of them, and new products still appear on top."
+msgstr "Özel sıra başlatın: ürünleriniz en yeni önce sırasını korur, istediğinizi taşıyabilirsiniz ve yeni ürünler yine en üstte görünür."
+
+#: front-end/products/brikpanel-products-list.php:2315
+msgid "Start custom order"
+msgstr "Özel sırayı başlat"
+
+#: includes/brikpanel-enqueue.php:2111
+msgid "Starting custom order..."
+msgstr "Özel sıra başlatılıyor..."
+
+#: includes/brikpanel-enqueue.php:2114
+msgid "Your products already have a saved order. Starting a custom order replaces it with newest first. Continue?"
+msgstr "Ürünlerinizin zaten kayıtlı bir sırası var. Özel sıra başlatmak onu en yeniden eskiye sırayla değiştirir. Devam edilsin mi?"
+
+#: front-end/products/brikpanel-products-list.php:2304
+msgid "Your store lists the newest products first, so the order you set here does not show there yet."
+msgstr "Mağazanız en yeni ürünleri önce gösteriyor, bu yüzden burada belirlediğiniz sıra orada henüz görünmüyor."
+
+#: front-end/products/brikpanel-products-list.php:2312
+msgid "Your store sorts products another way, so the order you set here does not show there. To use it, set Default product sorting to \"Default sorting (custom ordering + name)\" under Appearance > Customize."
+msgstr "Mağazanız ürünleri başka bir şekilde sıralıyor, bu yüzden burada belirlediğiniz sıra orada görünmüyor. Kullanmak için Görünüm > Özelleştir altında Varsayılan ürün sıralamasını “Varsayılan sıralama (özel sipariş + adı)” yapın."

@@ -77,7 +77,10 @@
         // exiting restores it instead of stranding the user on menu_order.
         sortMode: false,
         prevSort: null,
-        sortSaving: false
+        sortSaving: false,
+        // The dragged row's ID of a drop made while a save was running (0 when
+        // unknown), saved as soon as that save ends; null when none waits.
+        sortPending: null
     };
 
     var searchTimer = null;
@@ -577,6 +580,7 @@
             exitSortMode(true);
             fetchProducts();
         });
+        $(document).on('click', '#bpl-sort-start', startCustomOrder);
 
         // Column visibility dropdown
         var $colsBtn     = $('#bpl-columns-btn');
@@ -1587,14 +1591,24 @@
             start: function (e, ui) {
                 ui.placeholder.height(ui.item.height());
             },
-            stop: function () {
-                saveProductOrder();
+            stop: function (e, ui) {
+                saveProductOrder(parseInt(ui.item.attr('data-id'), 10) || 0);
             }
         });
     }
 
-    function saveProductOrder() {
-        if (state.sortSaving) return;
+    /**
+     * Saves the order of the rows on screen. The server lets these products
+     * take each other's places without moving any other product, and sends
+     * back their numbers for the Sort order column. A drop made while a save
+     * is still running is saved right after it, not lost.
+     */
+    function saveProductOrder(movedId) {
+        if (state.sortSaving) {
+            state.sortPending = movedId || state.sortPending || 0;
+            return;
+        }
+        state.sortPending = null;
 
         var ids = [];
         $('#bpl-table-body > tr.brikpanel-pl-row').each(function () {
@@ -1617,9 +1631,16 @@
             state.products = reordered;
         }
 
-        var base = (state.page - 1) * state.per_page;
         state.sortSaving = true;
         showProgress();
+
+        function finish() {
+            state.sortSaving = false;
+            hideProgress();
+            if (state.sortPending !== null && state.sortPending !== undefined && state.sortMode) {
+                saveProductOrder(state.sortPending);
+            }
+        }
 
         $.ajax({
             url: PL.ajax_url,
@@ -1628,22 +1649,90 @@
                 action: 'brikpanel_save_product_order',
                 security: PL.nonce,
                 ids: ids,
-                base: base
+                moved: movedId || 0
             },
             success: function (res) {
-                state.sortSaving = false;
-                hideProgress();
                 if (res && res.success) {
-                    showToast(PL.i18n.sort_saved || 'Order saved', 'success');
+                    showSavedOrderNumbers(res.data && res.data.orders);
+                    showToast(PL.i18n.sort_saved, 'success');
                 } else {
-                    var msg = (res && res.data && res.data.message) || PL.i18n.sort_save_failed || 'Could not save order. Please try again.';
-                    showToast(msg, 'error');
+                    showToast((res && res.data && res.data.message) || PL.i18n.sort_save_failed, 'error');
                 }
+                finish();
             },
             error: function () {
-                state.sortSaving = false;
+                showToast(PL.i18n.sort_save_failed, 'error');
+                finish();
+            }
+        });
+    }
+
+    /** Writes the saved numbers into the Sort order column and the list's memory. */
+    function showSavedOrderNumbers(orders) {
+        if (!orders || typeof orders !== 'object') return;
+        for (var i = 0; i < state.products.length; i++) {
+            var p = state.products[i];
+            if (Object.prototype.hasOwnProperty.call(orders, p.id)) {
+                p.menu_order = parseInt(orders[p.id], 10) || 0;
+            }
+        }
+        $('#bpl-table-body > tr.brikpanel-pl-row').each(function () {
+            var id = $(this).attr('data-id');
+            if (!Object.prototype.hasOwnProperty.call(orders, id)) return;
+            var value = String(parseInt(orders[id], 10) || 0);
+            $(this).find('.brikpanel-pl-menu-order-cell').attr('data-value', value).text(value);
+        });
+    }
+
+    /**
+     * "Start custom order" in the Sort mode banner of a store that lists the
+     * newest products first: the server numbers every product newest first
+     * and makes the custom order the store's default sorting, so the store
+     * looks the same until a product is moved. The banner then turns into the
+     * usual drag hint and the list reloads in the new order.
+     */
+    function startCustomOrder() {
+        var $btn = $('#bpl-sort-start');
+        if (!$btn.length || $btn.prop('disabled')) return;
+        if (PL.has_custom_order && !window.confirm(PL.i18n.sort_start_confirm)) return;
+
+        var label = $btn.text();
+        $btn.prop('disabled', true).text(PL.i18n.sort_starting);
+        showProgress();
+
+        $.ajax({
+            url: PL.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'brikpanel_start_custom_order',
+                security: PL.nonce
+            },
+            success: function (res) {
                 hideProgress();
-                showToast(PL.i18n.sort_save_failed || 'Could not save order. Please try again.', 'error');
+                if (!res || !res.success) {
+                    $btn.prop('disabled', false).text(label);
+                    showToast((res && res.data && res.data.message) || PL.i18n.sort_start_failed, 'error');
+                    return;
+                }
+                PL.has_custom_order = true;
+                if (res.data && res.data.overridden) {
+                    $btn.prop('disabled', false).text(label);
+                    showToast(res.data.message, 'error');
+                } else {
+                    PL.store_sort = 'menu_order';
+                    $btn.remove();
+                    $('#bpl-sort-hint').removeClass('is-unused')
+                        .find('.brikpanel-pl-sort-hint-text').text(PL.i18n.sort_hint);
+                    $('#bpl-sort-done').removeClass('secondary').addClass('primary');
+                    showToast(res.data && res.data.message ? res.data.message : PL.i18n.sort_started, 'success');
+                }
+                state.page = 1;
+                fetchProducts();
+            },
+            error: function () {
+                hideProgress();
+                $btn.prop('disabled', false).text(label);
+                showToast(PL.i18n.sort_start_failed, 'error');
             }
         });
     }

@@ -9,11 +9,15 @@
  * not an invoice: no invoice number, no country tax rules (wp.org, Lincoln
  * Cristiano, "[Feature request] Order summary in PDF", 31 Oct 2026).
  *
- * Two ways in, one page out:
+ * Three ways in, one page out:
  *   - the orders list bulk action "Print order summary", on both order storages;
  *   - the "Print" button in the order page header (front-end/order/brikpanel-order.js,
- *     its address comes from brikpanel_order_print_url() through brikpanelOrderEdit).
- * Both open admin.php?page=brikpanel-print-orders&ids=…&_wpnonce=… in a new tab.
+ *     its address comes from brikpanel_order_print_url() through brikpanelOrderEdit);
+ *   - the "Print" column of the orders list: one print button per order, and the
+ *     same button in the compact list's order panel (phones show no row icons).
+ *     Hidden for everyone until the person ticks "Print" under Screen Options ›
+ *     Columns (owner's decision, 7 Nov 2026; Lincoln asked for a button per row).
+ * All open admin.php?page=brikpanel-print-orders&ids=…&_wpnonce=… in a new tab.
  *
  * That page is a hidden admin screen whose load- hook prints a whole HTML
  * document and exits before WordPress draws any admin chrome. Not an admin-post
@@ -205,6 +209,230 @@ function brikpanel_order_print_enqueue_list() {
 	wp_enqueue_script( 'brikpanel_order_print_list', BRIKPANEL_URL . $file, array(), brikpanel_order_print_asset_version( $file ), true );
 }
 add_action( 'admin_enqueue_scripts', 'brikpanel_order_print_enqueue_list', 20 );
+
+// =============================================================================
+// PRINT COLUMN ON THE ORDERS LIST
+// =============================================================================
+
+/** Key of the orders list column that holds one print button per order. */
+const BRIKPANEL_ORDER_PRINT_COLUMN = 'brikpanel_print';
+
+/**
+ * User meta set to "on" once the person ticks "Print" under Screen Options ›
+ * Columns. Global per user, like WordPress's own list of hidden columns.
+ */
+const BRIKPANEL_ORDER_PRINT_COLUMN_META = 'brikpanel_orders_print_column';
+
+/**
+ * Screen ids of the orders list on both order storages.
+ *
+ * @return string[]
+ */
+function brikpanel_order_print_list_screen_ids() {
+	$ids = array( 'edit-shop_order', 'woocommerce_page_wc-orders' );
+	if ( function_exists( 'wc_get_page_screen_id' ) ) {
+		$ids[] = (string) wc_get_page_screen_id( 'shop-order' );
+	}
+	return array_values( array_unique( array_filter( $ids ) ) );
+}
+
+/**
+ * Whether the current user turned the Print column on.
+ *
+ * @return bool
+ */
+function brikpanel_order_print_column_on() {
+	$user_id = get_current_user_id();
+	return $user_id > 0 && 'on' === get_user_meta( $user_id, BRIKPANEL_ORDER_PRINT_COLUMN_META, true );
+}
+
+/**
+ * Whether the Print column shows on the current orders list: the user turned it
+ * on and has not hidden it since. Outside a screen (a test, WP-CLI) the user's
+ * choice alone answers.
+ *
+ * @return bool
+ */
+function brikpanel_order_print_column_shown() {
+	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+	return $screen instanceof WP_Screen
+		? ! in_array( BRIKPANEL_ORDER_PRINT_COLUMN, get_hidden_columns( $screen ), true )
+		: brikpanel_order_print_column_on();
+}
+
+/**
+ * The Print column, right after the order number. The compact list moves it
+ * next to the WhatsApp column (brikpanel_orders_compact_base_row_columns()).
+ *
+ * @param array $columns Column key => heading.
+ * @return array
+ */
+function brikpanel_order_print_add_column( $columns ) {
+	if ( ! is_array( $columns ) || isset( $columns[ BRIKPANEL_ORDER_PRINT_COLUMN ] ) || ! isset( $columns['order_number'] ) || ! brikpanel_order_print_active() ) {
+		return $columns;
+	}
+	$out = array();
+	foreach ( $columns as $key => $label ) {
+		$out[ $key ] = $label;
+		if ( 'order_number' === $key ) {
+			$out[ BRIKPANEL_ORDER_PRINT_COLUMN ] = _x( 'Print', 'button that prints an order summary', 'brikpanel' );
+		}
+	}
+	return $out;
+}
+
+/**
+ * Fill the Print cell. HPOS hands over the order, the classic screen its id.
+ *
+ * @param string       $column Column key.
+ * @param WC_Order|int $order  Order or order id.
+ * @return void
+ */
+function brikpanel_order_print_fill_column( $column, $order ) {
+	if ( BRIKPANEL_ORDER_PRINT_COLUMN !== $column ) {
+		return;
+	}
+	if ( ! $order instanceof WC_Order ) {
+		$order = wc_get_order( $order );
+	}
+	$url = brikpanel_order_print_row_url( $order );
+	if ( '' === $url ) {
+		return;
+	}
+	printf(
+		'<a href="%1$s" target="_blank" rel="noopener" class="brikpanel-print-list-link" title="%2$s" aria-label="%2$s">%3$s</a>',
+		esc_url( $url ),
+		esc_attr__( 'Print order summary', 'brikpanel' ),
+		wp_kses( brikpanel_order_print_icon_svg( 16 ), brikpanel_order_print_svg_kses() )
+	);
+}
+
+if ( get_option( 'woocommerce_custom_orders_table_enabled' ) === 'yes' ) {
+	add_filter( 'manage_woocommerce_page_wc-orders_columns', 'brikpanel_order_print_add_column', 22 );
+	add_action( 'manage_woocommerce_page_wc-orders_custom_column', 'brikpanel_order_print_fill_column', 22, 2 );
+} else {
+	add_filter( 'manage_edit-shop_order_columns', 'brikpanel_order_print_add_column', 22 );
+	add_action( 'manage_shop_order_posts_custom_column', 'brikpanel_order_print_fill_column', 22, 2 );
+}
+
+/**
+ * Keep the Print column hidden until the person turns it on.
+ *
+ * WordPress's `default_hidden_columns` only applies to people who never saved a
+ * column choice on this screen; everyone who ever ticked a box in Screen
+ * Options would see the new column straight away. This filter runs for both.
+ *
+ * @param string[]  $hidden Hidden column keys.
+ * @param WP_Screen $screen Current screen.
+ * @return string[]
+ */
+function brikpanel_order_print_hide_column( $hidden, $screen ) {
+	if ( ! is_array( $hidden ) || ! $screen instanceof WP_Screen || ! in_array( $screen->id, brikpanel_order_print_list_screen_ids(), true ) ) {
+		return $hidden;
+	}
+	if ( ! brikpanel_order_print_column_on() && ! in_array( BRIKPANEL_ORDER_PRINT_COLUMN, $hidden, true ) ) {
+		$hidden[] = BRIKPANEL_ORDER_PRINT_COLUMN;
+	}
+	return $hidden;
+}
+add_filter( 'hidden_columns', 'brikpanel_order_print_hide_column', 10, 2 );
+
+/**
+ * Remember the Print column's tick when Screen Options saves the columns.
+ *
+ * Runs before WordPress's own handler (wp_ajax_hidden_columns(), priority 1),
+ * which saves the same list and ends the request. That list names every column
+ * left unticked, so "Print" missing from it means the person ticked it.
+ *
+ * @return void
+ */
+function brikpanel_order_print_remember_column() {
+	// WordPress's handler checks this nonce too and stops the request when it fails.
+	if ( ! check_ajax_referer( 'screen-options-nonce', 'screenoptionnonce', false ) || ! brikpanel_order_print_active() ) {
+		return;
+	}
+	$page = isset( $_POST['page'] ) ? sanitize_key( wp_unslash( $_POST['page'] ) ) : '';
+	if ( ! in_array( $page, brikpanel_order_print_list_screen_ids(), true ) ) {
+		return;
+	}
+	$raw    = isset( $_POST['hidden'] ) ? sanitize_text_field( wp_unslash( $_POST['hidden'] ) ) : '';
+	$hidden = array_map( 'sanitize_key', explode( ',', $raw ) );
+	if ( in_array( BRIKPANEL_ORDER_PRINT_COLUMN, $hidden, true ) ) {
+		delete_user_meta( get_current_user_id(), BRIKPANEL_ORDER_PRINT_COLUMN_META );
+	} else {
+		update_user_meta( get_current_user_id(), BRIKPANEL_ORDER_PRINT_COLUMN_META, 'on' );
+	}
+}
+add_action( 'wp_ajax_hidden-columns', 'brikpanel_order_print_remember_column', 0 );
+
+/**
+ * The printer glyph of the list buttons, the same as on the print page's own
+ * Print button.
+ *
+ * @param int $size Pixel size.
+ * @return string
+ */
+function brikpanel_order_print_icon_svg( $size = 16 ) {
+	$size = (int) $size;
+	return '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>';
+}
+
+/**
+ * What wp_kses() lets through of that glyph.
+ *
+ * @return array
+ */
+function brikpanel_order_print_svg_kses() {
+	return array(
+		'svg'  => array(
+			'width'           => true,
+			'height'          => true,
+			'viewbox'         => true,
+			'fill'            => true,
+			'stroke'          => true,
+			'stroke-width'    => true,
+			'stroke-linecap'  => true,
+			'stroke-linejoin' => true,
+			'aria-hidden'     => true,
+			'focusable'       => true,
+		),
+		'path' => array( 'd' => true ),
+	);
+}
+
+/**
+ * Address of the print page for one order on the list, or '' when there is
+ * nothing to print from here (no permission, an order in the Trash: the bulk
+ * action leaves the Trash out as well).
+ *
+ * @param mixed $order Order.
+ * @return string
+ */
+function brikpanel_order_print_row_url( $order ) {
+	if ( ! $order instanceof WC_Order || 'shop_order' !== $order->get_type() || 'trash' === $order->get_status() || ! brikpanel_order_print_active() ) {
+		return '';
+	}
+	return brikpanel_order_print_url( array( $order->get_id() ) );
+}
+
+/**
+ * The same button with its name, for the compact list's order panel: phones
+ * show no row icons, so this is where they find it. It carries the column's
+ * class and `hidden`, so Screen Options shows and hides it with the column.
+ *
+ * @param mixed $order Order.
+ * @return string
+ */
+function brikpanel_order_print_panel_button( $order ) {
+	$url = brikpanel_order_print_row_url( $order );
+	if ( '' === $url ) {
+		return '';
+	}
+	$class = 'bp-od-btn bp-od-btn-secondary bp-od-print column-' . BRIKPANEL_ORDER_PRINT_COLUMN . ( brikpanel_order_print_column_shown() ? '' : ' hidden' );
+	return '<a class="' . esc_attr( $class ) . '" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">'
+		. wp_kses( brikpanel_order_print_icon_svg( 16 ), brikpanel_order_print_svg_kses() )
+		. '<span>' . esc_html_x( 'Print', 'button that prints an order summary', 'brikpanel' ) . '</span></a>';
+}
 
 // =============================================================================
 // THE PRINT PAGE
@@ -423,19 +651,18 @@ function brikpanel_order_print_store() {
 }
 
 /**
- * The logo to print: BrikPanel's brand logo (Appearance; the top bar and the
- * login page use it too), else the theme's logo, else the picture the store
- * put on top of its WooCommerce emails. Empty means the store name prints in
- * its place.
+ * The logo to print: the store's own, never BrikPanel's brand logo. That one
+ * dresses the admin (the top bar, the login page), and agencies set their own
+ * logo there on every client store, so a summary going out with an order would
+ * carry the agency's logo instead of the shop's (wp.org, Lincoln Cristiano,
+ * 6 Nov 2026).
+ *
+ * The theme's logo first, else the picture the store put on top of its
+ * WooCommerce emails. Empty means the store name prints in its place.
  *
  * @return string
  */
 function brikpanel_order_print_logo_url() {
-	$url = function_exists( 'brikpanel_brand_logo_get_url' ) ? (string) brikpanel_brand_logo_get_url() : '';
-	if ( '' !== $url ) {
-		return $url;
-	}
-
 	$logo_id = (int) get_theme_mod( 'custom_logo' );
 	if ( ! $logo_id ) {
 		$logo_id = (int) get_option( 'site_logo' ); // Block themes keep it here.

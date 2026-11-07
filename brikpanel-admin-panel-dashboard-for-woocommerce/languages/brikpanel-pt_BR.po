@@ -25698,3 +25698,44 @@ msgid "%s translation was left as it is: its price comes from the original produ
 msgid_plural "%s translations were left as they are: their price comes from the original product."
 msgstr[0] "%s tradução ficou como estava: o preço vem do produto original."
 msgstr[1] "%s traduções ficaram como estavam: o preço vem do produto original."
+
+#: front-end/products/brikpanel-products-list.php:2308
+msgid "A store manager can start a custom order here."
+msgstr "Um gerente da loja pode iniciar uma ordem personalizada aqui."
+
+#: includes/brikpanel-enqueue.php:2113
+msgid "Could not start the custom order. Please try again."
+msgstr "Não foi possível iniciar a ordem personalizada. Tente novamente."
+
+#: front-end/products/brikpanel-products-list.php:3587
+#: includes/brikpanel-enqueue.php:2112
+msgid "Custom order started. Your store still lists the newest products first until you move one."
+msgstr "Ordem personalizada iniciada. Sua loja continua mostrando primeiro os produtos mais recentes até você mover um."
+
+#: front-end/products/brikpanel-products-list.php:3580
+msgid "Products are numbered newest first, but your theme or another plugin still sets the store's sort order. Set its default product sorting to custom ordering."
+msgstr "Os produtos foram numerados com os mais recentes primeiro, mas seu tema ou outro plugin ainda define a ordenação da loja. Defina lá a ordenação padrão de produtos como ordem personalizada."
+
+#: front-end/products/brikpanel-products-list.php:2306
+msgid "Start a custom order: your products keep their newest-first order, you can move any of them, and new products still appear on top."
+msgstr "Inicie uma ordem personalizada: seus produtos mantêm a ordem dos mais recentes primeiro, você pode mover qualquer um deles e os produtos novos continuam aparecendo no topo."
+
+#: front-end/products/brikpanel-products-list.php:2315
+msgid "Start custom order"
+msgstr "Iniciar ordem personalizada"
+
+#: includes/brikpanel-enqueue.php:2111
+msgid "Starting custom order..."
+msgstr "Iniciando ordem personalizada..."
+
+#: includes/brikpanel-enqueue.php:2114
+msgid "Your products already have a saved order. Starting a custom order replaces it with newest first. Continue?"
+msgstr "Seus produtos já têm uma ordem salva. Iniciar uma ordem personalizada a substitui pelos mais recentes primeiro. Continuar?"
+
+#: front-end/products/brikpanel-products-list.php:2304
+msgid "Your store lists the newest products first, so the order you set here does not show there yet."
+msgstr "Sua loja mostra primeiro os produtos mais recentes, então a ordem que você define aqui ainda não aparece lá."
+
+#: front-end/products/brikpanel-products-list.php:2312
+msgid "Your store sorts products another way, so the order you set here does not show there. To use it, set Default product sorting to \"Default sorting (custom ordering + name)\" under Appearance > Customize."
+msgstr "Sua loja ordena os produtos de outra forma, então a ordem que você define aqui não aparece lá. Para usá-la, em Aparência > Personalizar, defina Padrão de ordenação de produtos como “Ordenação padrão (ordenação personalizada + nome)”."

@@ -2772,7 +2772,7 @@ class Brikpanel_Product_Editor {
                     </div>
                     <div class="brikpanel-pe-field">
                         <label for="bpe-menu-order"><?php esc_html_e('Menu order', 'brikpanel'); ?></label>
-                        <input type="number" id="bpe-menu-order" value="<?php echo esc_attr($data['menu_order']); ?>" step="1" placeholder="0">
+                        <input type="number" id="bpe-menu-order" value="<?php echo esc_attr($data['menu_order']); ?>" data-original="<?php echo esc_attr($data['menu_order']); ?>" step="1" placeholder="0">
                     </div>
                 </div>
                 <?php $section_html['advanced'] = ob_get_clean(); endif; ?>
@@ -10029,8 +10029,18 @@ class Brikpanel_Product_Editor {
         if (array_key_exists('reviews_allowed', $_POST)) {
             $product->set_reviews_allowed(!empty($_POST['reviews_allowed']) && $_POST['reviews_allowed'] !== '0');
         }
+        // Menu order is written only when the merchant changed the box: the
+        // products list's Sort mode and new products placed on top of a custom
+        // order (includes/brikpanel-product-order.php) change it while this page
+        // stays open, and saving the number the page opened with undid them.
         if (array_key_exists('menu_order', $_POST)) {
-            $product->set_menu_order((int) $_POST['menu_order']);
+            $bpe_menu_order = (int) $_POST['menu_order'];
+            $bpe_menu_was   = isset($_POST['menu_order_original']) && '' !== $_POST['menu_order_original']
+                ? (int) $_POST['menu_order_original']
+                : null;
+            if (null === $bpe_menu_was || $bpe_menu_order !== $bpe_menu_was) {
+                $product->set_menu_order($bpe_menu_order);
+            }
         }
 
         // Weight and dimensions: written only when the editor sent them. Their

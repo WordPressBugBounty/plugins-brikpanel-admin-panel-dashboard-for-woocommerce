@@ -35,7 +35,7 @@ const BP_ICONBAR_KNOWN_COLUMNS = new Set([
 	'trial_end_date', 'next_payment_date', 'last_payment_date', 'end_date', 'orders',
 	// BrikPanel
 	'payment_method', 'order_items', 'tax_total', 'brikpanel_whatsapp',
-	'brikpanel_customer', 'brikpanel_shipping_method',
+	'brikpanel_print', 'brikpanel_customer', 'brikpanel_shipping_method',
 ]);
 
 /* A run of this many icon controls turns the treatment on. A lone icon cannot
@@ -1608,7 +1608,7 @@ function brikpanelCompactRows() {
 	   WooCommerce's order_status unless a plugin swapped it for its own
 	   (brikpanel-orders.php names it; mirrors brikpanel_orders_compact_base_row_columns()). */
 	const statusColumn = window.brikpanelStatusInline?.column || 'order_status';
-	const ROW_COLUMNS = new Set(['cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_customer', 'order_date', statusColumn, 'payment_method', 'brikpanel_shipping_method', 'order_total']);
+	const ROW_COLUMNS = new Set(['cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_print', 'brikpanel_customer', 'order_date', statusColumn, 'payment_method', 'brikpanel_shipping_method', 'order_total']);
 	// Columns whose content never moves to the panel.
 	const DROPPED_COLUMNS = new Set();
 	// Columns the user keeps in the row ("Show in the row" in Screen Options).
@@ -1760,6 +1760,14 @@ function brikpanelCompactRows() {
 		const $cell = makeElement('td', { class: 'no-link', colspan: String(visibleColumns()) });
 		const $wrap = makeElement('div', { class: 'bp-order-detail-wrap' });
 		$wrap.append($template.content.cloneNode(true));
+		// The Print button shows and hides with its column, and Screen Options
+		// only reaches what is already in the page: take the column's state now.
+		const $printHead = $headRow?.querySelector(':scope > .column-brikpanel_print');
+		if ($printHead) {
+			$wrap.querySelectorAll('.bp-od-actions > .column-brikpanel_print').forEach($btn => {
+				$btn.classList.toggle('hidden', $printHead.classList.contains('hidden'));
+			});
+		}
 
 		builtRows.add($row);
 		placeRow($row);

@@ -45,6 +45,7 @@ class Brikpanel_Products_List {
         add_action('wp_ajax_brikpanel_pl_save_columns',  [$this, 'ajax_save_columns']);
         add_action('wp_ajax_brikpanel_pl_save_sort',     [$this, 'ajax_save_sort']);
         add_action('wp_ajax_brikpanel_save_product_order', [$this, 'ajax_save_product_order']);
+        add_action('wp_ajax_brikpanel_start_custom_order', [$this, 'ajax_start_custom_order']);
 
         // Export selected products as CSV
         add_action('admin_post_brikpanel_export_selected_products', [$this, 'handle_export_selected']);
@@ -2286,10 +2287,34 @@ class Brikpanel_Products_List {
                         </div>
                     </div>
                 </div>
-                <div class="brikpanel-pl-sort-hint" id="bpl-sort-hint" hidden>
+<?php
+                // The shop uses this order only while its default sorting is the
+                // custom order (WooCommerce's "Default product sorting"). A store
+                // that shows the newest products first can start a custom order
+                // here that begins in that same order (includes/brikpanel-product-order.php).
+                $bpl_store_sort = function_exists('brikpanel_product_order_store_sort') ? brikpanel_product_order_store_sort() : 'menu_order';
+                $bpl_sort_used  = 'menu_order' === $bpl_store_sort;
+                $bpl_can_start  = 'date' === $bpl_store_sort && current_user_can('manage_woocommerce');
+                ?>
+                <div class="brikpanel-pl-sort-hint<?php echo esc_attr($bpl_sort_used ? '' : ' is-unused'); ?>" id="bpl-sort-hint" hidden>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    <span><?php esc_html_e('Drag the handle on the left of each row to set the order products appear in your storefront. Changes are saved automatically.', 'brikpanel'); ?></span>
-                    <button type="button" class="brikpanel-pl-btn primary small" id="bpl-sort-done"><?php esc_html_e('Done sorting', 'brikpanel'); ?></button>
+                    <?php if ($bpl_sort_used) : ?>
+                        <span class="brikpanel-pl-sort-hint-text"><?php esc_html_e('Drag the handle on the left of each row to set the order products appear in your storefront. Changes are saved automatically.', 'brikpanel'); ?></span>
+                    <?php elseif ('date' === $bpl_store_sort) : ?>
+                        <span class="brikpanel-pl-sort-hint-text"><?php esc_html_e('Your store lists the newest products first, so the order you set here does not show there yet.', 'brikpanel'); ?> <?php
+                            if ($bpl_can_start) {
+                                esc_html_e('Start a custom order: your products keep their newest-first order, you can move any of them, and new products still appear on top.', 'brikpanel');
+                            } else {
+                                esc_html_e('A store manager can start a custom order here.', 'brikpanel');
+                            }
+                        ?></span>
+                    <?php else : ?>
+                        <span class="brikpanel-pl-sort-hint-text"><?php esc_html_e('Your store sorts products another way, so the order you set here does not show there. To use it, set Default product sorting to "Default sorting (custom ordering + name)" under Appearance > Customize.', 'brikpanel'); ?></span>
+                    <?php endif; ?>
+                    <?php if ($bpl_can_start) : ?>
+                        <button type="button" class="brikpanel-pl-btn primary small brikpanel-pl-sort-start" id="bpl-sort-start"><?php esc_html_e('Start custom order', 'brikpanel'); ?></button>
+                    <?php endif; ?>
+                    <button type="button" class="brikpanel-pl-btn <?php echo esc_attr($bpl_can_start ? 'secondary' : 'primary'); ?> small" id="bpl-sort-done"><?php esc_html_e('Done sorting', 'brikpanel'); ?></button>
                 </div>
                 <div class="brikpanel-pl-table-wrap">
                     <table class="brikpanel-pl-table" id="bpl-table"<?php echo $table_attrs; // already-escaped attrs ?>>
@@ -2976,9 +3001,11 @@ class Brikpanel_Products_List {
             $args['brikpanel_pl_price_sort'] = $order;
         } elseif ($orderby === 'menu') {
             // Custom storefront order: products without an explicit
-            // menu_order (defaults to 0) tie-break by title so the list is
-            // deterministic and matches WC frontend ordering.
-            $args['orderby'] = ['menu_order' => 'ASC', 'title' => 'ASC'];
+            // menu_order (defaults to 0) tie-break by title, then ID, so the
+            // list is deterministic, matches WC frontend ordering, and pages
+            // line up with the whole order brikpanel_product_order_place()
+            // reads (equal names, such as two "Hoodie", keep one order).
+            $args['orderby'] = ['menu_order' => 'ASC', 'title' => 'ASC', 'ID' => 'ASC'];
             unset($args['order']);
         }
 
@@ -3453,20 +3480,16 @@ class Brikpanel_Products_List {
     // =========================================================================
 
     /**
-     * Persists the storefront display order set by drag-and-drop in the
-     * products list. Receives an ordered array of product IDs from the
-     * current page; assigns each one a menu_order starting at the page's
-     * offset (page-1 * per_page) so order is preserved across pages.
+     * Saves the storefront order a user set by dragging rows in Sort mode.
+     * Receives the IDs of the rows on screen, top to bottom.
      *
-     * Mirrors the contract of WooCommerce's native sortable list: only the
-     * IDs visible on the page are reflowed, and untouched products keep
-     * their existing menu_order — collisions are tie-broken by title in
-     * ajax_fetch_products(), so the global ordering remains stable.
+     * The products take each other's places and no other product moves
+     * (brikpanel_product_order_place()). Up to 3.3.45 this numbered only the
+     * visible page from its offset, so on a store that was never sorted
+     * (every product at 0) the first drag sent the products of every other
+     * page ahead of page 1 in the shop.
      *
-     * Direct UPDATE on wp_posts (no wp_update_post) because (1) menu_order
-     * does not need post-meta side effects, (2) avoids triggering
-     * save_post hooks that could rebuild expensive indexes / clear caches
-     * on every drag, and (3) matches what WC_Admin_Post_Types does.
+     * The reply carries the saved numbers so the Sort order cells stay true.
      */
     public function ajax_save_product_order() {
         check_ajax_referer('brikpanel_products_list_nonce', 'security');
@@ -3475,77 +3498,93 @@ class Brikpanel_Products_List {
             wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')], 403);
         }
 
-        $raw_ids = isset($_POST['ids']) && is_array($_POST['ids']) ? $_POST['ids'] : [];
-        $ids = [];
-        foreach ($raw_ids as $id) {
-            $id = absint($id);
-            if ($id > 0) {
-                $ids[] = $id;
-            }
-        }
-
-        if (empty($ids)) {
-            wp_send_json_error(['message' => __('No products to reorder.', 'brikpanel')]);
-        }
+        $raw_ids = isset($_POST['ids']) && is_array($_POST['ids']) ? wp_unslash($_POST['ids']) : [];
 
         // Cap at the bulk-job ceiling: same input class as the bulk update
-        // pipeline, same defensive bound. A single page should never come
-        // close to this in practice.
-        if (count($ids) > self::BULK_MAX_IDS) {
+        // pipeline, same defensive bound. A page holds at most 100 rows.
+        if (count($raw_ids) > self::BULK_MAX_IDS) {
             wp_send_json_error(['message' => __('Too many products to reorder in a single request.', 'brikpanel')]);
         }
 
-        $base = max(0, intval($_POST['base'] ?? 0));
+        // Products the user can edit, once each, in the order given. The
+        // client sends IDs, so each one is checked before its number moves.
+        $ids = [];
+        foreach ($raw_ids as $id) {
+            $id = absint($id);
+            if ($id < 1 || isset($ids[$id]) || 'product' !== get_post_type($id) || !current_user_can('edit_post', $id)) {
+                continue;
+            }
+            $ids[$id] = $id;
+        }
+        $ids = array_values($ids);
 
-        global $wpdb;
-        $updated = 0;
+        if (count($ids) < 2) {
+            wp_send_json_error(['message' => __('No products to reorder.', 'brikpanel')]);
+        }
 
         // Buffer any incidental output triggered by cache-purge hooks on
         // 3rd-party plugins (e.g. WP Rocket's missing-table notices) so
         // the JSON response isn't corrupted by stray HTML.
         ob_start();
 
-        foreach ($ids as $idx => $id) {
-            $new_order = $base + $idx;
+        $result  = brikpanel_product_order_place($ids);
+        $changes = $result['changes'];
 
-            // Verify the post is actually a product the user can edit
-            // before mutating menu_order — prevents passing arbitrary post
-            // IDs from the client.
-            $post = get_post($id);
-            if (!$post || $post->post_type !== 'product') {
-                continue;
-            }
-            if (!current_user_can('edit_post', $id)) {
-                continue;
-            }
-
-            $result = $wpdb->update(
-                $wpdb->posts,
-                ['menu_order' => $new_order],
-                ['ID' => $id],
-                ['%d'],
-                ['%d']
-            );
-
-            if ($result !== false) {
+        // A page of rows: clear each one's caches the way a save does, so
+        // page-cache plugins that listen to it refresh the products too.
+        if (count($changes) <= 200) {
+            foreach (array_keys($changes) as $id) {
                 clean_post_cache($id);
-                $updated++;
             }
         }
 
-        // Storefront product loops cache the ordered ID set; bust it so
-        // the new order is visible on the front-end immediately.
-        if (function_exists('wc_delete_product_transients')) {
-            foreach ($ids as $id) {
-                wc_delete_product_transients($id);
-            }
-        }
+        $moved = absint($_POST['moved'] ?? 0);
+        brikpanel_product_order_announce(isset($result['orders'][$moved]) ? $moved : (int) $ids[0], $changes);
 
         ob_end_clean();
 
         wp_send_json_success([
-            'updated' => $updated,
+            'updated' => count($changes),
+            'orders'  => (object) $result['orders'],
             'message' => __('Order saved.', 'brikpanel'),
+        ]);
+    }
+
+    /**
+     * Starts a custom order that begins newest first and makes it the shop's
+     * default sorting: the button in the Sort mode banner of a store that
+     * shows the newest products first. Nothing in the shop moves until a
+     * product is moved; new products keep appearing on top.
+     *
+     * Changes WooCommerce's "Default product sorting", so it needs the right to
+     * manage WooCommerce as well as to edit products.
+     */
+    public function ajax_start_custom_order() {
+        check_ajax_referer('brikpanel_products_list_nonce', 'security');
+
+        if (!current_user_can('edit_products') || !current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')], 403);
+        }
+
+        ob_start();
+        $result = brikpanel_product_order_start_newest_first();
+        brikpanel_product_order_announce($result['first'], $result['changes']);
+        ob_end_clean();
+
+        if ('menu_order' !== $result['store_sort']) {
+            // The option is set, but the theme or another plugin still decides
+            // the shop's sorting through WooCommerce's filter.
+            wp_send_json_success([
+                'store_sort' => $result['store_sort'],
+                'overridden' => true,
+                'message'    => __('Products are numbered newest first, but your theme or another plugin still sets the store\'s sort order. Set its default product sorting to custom ordering.', 'brikpanel'),
+            ]);
+        }
+
+        wp_send_json_success([
+            'store_sort' => 'menu_order',
+            'overridden' => false,
+            'message'    => __('Custom order started. Your store still lists the newest products first until you move one.', 'brikpanel'),
         ]);
     }
 

@@ -463,8 +463,12 @@
 
 /* ---- Paper ---------------------------------------------------------------- */
 
+/* The white border is the sheet's own padding, not a page margin: the print
+   window's "Margins" choice (None or Minimum, which Chrome remembers) drops
+   page margins, and the summary then ran into the paper's edge (wp.org,
+   Lincoln Cristiano, 6 Nov 2026). */
 @page {
-	margin: 12mm;
+	margin: 0;
 }
 
 @media print {
@@ -482,11 +486,14 @@
 		padding: 0;
 	}
 
+	/* clone: a long order keeps the border at the top and bottom of every page. */
 	.brikpanel-slip {
 		max-width: none;
-		padding: 0;
+		padding: 12mm;
 		border-radius: 0;
 		box-shadow: none;
+		-webkit-box-decoration-break: clone;
+		box-decoration-break: clone;
 	}
 
 	/* One order per page. */

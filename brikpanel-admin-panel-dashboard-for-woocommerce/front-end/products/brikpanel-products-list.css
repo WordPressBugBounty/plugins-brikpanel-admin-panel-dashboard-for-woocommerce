@@ -4134,6 +4134,7 @@ a.brikpanel-pl-cat-link:focus {
    scrolls the table on long pages. */
 .brikpanel-pl-sort-hint {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.625rem;
     padding: 0.625rem 1rem;
@@ -4146,15 +4147,26 @@ a.brikpanel-pl-cat-link:focus {
 .brikpanel-pl-sort-hint[hidden] {
     display: none;
 }
+/* The store does not use this order yet (it lists the newest products first or
+   sorts another way): the sentence that says so reads in the main text colour. */
+.brikpanel-pl-sort-hint.is-unused {
+    color: var(--text);
+}
 .brikpanel-pl-sort-hint > svg {
     flex-shrink: 0;
     color: var(--text-secondary);
 }
-.brikpanel-pl-sort-hint > span {
-    flex: 1;
+/* The text takes the row; with a longer text (newest-first store) the buttons
+   move under it together, kept at the end, instead of squeezing it. */
+.brikpanel-pl-sort-hint > .brikpanel-pl-sort-hint-text {
+    flex: 1 1 16rem;
+    min-width: 0;
 }
 .brikpanel-pl-sort-hint .brikpanel-pl-btn {
     flex-shrink: 0;
+}
+.brikpanel-pl-sort-hint > .brikpanel-pl-btn:first-of-type {
+    margin-inline-start: auto;
 }
 
 /* Drag-handle column — present in the DOM at all times for stable colspan

@@ -1915,6 +1915,14 @@ function brikpanel_enqueue_woo_assets($hook) {
             'per_page'      => (int) $per_page,
             // The sort this user picked last; the list opens in it when the URL names none.
             'sort'          => class_exists('Brikpanel_Products_List') ? Brikpanel_Products_List::get_user_sort() : 'date-desc',
+            // The shop's default sorting ('menu_order' = the custom order Sort mode
+            // sets) and, for a store on "Sort by most recent" whose user may start a
+            // custom order, whether products already hold numbers the start replaces.
+            'store_sort'       => function_exists('brikpanel_product_order_store_sort') ? brikpanel_product_order_store_sort() : 'menu_order',
+            'has_custom_order' => function_exists('brikpanel_product_order_store_sort')
+                && 'date' === brikpanel_product_order_store_sort()
+                && current_user_can('manage_woocommerce')
+                && brikpanel_product_order_has_numbers(),
             'open_in_new_tab'    => get_option('brikpanel_open_edit_in_new_tab', 'yes') !== 'no',
             'show_featured_star' => function_exists('brikpanel_qe_is_field_visible') && brikpanel_qe_is_field_visible('featured'),
             'has_product_code'   => function_exists('brikpanel_pcfw_active') && brikpanel_pcfw_active(),
@@ -2097,6 +2105,13 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'sort_save_failed'    => __('Could not save order. Please try again.', 'brikpanel'),
                 'sort_drag_handle'    => __('Drag to reorder', 'brikpanel'),
                 'sort_active_label'   => __('Custom order', 'brikpanel'),
+                // Sort mode banner of a store that lists the newest products
+                // first: "Start custom order" (includes/brikpanel-product-order.php).
+                'sort_hint'           => __('Drag the handle on the left of each row to set the order products appear in your storefront. Changes are saved automatically.', 'brikpanel'),
+                'sort_starting'       => __('Starting custom order...', 'brikpanel'),
+                'sort_started'        => __('Custom order started. Your store still lists the newest products first until you move one.', 'brikpanel'),
+                'sort_start_failed'   => __('Could not start the custom order. Please try again.', 'brikpanel'),
+                'sort_start_confirm'  => __('Your products already have a saved order. Starting a custom order replaces it with newest first. Continue?', 'brikpanel'),
                 'popup_close'         => __('Close', 'brikpanel'),
                 // Phones (782px and narrower): select mode ('select' above), the filter
                 // and sort sheets, the rows.

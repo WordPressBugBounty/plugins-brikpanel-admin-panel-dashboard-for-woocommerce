@@ -16680,7 +16680,7 @@ msgstr "Слишком много товаров для переупорядоч
 
 #: front-end/products/brikpanel-products-list.php:3516
 msgid "Order saved."
-msgstr "Заказ сохранён."
+msgstr "Порядок сохранён."
 
 #: front-end/products/brikpanel-products-list.php:3851
 msgid "Product updated!"
@@ -25933,3 +25933,44 @@ msgid_plural "%s translations were left as they are: their price comes from the 
 msgstr[0] "%s перевод оставлен без изменений: цена берётся из исходного товара."
 msgstr[1] "%s перевода оставлены без изменений: цена берётся из исходного товара."
 msgstr[2] "%s переводов оставлено без изменений: цена берётся из исходного товара."
+
+#: front-end/products/brikpanel-products-list.php:2308
+msgid "A store manager can start a custom order here."
+msgstr "Менеджер магазина может запустить здесь пользовательский порядок."
+
+#: includes/brikpanel-enqueue.php:2113
+msgid "Could not start the custom order. Please try again."
+msgstr "Не удалось запустить пользовательский порядок. Пожалуйста, попробуйте снова."
+
+#: front-end/products/brikpanel-products-list.php:3587
+#: includes/brikpanel-enqueue.php:2112
+msgid "Custom order started. Your store still lists the newest products first until you move one."
+msgstr "Пользовательский порядок запущен. Ваш магазин по-прежнему показывает сначала новые товары, пока вы не переместите один из них."
+
+#: front-end/products/brikpanel-products-list.php:3580
+msgid "Products are numbered newest first, but your theme or another plugin still sets the store's sort order. Set its default product sorting to custom ordering."
+msgstr "Товары пронумерованы от новых к старым, но ваша тема или другой плагин по-прежнему задаёт сортировку магазина. Установите там сортировку товаров по умолчанию на пользовательский порядок."
+
+#: front-end/products/brikpanel-products-list.php:2306
+msgid "Start a custom order: your products keep their newest-first order, you can move any of them, and new products still appear on top."
+msgstr "Запустите пользовательский порядок: товары сохранят порядок от новых к старым, вы сможете переместить любой из них, а новые товары по-прежнему будут появляться вверху."
+
+#: front-end/products/brikpanel-products-list.php:2315
+msgid "Start custom order"
+msgstr "Запустить пользовательский порядок"
+
+#: includes/brikpanel-enqueue.php:2111
+msgid "Starting custom order..."
+msgstr "Запуск пользовательского порядка..."
+
+#: includes/brikpanel-enqueue.php:2114
+msgid "Your products already have a saved order. Starting a custom order replaces it with newest first. Continue?"
+msgstr "У ваших товаров уже есть сохранённый порядок. Запуск пользовательского порядка заменит его порядком от новых к старым. Продолжить?"
+
+#: front-end/products/brikpanel-products-list.php:2304
+msgid "Your store lists the newest products first, so the order you set here does not show there yet."
+msgstr "Ваш магазин показывает сначала новые товары, поэтому заданный здесь порядок там пока не отображается."
+
+#: front-end/products/brikpanel-products-list.php:2312
+msgid "Your store sorts products another way, so the order you set here does not show there. To use it, set Default product sorting to \"Default sorting (custom ordering + name)\" under Appearance > Customize."
+msgstr "Ваш магазин сортирует товары по-другому, поэтому заданный здесь порядок там не отображается. Чтобы использовать его, в разделе Внешний вид > Настроить установите для параметра «Исходная сортировка товаров» значение «Стандартная сортировка (порядок добавления + имя)»."

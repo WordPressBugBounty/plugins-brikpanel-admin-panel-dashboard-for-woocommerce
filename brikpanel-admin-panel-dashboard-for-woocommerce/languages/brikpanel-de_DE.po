@@ -21483,15 +21483,15 @@ msgstr "Datei auswählen"
 
 #: includes/brikpanel-enqueue.php:2087
 msgid "Saving order..."
-msgstr "Bestellung wird gespeichert..."
+msgstr "Reihenfolge wird gespeichert..."
 
 #: includes/brikpanel-enqueue.php:2088
 msgid "Order saved"
-msgstr "Bestellung gespeichert"
+msgstr "Reihenfolge gespeichert"
 
 #: includes/brikpanel-enqueue.php:2089
 msgid "Could not save order. Please try again."
-msgstr ""
+msgstr "Die Reihenfolge konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
 "Bestellung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut."
 
 #: includes/brikpanel-enqueue.php:2090 includes/brikpanel-enqueue.php:2784
@@ -26024,3 +26024,44 @@ msgid "%s translation was left as it is: its price comes from the original produ
 msgid_plural "%s translations were left as they are: their price comes from the original product."
 msgstr[0] "%s Übersetzung blieb unverändert: Der Preis kommt vom Originalprodukt."
 msgstr[1] "%s Übersetzungen blieben unverändert: Die Preise kommen vom Originalprodukt."
+
+#: front-end/products/brikpanel-products-list.php:2308
+msgid "A store manager can start a custom order here."
+msgstr "Ein Shop-Manager kann hier eine benutzerdefinierte Reihenfolge starten."
+
+#: includes/brikpanel-enqueue.php:2113
+msgid "Could not start the custom order. Please try again."
+msgstr "Die benutzerdefinierte Reihenfolge konnte nicht gestartet werden. Bitte versuchen Sie es erneut."
+
+#: front-end/products/brikpanel-products-list.php:3587
+#: includes/brikpanel-enqueue.php:2112
+msgid "Custom order started. Your store still lists the newest products first until you move one."
+msgstr "Benutzerdefinierte Reihenfolge gestartet. Ihr Shop zeigt die neuesten Produkte weiterhin zuerst, bis Sie eines verschieben."
+
+#: front-end/products/brikpanel-products-list.php:3580
+msgid "Products are numbered newest first, but your theme or another plugin still sets the store's sort order. Set its default product sorting to custom ordering."
+msgstr "Die Produkte sind mit den neuesten zuerst nummeriert, aber Ihr Theme oder ein anderes Plugin legt die Sortierung des Shops weiterhin selbst fest. Stellen Sie dort die Standard-Produktsortierung auf die benutzerdefinierte Reihenfolge."
+
+#: front-end/products/brikpanel-products-list.php:2306
+msgid "Start a custom order: your products keep their newest-first order, you can move any of them, and new products still appear on top."
+msgstr "Starten Sie eine benutzerdefinierte Reihenfolge: Ihre Produkte behalten die Reihenfolge mit den neuesten zuerst, Sie können jedes davon verschieben, und neue Produkte erscheinen weiterhin ganz oben."
+
+#: front-end/products/brikpanel-products-list.php:2315
+msgid "Start custom order"
+msgstr "Benutzerdefinierte Reihenfolge starten"
+
+#: includes/brikpanel-enqueue.php:2111
+msgid "Starting custom order..."
+msgstr "Benutzerdefinierte Reihenfolge wird gestartet..."
+
+#: includes/brikpanel-enqueue.php:2114
+msgid "Your products already have a saved order. Starting a custom order replaces it with newest first. Continue?"
+msgstr "Ihre Produkte haben bereits eine gespeicherte Reihenfolge. Eine benutzerdefinierte Reihenfolge zu starten ersetzt sie durch die neuesten zuerst. Fortfahren?"
+
+#: front-end/products/brikpanel-products-list.php:2304
+msgid "Your store lists the newest products first, so the order you set here does not show there yet."
+msgstr "Ihr Shop zeigt die neuesten Produkte zuerst, daher erscheint die hier festgelegte Reihenfolge dort noch nicht."
+
+#: front-end/products/brikpanel-products-list.php:2312
+msgid "Your store sorts products another way, so the order you set here does not show there. To use it, set Default product sorting to \"Default sorting (custom ordering + name)\" under Appearance > Customize."
+msgstr "Ihr Shop sortiert Produkte anders, daher erscheint die hier festgelegte Reihenfolge dort nicht. Um sie zu verwenden, stellen Sie unter Design > Anpassen die Standard-Produktsortierung auf „Standardsortierung (benutzerdef. Reihenfolge + Name)“."

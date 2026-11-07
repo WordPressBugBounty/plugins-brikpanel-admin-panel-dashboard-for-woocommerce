@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.45
+Stable tag: 3.3.46
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -520,6 +520,16 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.46 (2026-11-07) =
+* New: **Arrange products by hand in a newest-first store.** If your store lists the newest products first, Sort in the products list now has a "Start custom order" button. The shop keeps the same order, you can drag any product to a new place, and new products still appear on top.
+* Fix: **Sorting no longer reshuffles the shop.** In a store with more than one page of products and no saved order, the first drag put every other page's products ahead of the page you sorted. Now only the products you drag change places.
+* Tweak: **Sort says when the shop uses another order.** If the store's default sorting is not the custom order, the Sort banner says so and how to switch.
+* Fix: **Saving a product keeps its place.** BrikPanel's product screen saved back the "Menu order" it opened with, undoing a move made in Sort meanwhile. It now saves it only when you change it.
+* Fix: **Sort messages no longer talk about customer orders.** "Saving order..." and "Order saved" were translated as a customer's order in German, Spanish, French, Italian, Dutch, Polish, Russian and Turkish.
+* New: **A Print button for each order.** A "Print" column in the orders list opens that order's summary in a new tab with the print window. It starts hidden: tick "Print" under Screen Options → Columns. Once it is on, phones show the same button in the order panel.
+* Tweak: **Order summaries print your store's logo.** The summary uses your theme's logo, then the WooCommerce email header image, then the store name. BrikPanel's "Custom brand logo", often an agency's logo, no longer appears on it.
+* Fix: **Order summaries keep their white border.** With "Margins" set to None or Minimum in the print window, the summary ran to the edge of the paper. The border is now part of the page and repeats on every page of a long order.
+
 = 3.3.45 (2026-11-06) =
 * New: **Print order summaries.** Select orders and pick "Print order summary" under Bulk actions, or use Print at the top of an order. Each order gets its own page with your logo, both addresses, product images, options, SKUs, quantities and totals, plus the fields picked in Orders → "Order custom fields". "Save as PDF" in the print window turns it into a PDF.
 * New: **Hidden sections in a folded box.** At the end of the product screen, a "Hidden sections" box holds the sections that come switched off, such as shipping weight, tags and linked products. Open it to edit them right there, without turning them on in the settings. Each user's box stays open or closed the way they left it. Setting: Products → "Suggest hidden sections in the product editor", on by default.
@@ -582,7 +592,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **Visitors from Snapchat, Pinterest and other app browsers are counted.** These apps' built-in browsers, and Instagram on some Xiaomi phones, were taken for robots: those shoppers were not counted, saw no Email popup and got no abandoned cart email. They are now treated like any other visitor.
 * Fix: **Speed plugins no longer hide visitors.** With a plugin that delays JavaScript until the first tap, such as WP Rocket or LiteSpeed Cache, many visitors who tapped or clicked only once were not counted. BrikPanel's counter now asks these plugins to leave it alone, and the first tap counts even when one still holds it back.
 * Fix: **Row links on Categories no longer run off the card.** On wide screens, the Edit, Quick Edit and Delete links of Categories, Tags, Brands and attributes were cut off in longer languages such as Dutch, or with SEO columns, and could cover the name. They now sit next to the name only when they fit, and under it otherwise.
-
-= 3.3.39 (2026-10-23) =
-* Fix: **The dashboard follows new orders while it stays open.** Orders, revenue, "Today so far" and the last order now change by themselves when an order comes in, along with the new order notification. Before, they only changed after reloading the page.
-* New: **"1 new order" bar on the Orders list.** While the list stays open, the summary above it updates by itself and a bar counts the orders that came in since, with a Show button that opens the same tab again. The rows never move on their own.

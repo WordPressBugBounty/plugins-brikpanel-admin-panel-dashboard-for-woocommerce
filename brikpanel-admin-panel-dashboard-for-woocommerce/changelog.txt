@@ -2,6 +2,16 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.46 (2026-11-07) =
+* New: **Arrange products by hand in a newest-first store.** If your store lists the newest products first, Sort in the products list now has a "Start custom order" button. The shop keeps the same order, you can drag any product to a new place, and new products still appear on top.
+* Fix: **Sorting no longer reshuffles the shop.** In a store with more than one page of products and no saved order, the first drag put every other page's products ahead of the page you sorted. Now only the products you drag change places.
+* Tweak: **Sort says when the shop uses another order.** If the store's default sorting is not the custom order, the Sort banner says so and how to switch.
+* Fix: **Saving a product keeps its place.** BrikPanel's product screen saved back the "Menu order" it opened with, undoing a move made in Sort meanwhile. It now saves it only when you change it.
+* Fix: **Sort messages no longer talk about customer orders.** "Saving order..." and "Order saved" were translated as a customer's order in German, Spanish, French, Italian, Dutch, Polish, Russian and Turkish.
+* New: **A Print button for each order.** A "Print" column in the orders list opens that order's summary in a new tab with the print window. It starts hidden: tick "Print" under Screen Options → Columns. Once it is on, phones show the same button in the order panel.
+* Tweak: **Order summaries print your store's logo.** The summary uses your theme's logo, then the WooCommerce email header image, then the store name. BrikPanel's "Custom brand logo", often an agency's logo, no longer appears on it.
+* Fix: **Order summaries keep their white border.** With "Margins" set to None or Minimum in the print window, the summary ran to the edge of the paper. The border is now part of the page and repeats on every page of a long order.
+
 = 3.3.45 (2026-11-06) =
 * New: **Print order summaries.** Select orders and pick "Print order summary" under Bulk actions, or use Print at the top of an order. Each order gets its own page with your logo, both addresses, product images, options, SKUs, quantities and totals, plus the fields picked in Orders → "Order custom fields". "Save as PDF" in the print window turns it into a PDF.
 * New: **Hidden sections in a folded box.** At the end of the product screen, a "Hidden sections" box holds the sections that come switched off, such as shipping weight, tags and linked products. Open it to edit them right there, without turning them on in the settings. Each user's box stays open or closed the way they left it. Setting: Products → "Suggest hidden sections in the product editor", on by default.

@@ -3307,11 +3307,14 @@ body.bp-orders-compact .brikpanel-order-number:has(> .bp-order-buyer) > .order-v
 	flex-shrink: 0;
 }
 
-/* Quick actions in the short row: the preview beside the order number and
-   WhatsApp in its own column, both as small boxed icon buttons. Screen
-   Options shows or hides the WhatsApp column as usual. */
+/* Quick actions in the short row: the preview beside the order number,
+   WhatsApp and Print in their own columns, all as small boxed icon buttons.
+   Screen Options shows or hides both columns as usual; Print starts hidden
+   (front-end/orders/brikpanel-order-print.php). */
 body.bp-orders-compact .wp-list-table th.column-brikpanel_whatsapp,
-body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp {
+body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp,
+body.bp-orders-compact .wp-list-table th.column-brikpanel_print,
+body.bp-orders-compact .wp-list-table td.column-brikpanel_print {
 	width: 1% !important;
 	padding-left: 4px !important;
 	padding-right: 8px !important;
@@ -3320,6 +3323,7 @@ body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp {
 }
 
 body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp .brikpanel-wa-list-link,
+body.bp-orders-compact .wp-list-table td.column-brikpanel_print .brikpanel-print-list-link,
 body.bp-orders-compact #the-list .brikpanel-order-number .order-preview {
 	box-sizing: border-box;
 	position: relative;
@@ -3346,22 +3350,26 @@ body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp .brikpanel-wa
 }
 
 body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp .brikpanel-wa-list-link:hover,
+body.bp-orders-compact .wp-list-table td.column-brikpanel_print .brikpanel-print-list-link:hover,
 body.bp-orders-compact #the-list .brikpanel-order-number .order-preview:hover {
 	background: #f7f7f7;
 	transform: none;
 }
 
+body.bp-orders-compact .wp-list-table td.column-brikpanel_print .brikpanel-print-list-link:hover,
 body.bp-orders-compact #the-list .brikpanel-order-number .order-preview:hover {
 	color: #303030;
 }
 
 body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp .brikpanel-wa-list-link:focus-visible,
+body.bp-orders-compact .wp-list-table td.column-brikpanel_print .brikpanel-print-list-link:focus-visible,
 body.bp-orders-compact #the-list .brikpanel-order-number .order-preview:focus-visible {
 	outline: 2px solid #303030;
 	outline-offset: 2px;
 }
 
-body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp .brikpanel-wa-glyph {
+body.bp-orders-compact .wp-list-table td.column-brikpanel_whatsapp .brikpanel-wa-glyph,
+body.bp-orders-compact .wp-list-table td.column-brikpanel_print .brikpanel-print-list-link svg {
 	width: 16px;
 	height: 16px;
 }
@@ -3654,6 +3662,13 @@ body.bp-orders-compact .wp-list-table tbody tr.bp-order-detail:not(.inline-edit-
 .bp-od .bp-od-btn.disabled {
 	opacity: .6;
 	cursor: progress;
+}
+
+/* Screen Options hides the panel's Print button together with its column
+   (front-end/orders/brikpanel-order-print.php); WordPress's .hidden alone
+   loses to the button's own display. */
+.bp-od .bp-od-btn.hidden {
+	display: none;
 }
 
 .bp-od-wa .brikpanel-wa-glyph {
@@ -3998,13 +4013,15 @@ body.bp-orders-compact #posts-filter {
 	}
 }
 
-/* The WhatsApp column header is its mark, keeping the column narrow; the
-   text stays for screen readers and Screen Options. */
-body.bp-orders-compact .wp-list-table thead th.column-brikpanel_whatsapp {
+/* The WhatsApp and Print column headers are their marks, keeping the columns
+   narrow; the text stays for screen readers and Screen Options. */
+body.bp-orders-compact .wp-list-table thead th.column-brikpanel_whatsapp,
+body.bp-orders-compact .wp-list-table thead th.column-brikpanel_print {
 	font-size: 0 !important;
 }
 
-body.bp-orders-compact .wp-list-table thead th.column-brikpanel_whatsapp::before {
+body.bp-orders-compact .wp-list-table thead th.column-brikpanel_whatsapp::before,
+body.bp-orders-compact .wp-list-table thead th.column-brikpanel_print::before {
 	content: "";
 	display: inline-block;
 	width: 14px;
@@ -4013,6 +4030,11 @@ body.bp-orders-compact .wp-list-table thead th.column-brikpanel_whatsapp::before
 	background-color: #8a8a8a;
 	-webkit-mask: url(icons/bp-whatsapp.svg) center / contain no-repeat;
 	mask: url(icons/bp-whatsapp.svg) center / contain no-repeat;
+}
+
+body.bp-orders-compact .wp-list-table thead th.column-brikpanel_print::before {
+	-webkit-mask-image: url(icons/bp-print.svg);
+	mask-image: url(icons/bp-print.svg);
 }
 
 /* ---- Detail panel: WooCommerce's action buttons with their names ---- */

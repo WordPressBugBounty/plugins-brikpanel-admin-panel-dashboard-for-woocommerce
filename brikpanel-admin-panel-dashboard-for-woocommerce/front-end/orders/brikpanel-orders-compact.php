@@ -95,7 +95,8 @@ add_action( 'wp_ajax_brikpanel_orders_row_columns', 'brikpanel_orders_compact_sa
  */
 function brikpanel_orders_compact_base_row_columns( $status_key = 'order_status' ) {
 	$status = '' === (string) $status_key ? array() : array( (string) $status_key );
-	return array_merge( array( 'cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_customer', 'order_date' ), $status, array( 'payment_method', 'brikpanel_shipping_method', 'order_total' ) );
+	// brikpanel_print: hidden until the person turns it on (front-end/orders/brikpanel-order-print.php).
+	return array_merge( array( 'cb', 'order_number', 'brikpanel_whatsapp', 'brikpanel_print', 'brikpanel_customer', 'order_date' ), $status, array( 'payment_method', 'brikpanel_shipping_method', 'order_total' ) );
 }
 
 /**
@@ -795,6 +796,11 @@ function brikpanel_orders_compact_detail_html( $order ) {
 	// click handler is delegated on the document, so it works from here too.
 	if ( 'trash' !== $order->get_status() ) {
 		$actions .= '<button type="button" class="bp-od-btn bp-od-btn-secondary order-preview" data-order-id="' . absint( $order->get_id() ) . '">' . esc_html__( 'Preview', 'brikpanel' ) . '</button>';
+	}
+	// The Print column's button, for phones, where the row shows no icons. Shown
+	// and hidden with that column (front-end/orders/brikpanel-order-print.php).
+	if ( function_exists( 'brikpanel_order_print_panel_button' ) ) {
+		$actions .= brikpanel_order_print_panel_button( $order );
 	}
 	// Trakoo's tracking number, without opening the order (front-end/orders/brikpanel-order-tracking.php).
 	if ( function_exists( 'brikpanel_order_tracking_button_html' ) ) {

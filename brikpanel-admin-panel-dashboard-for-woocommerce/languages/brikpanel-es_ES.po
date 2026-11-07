@@ -16568,7 +16568,7 @@ msgstr "Demasiados productos para reordenar en una sola solicitud."
 
 #: front-end/products/brikpanel-products-list.php:3516
 msgid "Order saved."
-msgstr "Pedido guardado."
+msgstr "Orden guardado."
 
 #: front-end/products/brikpanel-products-list.php:3851
 msgid "Product updated!"
@@ -21298,15 +21298,15 @@ msgstr "Elegir archivo"
 
 #: includes/brikpanel-enqueue.php:2087
 msgid "Saving order..."
-msgstr "Guardando pedido..."
+msgstr "Guardando orden..."
 
 #: includes/brikpanel-enqueue.php:2088
 msgid "Order saved"
-msgstr "Pedido guardado"
+msgstr "Orden guardado"
 
 #: includes/brikpanel-enqueue.php:2089
 msgid "Could not save order. Please try again."
-msgstr "No se pudo guardar el pedido. Inténtalo de nuevo."
+msgstr "No se pudo guardar el orden. Inténtalo de nuevo."
 
 #: includes/brikpanel-enqueue.php:2090 includes/brikpanel-enqueue.php:2784
 msgid "Drag to reorder"
@@ -25796,3 +25796,44 @@ msgid "%s translation was left as it is: its price comes from the original produ
 msgid_plural "%s translations were left as they are: their price comes from the original product."
 msgstr[0] "%s traducción se ha quedado como estaba: su precio viene del producto original."
 msgstr[1] "%s traducciones se han quedado como estaban: su precio viene del producto original."
+
+#: front-end/products/brikpanel-products-list.php:2308
+msgid "A store manager can start a custom order here."
+msgstr "Un gestor de la tienda puede iniciar aquí un orden personalizado."
+
+#: includes/brikpanel-enqueue.php:2113
+msgid "Could not start the custom order. Please try again."
+msgstr "No se pudo iniciar el orden personalizado. Inténtalo de nuevo."
+
+#: front-end/products/brikpanel-products-list.php:3587
+#: includes/brikpanel-enqueue.php:2112
+msgid "Custom order started. Your store still lists the newest products first until you move one."
+msgstr "Orden personalizado iniciado. Tu tienda sigue mostrando primero los productos más nuevos hasta que muevas uno."
+
+#: front-end/products/brikpanel-products-list.php:3580
+msgid "Products are numbered newest first, but your theme or another plugin still sets the store's sort order. Set its default product sorting to custom ordering."
+msgstr "Los productos están numerados con los más nuevos primero, pero tu tema u otro plugin sigue decidiendo el orden de la tienda. Configura allí el orden de productos por defecto como orden personalizado."
+
+#: front-end/products/brikpanel-products-list.php:2306
+msgid "Start a custom order: your products keep their newest-first order, you can move any of them, and new products still appear on top."
+msgstr "Inicia un orden personalizado: tus productos mantienen el orden de los más nuevos primero, puedes mover cualquiera de ellos y los productos nuevos siguen apareciendo arriba."
+
+#: front-end/products/brikpanel-products-list.php:2315
+msgid "Start custom order"
+msgstr "Iniciar orden personalizado"
+
+#: includes/brikpanel-enqueue.php:2111
+msgid "Starting custom order..."
+msgstr "Iniciando orden personalizado..."
+
+#: includes/brikpanel-enqueue.php:2114
+msgid "Your products already have a saved order. Starting a custom order replaces it with newest first. Continue?"
+msgstr "Tus productos ya tienen un orden guardado. Iniciar un orden personalizado lo sustituye por los más nuevos primero. ¿Continuar?"
+
+#: front-end/products/brikpanel-products-list.php:2304
+msgid "Your store lists the newest products first, so the order you set here does not show there yet."
+msgstr "Tu tienda muestra primero los productos más nuevos, así que el orden que fijes aquí todavía no se ve allí."
+
+#: front-end/products/brikpanel-products-list.php:2312
+msgid "Your store sorts products another way, so the order you set here does not show there. To use it, set Default product sorting to \"Default sorting (custom ordering + name)\" under Appearance > Customize."
+msgstr "Tu tienda ordena los productos de otra forma, así que el orden que fijes aquí no se ve allí. Para usarlo, en Apariencia > Personalizar pon Orden de productos por defecto en «Orden por defecto (orden personalizado + nombre)»."
