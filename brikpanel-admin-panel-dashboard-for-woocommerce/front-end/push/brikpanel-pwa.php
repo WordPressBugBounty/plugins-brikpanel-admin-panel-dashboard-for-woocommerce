@@ -13,6 +13,9 @@
  *   paints the transparent pixels of a Home Screen icon black
  * - in the installed app, the login keeps "Remember me" ticked: iPhones drop
  *   session cookies of Home Screen apps now and then (WebKit bug 272325)
+ * - the way back in after the login ends, also when a security plugin hides
+ *   the login page: the entrance the app starts on, the login address the
+ *   phone remembers and the app cookie (brikpanel-pwa-entry.php)
  *
  * Both files are served by admin-ajax.php. It lives in the admin folder, so
  * the worker may control the admin pages without any server header, no
@@ -320,7 +323,8 @@ function brikpanel_pwa_manifest() {
 		'id'               => brikpanel_pwa_admin_path() . 'brikpanel-app',
 		'name'             => brikpanel_pwa_app_name(),
 		'short_name'       => brikpanel_pwa_app_short_name(),
-		'start_url'        => admin_url(),
+		// The entrance: on to the admin when logged in, to this phone's login address when not.
+		'start_url'        => brikpanel_pwa_entry_url(),
 		'scope'            => brikpanel_pwa_scope(),
 		'display'          => 'standalone',
 		'background_color' => '#f1f1f1',
@@ -509,6 +513,7 @@ function brikpanel_pwa_print_tags() {
 function brikpanel_pwa_admin_head() {
 	if ( brikpanel_pwa_for_current_user() ) {
 		brikpanel_pwa_print_tags();
+		brikpanel_pwa_entry_print_app_script( false );
 	}
 }
 add_action( 'admin_head', 'brikpanel_pwa_admin_head', 2 );
@@ -561,11 +566,16 @@ add_filter( 'site_icon_meta_tags', 'brikpanel_pwa_site_icon_tags' );
 
 /**
  * Inside the installed app the login keeps "Remember me" ticked (owner
- * decision, 7 October 2026). A normal browser tab is left as it is.
+ * decision, 7 October 2026), and a page that shows the login form keeps its
+ * own address for the entrance (brikpanel-pwa-entry.php). A normal browser
+ * tab is left as it is.
  *
  * @return void
  */
 function brikpanel_pwa_login_footer() {
 	echo "<script>(function(){try{if(!(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true))return;var r=document.getElementById('rememberme');if(r){r.checked=true;}}catch(e){}})();</script>\n"; // i18n-ignore: media query, not user text
+	brikpanel_pwa_entry_print_app_script( true );
 }
 add_action( 'login_footer', 'brikpanel_pwa_login_footer' );
+
+require_once __DIR__ . '/brikpanel-pwa-entry.php';

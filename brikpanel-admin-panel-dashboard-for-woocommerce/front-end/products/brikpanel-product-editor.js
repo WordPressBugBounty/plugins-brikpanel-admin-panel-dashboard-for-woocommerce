@@ -134,6 +134,7 @@
         initHiddenBox();
         loadExistingData();
         initPhone();
+        deviceDraft.init();
     }
 
     /* Folding cards: the SEO card, every other plugin's box and the two boxes
@@ -2021,6 +2022,10 @@
         var frame = wp.media({ title: PE.i18n.add_images || 'Add images', multiple: true, library: { type: 'image' }, button: { text: PE.i18n.select || 'Select' } });
         frame.on('open', enableClickToToggle);
         frame.on('close', disableClickToToggle);
+        // Device draft: photos uploaded here are kept with the product on a
+        // phone even before "Select" is tapped (see deviceDraft).
+        frame.on('open', deviceDraft.watchUploads);
+        frame.on('close', deviceDraft.windowClosed);
         frame.on('select', function () {
             frame.state().get('selection').toJSON().forEach(function (att) {
                 // Every picked image, also one already in the gallery: its alt
@@ -6964,12 +6969,16 @@
     }
 
     /* Save */
-    function saveProduct(status, silent) {
-        if (state.saving) return;
-        if (!silent && (status === 'publish' || status === 'future') && !validateAll()) { showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error'); phoneRevealError(); return; }
-        if (!silent && (status === 'publish' || status === 'future') && !validateSalePrice()) { showToast(PE.i18n.fill_price, 'error'); phoneRevealError(); return; }
+    // opts.dryRun (device draft, 3.3.48): build the request exactly as a save
+    // would and return its [name, value] pairs instead of sending it. Nothing on
+    // the page or in state changes: no checks, no button text, no "saving".
+    function saveProduct(status, silent, opts) {
+        var dryRun = !!(opts && opts.dryRun);
+        if (state.saving) return dryRun ? null : undefined;
+        if (!dryRun && !silent && (status === 'publish' || status === 'future') && !validateAll()) { showToast(PE.i18n.fill_required || 'Please fill in the required fields', 'error'); phoneRevealError(); return; }
+        if (!dryRun && !silent && (status === 'publish' || status === 'future') && !validateSalePrice()) { showToast(PE.i18n.fill_price, 'error'); phoneRevealError(); return; }
         var name = $.trim($('#bpe-name').val());
-        if (!name) { if (!silent) { showToast(PE.i18n.fill_name || 'Please fill in the product name', 'error'); validateField($('#bpe-name')); } return; }
+        if (!name && !dryRun) { if (!silent) { showToast(PE.i18n.fill_name || 'Please fill in the product name', 'error'); validateField($('#bpe-name')); } return; }
 
         // ACF client-side validation. ACF marks its required/format errors only
         // through its own validator; BrikPanel's custom save never triggered it,
@@ -6981,7 +6990,7 @@
         // inline field errors natively and we abort with a toast. Skipped for
         // silent autosaves and when ACF is absent. The `acfValidated` flag guards
         // the one-level re-entry after validation succeeds.
-        if (!silent && !state.acfValidated && window.acf && typeof acf.validateForm === 'function') {
+        if (!dryRun && !silent && !state.acfValidated && window.acf && typeof acf.validateForm === 'function') {
             var $acfForm = $('.brikpanel-pe-content');
             if ($acfForm.find('.acf-field').length) {
                 acf.validateForm({
@@ -7002,9 +7011,11 @@
             }
         }
 
-        state.saving = true;
         var $pub = $('#bpe-publish'), op = $pub.text();
-        $pub.prop('disabled', true).text(PE.i18n.saving || 'Saving...');
+        if (!dryRun) {
+            state.saving = true;
+            $pub.prop('disabled', true).text(PE.i18n.saving || 'Saving...');
+        }
 
         var $varToggle = $('#bpe-var-toggle');
         // An empty table normally means "not a variable product after all", so
@@ -7682,8 +7693,8 @@
             // Baseline for the adoption step: whatever the table holds that
             // differs from this snapshot when the reply lands was typed while
             // the request was in flight, and must not be overwritten by it.
-            state.lastSubmittedVariations = tv;
-        } else {
+            if (!dryRun) { state.lastSubmittedVariations = tv; }
+        } else if (!dryRun) {
             state.lastSubmittedVariations = [];
         }
 
@@ -7710,6 +7721,14 @@
         });
         _extraPairs.forEach(function (pair) { fd.append(pair[0], pair[1]); });
 
+        if (dryRun) {
+            var dryPairs = [];
+            fd.forEach(function (v, k) {
+                if (typeof v === 'string') { dryPairs.push([k, v]); }
+            });
+            return dryPairs;
+        }
+
         // global: false keeps this request away from other plugins' page-wide
         // jQuery AJAX listeners. Several load on every admin screen and read
         // the request body as text (variation swatches plugins check
@@ -7721,6 +7740,8 @@
             state.saving = false; $pub.prop('disabled', false).text(op);
             if (r.success) {
                 state.dirty = false;
+                // Saved: the copy this phone kept of it is no longer needed.
+                deviceDraft.saved(data.product_id, r.data && r.data.product_id);
                 afterSwatchesSave(r.data, sentSwatches);
                 // Before the variation rows are redrawn, so their video
                 // buttons already show what was stored.
@@ -8087,6 +8108,289 @@
             }
         }, 60000);
     }
+
+    /* Device draft (3.3.48). On a phone, a product that is not live yet is kept
+       on the device until it is saved. iPhones close a Home Screen app that sits
+       in the background (a person waiting for twelve photos to upload switches to
+       another app), and the product, with the photos picked for it, was lost.
+       The next new product offers it back in the "Unsaved product" card. Restore
+       sends it through the normal save as a draft, so variations and other
+       plugins' fields come back too; a product without a name (the save needs
+       one) gets its photos back. Nothing reaches the server before the person
+       taps Restore: a product that is not live is never saved behind their back
+       (see initAutoSave()). Owner decision, 8 November 2026: no setting, phones
+       only. The copy holds no security tokens: a restore uses this page's. */
+    var deviceDraft = (function () {
+        var KEY = (PE.device_draft && typeof PE.device_draft.key === 'string') ? PE.device_draft.key : '';
+        var MAX_AGE = 7 * 86400000;
+        var MAX_ITEMS = 3;
+        var MAX_CHARS = 1500000;
+        var SECRET = /nonce|^security$|^_wp_http_referer$/i;
+        var startedNew = $('#bpe-product-id').data('new') == 1;
+        var savedOnce = false;
+        var timer = 0;
+        var uploaded = []; // Photos uploaded in the media window that is open now.
+        var offered = null;
+        var restoring = false;
+
+        function productId() { return parseInt($('#bpe-product-id').val(), 10) || 0; }
+
+        function active() {
+            return !!KEY && !!PH.built && $('#bpe-product-id').data('live') != 1;
+        }
+
+        function readAll() {
+            var list;
+            try {
+                list = JSON.parse(window.localStorage.getItem(KEY) || '[]');
+            } catch (e) {
+                return [];
+            }
+            if (!Array.isArray(list)) { return []; }
+            var now = Date.now();
+            return list.filter(function (e) {
+                return !!e && e.v === 1 && (parseInt(e.pid, 10) || 0) > 0 && typeof e.ts === 'number' && now - e.ts < MAX_AGE
+                    && typeof e.name === 'string' && Array.isArray(e.images) && Array.isArray(e.pairs);
+            });
+        }
+
+        function writeAll(list) {
+            try {
+                if (list.length) {
+                    window.localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX_ITEMS)));
+                } else {
+                    window.localStorage.removeItem(KEY);
+                }
+            } catch (e) {
+                // Storage full or blocked (private mode): the copy is not kept.
+            }
+        }
+
+        function forget(id) {
+            id = parseInt(id, 10) || 0;
+            if (!id || !KEY) { return; }
+            var list = readAll();
+            var rest = list.filter(function (e) { return e.pid !== id; });
+            if (rest.length !== list.length) { writeAll(rest); }
+        }
+
+        function photos() {
+            var seen = {}, out = [];
+            state.images.concat(uploaded).forEach(function (i) {
+                var id = i ? parseInt(i.id, 10) || 0 : 0;
+                if (!id || seen[id]) { return; }
+                seen[id] = true;
+                out.push({ id: id, url: String(i.url || ''), url_m: String(i.url_m || '') });
+            });
+            return out;
+        }
+
+        function keep() {
+            timer = 0;
+            if (!active() || restoring || state.saving || (!state.dirty && !uploaded.length)) { return; }
+            var name = $.trim($('#bpe-name').val() || '');
+            var imgs = photos();
+            if (!name && !imgs.length) { return; }
+            var pairs = saveProduct('draft', true, { dryRun: true });
+            if (!pairs) { return; }
+            var entry = {
+                v: 1,
+                pid: productId(),
+                isNew: startedNew && !savedOnce,
+                ts: Date.now(),
+                name: name,
+                images: imgs,
+                pairs: pairs.filter(function (p) { return !SECRET.test(p[0]); })
+            };
+            // A product too large for the phone's storage keeps its photos only.
+            if (JSON.stringify(entry).length > MAX_CHARS) { entry.pairs = []; }
+            var list = readAll().filter(function (e) { return e.pid !== entry.pid; });
+            list.unshift(entry);
+            writeAll(list);
+        }
+
+        function soon() {
+            if (!active()) { return; }
+            if (timer) { clearTimeout(timer); }
+            timer = setTimeout(function () {
+                if (window.requestIdleCallback) {
+                    window.requestIdleCallback(keep, { timeout: 2000 });
+                } else {
+                    keep();
+                }
+            }, 3000);
+        }
+
+        // Leaving the page or the app: keep it now, the phone may never come back.
+        function now() {
+            if (timer) { clearTimeout(timer); timer = 0; }
+            keep();
+        }
+
+        // The media window: every photo that finishes uploading is kept with the
+        // product until the window closes, also before "Select" is tapped.
+        function watchUploads() {
+            var q = window.wp && wp.Uploader && wp.Uploader.queue;
+            if (!q || q.bpeDeviceDraft) { return; }
+            q.bpeDeviceDraft = true;
+            q.on('change:uploading', function (att) {
+                if (!att || att.get('uploading') || !att.id || !active()) { return; }
+                var sizes = att.get('sizes') || {};
+                var full = String(att.get('url') || '');
+                uploaded.push({
+                    id: att.id,
+                    url: (sizes.thumbnail && sizes.thumbnail.url) || full,
+                    url_m: (sizes.medium && sizes.medium.url) || full
+                });
+                soon();
+            });
+        }
+
+        // The window closed: the gallery holds what the person picked.
+        function windowClosed() {
+            if (!uploaded.length) { return; }
+            uploaded = [];
+            soon();
+        }
+
+        function candidate() {
+            if (!active()) { return null; }
+            var id = productId();
+            var list = readAll();
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].pid === id) { return list[i]; }
+                if (startedNew && !savedOnce && list[i].isNew) { return list[i]; }
+            }
+            return null;
+        }
+
+        function render() {
+            var box = document.getElementById('bpe-unsaved');
+            if (!box) { return; }
+            offered = restoring ? offered : candidate();
+            if (!offered) {
+                box.hidden = true;
+                return;
+            }
+            var parts = [offered.name || phT('ph_unsaved_untitled')];
+            if (offered.images.length) {
+                parts.push(countText(PE.i18n.ph_unsaved_photos, offered.images.length));
+            }
+            var when = window.brikpanelFormat ? window.brikpanelFormat.dateShortTime(Math.floor(offered.ts / 1000)) : '';
+            if (when) { parts.push(when); }
+            // Each part isolated (<bdi>): a Latin product name next to an Arabic
+            // date must not turn the whole line around in a right-to-left admin.
+            var meta = document.getElementById('bpe-unsaved-meta');
+            meta.textContent = '';
+            parts.forEach(function (text, i) {
+                if (i) { meta.appendChild(document.createTextNode(' · ')); }
+                var part = document.createElement('bdi');
+                part.textContent = text;
+                meta.appendChild(part);
+            });
+            box.hidden = false;
+        }
+
+        function restore() {
+            var e = offered;
+            if (!e || restoring) { return; }
+            // Without a name (or with only its photos kept) the save would refuse
+            // it: the photos go back into the gallery and the person goes on.
+            if (!$.trim(e.name) || !e.pairs.length) {
+                e.images.forEach(function (i) { addImage(i.id, i.url, i.url_m); });
+                forget(e.pid);
+                render();
+                showToast(phT('ph_unsaved_photos_back'), 'success');
+                return;
+            }
+            restoring = true;
+            var $btn = $('#bpe-unsaved-restore'), label = $btn.text();
+            $btn.prop('disabled', true).text(phT('ph_unsaved_restoring'));
+            $('#bpe-unsaved-discard').prop('disabled', true);
+            // This page's security fields (its nonces and other plugins'), never the kept ones.
+            var fresh = saveProduct('draft', true, { dryRun: true }) || [];
+            var fd = new FormData();
+            e.pairs.forEach(function (p) {
+                if (p[0] !== 'product_id' && p[0] !== 'status') { fd.append(p[0], p[1]); }
+            });
+            fresh.forEach(function (p) {
+                if (SECRET.test(p[0])) { fd.append(p[0], p[1]); }
+            });
+            fd.append('security', PE.nonce);
+            fd.append('product_id', String(productId()));
+            fd.append('status', 'draft');
+            var failed = function (msg) {
+                restoring = false;
+                $btn.prop('disabled', false).text(label);
+                $('#bpe-unsaved-discard').prop('disabled', false);
+                showToast(msg || phT('ph_unsaved_failed'), 'error');
+            };
+            $.ajax({ url: PE.ajax_url, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json', global: false })
+                .done(function (r) {
+                    if (!r || !r.success) {
+                        failed(r && r.data && typeof r.data.message === 'string' ? r.data.message : '');
+                        return;
+                    }
+                    forget(e.pid);
+                    forget(productId());
+                    state.dirty = false;
+                    try { window.sessionStorage.setItem('bpe-unsaved-restored', '1'); } catch (x) { /* private mode */ }
+                    window.location.reload();
+                })
+                .fail(function () { failed(''); });
+        }
+
+        function discard() {
+            if (!offered || restoring) { return; }
+            forget(offered.pid);
+            render();
+        }
+
+        function init() {
+            if (!KEY || !document.getElementById('bpe-unsaved')) { return; }
+            $('#bpe-unsaved-restore').on('click', restore);
+            $('#bpe-unsaved-discard').on('click', discard);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') { now(); }
+            });
+            window.addEventListener('pagehide', now);
+            render();
+            // A reload (also the one after iOS closed the app) puts the page back
+            // where it was scrolled, past the card: bring the card into view once.
+            var box = document.getElementById('bpe-unsaved');
+            if (box && !box.hidden) {
+                var reveal = function () {
+                    window.setTimeout(function () {
+                        if (!box.hidden && box.getBoundingClientRect().top < 0) {
+                            try { box.scrollIntoView({ block: 'nearest' }); } catch (x) { box.scrollIntoView(); }
+                        }
+                    }, 0);
+                };
+                if (document.readyState === 'complete') { reveal(); } else { window.addEventListener('load', reveal); }
+            }
+            try {
+                if (window.sessionStorage.getItem('bpe-unsaved-restored')) {
+                    window.sessionStorage.removeItem('bpe-unsaved-restored');
+                    showToast(phT('ph_unsaved_restored'), 'success');
+                }
+            } catch (e) {
+                // Private mode: no message after the reload.
+            }
+        }
+
+        return {
+            init: init,
+            render: render,
+            changed: soon,
+            watchUploads: watchUploads,
+            windowClosed: windowClosed,
+            saved: function (before, after) {
+                savedOnce = true;
+                forget(before);
+                forget(after);
+            }
+        };
+    })();
 
     /* Duplicate product */
     function duplicateProduct() {
@@ -8708,6 +9012,8 @@
                     dirty = !!v;
                     var b = document.getElementById('bpe-ph-save');
                     if (b) { b.classList.toggle('is-dirty', dirty); }
+                    // Every unsaved change also refreshes the copy kept on the phone.
+                    if (dirty) { deviceDraft.changed(); }
                 }
             });
         } catch (e) {
@@ -8812,6 +9118,8 @@
         } else {
             phoneLeave();
         }
+        // The "Unsaved product" card belongs to the phone layout only.
+        deviceDraft.render();
     }
 
     function phoneEnter() {

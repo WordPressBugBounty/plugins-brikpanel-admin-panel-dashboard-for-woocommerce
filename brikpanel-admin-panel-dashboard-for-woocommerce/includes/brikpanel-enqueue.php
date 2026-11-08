@@ -2689,6 +2689,12 @@ function brikpanel_enqueue_woo_assets($hook) {
             'admin_url'   => admin_url(),
             'price_locked' => ($bpe_open_id && function_exists('brikpanel_wpml_original_of') && brikpanel_wpml_original_of($bpe_open_id)) ? '1' : '',
             'nonce'       => wp_create_nonce('brikpanel_product_editor_nonce'),
+            // Device draft (3.3.48): where a phone keeps a product it has not
+            // saved yet. Per site and person, since sites of one network and
+            // people sharing a phone share the browser's storage.
+            'device_draft' => [
+                'key' => 'bpe-unsaved:' . get_current_blog_id() . ':' . get_current_user_id(),
+            ],
             'currency'    => get_woocommerce_currency_symbol(),
             'decimal_sep' => wc_get_price_decimal_separator(),
             'variation_gallery_enabled' => get_option('brikpanel_variation_gallery_enabled', 'yes') === 'yes' ? '1' : '0',
@@ -3057,6 +3063,14 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'ph_discard_text'   => __('The changes you made to this product are not saved.', 'brikpanel'),
                 'ph_keep_editing'   => __('Keep editing', 'brikpanel'),
                 'ph_discard'        => __('Discard', 'brikpanel'),
+                // Device draft (3.3.48): the "Unsaved product" card at the top of the editor.
+                'ph_unsaved_untitled' => __('Untitled product', 'brikpanel'),
+                /* translators: %s: number of photos of a product this phone kept but never saved. */
+                'ph_unsaved_photos'   => brikpanel_js_plural(_n_noop('%s photo', '%s photos', 'brikpanel')),
+                'ph_unsaved_restoring' => __('Restoring...', 'brikpanel'),
+                'ph_unsaved_restored' => __('Product restored as a draft.', 'brikpanel'),
+                'ph_unsaved_photos_back' => __('Photos added back. Save the product to keep them.', 'brikpanel'),
+                'ph_unsaved_failed'   => __('The product could not be restored. Please try again.', 'brikpanel'),
                 /* translators: 1: the variation's position, 2: how many variations the product has. */
                 'ph_variation_of'   => __('Variation %1$s of %2$s', 'brikpanel'),
                 'ph_prev_variation' => __('Previous variation', 'brikpanel'),

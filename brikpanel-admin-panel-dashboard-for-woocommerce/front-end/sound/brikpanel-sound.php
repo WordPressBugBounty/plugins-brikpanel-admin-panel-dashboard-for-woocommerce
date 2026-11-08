@@ -132,11 +132,14 @@ function brikpanel_order_notify_enqueue( $hook ) {
         true
     );
 
+    // MP3 since 8 Nov 2026: the old WAV was 428 KB and every admin page
+    // preloads the chime, which was more than half of what BrikPanel sends
+    // on a plain admin screen. Same sound, 40 KB; every browser plays MP3.
     $sound_url = '';
     if ( $settings['sound'] ) {
-        $sound_path = $base_dir . 'brikpanel-sound.wav';
+        $sound_path = $base_dir . 'brikpanel-sound.mp3';
         if ( file_exists( $sound_path ) ) {
-            $sound_url = $base_url . 'brikpanel-sound.wav?v=' . filemtime( $sound_path );
+            $sound_url = $base_url . 'brikpanel-sound.mp3?v=' . filemtime( $sound_path );
         }
     }
 

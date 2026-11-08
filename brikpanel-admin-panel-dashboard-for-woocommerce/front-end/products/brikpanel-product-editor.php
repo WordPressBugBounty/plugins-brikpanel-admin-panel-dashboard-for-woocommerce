@@ -1395,7 +1395,12 @@ class Brikpanel_Product_Editor {
         ?>
         <div class="wrap">
         <div class="brikpanel-pe<?php echo $bpe_widescreen ? ' brikpanel-pe-widescreen' : ''; ?>">
-            <input type="hidden" id="bpe-product-id" value="<?php echo esc_attr($product_id); ?>" data-live="<?php echo $is_live ? '1' : '0'; ?>">
+            <?php
+            // data-new: a brand-new product (still WordPress's auto-draft). A phone
+            // keeps such a product on the device until it is saved, and offers it
+            // back the next time a new product is opened (device draft, 3.3.48).
+            ?>
+            <input type="hidden" id="bpe-product-id" value="<?php echo esc_attr($product_id); ?>" data-live="<?php echo $is_live ? '1' : '0'; ?>" data-new="<?php echo $is_auto_draft ? '1' : '0'; ?>">
 
             <?php
             // The header gives way in its own priority order, measured on the
@@ -1812,7 +1817,22 @@ class Brikpanel_Product_Editor {
             // card so they are parsed before Blocksy looks for them, and outside
             // every container the save collects, so they are never posted.
             echo $bpe_native_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped piece by piece in native_attribute_mirror_rows().
+
+            // Device draft (3.3.48): a product this phone kept but never saved.
+            // The editor script fills and shows it, on a phone only and only when
+            // there is one to offer; outside the content so the phone's section
+            // pages never move it.
             ?>
+            <div class="brikpanel-pe-unsaved" id="bpe-unsaved" role="region" aria-labelledby="bpe-unsaved-title" hidden>
+                <div class="brikpanel-pe-unsaved-text">
+                    <strong class="brikpanel-pe-unsaved-title" id="bpe-unsaved-title"><?php esc_html_e('Unsaved product', 'brikpanel'); ?></strong>
+                    <span class="brikpanel-pe-unsaved-meta" id="bpe-unsaved-meta"></span>
+                </div>
+                <div class="brikpanel-pe-unsaved-actions">
+                    <button type="button" class="brikpanel-btn brikpanel-btn--primary" id="bpe-unsaved-restore"><?php esc_html_e('Restore', 'brikpanel'); ?></button>
+                    <button type="button" class="brikpanel-btn brikpanel-btn--secondary" id="bpe-unsaved-discard"><?php esc_html_e('Discard', 'brikpanel'); ?></button>
+                </div>
+            </div>
 
             <!-- Content -->
             <div class="brikpanel-pe-content">
@@ -13092,7 +13112,8 @@ class Brikpanel_Product_Editor {
 
         $duplicate = clone $product;
         $duplicate->set_id(0);
-        $duplicate->set_name(($product->get_name() ?? '') . ' (' . __('Copy', 'brikpanel') . ')');
+        // Its own context: "Copy" is also a button ("Kopieren", "Kopyala"), and the name takes the noun.
+        $duplicate->set_name(($product->get_name() ?? '') . ' (' . _x('Copy', 'suffix of a duplicated product name', 'brikpanel') . ')');
         $duplicate->set_status('draft');
         $duplicate->set_slug('');
         $this->reset_copy_identity($duplicate);

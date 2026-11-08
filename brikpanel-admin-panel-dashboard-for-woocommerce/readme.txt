@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.46
+Stable tag: 3.3.48
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -477,7 +477,7 @@ By default, nothing. BrikPanel only contacts an external service for features yo
 * **Newsletter and survey (optional).** The Newsletter row in WooCommerce > Settings > BrikPanel offers occasional emails about new features. Only if you type your email and tick the consent box are that address, your site address, site language and BrikPanel version sent to brksoft.com. Unsubscribe from any email. A dashboard card links to a short survey on brksoft.com, carrying only your admin language. Privacy policy: https://brksoft.com/privacy-policy/ . Terms: https://brksoft.com/terms-and-conditions/
 * **Google Sheets sync and Google / Meta Ads (optional).** If you connect these, BrikPanel exchanges data with Google, Meta and our helper at brksoft.com to run the sync and read your ad spend: Google Sheets uses it only for authentication, while every Google Ads and Meta Ads request (ad account ID and token, site address, date range) passes through it. 
 * **Phone notifications (optional).** Encrypted, via the phone browser's push service (Apple, Google, Mozilla or Microsoft); see Installation.
-* **Deactivation survey (optional).** Deactivating BrikPanel from the Plugins screen asks why. "Skip and deactivate" sends nothing. Only "Send and deactivate" sends your answer, the days BrikPanel was in use, your BrikPanel, WordPress, WooCommerce and PHP versions and your admin language to our server at brksoft.com. Your site address, email and store data are never sent; the request's IP address is used only against floods and is not stored. Privacy policy: https://brksoft.com/privacy-policy/
+* **Deactivation survey (optional).** "Skip and deactivate" sends nothing. "Send and deactivate" sends your answer, days in use, BrikPanel, WordPress, WooCommerce and PHP versions and admin language to brksoft.com; "slowed down my site" and "did not work" add the speed numbers the window lists (browser page timings, object cache, plugin count, late jobs, WP-Cron, server type). No site address, email or store data; the IP is used only against floods and not stored. Privacy policy: https://brksoft.com/privacy-policy/
 
 = Does deleting BrikPanel delete my data? =
 
@@ -519,6 +519,15 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.48 (2026-11-08) =
+* New: **Phones keep a product you have not saved.** On a phone, the product screen keeps a new or draft product on the device until you save it, with its photos, also the ones still uploading in the media window. If the phone closes the app before you save (iPhones close Home Screen apps left in the background), the next new product offers it back. Restore brings it back as a draft, variations included. Nothing is saved to your store until you tap Restore.
+* New: **A stuck page says why.** When an admin page is still not ready after 15 seconds, a small box at the top shows how long it has waited, whether the wait is your server or the connection between this computer and your site, and what to try, such as turning off HTTP/3 (QUIC). A page that never arrives is explained on the next one. The timings stay in your browser.
+* Fix: **The phone app finds a hidden login page.** With a security plugin that hides the login page, such as Defender, WPS Hide Login or Solid Security, the phone app stayed on an error page once its login ended. It now opens through a small login page that goes to the login address the phone remembers, or lets you type it. An iPhone app already stuck on that error page needs to be added to the Home Screen once more.
+* Tweak: **Lighter screens on phones.** On a phone, BrikPanel's screens and the order screens no longer load the Ctrl+K command palette of WordPress and WooCommerce, which needs a keyboard, or the data it searches. The product screen also skips Yoast SEO's AI content planner, which only works in the block editor. In our phone tests the product screen loaded a quarter to a third less and was ready 1.5 to 3 seconds sooner.
+* Tweak: **A lighter order bell and visit counter.** The new-order sound is 40 KB instead of 428 KB. The storefront visit counter is now a file the browser keeps between pages, instead of 26 KB of code inside every page.
+* Tweak: **Speed numbers with a "slow" answer.** In the deactivation survey, "It slowed down my site" and "Something did not work" also send a summary of this browser's page timings and a few server facts: object cache, number of plugins, late background jobs, WP-Cron and web server. The window lists every value before you send.
+* Fix: **Duplicated product names translate correctly.** In German, Spanish, French, Dutch, Brazilian Portuguese, Russian and Turkish, a duplicated product's name ended in the verb, such as "(Kopieren)" instead of "(Kopie)". In Polish, the Copy buttons now say "Kopiuj".
 
 = 3.3.46 (2026-11-07) =
 * New: **Arrange products by hand in a newest-first store.** If your store lists the newest products first, Sort in the products list now has a "Start custom order" button. The shop keeps the same order, you can drag any product to a new place, and new products still appear on top.
@@ -568,27 +577,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **Choose what an order notification says.** Setting: Notifications → "Notification text". Switch the total, number of items, order number, SKUs, campaign and store name on or off and set their order, with a preview from your latest order. The store name is now off by default, as the app already carries it.
 * New: **Your supplier's SKU on orders.** With supplier management on, a product with a supplier's code shows it under its SKU on the order screen, such as "AliExpress SKU: AE-30418". It never shows in customer emails.
 * New: **A supplier SKU for each variation.** Variations have their own "Supplier SKU" box; left empty, it uses the main product's code when the supplier is the same. Stock Orders show the code and find products by it.
-
-= 3.3.41 (2026-10-28) =
-* New: **Order notifications on your phone.** Get a notification for every new order, also when the phone is locked. It shows the order number, total, number of items and store name, never the customer, and a tap opens the order. Each person turns it on on their own phone; Setting: Notifications → "Phone notifications" (on by default) switches it off for the whole store.
-* New: **A phone button in the top bar.** On a phone, it adds BrikPanel as an app and turns notifications on, with the extra step an iPhone (Home Screen) or Android (battery use: Unrestricted) needs. Its panel opens by itself until notifications are on or you close it with X; then the button shows a tick and the panel sends a test. Setting: Dashboard → "Top bar items" hides it.
-* New: **Sequential order numbers.** Setting: Orders → "Sequential order numbers", off by default. New orders get numbers that follow each other instead of WooCommerce's skipping IDs, with an optional prefix such as WEB- and a number to start from. Orders you already have keep their numbers, and numbers from WebToffee, SkyVerge, Tyche or BeRocket's plugins carry on in the same series.
-* Tweak: **Find orders by their number.** Ctrl+K, the Orders list, the Orders explorer and the order tracking form find an order by its new number, and the Orders explorer and abandoned cart exports have an "Order number" column.
-* Fix: **Checkout drafts no longer show as orders.** A shopper who reached the block checkout and left was listed as an order ("Checkout draft") in Ctrl+K, at the top of the Orders explorer and in the dashboard's Excel export.
-* New: **Coupons and checkout in shared cart links.** On the Cart share screen, add a coupon to the link, picked from your coupons or created on the spot, and choose "Send straight to checkout". Opening a checkout link twice does not double the order, and the note under the link now says where it leads.
-* New: **Ad spend in another currency is converted.** When a Meta or Google Ads account bills in a different currency from your store, add its rate in Settings → Currency: the spend then counts in Expenses, Net profit, ROAS and cost per order, and Expenses shows the original amount and the rate.
-* Fix: **Such spend is no longer left out without a word.** Until its rate is set, the Expenses card says how much spend is not counted, and the Ad Platforms screen asks for the rate.
-* New: **A minimum spend for the popup coupon.** Setting: Cart abandonment → Email popup → "Minimum spend", empty by default (no minimum). The popup shows it under the code, and with "Apply automatically" on, the code waits until the cart reaches it. Codes already sent keep their rules.
-* New: **Count visitors as soon as the page opens.** Setting: Analytics → "Count visitors when the page opens", off by default. When it is on, a visitor counts as soon as a store page opens, the way Meta counts landing page views, instead of after their first tap, scroll or key press. Known bots, cloud servers and your staff are still left out.
-* Fix: **Phones with "bot" in their name are counted.** Visitors on phones whose model name holds a word like bot or spider, such as FOSSiBOT or OSCAL Spider, were taken for robots. They are now counted, and their carts are saved for abandoned cart emails.
-* Fix: **Your menu layout with Admin Menu Editor.** Since 3.3.22, on sites with Admin Menu Editor (Pro too), a sidebar arranged in BrikPanel's Navigation screen fell apart after updates, and a renamed "More" group went missing. BrikPanel draws a layout built on its own menu again.
-* Fix: **Duplicate starts the copy fresh.** BrikPanel's Duplicate no longer copies the original's GTIN, star rating, review count, sales and date added, like WooCommerce's own Duplicate. The SKU stays empty as before.
-* Fix: **Blocksy's color picker on attribute terms.** With Blocksy Pro's color swatches, the picker opened behind BrikPanel's "Add new" term panel and no color could be chosen. It now opens on top, and Escape closes only the picker.
-* Fix: **Profit tile names on phones.** On a day without sales, the dashboard's Profit tiles squeezed into one row with their names cut off; they now wrap to two rows.
-
-= 3.3.40 (2026-10-25) =
-* New: **See which countries your visitors come from.** The "Order locations" card is now "Locations", with a Visitors tab next to Orders and Customers: the globe and your top countries by visitors, each with its share and orders. Live visitors shows each visitor's flag and country, and the dashboard's Export Excel file has a "Visitor countries" sheet.
-* New: **Countries are found on your own server.** BrikPanel finds the country in a list that comes with the plugin (DB-IP's free IP to Country Lite), so no IP address is sent anywhere or saved: only the two-letter country code is kept. Countries are counted from the day you update, while "Visitor tracking" is on.
-* Fix: **Visitors from Snapchat, Pinterest and other app browsers are counted.** These apps' built-in browsers, and Instagram on some Xiaomi phones, were taken for robots: those shoppers were not counted, saw no Email popup and got no abandoned cart email. They are now treated like any other visitor.
-* Fix: **Speed plugins no longer hide visitors.** With a plugin that delays JavaScript until the first tap, such as WP Rocket or LiteSpeed Cache, many visitors who tapped or clicked only once were not counted. BrikPanel's counter now asks these plugins to leave it alone, and the first tap counts even when one still holds it back.
-* Fix: **Row links on Categories no longer run off the card.** On wide screens, the Edit, Quick Edit and Delete links of Categories, Tags, Brands and attributes were cut off in longer languages such as Dutch, or with SEO columns, and could cover the name. They now sit next to the name only when they fit, and under it otherwise.

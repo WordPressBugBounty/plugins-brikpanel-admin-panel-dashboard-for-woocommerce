@@ -2500,3 +2500,13 @@ html[dir="rtl"] .brikpanel-pe-ph-sheet :is(.brikpanel-pe-showpage,.brikpanel-pe-
 .brikpanel-pe .brikpanel-pe-var-table-wrap.is-ph-closing{animation:none}
 }
 }
+
+/* ---- Device draft (3.3.48): "Unsaved product" ---------------------------
+   A product this phone kept but never saved, offered back above the content
+   (the script shows it on a phone only). Its side margins are the content's. */
+.brikpanel-pe-unsaved{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem 1rem;box-sizing:border-box;margin:1rem 1rem 0;padding:1rem 1.25rem;background:var(--pe-card,#fff);border:1px solid var(--pe-border,#e3e3e3);border-radius:var(--pe-radius,.75rem);box-shadow:var(--pe-shadow,0 1px 3px rgba(0,0,0,.08))}
+.brikpanel-pe-unsaved[hidden]{display:none}
+.brikpanel-pe-unsaved-text{display:flex;flex:1 1 12rem;flex-direction:column;gap:.125rem;min-width:0}
+.brikpanel-pe-unsaved-title{color:var(--pe-text,#303030);font-size:.875rem;font-weight:600}
+.brikpanel-pe-unsaved-meta{color:var(--pe-text-secondary,#616161);font-size:.8125rem;overflow-wrap:anywhere}
+.brikpanel-pe-unsaved-actions{display:flex;flex-wrap:wrap;gap:.5rem}
