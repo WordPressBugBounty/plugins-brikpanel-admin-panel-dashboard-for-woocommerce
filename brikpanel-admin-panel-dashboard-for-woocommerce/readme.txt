@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.48
+Stable tag: 3.3.49
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -520,6 +520,14 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.49 (2026-11-10) =
+* Tweak: **Google Sheets two-way sync is much lighter.** Each check of the sheet now loads only the orders, products and expenses whose rows changed, instead of every row. On our test store, one check of 1,208 orders ran 24 database queries instead of 5,403.
+* New: **"Manual only" for two-way sync.** On the Google Sheets page, Orders, Products and Expenses have a "Manual only" choice under "Poll interval": BrikPanel stops checking the sheet on a schedule, and "Pull now" brings your edits in. Every 5 minutes stays the default.
+* Tweak: **Bulk status changes update the sheet in one go.** Changing the status of 20 orders at once now takes one background job and 2 Google requests instead of 19 jobs and 38 requests. Rows Google refuses are tried again, up to three times.
+* Tweak: **A Google Sheets page left open stays quiet.** In a background tab, the page no longer asks your server for its status every 30 seconds. It checks once when you come back.
+* Fix: **Status changes reach the sheet with Redis or Memcached.** With a persistent object cache, an order's first status change after it was exported did not reach the sheet.
+* Fix: **Statuses set in the sheet stay.** With "One row per line item", a status you set in the sheet could be switched back by the next check, before the order's other rows were updated.
+
 = 3.3.48 (2026-11-08) =
 * New: **Phones keep a product you have not saved.** On a phone, the product screen keeps a new or draft product on the device until you save it, with its photos, also the ones still uploading in the media window. If the phone closes the app before you save (iPhones close Home Screen apps left in the background), the next new product offers it back. Restore brings it back as a draft, variations included. Nothing is saved to your store until you tap Restore.
 * New: **A stuck page says why.** When an admin page is still not ready after 15 seconds, a small box at the top shows how long it has waited, whether the wait is your server or the connection between this computer and your site, and what to try, such as turning off HTTP/3 (QUIC). A page that never arrives is explained on the next one. The timings stay in your browser.
@@ -571,9 +579,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **Pencil drawings in the email popup.** Setting: Cart abandonment → Email popup → "Offer animation". The six styles are redrawn as pencil sketches that draw themselves once: Handwriting (the new default), Ring, Coupon, Envelope, Gift box and Eraser. A style you picked moves to its new drawing.
 * Tweak: **A calmer popup.** It opens without a bounce, and after signup a pencil tick and a frame drawn round the code replace the confetti. On a store with more than one language, each drawing's handwritten note can be set per language.
 * Fix: **The popup shrinks into its tab.** After signup, the card now flies into the floating tab that keeps the code, instead of only fading away.
-
-= 3.3.42 (2026-10-30) =
-* New: **The phone app carries your store's name and icon.** When added to a phone, the app now gets your Site Title and Site Icon (BrikPanel's icon when there is none), and the phone panel uses that name in its steps. A phone that already has the app may keep the old name until the app is added again.
-* New: **Choose what an order notification says.** Setting: Notifications → "Notification text". Switch the total, number of items, order number, SKUs, campaign and store name on or off and set their order, with a preview from your latest order. The store name is now off by default, as the app already carries it.
-* New: **Your supplier's SKU on orders.** With supplier management on, a product with a supplier's code shows it under its SKU on the order screen, such as "AliExpress SKU: AE-30418". It never shows in customer emails.
-* New: **A supplier SKU for each variation.** Variations have their own "Supplier SKU" box; left empty, it uses the main product's code when the supplier is the same. Stock Orders show the code and find products by it.

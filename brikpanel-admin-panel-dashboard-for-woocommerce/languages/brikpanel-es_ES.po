@@ -21397,3 +21397,9 @@ msgstr "Copiado"
 msgctxt "suffix of a duplicated product name"
 msgid "Copy"
 msgstr "Copia"
+
+#: front-end/google-sheets/views/page.php:373
+#: front-end/google-sheets/views/page.php:474
+#: front-end/google-sheets/views/page.php:671
+msgid "Manual only: BrikPanel does not check the sheet on a schedule. Click \"Pull now\" to bring your edits in."
+msgstr "Solo manual: BrikPanel no revisa la hoja de forma programada. Haz clic en \"Obtener ahora\" para traer tus cambios."

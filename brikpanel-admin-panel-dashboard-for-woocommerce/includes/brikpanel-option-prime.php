@@ -399,6 +399,7 @@ function brikpanel_option_autoload_denylist() {
 		'brikpanel_gs_orders_custom_fields'             => 'multi-KB, unbounded',
 		'brikpanel_gs_expenses_state'                   => 'multi-KB and write-hot',
 		'brikpanel_gs_products_push_queue'              => 'queue, write-hot',
+		'brikpanel_gs_orders_update_queue'              => 'queue, write-hot',
 		'brikpanel_ea_outbox'                           => 'queue, write-hot',
 		'brikpanel_nav_config'                          => 'grows with the menu',
 		'brikpanel_pe_section_order'                    => 'unbounded, screen-scoped',

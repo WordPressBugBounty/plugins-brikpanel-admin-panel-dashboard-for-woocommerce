@@ -2,6 +2,14 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.49 (2026-11-10) =
+* Tweak: **Google Sheets two-way sync is much lighter.** Each check of the sheet now loads only the orders, products and expenses whose rows changed, instead of every row. On our test store, one check of 1,208 orders ran 24 database queries instead of 5,403.
+* New: **"Manual only" for two-way sync.** On the Google Sheets page, Orders, Products and Expenses have a "Manual only" choice under "Poll interval": BrikPanel stops checking the sheet on a schedule, and "Pull now" brings your edits in. Every 5 minutes stays the default.
+* Tweak: **Bulk status changes update the sheet in one go.** Changing the status of 20 orders at once now takes one background job and 2 Google requests instead of 19 jobs and 38 requests. Rows Google refuses are tried again, up to three times.
+* Tweak: **A Google Sheets page left open stays quiet.** In a background tab, the page no longer asks your server for its status every 30 seconds. It checks once when you come back.
+* Fix: **Status changes reach the sheet with Redis or Memcached.** With a persistent object cache, an order's first status change after it was exported did not reach the sheet.
+* Fix: **Statuses set in the sheet stay.** With "One row per line item", a status you set in the sheet could be switched back by the next check, before the order's other rows were updated.
+
 = 3.3.48 (2026-11-08) =
 * New: **Phones keep a product you have not saved.** On a phone, the product screen keeps a new or draft product on the device until you save it, with its photos, also the ones still uploading in the media window. If the phone closes the app before you save (iPhones close Home Screen apps left in the background), the next new product offers it back. Restore brings it back as a draft, variations included. Nothing is saved to your store until you tap Restore.
 * New: **A stuck page says why.** When an admin page is still not ready after 15 seconds, a small box at the top shows how long it has waited, whether the wait is your server or the connection between this computer and your site, and what to try, such as turning off HTTP/3 (QUIC). A page that never arrives is explained on the next one. The timings stay in your browser.

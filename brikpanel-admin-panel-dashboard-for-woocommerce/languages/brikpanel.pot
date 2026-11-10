@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0+.
 msgid ""
 msgstr ""
-"Project-Id-Version: BrikPanel: WooCommerce Admin Dashboard Theme 3.3.48\n"
+"Project-Id-Version: BrikPanel: WooCommerce Admin Dashboard Theme 3.3.49\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/brikpanel\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-08T15:19:08+00:00\n"
+"POT-Creation-Date: 2026-11-10T07:17:09+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: brikpanel\n"
@@ -142,7 +142,7 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:3489
 #: front-end/expenses/brikpanel-expenses.php:1520
 #: front-end/expenses/brikpanel-expenses.php:1551
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1003
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1057
 #: front-end/welcome/brikpanel-welcome.php:161
 #: includes/brikpanel-store-summary.php:2095
 #: includes/brikpanel-store-summary.php:3251
@@ -156,7 +156,7 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:3490
 #: front-end/expenses/brikpanel-expenses.php:1521
 #: front-end/expenses/brikpanel-expenses.php:1552
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1004
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1058
 #: front-end/welcome/brikpanel-welcome.php:161
 #: includes/brikpanel-store-summary.php:2096
 #: includes/brikpanel-store-summary.php:3252
@@ -885,11 +885,11 @@ msgstr ""
 #: front-end/ad-platforms/views/page.php:351
 #: front-end/expenses/brikpanel-expenses.php:429
 #: front-end/expenses/brikpanel-expenses.php:452
-#: front-end/google-sheets/views/page.php:375
-#: front-end/google-sheets/views/page.php:474
-#: front-end/google-sheets/views/page.php:554
-#: front-end/google-sheets/views/page.php:593
-#: front-end/google-sheets/views/page.php:675
+#: front-end/google-sheets/views/page.php:377
+#: front-end/google-sheets/views/page.php:478
+#: front-end/google-sheets/views/page.php:558
+#: front-end/google-sheets/views/page.php:597
+#: front-end/google-sheets/views/page.php:681
 #: front-end/navigation/brikpanel-nav-customizer.php:2422
 #: front-end/orders/brikpanel-order-tracking.php:613
 #: front-end/products/brikpanel-product-editor.php:1702
@@ -943,7 +943,7 @@ msgid "If you fill this in, every account you tick must be under this manager."
 msgstr ""
 
 #: front-end/ad-platforms/views/page.php:360
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1716
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1719
 msgid "Last successful sync"
 msgstr ""
 
@@ -956,11 +956,11 @@ msgid "(last attempt failed, check the error log)"
 msgstr ""
 
 #: front-end/ad-platforms/views/page.php:416
-#: front-end/google-sheets/views/page.php:376
-#: front-end/google-sheets/views/page.php:475
-#: front-end/google-sheets/views/page.php:555
-#: front-end/google-sheets/views/page.php:594
-#: front-end/google-sheets/views/page.php:676
+#: front-end/google-sheets/views/page.php:378
+#: front-end/google-sheets/views/page.php:479
+#: front-end/google-sheets/views/page.php:559
+#: front-end/google-sheets/views/page.php:598
+#: front-end/google-sheets/views/page.php:682
 msgid "Sync now"
 msgstr ""
 
@@ -1020,7 +1020,7 @@ msgid "Spend is stored in each ad account’s own currency. When that differs fr
 msgstr ""
 
 #: front-end/ad-platforms/views/page.php:529
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1714
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1717
 msgid "Recent activity"
 msgstr ""
 
@@ -3006,7 +3006,7 @@ msgstr ""
 #. translators: %s: the site's domain, e.g. shop.example.com
 #: front-end/brikcontrol/views/partials/check-card.php:113
 #: front-end/brikcontrol/views/partials/check-card.php:405
-#: front-end/push/brikpanel-pwa-entry.php:235
+#: front-end/push/brikpanel-pwa-entry.php:236
 #: front-end/search/brikpanel-search.php:341
 #: front-end/vendors/class-brikpanel-stock-orders.php:248
 msgid "Open"
@@ -5833,7 +5833,7 @@ msgid "Coupons (discounts given)"
 msgstr ""
 
 #: front-end/dashboard/brikpanel-dashboard-section-order.php:651
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1660
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1663
 #: front-end/products/brikpanel-qe-order.php:370
 #: front-end/products/brikpanel-section-order.php:470
 #: front-end/push/brikpanel-push-admin.php:435
@@ -5841,7 +5841,7 @@ msgid "Move up"
 msgstr ""
 
 #: front-end/dashboard/brikpanel-dashboard-section-order.php:654
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1661
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1664
 #: front-end/products/brikpanel-qe-order.php:373
 #: front-end/products/brikpanel-section-order.php:473
 #: front-end/push/brikpanel-push-admin.php:436
@@ -6568,14 +6568,14 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:2017
 #: front-end/expenses/brikpanel-expenses.php:212
 #: front-end/expenses/brikpanel-expenses.php:356
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:971
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1025
 msgid "Fixed amount"
 msgstr ""
 
 #: front-end/dashboard/brikpanel-dashboard.php:2018
 #: front-end/expenses/brikpanel-expenses.php:207
 #: front-end/expenses/brikpanel-expenses.php:357
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:972
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1026
 msgid "Percentage of revenue"
 msgstr ""
 
@@ -6583,7 +6583,7 @@ msgstr ""
 #: front-end/expenses/brikpanel-expenses.php:210
 #: front-end/expenses/brikpanel-expenses.php:358
 #: front-end/expenses/brikpanel-expenses.php:1078
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:976
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1030
 #: includes/brikpanel-profit.php:2062
 msgid "Cost per order"
 msgstr ""
@@ -6663,28 +6663,28 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:2079
 #: front-end/expenses/brikpanel-expenses.php:412
 #: front-end/expenses/brikpanel-expenses.php:453
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1070
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1124
 msgid "One-time"
 msgstr ""
 
 #: front-end/dashboard/brikpanel-dashboard.php:2080
 #: front-end/expenses/brikpanel-expenses.php:413
 #: front-end/expenses/brikpanel-expenses.php:455
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1071
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1125
 msgid "Monthly"
 msgstr ""
 
 #: front-end/dashboard/brikpanel-dashboard.php:2081
 #: front-end/expenses/brikpanel-expenses.php:414
 #: front-end/expenses/brikpanel-expenses.php:456
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1072
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1126
 msgid "Weekly"
 msgstr ""
 
 #: front-end/dashboard/brikpanel-dashboard.php:2082
 #: front-end/expenses/brikpanel-expenses.php:415
 #: front-end/expenses/brikpanel-expenses.php:457
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1073
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1127
 msgid "Yearly"
 msgstr ""
 
@@ -6997,7 +6997,7 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:6965
 #: front-end/expenses/brikpanel-expenses.php:1518
 #: front-end/expenses/brikpanel-expenses.php:1550
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1002
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1056
 #: front-end/google-sheets/class-brikpanel-sheets-reports-sync.php:225
 #: front-end/orders/brikpanel-order-export.php:1022
 #: front-end/orders/brikpanel-order-export.php:1043
@@ -7021,7 +7021,7 @@ msgstr ""
 #: front-end/dashboard/brikpanel-dashboard.php:3508
 #: front-end/expenses/brikpanel-expenses.php:1516
 #: front-end/expenses/brikpanel-expenses.php:1549
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1001
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:1055
 #: front-end/google-sheets/class-brikpanel-sheets-reports-sync.php:230
 #: front-end/order/brikpanel-order-shipping-cost.php:76
 #: includes/brikpanel-store-summary.php:2202
@@ -8028,15 +8028,15 @@ msgstr ""
 msgid "When on, the Google Sheets admin menu, sync flows and AJAX endpoints are active. When off, the entire module is dormant: no menu item, no scheduled jobs, no order-write listeners."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-client.php:548
+#: front-end/google-sheets/class-brikpanel-sheets-client.php:591
 msgid "The BrikPanel service that renews your Google session is temporarily unreachable, so this sync was skipped. Your connection is still in place. It will resume on its own, or you can click Sync now again in a few minutes."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-client.php:553
+#: front-end/google-sheets/class-brikpanel-sheets-client.php:596
 msgid "Not connected to Google Sheets."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-client.php:646
+#: front-end/google-sheets/class-brikpanel-sheets-client.php:689
 msgid "Request to Google Sheets failed after retries."
 msgstr ""
 
@@ -8044,11 +8044,11 @@ msgstr ""
 msgid "Sheets: customers + RFM snapshot"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:188
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:199
 msgid "Sheets: push expenses to Google Sheets"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:193
+#: front-end/google-sheets/class-brikpanel-sheets-expenses-sync.php:204
 msgid "Sheets: pull expenses from Google Sheets"
 msgstr ""
 
@@ -8377,31 +8377,31 @@ msgstr ""
 msgid "Google Sheets connected."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:319
+#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:355
 msgid "Sheets: flush new orders to Google Sheets"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:324
+#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:360
 msgid "Sheets: scheduled bulk order export"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:329
+#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:365
 msgid "Sheets: update changed-status order rows"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:334
+#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:370
 msgid "Sheets: pull order status changes from Google Sheets"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:859
+#: front-end/google-sheets/class-brikpanel-sheets-order-sync.php:1141
 msgid "Status changed via Google Sheets sync."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-products-sync.php:318
+#: front-end/google-sheets/class-brikpanel-sheets-products-sync.php:328
 msgid "Sheets: push product changes to Google Sheets"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-products-sync.php:323
+#: front-end/google-sheets/class-brikpanel-sheets-products-sync.php:333
 msgid "Sheets: pull product changes from Google Sheets"
 msgstr ""
 
@@ -8614,8 +8614,8 @@ msgstr ""
 #: front-end/google-sheets/class-brikpanel-sheets-settings.php:390
 #: front-end/google-sheets/class-brikpanel-sheets-settings.php:440
 #: front-end/google-sheets/class-brikpanel-sheets-settings.php:478
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1076
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1384
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1079
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1387
 msgid "Connect Google Sheets first."
 msgstr ""
 
@@ -8648,30 +8648,30 @@ msgstr ""
 msgid "Spreadsheet created but no ID returned."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:811
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:813
 msgid "Invalid \"include orders from\" date. Use the date picker."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:862
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:860
 msgid "Row layout was not changed: the target tab could not be wiped (rate limit or connection issue). Your other settings were saved. Wait a minute and try the layout switch again."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:868
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:866
 msgid "Row layout changed. The target tab was wiped and all orders will re-export in the new layout. Click \"Sync now\" to fill it."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:939
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:929
 msgid "Unknown settings group."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1000
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1333
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1454
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1003
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1336
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1457
 msgid "Unknown flow."
 msgstr ""
 
 #. translators: %s: number of orders.
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1049
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1052
 #, php-format
 msgid "All %s order in this date and status range will be exported."
 msgid_plural "All %s orders in this date and status range will be exported."
@@ -8679,66 +8679,66 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: matching orders, 2: total orders in range.
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1054
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1057
 #, php-format
 msgid "%1$s of %2$s orders matches this shipping filter."
 msgid_plural "%1$s of %2$s orders match this shipping filter."
 msgstr[0] ""
 msgstr[1] ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1079
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1387
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1082
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1390
 msgid "Pick or create a target spreadsheet first."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1089
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1092
 msgid "Enable this sync first, then click Save before clicking Sync now."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1152
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1268
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1155
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1271
 msgid "A background sync is already running. It will finish on its own, or click \"Sync now\" again in a moment to watch progress."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1170
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1173
 msgid "No orders matched the selected status filters and \"include orders from\" date. Adjust those settings and try again."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1172
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1175
 msgid "No new orders to sync. Every matching order is already marked synced. To wipe the target tab and re-push the full history, click \"Reset & re-push everything\"."
 msgstr ""
 
 #. translators: 1: rows, 2: orders
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1177
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1180
 #, php-format
 msgid "Synced %2$d order (%1$d rows)."
 msgid_plural "Synced %2$d orders (%1$d rows)."
 msgstr[0] ""
 msgstr[1] ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1188
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1277
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1191
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1280
 msgid "More running in background…"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1266
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1269
 msgid "The target tab could not be wiped, so nothing was re-pushed and your existing rows were left untouched. This is usually a Google rate limit, wait a minute and click \"Sync now\" again."
 msgstr ""
 
 #. translators: 1: appended count, 2: updated count
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1272
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1275
 #, php-format
 msgid "Pushed %1$d new and updated %2$d existing product rows."
 msgstr ""
 
 #. translators: 1: rows, 2: tabs
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1288
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1291
 #, php-format
 msgid "Refreshed %2$d report tabs (%1$d rows)."
 msgstr ""
 
 #. translators: %d: customer rows
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1304
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1307
 #, php-format
 msgid "Synced %d customer."
 msgid_plural "Synced %d customers."
@@ -8746,7 +8746,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %d: expense rows written to the sheet
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1314
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1317
 #, php-format
 msgid "Wrote %d expense to the sheet."
 msgid_plural "Wrote %d expenses to the sheet."
@@ -8754,50 +8754,50 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: expenses created from the sheet, 2: expenses updated from the sheet
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1324
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1327
 #, php-format
 msgid "Added %1$d and updated %2$d from your edits in the sheet."
 msgstr ""
 
 #. translators: 1: time-ago, 2: row count
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1355
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1722
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1358
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1725
 #, php-format
 msgid "%1$s ago, %2$d rows"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1397
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1400
 msgid "Enable two-way sync for orders first, then click Save before clicking Pull now."
 msgstr ""
 
 #. translators: 1: rows checked, 2: changes applied, 3: conflicts
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1403
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1406
 #, php-format
 msgid "Checked %1$d order rows. Applied %2$d status changes from Sheets, %3$d conflicts skipped."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1412
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1415
 msgid "Enable two-way sync for products first, then click Save before clicking Pull now."
 msgstr ""
 
 #. translators: 1: rows checked, 2: changes applied, 3: conflicts
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1418
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1421
 #, php-format
 msgid "Checked %1$d product rows. Applied %2$d changes from Sheets, %3$d conflicts skipped."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1427
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1430
 msgid "Enable two-way sync for expenses first, then click Save before clicking Pull now."
 msgstr ""
 
 #. translators: 1: rows read, 2: expenses added, 3: expenses updated, 4: rows skipped
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1433
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1436
 #, php-format
 msgid "Read %1$d rows: added %2$d, updated %3$d, skipped %4$d."
 msgstr ""
 
 #. translators: %d: rows changed on both sides since the last sync
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1442
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1445
 #, php-format
 msgid "%d row was changed in both places, so the BrikPanel version was kept."
 msgid_plural "%d rows were changed in both places, so the BrikPanel versions were kept."
@@ -8805,64 +8805,64 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: log message, 2: how many times it repeated.
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1507
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1510
 #, php-format
 msgid "%1$s (repeated %2$s times)"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1560
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1563
 msgid "The target tab could not be wiped (rate limit or connection issue), so the reset was cancelled to avoid duplicate rows. Nothing was changed. Wait a minute and try again."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1565
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1568
 msgid "Sync state cleared and target tab wiped. Click \"Sync now\" to repopulate it."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1617
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1620
 msgid "Two-way columns"
 msgstr ""
 
 #. translators: %s: comma-separated list of column names that sync back to the store.
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1623
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1626
 #, php-format
 msgid "Edits you make in the sheet are written back to your store for these columns only: %s."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1628
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1631
 msgid "Every other column is one-way (store to sheet). Anything you type into those cells is display-only and will be overwritten on the next sync. Columns that sync back are marked with this glyph in the sheet header."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1633
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1636
 msgid "Two-way sync is currently turned off, so edits in the sheet are not written back yet. Turn on \"Two-way sync: apply status changes from Sheets\" below and save to enable it."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1635
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1638
 msgid "Two-way sync is currently turned off, so edits in the sheet are not written back yet. Turn on the two-way sync option below and save to enable it."
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1657
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1689
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1660
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1692
 msgid "Edits to this column sync back to your store"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1657
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1689
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1660
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1692
 msgid "two-way"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1667
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1670
 msgid "Show more columns"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1681
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1684
 msgid "Custom checkout / order fields"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1696
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1699
 msgid "Save columns"
 msgstr ""
 
-#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1734
+#: front-end/google-sheets/class-brikpanel-sheets-settings.php:1737
 msgid "View error log"
 msgstr ""
 
@@ -8967,9 +8967,9 @@ msgid "Enable order sync"
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:253
-#: front-end/google-sheets/views/page.php:419
-#: front-end/google-sheets/views/page.php:588
-#: front-end/google-sheets/views/page.php:637
+#: front-end/google-sheets/views/page.php:421
+#: front-end/google-sheets/views/page.php:592
+#: front-end/google-sheets/views/page.php:641
 msgid "Target tab name"
 msgstr ""
 
@@ -8998,11 +8998,14 @@ msgid "Bulk export schedule"
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:285
+#: front-end/google-sheets/views/page.php:365
+#: front-end/google-sheets/views/page.php:466
+#: front-end/google-sheets/views/page.php:663
 msgid "Manual only"
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:286
-#: front-end/google-sheets/views/page.php:523
+#: front-end/google-sheets/views/page.php:527
 msgid "Hourly"
 msgstr ""
 
@@ -9011,7 +9014,7 @@ msgid "Every 4 hours"
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:288
-#: front-end/google-sheets/views/page.php:525
+#: front-end/google-sheets/views/page.php:529
 msgid "Daily"
 msgstr ""
 
@@ -9040,205 +9043,211 @@ msgid "When on, BrikPanel polls the Orders tab and writes any order_status edits
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:359
-#: front-end/google-sheets/views/page.php:458
-#: front-end/google-sheets/views/page.php:653
+#: front-end/google-sheets/views/page.php:460
+#: front-end/google-sheets/views/page.php:657
 msgid "Poll interval"
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:362
-#: front-end/google-sheets/views/page.php:461
-#: front-end/google-sheets/views/page.php:656
+#: front-end/google-sheets/views/page.php:463
+#: front-end/google-sheets/views/page.php:660
 msgid "Every 2 minutes"
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:363
-#: front-end/google-sheets/views/page.php:462
-#: front-end/google-sheets/views/page.php:657
+#: front-end/google-sheets/views/page.php:464
+#: front-end/google-sheets/views/page.php:661
 msgid "Every 5 minutes"
 msgstr ""
 
 #: front-end/google-sheets/views/page.php:364
-#: front-end/google-sheets/views/page.php:463
-#: front-end/google-sheets/views/page.php:658
+#: front-end/google-sheets/views/page.php:465
+#: front-end/google-sheets/views/page.php:662
 msgid "Every 15 minutes"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:377
+#: front-end/google-sheets/views/page.php:373
+#: front-end/google-sheets/views/page.php:474
+#: front-end/google-sheets/views/page.php:671
+msgid "Manual only: BrikPanel does not check the sheet on a schedule. Click \"Pull now\" to bring your edits in."
+msgstr ""
+
+#: front-end/google-sheets/views/page.php:379
 msgid "Read the Orders tab right now and apply any status changes back to WooCommerce."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:377
-#: front-end/google-sheets/views/page.php:476
-#: front-end/google-sheets/views/page.php:677
+#: front-end/google-sheets/views/page.php:379
+#: front-end/google-sheets/views/page.php:480
+#: front-end/google-sheets/views/page.php:683
 msgid "Pull now"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:378
+#: front-end/google-sheets/views/page.php:380
 msgid "Wipe the target tab in Google Sheets and re-push the full order history from scratch. Any manual edits in that tab will be lost."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:378
-#: front-end/google-sheets/views/page.php:477
-#: front-end/google-sheets/views/page.php:678
+#: front-end/google-sheets/views/page.php:380
+#: front-end/google-sheets/views/page.php:481
+#: front-end/google-sheets/views/page.php:684
 msgid "Reset & re-push everything"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:386
-#: front-end/google-sheets/views/page.php:485
-#: front-end/google-sheets/views/page.php:602
-#: front-end/google-sheets/views/page.php:686
+#: front-end/google-sheets/views/page.php:388
+#: front-end/google-sheets/views/page.php:489
+#: front-end/google-sheets/views/page.php:606
+#: front-end/google-sheets/views/page.php:692
 msgid "Columns to export"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:387
+#: front-end/google-sheets/views/page.php:389
 msgid "Mandatory columns (Order ID, Line item ID) are always included so we can de-duplicate rows."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:406
+#: front-end/google-sheets/views/page.php:408
 msgid "Product sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:407
+#: front-end/google-sheets/views/page.php:409
 msgid "Push WooCommerce products and variations to a tab so you can review stock at a glance. Variations get their own row. Edits to the Stock column flow back to WooCommerce."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:411
+#: front-end/google-sheets/views/page.php:413
 msgid "Enable product sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:424
+#: front-end/google-sheets/views/page.php:426
 msgid "Categories to sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:425
+#: front-end/google-sheets/views/page.php:427
 msgid "Leave every box unchecked to sync all products. Pick one or more categories to sync only those products and their variations. Sub-categories are included automatically."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:427
+#: front-end/google-sheets/views/page.php:429
 msgid "No product categories found yet."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:442
+#: front-end/google-sheets/views/page.php:444
 msgid "Changing the categories? After saving, click \"Sync now\". The tab is rebuilt from scratch to match the new selection, with no empty gaps."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:449
+#: front-end/google-sheets/views/page.php:451
 msgid "Two-way sync: apply stock edits from Sheets"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:455
+#: front-end/google-sheets/views/page.php:457
 msgid "When on, BrikPanel polls the Products tab and writes any Stock cell edits back to WooCommerce. Only the Stock column is read back; other edits (price, name, etc.) are display-only and get overwritten on the next push."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:476
+#: front-end/google-sheets/views/page.php:480
 msgid "Read the Products tab right now and apply any Stock changes back to WooCommerce."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:477
+#: front-end/google-sheets/views/page.php:481
 msgid "Wipe the Products tab in Google Sheets and re-push every product from scratch. Any manual edits in that tab will be lost."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:486
+#: front-end/google-sheets/views/page.php:490
 msgid "Product ID is mandatory so rows can be de-duplicated. Stock is the only column that flows back to WooCommerce."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:505
+#: front-end/google-sheets/views/page.php:509
 msgid "Reports sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:507
+#: front-end/google-sheets/views/page.php:511
 msgid "Push BrikPanel's computed analytics into dedicated tabs. Each push overwrites the tab so you always see 'as-of-last-sync' values."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:512
+#: front-end/google-sheets/views/page.php:516
 msgid "Enable reports sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:520
+#: front-end/google-sheets/views/page.php:524
 msgid "Snapshot interval"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:524
+#: front-end/google-sheets/views/page.php:528
 msgid "Every 6 hours"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:541
+#: front-end/google-sheets/views/page.php:545
 msgid "multi-window revenue, orders, AOV, conversion."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:542
+#: front-end/google-sheets/views/page.php:546
 msgid "last 90 days, one row per day."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:543
+#: front-end/google-sheets/views/page.php:547
 msgid "top 50 by units sold, last 90 days."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:544
+#: front-end/google-sheets/views/page.php:548
 msgid "daily visitor → checkout funnel."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:545
+#: front-end/google-sheets/views/page.php:549
 msgid "revenue, costs, expenses and net profit for the last 7, 30 and 90 days and all time."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:573
+#: front-end/google-sheets/views/page.php:577
 msgid "Customers sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:575
+#: front-end/google-sheets/views/page.php:579
 msgid "Each customer's metrics + RFM segment, refreshed after BrikPanel's nightly recompute. Tab is overwritten on every sync."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:580
+#: front-end/google-sheets/views/page.php:584
 msgid "Enable customers sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:603
+#: front-end/google-sheets/views/page.php:607
 msgid "Customer key and email are mandatory so rows can be de-duplicated."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:622
+#: front-end/google-sheets/views/page.php:626
 msgid "Expenses sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:624
+#: front-end/google-sheets/views/page.php:628
 msgid "Manage your operational costs in a spreadsheet instead of adding them one at a time. Turn on two-way sync and any row you type into the tab becomes a real expense in BrikPanel, counted in your net profit."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:629
+#: front-end/google-sheets/views/page.php:633
 msgid "Enable expenses sync"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:644
+#: front-end/google-sheets/views/page.php:648
 msgid "Two-way sync: add and edit expenses from the sheet"
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:650
+#: front-end/google-sheets/views/page.php:654
 msgid "When on, BrikPanel reads the tab on a schedule. Leave the Expense ID cell empty on a new row and it is added as a new expense, then the ID is filled in for you. Change a cell on an existing row and that expense is updated."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:669
+#: front-end/google-sheets/views/page.php:675
 msgid "The tab holds one row per expense you manage: every one-off cost, plus the first row of each repeating cost. The extra dated copies BrikPanel creates from a repeating cost are not listed, because they are rebuilt from that first row whenever you change it."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:670
+#: front-end/google-sheets/views/page.php:676
 msgid "Set Type to \"Percentage of revenue\" for costs like card commission. The Amount cell then holds the rate, so 2.9 means 2.9%."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:671
+#: front-end/google-sheets/views/page.php:677
 msgid "Deleting a row from the sheet does not delete the expense, because an empty row cannot be told apart from one that has not loaded yet. Delete it on the Operational Expenses screen instead."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:677
+#: front-end/google-sheets/views/page.php:683
 msgid "Read the Expenses tab right now and add or update the expenses in BrikPanel."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:678
+#: front-end/google-sheets/views/page.php:684
 msgid "Wipe the Expenses tab in Google Sheets and re-write it from your BrikPanel expenses. Rows you typed there and have not pulled in yet will be lost."
 msgstr ""
 
-#: front-end/google-sheets/views/page.php:687
+#: front-end/google-sheets/views/page.php:693
 msgid "Expense ID, Date, Title and Amount are always included: they are what an expense is, and BrikPanel needs them to match a row back to the right entry."
 msgstr ""
 
@@ -14797,32 +14806,32 @@ msgstr ""
 msgid "Log in: %s"
 msgstr ""
 
-#: front-end/push/brikpanel-pwa-entry.php:225
+#: front-end/push/brikpanel-pwa-entry.php:226
 msgid "Log in to continue"
 msgstr ""
 
-#: front-end/push/brikpanel-pwa-entry.php:226
+#: front-end/push/brikpanel-pwa-entry.php:227
 msgid "The login on this phone has ended. Log in again to open your store panel."
 msgstr ""
 
-#: front-end/push/brikpanel-pwa-entry.php:227
+#: front-end/push/brikpanel-pwa-entry.php:228
 msgid "Log in"
 msgstr ""
 
-#: front-end/push/brikpanel-pwa-entry.php:229
+#: front-end/push/brikpanel-pwa-entry.php:230
 msgid "My site has its own login address"
 msgstr ""
 
-#: front-end/push/brikpanel-pwa-entry.php:231
+#: front-end/push/brikpanel-pwa-entry.php:232
 msgid "Login page address"
 msgstr ""
 
-#: front-end/push/brikpanel-pwa-entry.php:233
+#: front-end/push/brikpanel-pwa-entry.php:234
 msgid "The address you open to log in, also when a security plugin hides the usual one. This phone remembers it."
 msgstr ""
 
 #. translators: %s: the site's domain, e.g. shop.example.com
-#: front-end/push/brikpanel-pwa-entry.php:234
+#: front-end/push/brikpanel-pwa-entry.php:235
 #, php-format
 msgid "Use an address on %s."
 msgstr ""
