@@ -6259,10 +6259,6 @@ msgstr "Dün"
 msgid "Custom"
 msgstr "Özel"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1048
-msgid "Select dates"
-msgstr "Tarih seçin"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1096
 #: front-end/dashboard/brikpanel-dashboard.php:7211
 msgid "IP Geolocation by DB-IP"
@@ -6721,10 +6717,6 @@ msgstr "Harita"
 msgctxt "order locations card: the world globe"
 msgid "World"
 msgstr "Dünya"
-
-#: front-end/dashboard/brikpanel-dashboard.php:2388
-msgid "Toggle theme"
-msgstr "Temayı değiştir"
 
 #: front-end/dashboard/brikpanel-dashboard.php:2399
 msgctxt "map colour scale: fewer orders"
@@ -21402,3 +21394,98 @@ msgstr "Kopya"
 #: front-end/google-sheets/views/page.php:671
 msgid "Manual only: BrikPanel does not check the sheet on a schedule. Click \"Pull now\" to bring your edits in."
 msgstr "Yalnızca manuel: BrikPanel tabloyu belirli aralıklarla kontrol etmez. Değişikliklerinizi almak için \"Şimdi çek\" düğmesine tıklayın."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1057
+#: front-end/dashboard/brikpanel-dashboard.php:4691
+msgid "Month to date"
+msgstr "Bu ay"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1088
+msgid "Choose dates"
+msgstr "Tarih seçin"
+
+#: includes/brikpanel-enqueue.php:718
+msgid "vs the same period last month"
+msgstr "geçen ayın aynı dönemine göre"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:633
+msgid "This email address is not eligible for the signup discount."
+msgstr "Bu e-posta adresi kayıt indiriminden yararlanamaz."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5720
+msgid "Not eligible note"
+msgstr "Kod yok notu"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6213
+msgid "One code per email"
+msgstr "E-posta başına tek kod"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6214
+msgid "Give each email address the signup code only once"
+msgstr "Kayıt kodunu her e-posta adresine yalnızca bir kez ver"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6215
+msgid "An address that already got a signup code, used or not, gets no new one. While its code is still valid, the popup shows that code again. Only codes still in your store count, the trash included."
+msgstr "Daha önce kayıt kodu almış bir adres, kodu kullanmış olsun ya da olmasın, yeni kod almaz. Kodu hâlâ geçerliyse pencere aynı kodu yeniden gösterir. Yalnızca mağazanızda duran kodlar sayılır, çöp kutusundakiler de dahil."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6221
+msgid "New customers only"
+msgstr "Yalnızca yeni müşteriler"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6222
+msgid "Give no signup code to email addresses that already have an order"
+msgstr "Daha önce siparişi olan e-posta adreslerine kayıt kodu verme"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6223
+msgid "Counts the orders placed with this address or by its account, paid or refunded. The visitor is still subscribed, only without a code."
+msgstr "Bu adresle ya da bu adresin hesabıyla verilen ödenmiş veya iade edilmiş siparişler sayılır. Ziyaretçi yine abone olur, yalnızca kod almaz."
+
+msgctxt "Locations card button: the region map of a country"
+msgid "%s map"
+msgstr "%s haritası"
+
+msgctxt "Locations card: the menu of countries whose map can open"
+msgid "Country maps"
+msgstr "Ülke haritaları"
+
+msgctxt "Locations card: back from a country map to the country list"
+msgid "Countries"
+msgstr "Ülkeler"
+
+msgid "Open its map"
+msgstr "Haritasını açın"
+
+msgid "%s country"
+msgid_plural "%s countries"
+msgstr[0] "%s ülke"
+msgstr[1] "%s ülke"
+
+msgid "%s province"
+msgid_plural "%s provinces"
+msgstr[0] "%s il"
+msgstr[1] "%s il"
+
+msgid "%s state"
+msgid_plural "%s states"
+msgstr[0] "%s eyalet"
+msgstr[1] "%s eyalet"
+
+msgid "%s region"
+msgid_plural "%s regions"
+msgstr[0] "%s bölge"
+msgstr[1] "%s bölge"
+
+msgid "Most orders: %1$s (%2$s)"
+msgstr "En çok sipariş: %1$s (%2$s)"
+
+msgid "Most customers: %1$s (%2$s)"
+msgstr "En çok müşteri: %1$s (%2$s)"
+
+msgid "Most visitors: %1$s (%2$s)"
+msgstr "En çok ziyaretçi: %1$s (%2$s)"
+
+msgid "Loading the map…"
+msgstr "Harita yükleniyor…"
+
+msgid "The map could not be loaded. Please try again."
+msgstr "Harita yüklenemedi. Lütfen tekrar deneyin."

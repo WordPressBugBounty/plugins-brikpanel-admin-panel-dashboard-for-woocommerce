@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.49
+Stable tag: 3.3.51
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -63,7 +63,7 @@ A free **woocommerce statistics plugin** and **woocommerce sales tracker** witho
 
 = Geographic Analytics: WooCommerce Sales by Country =
 
-A 3D globe plots where your orders, customers and visitors come from: **WooCommerce sales by country** and city, with **Top Countries** and **Top Cities** tables. Selling in one country? It zooms into a **sales map by state or province**.
+A 3D globe plots where your orders, customers and visitors come from: **WooCommerce sales by country** and city, with **Top Countries** and **Top Cities** tables. Click a country to open its **sales map by state or province** (49 countries); a store selling in one country opens on it.
 
 = Lightning-Fast Order Search: Cmd/Ctrl + K from Anywhere =
 
@@ -232,7 +232,7 @@ WooCommerce's built-in analytics are slow, refresh on a delay, and have no live 
 * **HPOS (High-Performance Order Storage)** fully supported
 * WooCommerce 9.2 and newer; works alongside Admin Menu Editor, Slider Revolution, Yoast SEO, RankMath, WPML, Polylang
 * Translated into 9 languages, `.pot` file included
-* DB writes use prepared statements; visitor tracking IPs stored only as truncated salted SHA-256 hashes; admin activity excluded from analytics; front-end tracking can be disabled entirely from settings
+* DB writes use prepared statements; admin activity excluded from analytics
 
 == Installation ==
 
@@ -299,7 +299,7 @@ BrikPanel reads product cost from **WooCommerce's own native Cost of Goods Sold 
 
 = Can I turn off BrikPanel's front-end visitor tracking? =
 
-Yes. If you already run a dedicated analytics tool, disable **Visitor tracking** under **WooCommerce → Settings → BrikPanel → Analytics** and BrikPanel stops adding its tracking script, tracking cookies and tracking requests to your storefront. This switch covers analytics only: the shopper-facing features (checkout email capture, the Share cart button, the variation gallery) have their own switches, listed under "Does BrikPanel slow down my WooCommerce store?". You can also keep tracking on but raise the live-visitor refresh interval to reduce server load, or exclude logged-in customer details from the Live view for a fully anonymous setup. If you only want tracking to wait for cookie consent rather than switching it off, see the next question.
+Yes. If you already run a dedicated analytics tool, disable **Visitor tracking** under **WooCommerce → Settings → BrikPanel → Analytics** and BrikPanel stops adding its tracking script, tracking cookies and tracking requests to your storefront. This switch covers analytics only: the shopper-facing features (checkout email capture, the Share cart button, the variation gallery) have their own switches, listed under "Does BrikPanel slow down my WooCommerce store?". You can also keep tracking on but raise the live-visitor refresh interval to reduce server load, or exclude logged-in customer details from the Live view for a fully anonymous setup.
 
 = Does BrikPanel work with a cookie consent banner? (GDPR / consent mode) =
 
@@ -392,7 +392,7 @@ Yes. Every order query either has dual code paths, one for the HPOS order tables
 
 = How do I see WooCommerce sales by country? =
 
-Open the BrikPanel dashboard. The 3D globe in Locations shows the countries your orders come from, and the **Top Countries** and **Top Cities** tables (by orders, customers or visitors) update in real time. A store selling in one country sees its map by state, province or region instead. Orders use billing addresses, visitors their IP address (looked up locally). No setup.
+Open the BrikPanel dashboard. The 3D globe in Locations shows the countries your orders come from, and the **Top Countries** and **Top Cities** tables (by orders, customers or visitors) update in real time. Click a country with a map icon to see its orders by state, province or region (49 countries). A store selling in one country opens on its map. Orders use billing addresses, visitors their IP address (looked up locally). No setup.
 
 = How do I customize the WordPress login page for my WooCommerce store? =
 
@@ -404,7 +404,7 @@ Press `Ctrl + K` (or `Cmd + K` on Mac) anywhere inside wp-admin. The BrikPanel q
 
 = Can I see who is on my WooCommerce store right now? =
 
-Yes. BrikPanel includes a **woocommerce live visitors** widget on the dashboard that updates every 30 seconds. You can see each visitor's country and page, whether they have items in the cart, and whether they are an existing customer. This is real **woocommerce real time visitors** tracking, not estimates. A page nobody has touched for 30 minutes drops off the list, so a forgotten tab is not counted as someone on your store, and it comes back as soon as the visitor scrolls, clicks, taps or types.
+Yes. BrikPanel includes a **woocommerce live visitors** widget on the dashboard that updates every 30 seconds. You can see each visitor's country and page, whether they have items in the cart, and whether they are an existing customer. This is real **woocommerce real time visitors** tracking, not estimates. A tab nobody has touched for 30 minutes drops off the list until the visitor is active again.
 
 = Does BrikPanel track WooCommerce conversion rate and conversion funnel? =
 
@@ -460,7 +460,7 @@ In practice, yes. BrikPanel is built specifically for WooCommerce, but for store
 
 = Does BrikPanel work with Yoast SEO, RankMath, Elementor, WPML, and Polylang? =
 
-Yes. BrikPanel does not interfere with frontend rendering, so it works with every page builder and SEO plugin we have tested. Yoast SEO, Rank Math, All in One SEO and SEOPress metaboxes (including their SEO score panels) render and save inside the BrikPanel product editor. It also has its own translation files and is fully compatible with WPML and Polylang for multilingual stores.
+Yes. BrikPanel does not interfere with frontend rendering, so it works with every page builder and SEO plugin we have tested. Yoast SEO, Rank Math, All in One SEO and SEOPress metaboxes (including their SEO score panels) render and save inside the BrikPanel product editor. It also has its own translation files and is fully compatible with WPML and Polylang for multilingual stores. WPML's compatibility team reviewed BrikPanel 3.3.46 with WPML, String Translation and WooCommerce Multilingual, as part of the WPML Go Global program.
 
 = Does BrikPanel work with WooCommerce Subscriptions and membership plugins? =
 
@@ -485,7 +485,7 @@ No. Deactivating or deleting BrikPanel keeps your expenses, suppliers, purchase 
 
 = Will BrikPanel always be free? =
 
-Yes. The dashboard, the bulk editor, the inventory tools, the order management, the coupon manager, the custom login, the conversion tracking, the customer analytics suite, and every other feature listed above will remain free forever. We also sell a separate paid product (BrikMentor) on top of BrikPanel, but it is additive, BrikPanel itself stays 100% free.
+Yes. The dashboard, bulk editor, inventory tools, order management, coupon manager, custom login, conversion tracking, customer analytics suite and every other feature listed above will remain free forever. We also sell a separate paid product (BrikMentor) on top of BrikPanel, but it is additive, BrikPanel itself stays 100% free.
 
 = Is it BrikPanel or BrickPanel? =
 
@@ -519,6 +519,21 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
+
+= 3.3.51 (2026-11-13) =
+* Tweak: **The DB-IP link sits next to visitor countries.** It now ends the grey line under the globe on the Locations card's Visitors tab, and the Live visitors card while a visitor's flag shows. The line at the bottom of the dashboard is gone.
+
+= 3.3.50 (2026-11-13) =
+* New: **One signup code per email.** The signup popup gives each email address its discount code once, used or not. While the code is still valid, the popup shows it again. This is on for every store, also after this update. Setting: Cart abandonment → Email popup → "One code per email".
+* New: **Signup codes for new customers only.** A new setting, "New customers only", gives no popup code to email addresses that already have an order. The visitor is still subscribed.
+* Tweak: **No code, one clear line.** When one of these settings keeps the code back, no code email goes out and the popup says the address is not eligible. You can write that line for each language.
+* New: **"Month to date" on the dashboard.** Next to Today and 7 days, "Month to date" shows this month from the 1st to today, compared with the same days of last month.
+* Tweak: **A one-line dashboard header.** The date button shows the range you picked and opens the calendar, so the date line under the title is gone.
+* New: **A sales map for any country.** In the Locations card, a country with a map icon opens its own map, its states, provinces or regions shaded by orders, with its top regions and cities beside it. The button at the top opens the map of the country with the most orders, and on a map the country's name lists the others. World goes back to the globe. 49 countries have a map.
+* Tweak: **One Locations card.** The globe and the lists now sit side by side in one card, with the number of countries and the busiest one above them. Pointing at a country in the list turns the globe to it.
+* Fix: **A smoother globe.** The globe turns at the same speed on every screen, no longer makes the whole page redraw as countries turn away, and draws at its real size on high-resolution screens instead of four times larger. In our Firefox test, slow frames went from 39 to 0. Scrolling with the mouse over the globe now scrolls the page.
+* Fix: **A corrected address that gets its code on screen.** After "Wrong address? Edit it", a code shown on screen instead of emailed now appears in the popup, instead of a "Sent to your new address" note.
+* Fix: **Coupon codes on a Turkish dashboard.** The Coupons list and the coupon window show codes with a plain I, BRIK instead of BRİK.
 
 = 3.3.49 (2026-11-10) =
 * Tweak: **Google Sheets two-way sync is much lighter.** Each check of the sheet now loads only the orders, products and expenses whose rows changed, instead of every row. On our test store, one check of 1,208 orders ran 24 database queries instead of 5,403.
@@ -560,22 +575,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **Past orders keep their exchange rate (WooCommerce Multilingual).** A rate change, typed or automatic, converted every past order again at the new rate. Each order now keeps the rate it was converted at.
 * Tweak: **Each product row shows its language (WPML).** The product list shows a small language code next to the product name.
 * Fix: **A translation's price comes from its original (WPML).** Quick edit, bulk edit, the product screen and the Google Sheets pull no longer change a translation's price on its own, and a new price on the original now reaches its translations.
-
-= 3.3.44 (2026-11-03) =
-* Fix: **Bundles made with other plugins keep their contents.** Saving an Easy Product Bundles or WPC Product Bundles bundle in BrikPanel's product screen emptied it. A product type whose own settings are in WooCommerce's editor is now left untouched, also with "Auto-show fields other plugins add" on.
-* Fix: **Bundles no longer need a price.** Their price box is optional and shows the stored price, so a Bopo bundle keeps the price it works out instead of becoming a fixed-price bundle.
-* Tweak: **The "Open in WooCommerce" note for new bundles.** Picking a bundle type for a new product now shows the note that links to its settings.
-* Fix: **A hidden Pricing section no longer clears prices.** With Pricing off in Products → "Visible editor sections", every save emptied the product's price.
-
-= 3.3.43 (2026-10-31) =
-* New: **Pick the product type with one tap.** The product screen shows four buttons under the product name: Simple, Variable, Grouped and External, with other plugins' types under "More". The Products setting "Product type selector" is gone, as the buttons are always there.
-* Fix: **Grouped and external products keep their type.** Saving one in BrikPanel's product screen turned it into a simple product, and quick edit, bulk actions and the Google Sheets pull wrote prices or stock to it.
-* Fix: **One product no longer stops a Google Sheets pull.** A product the pull cannot update is skipped and logged, and the rest of the sheet still comes in.
-* New: **Grouped and external product cards.** "Products in this group" lets you search, add and drag products into order; an external product has its "Product URL" and "Button text".
-* Tweak: **A tidier product screen.** Virtual, Digital and other plugins' type options are small switches under the type buttons, attributes and sale dates open from "Add attribute" and "Schedule the sale", price and cost share a row, and help lines moved into "?" balloons. Other plugins' boxes fold and stay the way each person leaves them.
-* New: **Coupons that apply themselves.** In the coupon window, "Apply automatically" puts the coupon on every cart that meets its rules, with no code to type. When several fit, the biggest discount stays and a free shipping coupon goes on next to it. Personal codes are never pushed off.
-* New: **Discounts by number of items.** "Minimum items" and "Maximum items" make a coupon count only for carts with that many items, so 1-5 items can get 10% and 6-10 items 15%.
-* New: **Coupon links.** "Copy link" gives a store link that puts the coupon on the shopper's cart, or keeps it for the visit until the cart qualifies.
-* New: **Pencil drawings in the email popup.** Setting: Cart abandonment → Email popup → "Offer animation". The six styles are redrawn as pencil sketches that draw themselves once: Handwriting (the new default), Ring, Coupon, Envelope, Gift box and Eraser. A style you picked moves to its new drawing.
-* Tweak: **A calmer popup.** It opens without a bounce, and after signup a pencil tick and a frame drawn round the code replace the confetti. On a store with more than one language, each drawing's handwritten note can be set per language.
-* Fix: **The popup shrinks into its tab.** After signup, the card now flies into the floating tab that keeps the code, instead of only fading away.

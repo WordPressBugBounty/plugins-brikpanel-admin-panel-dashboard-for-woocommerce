@@ -6259,10 +6259,6 @@ msgstr "Ieri"
 msgid "Custom"
 msgstr "Personalizzato"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1048
-msgid "Select dates"
-msgstr "Seleziona date"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1096
 #: front-end/dashboard/brikpanel-dashboard.php:7211
 msgid "IP Geolocation by DB-IP"
@@ -6721,10 +6717,6 @@ msgstr "Mappa"
 msgctxt "order locations card: the world globe"
 msgid "World"
 msgstr "Mondo"
-
-#: front-end/dashboard/brikpanel-dashboard.php:2388
-msgid "Toggle theme"
-msgstr "Cambia tema"
 
 #: front-end/dashboard/brikpanel-dashboard.php:2399
 msgctxt "map colour scale: fewer orders"
@@ -21406,3 +21398,98 @@ msgstr "Copia"
 #: front-end/google-sheets/views/page.php:671
 msgid "Manual only: BrikPanel does not check the sheet on a schedule. Click \"Pull now\" to bring your edits in."
 msgstr "Solo manuale: BrikPanel non controlla il foglio a intervalli regolari. Fai clic su \"Preleva ora\" per importare le tue modifiche."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1057
+#: front-end/dashboard/brikpanel-dashboard.php:4691
+msgid "Month to date"
+msgstr "Questo mese"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1088
+msgid "Choose dates"
+msgstr "Seleziona date"
+
+#: includes/brikpanel-enqueue.php:718
+msgid "vs the same period last month"
+msgstr "rispetto allo stesso periodo del mese scorso"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:633
+msgid "This email address is not eligible for the signup discount."
+msgstr "Questo indirizzo e-mail non può ricevere lo sconto di iscrizione."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5720
+msgid "Not eligible note"
+msgstr "Nota senza codice"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6213
+msgid "One code per email"
+msgstr "Un codice per indirizzo e-mail"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6214
+msgid "Give each email address the signup code only once"
+msgstr "Dai il codice di iscrizione una sola volta a ogni indirizzo e-mail"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6215
+msgid "An address that already got a signup code, used or not, gets no new one. While its code is still valid, the popup shows that code again. Only codes still in your store count, the trash included."
+msgstr "Un indirizzo che ha già ricevuto un codice di iscrizione, usato o no, non ne riceve uno nuovo. Finché il codice è valido, il popup lo mostra di nuovo. Contano solo i codici ancora presenti nel tuo negozio, cestino compreso."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6221
+msgid "New customers only"
+msgstr "Solo nuovi clienti"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6222
+msgid "Give no signup code to email addresses that already have an order"
+msgstr "Non dare il codice di iscrizione agli indirizzi e-mail che hanno già un ordine"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6223
+msgid "Counts the orders placed with this address or by its account, paid or refunded. The visitor is still subscribed, only without a code."
+msgstr "Conta gli ordini pagati o rimborsati fatti con questo indirizzo o dal suo account. Il visitatore viene comunque iscritto, solo senza codice."
+
+msgctxt "Locations card button: the region map of a country"
+msgid "%s map"
+msgstr "Mappa di %s"
+
+msgctxt "Locations card: the menu of countries whose map can open"
+msgid "Country maps"
+msgstr "Mappe dei paesi"
+
+msgctxt "Locations card: back from a country map to the country list"
+msgid "Countries"
+msgstr "Paesi"
+
+msgid "Open its map"
+msgstr "Apri la mappa"
+
+msgid "%s country"
+msgid_plural "%s countries"
+msgstr[0] "%s paese"
+msgstr[1] "%s paesi"
+
+msgid "%s province"
+msgid_plural "%s provinces"
+msgstr[0] "%s provincia"
+msgstr[1] "%s province"
+
+msgid "%s state"
+msgid_plural "%s states"
+msgstr[0] "%s stato"
+msgstr[1] "%s stati"
+
+msgid "%s region"
+msgid_plural "%s regions"
+msgstr[0] "%s regione"
+msgstr[1] "%s regioni"
+
+msgid "Most orders: %1$s (%2$s)"
+msgstr "Più ordini: %1$s (%2$s)"
+
+msgid "Most customers: %1$s (%2$s)"
+msgstr "Più clienti: %1$s (%2$s)"
+
+msgid "Most visitors: %1$s (%2$s)"
+msgstr "Più visitatori: %1$s (%2$s)"
+
+msgid "Loading the map…"
+msgstr "Caricamento della mappa…"
+
+msgid "The map could not be loaded. Please try again."
+msgstr "Impossibile caricare la mappa. Riprova."

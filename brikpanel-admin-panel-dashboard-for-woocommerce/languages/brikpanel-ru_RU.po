@@ -6354,10 +6354,6 @@ msgstr "Вчера"
 msgid "Custom"
 msgstr "Пользовательский"
 
-#: front-end/dashboard/brikpanel-dashboard.php:1048
-msgid "Select dates"
-msgstr "Выбрать даты"
-
 #: front-end/dashboard/brikpanel-dashboard.php:1096
 #: front-end/dashboard/brikpanel-dashboard.php:7211
 msgid "IP Geolocation by DB-IP"
@@ -6817,10 +6813,6 @@ msgstr "Карта"
 msgctxt "order locations card: the world globe"
 msgid "World"
 msgstr "Мир"
-
-#: front-end/dashboard/brikpanel-dashboard.php:2388
-msgid "Toggle theme"
-msgstr "Переключить тему"
 
 #: front-end/dashboard/brikpanel-dashboard.php:2399
 msgctxt "map colour scale: fewer orders"
@@ -21623,3 +21615,102 @@ msgstr "Копия"
 #: front-end/google-sheets/views/page.php:671
 msgid "Manual only: BrikPanel does not check the sheet on a schedule. Click \"Pull now\" to bring your edits in."
 msgstr "Только вручную: BrikPanel не проверяет таблицу по расписанию. Нажмите «Получить сейчас», чтобы перенести ваши изменения."
+
+#: front-end/dashboard/brikpanel-dashboard.php:1057
+#: front-end/dashboard/brikpanel-dashboard.php:4691
+msgid "Month to date"
+msgstr "Этот месяц"
+
+#: front-end/dashboard/brikpanel-dashboard.php:1088
+msgid "Choose dates"
+msgstr "Выбрать даты"
+
+#: includes/brikpanel-enqueue.php:718
+msgid "vs the same period last month"
+msgstr "по сравнению с тем же периодом прошлого месяца"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:633
+msgid "This email address is not eligible for the signup discount."
+msgstr "Для этого адреса email скидка за подписку недоступна."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:5720
+msgid "Not eligible note"
+msgstr "Примечание об отсутствии кода"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6213
+msgid "One code per email"
+msgstr "Один код на адрес email"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6214
+msgid "Give each email address the signup code only once"
+msgstr "Выдавать код за подписку каждому адресу email только один раз"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6215
+msgid "An address that already got a signup code, used or not, gets no new one. While its code is still valid, the popup shows that code again. Only codes still in your store count, the trash included."
+msgstr "Адрес, который уже получил код за подписку, использованный или нет, нового не получает. Пока его код действует, окно снова показывает этот код. Учитываются только коды, которые ещё есть в вашем магазине, в том числе перемещённые в корзину."
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6221
+msgid "New customers only"
+msgstr "Только новые покупатели"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6222
+msgid "Give no signup code to email addresses that already have an order"
+msgstr "Не выдавать код за подписку адресам email, у которых уже есть заказ"
+
+#: front-end/cart-abandonment/brikpanel-cart-abandonment.php:6223
+msgid "Counts the orders placed with this address or by its account, paid or refunded. The visitor is still subscribed, only without a code."
+msgstr "Учитываются оплаченные или возвращённые заказы с этим адресом или из его аккаунта. Посетитель всё равно подписывается, только без кода."
+
+msgctxt "Locations card button: the region map of a country"
+msgid "%s map"
+msgstr "Карта: %s"
+
+msgctxt "Locations card: the menu of countries whose map can open"
+msgid "Country maps"
+msgstr "Карты стран"
+
+msgctxt "Locations card: back from a country map to the country list"
+msgid "Countries"
+msgstr "Страны"
+
+msgid "Open its map"
+msgstr "Открыть карту"
+
+msgid "%s country"
+msgid_plural "%s countries"
+msgstr[0] "%s страна"
+msgstr[1] "%s страны"
+msgstr[2] "%s стран"
+
+msgid "%s province"
+msgid_plural "%s provinces"
+msgstr[0] "%s провинция"
+msgstr[1] "%s провинции"
+msgstr[2] "%s провинций"
+
+msgid "%s state"
+msgid_plural "%s states"
+msgstr[0] "%s штат"
+msgstr[1] "%s штата"
+msgstr[2] "%s штатов"
+
+msgid "%s region"
+msgid_plural "%s regions"
+msgstr[0] "%s регион"
+msgstr[1] "%s региона"
+msgstr[2] "%s регионов"
+
+msgid "Most orders: %1$s (%2$s)"
+msgstr "Больше всего заказов: %1$s (%2$s)"
+
+msgid "Most customers: %1$s (%2$s)"
+msgstr "Больше всего клиентов: %1$s (%2$s)"
+
+msgid "Most visitors: %1$s (%2$s)"
+msgstr "Больше всего посетителей: %1$s (%2$s)"
+
+msgid "Loading the map…"
+msgstr "Загрузка карты…"
+
+msgid "The map could not be loaded. Please try again."
+msgstr "Не удалось загрузить карту. Попробуйте ещё раз."
