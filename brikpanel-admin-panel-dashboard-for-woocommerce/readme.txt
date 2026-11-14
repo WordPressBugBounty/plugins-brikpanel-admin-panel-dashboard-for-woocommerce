@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.51
+Stable tag: 3.3.52
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -88,6 +88,10 @@ BrikPanel replaces the cluttered default orders page with a clean **woocommerce 
 
 A real **woocommerce order management plugin**, not a reskin.
 
+= WooCommerce Returns & Refunds (RMA) =
+
+Customers request a **WooCommerce return** from My Account or as a guest: items and quantities (variations too), a reason and photos. You approve, mark the items received and refund with restock in one place. Optional EU **withdrawal button** ("Withdraw from contract here").
+
 = WooCommerce Product List Plugin: Built for People Who Actually Edit Products =
 
 The default **WooCommerce product list** is fine for browsing, painful for editing. BrikPanel ships a complete **woocommerce product list plugin** that fixes it.
@@ -111,7 +115,6 @@ This is where BrikPanel pulls ahead of almost every other free **woocommerce bul
 * **Bulk update WooCommerce products** stock quantities (set quantity, add/subtract)
 * **WooCommerce bulk price by category**: pick a category, set a rule, every published product updates
 * **WooCommerce bulk sale price** updates (fixed or % off)
-* Confirmation dialog on every bulk action
 
 Now the part almost nobody else does for free: **variation support**.
 
@@ -127,15 +130,12 @@ Now the part almost nobody else does for free: **variation support**.
 The default WooCommerce add-product screen has 11 metaboxes, 7 tabs and 40+ fields. BrikPanel ships a complete **woocommerce product editor plugin** with the noise removed.
 
 * **Featured image + product gallery** with drag-and-drop upload, unlimited images, drag-to-reorder
-* Regular price, sale price with decimal validation
 * **Searchable category picker** with multi-select + **quick create category** without leaving the page
 * **Brand field**: the WooCommerce `product_brand` taxonomy is now first-class alongside categories and tags
-* Short description + full rich-text description
 * **SEO fields**: custom slug, meta title, meta description (SEO plugin needed), live Google SERP preview
 * **Full SEO plugin compatibility**: Yoast SEO, Rank Math, All in One SEO and SEOPress metaboxes (including the SEO score panel) render and save inside the BrikPanel product editor
 * Product type (Simple, Variable), **attribute management** with inline create
 * **Auto-generate variations** from attribute combinations, per-variation price/sale/SKU/stock
-* Duplicate any product in one click
 
 On by default. Keep the default WooCommerce product page if you prefer.
 
@@ -210,7 +210,6 @@ A **developer hooks and filters system** for agencies, actions and filters like 
 
 = Navigation & Admin UI Cleanup =
 
-* BrikPanel dashboard becomes the first admin menu item
 * **Simplified mode** (Modern navigation, on by default) folds the full WordPress menu into one Site management group, keeping BrikPanel + WooCommerce on top for non-technical clients
 
 == A Free, Self-Hosted WooCommerce Analytics & Inventory Suite ==
@@ -520,6 +519,14 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.52 (2026-11-14) =
+* New: **Customer returns.** Customers ask for a return from My Account, or as a guest with their order number and email. They choose the items and quantities, variations too, a reason and up to 5 photos, which are saved without their location data. It is off until you turn it on in WooCommerce → Settings → BrikPanel → Returns.
+* New: **A Returns page under Orders.** Approve or reject a request and mark the items as received. The refund uses WooCommerce's own refund, to the card when the payment method supports it, and puts the items back in stock. Waiting requests are counted in the menu and in "Needs attention"; the order screen has a Returns box and the orders list a badge.
+* New: **EU withdrawal button.** A setting turns the button into the EU's "Withdraw from contract here", with a separate confirm step. The customer gets an email with their statement and the date and time they sent it.
+* New: **Four return emails.** New request for you; request received, approved and rejected for the customer. Edit them in WooCommerce → Settings → Emails.
+* Fix: **Numbers no longer hide in closed sidebar menus.** A closed menu item shows the total of the numbers in its list, such as Dashboard for Updates or Products for Reviews. "Site management" and your own headings show the total of their items while closed. Open one and each number is back on its own row.
+* Fix: **A long customer name no longer pushes Total off the orders list.** When the table runs out of room, the customer column gives way first and the name ends with "…". Point at it to see the full name. Names that fit look exactly as before.
+
 = 3.3.51 (2026-11-13) =
 * Tweak: **The DB-IP link sits next to visitor countries.** It now ends the grey line under the globe on the Locations card's Visitors tab, and the Live visitors card while a visitor's flag shows. The line at the bottom of the dashboard is gone.
 
@@ -561,17 +568,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **A Print button for each order.** A "Print" column in the orders list opens that order's summary in a new tab with the print window. It starts hidden: tick "Print" under Screen Options → Columns. Once it is on, phones show the same button in the order panel.
 * Tweak: **Order summaries print your store's logo.** The summary uses your theme's logo, then the WooCommerce email header image, then the store name. BrikPanel's "Custom brand logo", often an agency's logo, no longer appears on it.
 * Fix: **Order summaries keep their white border.** With "Margins" set to None or Minimum in the print window, the summary ran to the edge of the paper. The border is now part of the page and repeats on every page of a long order.
-
-= 3.3.45 (2026-11-06) =
-* New: **Print order summaries.** Select orders and pick "Print order summary" under Bulk actions, or use Print at the top of an order. Each order gets its own page with your logo, both addresses, product images, options, SKUs, quantities and totals, plus the fields picked in Orders → "Order custom fields". "Save as PDF" in the print window turns it into a PDF.
-* New: **Hidden sections in a folded box.** At the end of the product screen, a "Hidden sections" box holds the sections that come switched off, such as shipping weight, tags and linked products. Open it to edit them right there, without turning them on in the settings. Each user's box stays open or closed the way they left it. Setting: Products → "Suggest hidden sections in the product editor", on by default.
-* New: **Fields from your other plugins in a folded box.** With "Auto-show fields other plugins add" off, the fields other plugins add to a product now wait in a folded "Fields from your other plugins" box instead of staying off the page. Open it to edit them, or use "Always show these fields" to keep them open for everyone. Products save exactly as before until the box is opened.
-* Fix: **Fields under "Stock status" show up.** Boxes that other plugins add below Stock status in WooCommerce's Inventory tab, such as stock per warehouse, could not be shown in BrikPanel's product screen. They now appear in the "Fields from your other plugins" box.
-* Fix: **Categories stay when the Category section is off.** With the Category section switched off in Products → "Visible editor sections", every save in BrikPanel's product screen, automatic saves too, moved the product to Uncategorized. Its categories are now kept.
-* Tweak: **Editor settings one click away.** A small gear next to the product screen's title opens the product editor's settings (Products), with a link back to the product. On a phone it is in the "..." menu.
-* New: **The cache button clears CloudPanel's Varnish.** With CloudPanel's CLP Varnish Cache plugin on, the top bar's cache button also purges Varnish, the same way the plugin's own "Entire Cache" purge does. If Varnish cannot be reached, it says so and still clears the other caches.
-* Fix: **Order status emails in the customer's language (WPML).** An email for a custom order status now goes out in the order's language, status name included, instead of the language of the admin who changed the status. The store's own copy stays in the admin's language.
-* New: **Translatable status names and email texts (WPML).** Custom order status names and their email subject, heading and text can be translated in WPML → String Translation.
-* Fix: **Past orders keep their exchange rate (WooCommerce Multilingual).** A rate change, typed or automatic, converted every past order again at the new rate. Each order now keeps the rate it was converted at.
-* Tweak: **Each product row shows its language (WPML).** The product list shows a small language code next to the product name.
-* Fix: **A translation's price comes from its original (WPML).** Quick edit, bulk edit, the product screen and the Google Sheets pull no longer change a translation's price on its own, and a new price on the original now reaches its translations.

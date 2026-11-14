@@ -2,6 +2,14 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.52 (2026-11-14) =
+* New: **Customer returns.** Customers ask for a return from My Account, or as a guest with their order number and email. They choose the items and quantities, variations too, a reason and up to 5 photos, which are saved without their location data. It is off until you turn it on in WooCommerce → Settings → BrikPanel → Returns.
+* New: **A Returns page under Orders.** Approve or reject a request and mark the items as received. The refund uses WooCommerce's own refund, to the card when the payment method supports it, and puts the items back in stock. Waiting requests are counted in the menu and in "Needs attention"; the order screen has a Returns box and the orders list a badge.
+* New: **EU withdrawal button.** A setting turns the button into the EU's "Withdraw from contract here", with a separate confirm step. The customer gets an email with their statement and the date and time they sent it.
+* New: **Four return emails.** New request for you; request received, approved and rejected for the customer. Edit them in WooCommerce → Settings → Emails.
+* Fix: **Numbers no longer hide in closed sidebar menus.** A closed menu item shows the total of the numbers in its list, such as Dashboard for Updates or Products for Reviews. "Site management" and your own headings show the total of their items while closed. Open one and each number is back on its own row.
+* Fix: **A long customer name no longer pushes Total off the orders list.** When the table runs out of room, the customer column gives way first and the name ends with "…". Point at it to see the full name. Names that fit look exactly as before.
+
 = 3.3.51 (2026-11-13) =
 * Tweak: **The DB-IP link sits next to visitor countries.** It now ends the grey line under the globe on the Locations card's Visitors tab, and the Live visitors card while a visitor's flag shows. The line at the bottom of the dashboard is gone.
 
