@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.52
+Stable tag: 3.3.53
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -519,6 +519,13 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.53 (2026-11-17) =
+* Tweak: **A compact Marketplaces section.** With BrikMarket, the marketplace part of the dashboard is two cards instead of three rows. "Marketplaces" shows sales, orders and average order value with their change, and marketplace sales day by day, or hour by hour for a single day. "Best sellers on marketplaces" has tabs for products and categories.
+* New: **Where your sales came from.** A ring in the Marketplaces card splits the period's sales between your website and each marketplace, with the amount and share of each. Each marketplace keeps its colour from one period to the next.
+* Fix: **Marketplace best sellers in your store's currency.** Product and category amounts were added up in each order's own currency; they are now converted like the Sales figure. Products are listed by sales instead of units sold, with the units under each.
+* Tweak: **No Chart.js on the dashboard.** The old marketplace pie was the last chart that needed it, so stores with BrikMarket load one file less too.
+* Fix: **BrikPanel on MailPoet and FluentCRM pages.** MailPoet removes other plugins' stylesheets and scripts from its pages, and FluentCRM their scripts, so BrikPanel's side menu lost its look and the top bar's menus and search stopped working there. BrikPanel now adds its own folder to their allow lists. On phones, MailPoet's header sits right under the top bar.
+
 = 3.3.52 (2026-11-14) =
 * New: **Customer returns.** Customers ask for a return from My Account, or as a guest with their order number and email. They choose the items and quantities, variations too, a reason and up to 5 photos, which are saved without their location data. It is off until you turn it on in WooCommerce → Settings → BrikPanel → Returns.
 * New: **A Returns page under Orders.** Approve or reject a request and mark the items as received. The refund uses WooCommerce's own refund, to the card when the payment method supports it, and puts the items back in stock. Waiting requests are counted in the menu and in "Needs attention"; the order screen has a Returns box and the orders list a badge.
@@ -558,13 +565,3 @@ The full release history of every version is in changelog.txt, included with the
 * Tweak: **A lighter order bell and visit counter.** The new-order sound is 40 KB instead of 428 KB. The storefront visit counter is now a file the browser keeps between pages, instead of 26 KB of code inside every page.
 * Tweak: **Speed numbers with a "slow" answer.** In the deactivation survey, "It slowed down my site" and "Something did not work" also send a summary of this browser's page timings and a few server facts: object cache, number of plugins, late background jobs, WP-Cron and web server. The window lists every value before you send.
 * Fix: **Duplicated product names translate correctly.** In German, Spanish, French, Dutch, Brazilian Portuguese, Russian and Turkish, a duplicated product's name ended in the verb, such as "(Kopieren)" instead of "(Kopie)". In Polish, the Copy buttons now say "Kopiuj".
-
-= 3.3.46 (2026-11-07) =
-* New: **Arrange products by hand in a newest-first store.** If your store lists the newest products first, Sort in the products list now has a "Start custom order" button. The shop keeps the same order, you can drag any product to a new place, and new products still appear on top.
-* Fix: **Sorting no longer reshuffles the shop.** In a store with more than one page of products and no saved order, the first drag put every other page's products ahead of the page you sorted. Now only the products you drag change places.
-* Tweak: **Sort says when the shop uses another order.** If the store's default sorting is not the custom order, the Sort banner says so and how to switch.
-* Fix: **Saving a product keeps its place.** BrikPanel's product screen saved back the "Menu order" it opened with, undoing a move made in Sort meanwhile. It now saves it only when you change it.
-* Fix: **Sort messages no longer talk about customer orders.** "Saving order..." and "Order saved" were translated as a customer's order in German, Spanish, French, Italian, Dutch, Polish, Russian and Turkish.
-* New: **A Print button for each order.** A "Print" column in the orders list opens that order's summary in a new tab with the print window. It starts hidden: tick "Print" under Screen Options → Columns. Once it is on, phones show the same button in the order panel.
-* Tweak: **Order summaries print your store's logo.** The summary uses your theme's logo, then the WooCommerce email header image, then the store name. BrikPanel's "Custom brand logo", often an agency's logo, no longer appears on it.
-* Fix: **Order summaries keep their white border.** With "Margins" set to None or Minimum in the print window, the summary ran to the edge of the paper. The border is now part of the page and repeats on every page of a long order.

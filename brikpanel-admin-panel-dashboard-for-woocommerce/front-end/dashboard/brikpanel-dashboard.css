@@ -1268,10 +1268,6 @@ body.brikpanel-exp-modal-open { overflow: hidden; }
     margin-bottom: 1.25rem;
 }
 
-.brikpanel-dash-row-1-1 {
-    grid-template-columns: 1fr 1fr;
-}
-
 .brikpanel-dash-panel {
     background: var(--bp-card);
     border: 1px solid var(--bp-border);
@@ -1287,17 +1283,6 @@ body.brikpanel-exp-modal-open { overflow: hidden; }
     color: var(--bp-text);
     margin: 0 0 1rem;
     padding: 0;
-}
-
-/* Charts */
-.brikpanel-dash-chart-wrap {
-    position: relative;
-    height: 280px;
-    width: 100%;
-}
-
-.brikpanel-dash-chart-short {
-    height: 240px;
 }
 
 /* Abandoned carts: one line under the funnel chart. While two panels share
@@ -1495,17 +1480,6 @@ body.brikpanel-exp-modal-open { overflow: hidden; }
    WordPress gives every admin h2 display: block, which beats [hidden]. */
 .brikpanel-dash-locations-h2[hidden] {
     display: none;
-}
-
-/* Order source badges */
-.brikpanel-dash-source {
-    display: inline-block;
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    color: #fff;
-    white-space: nowrap;
 }
 
 /* Empty state. Full width also inside a flex row or a grid, or the text
@@ -2194,10 +2168,6 @@ button.brikpanel-dash-guide__item:focus-visible {
 }
 
 @media (max-width: 960px) {
-    .brikpanel-dash-row-1-1 {
-        grid-template-columns: 1fr;
-    }
-
     .brikpanel-dash-cards {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -2266,8 +2236,7 @@ button.brikpanel-dash-guide__item:focus-visible {
        of the box; a table that still cannot fit turns into cards (field test
        B6, brikpanel-fit-table.js). */
     .brikpanel-dash-table td.rank,
-    .brikpanel-dash-table td:last-child,
-    .brikpanel-dash-table .brikpanel-dash-source { white-space: nowrap; }
+    .brikpanel-dash-table td:last-child { white-space: nowrap; }
 }
 
 /* Globe container: .brikpanel-dash-globe-wrap above (one rule). */
@@ -2869,12 +2838,10 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
 }
 
 /* =============================================================================
-   Marketplace Analytics (BrikMarket integration)
+   BrikMarket: "With marketplace" under the page title, and the quiet change
+   line of the profit cards. The Marketplaces cards themselves are in the
+   redesigned cards' block (bp-dv-mp, end of this file).
    ============================================================================= */
-
-.brikpanel-dash-marketplace {
-    margin-bottom: 1.25rem;
-}
 
 /* Render the marketplace qualifier as a muted sub-line beneath the title
    instead of inline. Inline, it widened the <h1> by ~130px, which — at common
@@ -2892,158 +2859,9 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
     letter-spacing: 0.005em;
 }
 
-.brikpanel-dash-mp-cards {
-    grid-template-columns: repeat(4, 1fr);
-}
-
 .brikpanel-dash-card-delta-static {
     color: var(--bp-text-secondary, #616161);
     font-weight: 500;
-}
-
-/* Per-marketplace list */
-.brikpanel-dash-mp-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-}
-
-.brikpanel-dash-mp-item {
-    border: 1px solid var(--bp-border);
-    border-radius: 0.625rem;
-    padding: 0.75rem 0.875rem;
-    background: #fafafa;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.brikpanel-dash-mp-item:hover {
-    background: #ffffff;
-    border-color: #cfcfcf;
-}
-
-.brikpanel-dash-mp-item-head {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-}
-
-.brikpanel-dash-mp-badge {
-    flex-shrink: 0;
-    width: 26px;
-    height: 26px;
-    border-radius: 0.5rem;
-    color: #ffffff;
-    font-size: 0.75rem;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.18);
-}
-
-.brikpanel-dash-mp-name {
-    flex: 1;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--bp-text);
-}
-
-.brikpanel-dash-mp-share {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--bp-text-secondary);
-    background: #ffffff;
-    border: 1px solid var(--bp-border);
-    padding: 0.125rem 0.4375rem;
-    border-radius: 999px;
-}
-
-.brikpanel-dash-mp-bar {
-    width: 100%;
-    height: 6px;
-    background: #ececec;
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.brikpanel-dash-mp-bar > span {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.3s cubic-bezier(.4,0,.2,1);
-}
-
-.brikpanel-dash-mp-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-}
-
-.brikpanel-dash-mp-stats > div {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-}
-
-.brikpanel-dash-mp-stats span {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--bp-text-secondary, #616161);
-    text-transform: none;
-    letter-spacing: normal;
-}
-
-.brikpanel-dash-mp-stats strong {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--bp-text);
-}
-
-.brikpanel-dash-mp-stats strong .woocommerce-Price-amount {
-    font-size: inherit;
-    font-weight: inherit;
-}
-
-.brikpanel-dash-mp-delta.positive {
-    color: var(--bp-success);
-}
-
-.brikpanel-dash-mp-delta.negative {
-    color: var(--bp-error);
-}
-
-.brikpanel-dash-mp-delta.neutral {
-    color: var(--bp-text-secondary, #616161);
-}
-
-.brikpanel-dash-mp-cats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3125rem;
-    margin-top: 0.125rem;
-}
-
-.brikpanel-dash-mp-cat {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: var(--bp-text-secondary);
-    background: #ffffff;
-    border: 1px solid var(--bp-border);
-    padding: 0.125rem 0.5rem;
-    border-radius: 999px;
-}
-
-@media (max-width: 1100px) {
-    .brikpanel-dash-mp-cards { grid-template-columns: repeat(2, 1fr); }
-    .brikpanel-dash-mp-stats { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 782px) {
-    .brikpanel-dash-mp-cards { grid-template-columns: 1fr; }
-    .brikpanel-dash-mp-stats { grid-template-columns: 1fr 1fr; }
 }
 
 /* =========================================================================
@@ -3664,8 +3482,7 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
 .brikpanel-dash-subs-panel + .bp-dv-row,
 .brikpanel-dash-subs-panel + .brikpanel-dash-row,
 .brikpanel-dash-subs-panel + .brikpanel-dash-profit,
-.brikpanel-dash-subs-panel + .bp-dv-kpis,
-.brikpanel-dash-subs-panel + .brikpanel-dash-marketplace {
+.brikpanel-dash-subs-panel + .bp-dv-kpis {
     margin-top: 1.25rem;
 }
 
@@ -4415,13 +4232,15 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
     display: none;
 }
 
-.bp-dv-rates-box {
+.bp-dv-rates-box,
+.bp-dv-mp-mix-box {
     display: flex;
     align-items: center;
     gap: 1.75rem;
 }
 
-.bp-dv-rates-box.is-narrow {
+.bp-dv-rates-box.is-narrow,
+.bp-dv-mp-mix-box.is-narrow {
     flex-direction: column;
     align-items: stretch;
     gap: 0.875rem;
@@ -4447,11 +4266,14 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
 .bp-dv-sq.is-failed, .bp-dv-sw.is-failed { fill: #d72c0d; background: #d72c0d; }
 
 .bp-dv-card.is-hl .bp-dv-sq.is-dim,
-.bp-dv-card.is-hl .bp-dv-rates-item.is-dim {
+.bp-dv-card.is-hl .bp-dv-rates-item.is-dim,
+.bp-dv-card.is-hl .bp-dv-ring-arc.is-dim,
+.bp-dv-card.is-hl .bp-dv-mp-mixitem.is-dim {
     opacity: 0.22;
 }
 
-.bp-dv-rates-leg {
+.bp-dv-rates-leg,
+.bp-dv-mp-mixleg {
     flex: 1 1 auto;
     min-width: 0;
     margin: 0;
@@ -4459,13 +4281,15 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
     list-style: none;
 }
 
-.bp-dv-rates-box.is-narrow .bp-dv-rates-leg {
+.bp-dv-rates-box.is-narrow .bp-dv-rates-leg,
+.bp-dv-mp-mix-box.is-narrow .bp-dv-mp-mixleg {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 1rem;
 }
 
-.bp-dv-rates-item {
+.bp-dv-rates-item,
+.bp-dv-mp-mixitem {
     display: grid;
     grid-template-columns: 10px minmax(0, 1fr) max-content;
     align-items: center;
@@ -4476,19 +4300,23 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
     transition: opacity 0.15s var(--bp-dv-ease);
 }
 
-.bp-dv-rates-item:first-child {
+.bp-dv-rates-item:first-child,
+.bp-dv-mp-mixitem:first-child {
     border-top: 0;
 }
 
-.bp-dv-rates-box.is-narrow .bp-dv-rates-item:nth-child(2) {
+.bp-dv-rates-box.is-narrow .bp-dv-rates-item:nth-child(2),
+.bp-dv-mp-mix-box.is-narrow .bp-dv-mp-mixitem:nth-child(2) {
     border-top: 0;
 }
 
-.bp-dv-rates-item:focus {
+.bp-dv-rates-item:focus,
+.bp-dv-mp-mixitem:focus {
     outline: none;
 }
 
-.bp-dv-rates-item:focus-visible {
+.bp-dv-rates-item:focus-visible,
+.bp-dv-mp-mixitem:focus-visible {
     outline: 2px solid var(--bp-text);
     outline-offset: 2px;
     border-radius: 0.25rem;
@@ -4522,11 +4350,15 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
 }
 
 .bp-dv-rates-item.is-zero .bp-dv-lname,
-.bp-dv-rates-item.is-zero .bp-dv-lpct {
+.bp-dv-rates-item.is-zero .bp-dv-lpct,
+.bp-dv-mp-mixitem.is-zero .bp-dv-lname,
+.bp-dv-mp-mixitem.is-zero .bp-dv-mp-mixname,
+.bp-dv-mp-mixitem.is-zero .bp-dv-lpct {
     color: var(--bp-text-secondary);
 }
 
-.bp-dv-rates-item.is-zero .bp-dv-sw {
+.bp-dv-rates-item.is-zero .bp-dv-sw,
+.bp-dv-mp-mixitem.is-zero .bp-dv-sw {
     opacity: 0.4;
 }
 
@@ -5137,6 +4969,187 @@ button.brikpanel-country-row:focus-visible .bp-loc-mapicon,
 }
 
 .bp-dv-card.is-w560 .bp-dv-seg-detail { grid-template-columns: minmax(0, 1fr); }
+
+/* ---- Marketplaces (BrikMarket, 3.3.53) ----
+   One row of two cards (render_section_marketplace_analytics()): the
+   period's marketplace figures, their sales day by day and where the
+   period's sales came from (the website and each marketplace, one ring), and
+   the best sellers there (the Products list's rows above). The brand colours
+   are the marketplaces' own; the website is the dashboard's dark grey. */
+.bp-dv-mp-row[hidden] {
+    display: none;
+}
+
+/* One marketplace: its mark and name at the end of the title line. */
+.bp-dv-mp-one {
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--bp-text);
+    font-weight: 550;
+}
+
+.bp-dv-mp-one-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bp-dv-mp-chip {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    border-radius: 0.375rem;
+    background: var(--bp-mp, #616161);
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* The figures at the top, the ring at the bottom: a card shorter than the
+   best sellers beside it keeps both edges lined up with that card's rows. */
+.bp-dv-mp-body {
+    justify-content: space-between;
+    gap: 1.25rem;
+}
+
+/* Sales, Orders, Avg. order value: three columns parted by a thin line, or
+   one per line when the figures do not fit (the tiles helper). */
+.bp-dv-mp-figs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+}
+
+.bp-dv-mp-fig {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    padding-inline: 1.25rem;
+    border-inline-start: 1px solid var(--bp-dv-line-2);
+}
+
+.bp-dv-mp-fig:first-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+}
+
+.bp-dv-mp-label {
+    color: var(--bp-text-secondary);
+    font-size: var(--brikpanel-label-size, 0.8125rem);
+    font-weight: var(--brikpanel-label-weight, 550);
+    white-space: nowrap;
+}
+
+.bp-dv-mp-value {
+    font-size: clamp(1.0625rem, 0.55rem + 0.7vw, 1.375rem);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.bp-dv-mp-figs.is-tiles-list > .bp-dv-mp-fig {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.625rem;
+    padding: 0.5rem 0;
+    border-inline-start: 0;
+    border-top: 1px solid var(--bp-dv-line-2);
+}
+
+.bp-dv-mp-figs.is-tiles-list > .bp-dv-mp-fig:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.bp-dv-mp-figs.is-tiles-list .bp-dv-mp-label {
+    flex: 1 1 auto;
+}
+
+.bp-dv-mp-figs.is-tiles-list .bp-dv-mp-value {
+    font-size: 1.0625rem;
+}
+
+/* Marketplace sales day by day (V.columns), the Live card's hourly bars'
+   look; a column under the pointer or the keyboard turns dark. */
+.bp-dv-mp-cols {
+    touch-action: pan-y;
+}
+
+.bp-dv-mp-cols:focus {
+    outline: none;
+}
+
+.bp-dv-mp-cols:focus-visible {
+    outline: 2px solid var(--bp-text);
+    outline-offset: 3px;
+    border-radius: 0.25rem;
+}
+
+.bp-dv-cols {
+    display: block;
+    overflow: visible;
+}
+
+.bp-dv-col {
+    fill: #d6d6d6;
+    transform-box: fill-box;
+    transform-origin: center bottom;
+}
+
+.bp-dv-col.is-zero,
+.bp-dv-col.is-later { fill: #ebebeb; }
+.bp-dv-col.is-hl { fill: #303030; }
+.bp-dv-col-label { fill: #616161; font-size: 10.5px; font-family: inherit; }
+
+/* Where the sales came from: one ring (the website dark grey, each
+   marketplace its colour) beside a line per part, the Order rates card's
+   legend (its rules above take these lines too). Under 400px of card the
+   ring is smaller (is-compact), under 280px it sits above two columns of
+   lines (is-narrow). */
+.bp-dv-ring {
+    flex: none;
+    display: block;
+    overflow: visible;
+}
+
+.bp-dv-mp-mix-box.is-narrow .bp-dv-ring {
+    align-self: center;
+}
+
+.bp-dv-mp-mix-box.is-compact {
+    gap: 1rem;
+}
+
+.bp-dv-ring-bg {
+    stroke: var(--bp-dv-track);
+}
+
+/* A part without its own colour is the website: the dashboard's dark grey. */
+.bp-dv-ring-arc {
+    stroke: var(--bp-ring, #303030);
+    transition: opacity 0.15s var(--bp-dv-ease);
+}
+
+.bp-dv-mp-mixitem .bp-dv-sw {
+    background: var(--bp-ring, #303030);
+}
+
+/* Its own direction (dir="auto", a Latin name on an Arabic screen) but the
+   line's side: the name and the money under it start at the same edge. */
+.bp-dv-mp-mixname {
+    overflow: hidden;
+    color: var(--bp-text);
+    font-size: 0.8125rem;
+    font-weight: 550;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: -webkit-match-parent; /* Chrome, Safari */
+    text-align: match-parent;
+}
 
 /* ---- Low stock + lifetime value ---- */
 .bp-dv-stock .brikpanel-dash-inv-line {

@@ -412,18 +412,9 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
         true
     );
 
-    // Chart.js: only the BrikMarket marketplace share ring still uses it. The
-    // other charts are drawn as SVG by brikpanel-dashboard-viz.js.
-    $bp_dash_chartjs = function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active();
-    if ( $bp_dash_chartjs ) {
-        wp_enqueue_script(
-            'chart-js',
-            BRIKPANEL_URL . 'assets/js/chart.js',
-            [],
-            BRIKPANEL_VERSION,
-            true
-        );
-    }
+    // No Chart.js on the dashboard since 3.3.53: the BrikMarket marketplace
+    // share ring was its last chart. The Marketplaces card's ring (website and
+    // each marketplace) is drawn by brikpanel-dashboard-viz.js.
 
     // The dashboard's own charts (sales line, funnel ribbon, order-rate
     // squares, dot strips, hourly bars, the store cards' small lines).
@@ -472,7 +463,6 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
         BRIKPANEL_URL . 'front-end/dashboard/brikpanel-dashboard.js',
         array_merge(
             [ 'flatpickr-js', 'cobe-globe', 'brikpanel_dashboard_viz', 'brikpanel_dashboard_regions' ],
-            $bp_dash_chartjs ? [ 'chart-js' ] : [],
             brikpanel_fit_table_dep(),
             brikpanel_fit_row_dep(),
             brikpanel_narrow_deps( [ 'overflow', 'tip', 'format', 'tiles', 'scroll_strip' ] )
@@ -574,8 +564,6 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'no_orders'     => __('No orders', 'brikpanel'),
             'no_data'       => __('No data for this period', 'brikpanel'),
             'product'       => __('Product', 'brikpanel'),
-            'qty_sold'      => __('Qty sold', 'brikpanel'),
-            'source'        => __('Source', 'brikpanel'),
             'status_labels' => $bp_order_statuses,
             'city'          => __('City', 'brikpanel'),
             'browsing'       => __('Browsing', 'brikpanel'),
@@ -596,12 +584,16 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'live_country'      => __('Country: %s', 'brikpanel'),
             // Live visitors list after the page's security token expired.
             'live_reload'       => __('Reload the page to see live visitors.', 'brikpanel'),
-            'aov'            => __('AOV', 'brikpanel'),
-            'category'       => __('Category', 'brikpanel'),
             'share'          => __('Share', 'brikpanel'),
-            'vs_prev'        => __('vs. prev.', 'brikpanel'),
-            'mp_of_total'    => __('of', 'brikpanel'),
-            'mp_combined'    => __('combined revenue', 'brikpanel'),
+            // The Marketplaces cards (BrikMarket, 3.3.53). The store's own
+            // website, a part of the ring beside its marketplaces.
+            'mp_website'     => __('Your website', 'brikpanel'),
+            'mp_none'        => __('No marketplace orders in this period.', 'brikpanel'),
+            // The card's columns, for screen readers.
+            'mp_cols_day'    => __('Marketplace sales per day', 'brikpanel'),
+            'mp_cols_hour'   => __('Marketplace sales per hour', 'brikpanel'),
+            /* translators: %s: units of one product sold on marketplaces, already formatted (e.g. 3). */
+            'mp_units_sold'  => brikpanel_js_plural(_nx_noop('%s sold', '%s sold', 'units of one product sold on marketplaces, e.g. "3 sold"', 'brikpanel')),
             'mp_no_categories' => __('No category data. Marketplace items must be linked to your WooCommerce catalog (by product or SKU) for the category breakdown to appear.', 'brikpanel'),
             'device_desktop'   => __('Desktop', 'brikpanel'),
             'device_mobile'    => __('Mobile', 'brikpanel'),

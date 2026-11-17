@@ -2,6 +2,13 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.53 (2026-11-17) =
+* Tweak: **A compact Marketplaces section.** With BrikMarket, the marketplace part of the dashboard is two cards instead of three rows. "Marketplaces" shows sales, orders and average order value with their change, and marketplace sales day by day, or hour by hour for a single day. "Best sellers on marketplaces" has tabs for products and categories.
+* New: **Where your sales came from.** A ring in the Marketplaces card splits the period's sales between your website and each marketplace, with the amount and share of each. Each marketplace keeps its colour from one period to the next.
+* Fix: **Marketplace best sellers in your store's currency.** Product and category amounts were added up in each order's own currency; they are now converted like the Sales figure. Products are listed by sales instead of units sold, with the units under each.
+* Tweak: **No Chart.js on the dashboard.** The old marketplace pie was the last chart that needed it, so stores with BrikMarket load one file less too.
+* Fix: **BrikPanel on MailPoet and FluentCRM pages.** MailPoet removes other plugins' stylesheets and scripts from its pages, and FluentCRM their scripts, so BrikPanel's side menu lost its look and the top bar's menus and search stopped working there. BrikPanel now adds its own folder to their allow lists. On phones, MailPoet's header sits right under the top bar.
+
 = 3.3.52 (2026-11-14) =
 * New: **Customer returns.** Customers ask for a return from My Account, or as a guest with their order number and email. They choose the items and quantities, variations too, a reason and up to 5 photos, which are saved without their location data. It is off until you turn it on in WooCommerce → Settings → BrikPanel → Returns.
 * New: **A Returns page under Orders.** Approve or reject a request and mark the items as received. The refund uses WooCommerce's own refund, to the card when the payment method supports it, and puts the items back in stock. Waiting requests are counted in the menu and in "Needs attention"; the order screen has a Returns box and the orders list a badge.

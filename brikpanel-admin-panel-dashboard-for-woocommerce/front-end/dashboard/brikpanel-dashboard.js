@@ -2,7 +2,7 @@
  * BrikPanel Dashboard - Main JavaScript
  *
  * Handles date filtering, batch AJAX data loading,
- * Chart.js rendering, and live visitor polling.
+ * the cards' drawing and live visitor polling.
  *
  * @package BrikPanel
  * @since 1.8.0
@@ -80,7 +80,6 @@
     let currentRange = CFG.saved_range || 'today';
     let customStartDate = CFG.saved_start || '';
     let customEndDate = CFG.saved_end || '';
-    let mpShareChart = null;
     let liveInterval = null;
     let globeInstance = null;
     let globeMarkers = [];
@@ -155,14 +154,6 @@
     }
     function fillText(pattern, value) {
         return BF ? BF.fill(pattern || '%s', value) : String(value);
-    }
-
-    // Chart.js defaults
-    if (typeof Chart !== 'undefined') {
-        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        Chart.defaults.font.size = 12;
-        Chart.defaults.color = '#616161';
-        if (BF) BF.chart(Chart);
     }
 
     // =========================================================================
@@ -522,8 +513,8 @@
             safe('stock', function () { renderLowStock(d.low_stock, d.low_stock_empty); });
             safe('ltv', function () { renderLtvPanel(d.ltv_panel); });
             safe('subscriptions', function () { renderSubscriptions(d.subscription_stats); });
-            // Marketplace analytics (BrikMarket-only).
-            safe('marketplace', function () { renderMarketplaceAnalytics(d.marketplace); });
+            // Marketplaces (BrikMarket only).
+            safe('marketplace', function () { renderMarketplace(d); });
 
             // The live card's "Today so far" (and whether tracking is off)
             // came with this data.
@@ -847,28 +838,6 @@
         fillEmpty(p, r);
         wrap.textContent = '';
         wrap.appendChild(p);
-    }
-
-    // A chart with nothing to draw hides its box and shows the reason in the
-    // line the page prints right after it; given no reason, the line hides
-    // and the box comes back. The box is shown BEFORE Chart.js draws, which
-    // measures it. Returns true when the box was hidden until now.
-    function setChartEmpty(canvas, r) {
-        var chartBox = canvas ? canvas.parentElement : null;
-        var msg = chartBox ? chartBox.nextElementSibling : null;
-        if (!msg || !msg.classList.contains('brikpanel-dash-chart-empty')) msg = null;
-        if (r) {
-            if (msg) {
-                fillEmpty(msg, r);
-                msg.hidden = false;
-                chartBox.hidden = true;
-            }
-            return false;
-        }
-        var wasHidden = !!(chartBox && chartBox.hidden);
-        if (msg) msg.hidden = true;
-        if (chartBox) chartBox.hidden = false;
-        return wasHidden;
     }
 
     // The preset link inside an empty card clicks the matching date button.
@@ -3330,6 +3299,13 @@
                 if (byUser) saveTab('visitors', key);
             });
         });
+        // Best sellers on marketplaces: products or categories (BrikMarket).
+        dvCards('mp-top').forEach(function (card) {
+            V.tabs(card, function (key, byUser) {
+                playProductBars(card);
+                if (byUser) saveTab('mp', key);
+            });
+        });
     }
 
     // The tab a user opens is remembered for them (Brikpanel_Dashboard::
@@ -3472,7 +3448,11 @@
                 });
             },
             customers: function (card) { drawCustomersCard(card, lastData); },
-            live: function (card) { drawLiveCard(card); }
+            live: function (card) { drawLiveCard(card); },
+            mp: function (card) {
+                if (lastData.marketplace) drawMpSummary(card, lastData.marketplace, lastData);
+                drawMpColumns(card, lastData);
+            }
         };
         document.querySelectorAll('.bp-dv-card').forEach(function (card) {
             var kind = card.getAttribute('data-bp-dv');
@@ -6013,215 +5993,381 @@
     }
 
     // =========================================================================
-    // MARKETPLACE ANALYTICS (BrikMarket)
+    // MARKETPLACES (BrikMarket)
     //
-    // Only fires when the server-side payload includes a `marketplace` key,
-    // which the dashboard PHP only emits when BrikMarket is active. Updates
-    // four KPI cards, the per-marketplace list, the share donut, the top
-    // categories table, and the marketplace top-products table.
+    // One row of two cards (Brikpanel_Dashboard::render_section_marketplace_
+    // analytics()). "Marketplaces" sums the period's marketplace sales, draws
+    // them day by day and shows in one ring where the period's sales came
+    // from: the store's own website and each marketplace, the share and the
+    // money of each beside it. "Best sellers on marketplaces" lists products
+    // and categories by sales in the store's currency. The payload has a
+    // `marketplace` block only while BrikMarket is active. Since 3.3.53; up to
+    // 3.3.52 four figure cards, a card per marketplace, a share ring of the
+    // marketplaces alone (Chart.js) and two tables.
     // =========================================================================
 
-    function renderMarketplaceAnalytics(mp) {
-        var section = document.getElementById('brikpanel-marketplace-section');
-        if (!section) return;
-        if (!mp) {
-            section.style.display = 'none';
-            return;
-        }
-        section.style.display = '';
+    // The website's part of the ring: the dashboard's own dark grey.
+    var MP_SITE_COLOR = '#303030';
 
-        // KPI cards.
-        var totals = mp.totals || {};
-        updateCard('card-mp-sales',  totals.revenue_html || '--');
-        updateCard('card-mp-orders', formatNumber(totals.orders || 0));
-        updateCard('card-mp-aov',    totals.aov_html || '--');
-        updateCard('card-mp-share',  escapeHtml(fmtPct(totals.share_total_pct || 0)));
-
-        var deltas = mp.deltas || {};
-        updateDelta('delta-mp-sales',  deltas.revenue);
-        updateDelta('delta-mp-orders', deltas.orders);
-        updateDelta('delta-mp-aov',    deltas.aov);
-
-        var shareDelta = document.getElementById('delta-mp-share');
-        if (shareDelta) {
-            // Static caption: site + marketplace combined revenue, formatted server-side.
-            shareDelta.classList.remove('positive', 'negative', 'neutral');
-            shareDelta.classList.add('neutral');
-            shareDelta.innerHTML = (i18n.mp_of_total || 'of') + ' ' + (totals.combined_revenue_html || '') + ' ' + (i18n.mp_combined || 'combined');
-        }
-
-        // Per-marketplace list.
-        // No marketplace order in the window: every marketplace card below
-        // gives the same reason (no order ever, or the latest paid day).
-        var mpRows = mp.by_marketplace || [];
-        var listEl = document.getElementById('brikpanel-mp-list');
-        if (listEl) {
-            var rows = mpRows;
-            if (rows.length === 0) {
-                showEmpty(listEl, emptyReason('orders', 'all'));
-            } else {
-                var html = '';
-                rows.forEach(function (row) {
-                    var initial = (row.label || '?').charAt(0).toUpperCase();
-                    var deltaClass = row.delta_revenue > 0 ? 'positive' : (row.delta_revenue < 0 ? 'negative' : 'neutral');
-                    var deltaText  = row.delta_revenue === 0 ? '--' : (row.delta_revenue > 0 ? '+' : '') + fmtPct(row.delta_revenue);
-                    var cats = '';
-                    if (row.top_categories && row.top_categories.length) {
-                        cats = '<div class="brikpanel-dash-mp-cats">';
-                        row.top_categories.forEach(function (c) {
-                            cats += '<span class="brikpanel-dash-mp-cat">' + escapeHtml(c.name) + '</span>';
-                        });
-                        cats += '</div>';
-                    }
-
-                    html +=
-                        '<div class="brikpanel-dash-mp-item">' +
-                          '<div class="brikpanel-dash-mp-item-head">' +
-                            '<span class="brikpanel-dash-mp-badge" style="background:' + escapeHtml(row.color) + ';">' + escapeHtml(initial) + '</span>' +
-                            '<span class="brikpanel-dash-mp-name">' + escapeHtml(row.label) + '</span>' +
-                            '<span class="brikpanel-dash-mp-share">' + escapeHtml(fmtPct(row.revenue_share)) + '</span>' +
-                          '</div>' +
-                          '<div class="brikpanel-dash-mp-bar"><span style="width:' + Math.min(100, row.revenue_share) + '%;background:' + escapeHtml(row.color) + ';"></span></div>' +
-                          '<div class="brikpanel-dash-mp-stats">' +
-                            '<div><span>' + (i18n.revenue || 'Revenue') + '</span><strong>' + row.revenue_html + '</strong></div>' +
-                            '<div><span>' + (i18n.orders || 'Orders') + '</span><strong>' + formatNumber(row.orders) + '</strong></div>' +
-                            '<div><span>' + (i18n.aov || 'AOV') + '</span><strong>' + row.aov_html + '</strong></div>' +
-                            '<div><span>' + (i18n.vs_prev || 'vs. prev') + '</span><strong class="brikpanel-dash-mp-delta ' + deltaClass + '">' + deltaText + '</strong></div>' +
-                          '</div>' +
-                          cats +
-                        '</div>';
-                });
-                listEl.innerHTML = html;
-            }
-        }
-
-        // Share donut.
-        renderMarketplaceShareChart(mp.by_marketplace || []);
-
-        // Top categories.
-        var catEl = document.getElementById('brikpanel-mp-categories');
-        if (catEl) {
-            var cats = mp.categories || [];
-            if (cats.length === 0 && mpRows.length === 0) {
-                showEmpty(catEl, emptyReason('orders', 'all'));
-            } else if (cats.length === 0) {
-                // Categories require marketplace items to be linked to a WC
-                // product (via _product_id or _marketplace_sku). Make the
-                // empty state explain that — generic "No data" is misleading
-                // when the user has marketplace orders but no mapped catalog.
-                showEmpty(catEl, { text: i18n.mp_no_categories || '', note: '', preset: '' });
-            } else {
-                var ch = '<table class="brikpanel-dash-table"><thead><tr>' +
-                    '<th>#</th>' +
-                    '<th>' + (i18n.category || 'Category') + '</th>' +
-                    '<th>' + (i18n.orders || 'Orders') + '</th>' +
-                    '<th>' + (i18n.revenue || 'Revenue') + '</th>' +
-                    '<th>' + (i18n.share || 'Share') + '</th>' +
-                    '</tr></thead><tbody>';
-                cats.forEach(function (c, i) {
-                    ch += '<tr>' +
-                        '<td class="rank">' + (i + 1) + '</td>' +
-                        '<td>' + escapeHtml(c.name) + '</td>' +
-                        '<td>' + formatNumber(c.orders) + '</td>' +
-                        '<td>' + c.revenue_html + '</td>' +
-                        '<td>' + escapeHtml(fmtPct(c.share)) + '</td>' +
-                        '</tr>';
-                });
-                ch += '</tbody></table>';
-                catEl.innerHTML = ch;
-                refitDashTable(catEl);
-            }
-        }
-
-        // Top products.
-        var prEl = document.getElementById('brikpanel-mp-products');
-        if (prEl) {
-            var products = mp.top_products || [];
-            if (products.length === 0) {
-                showEmpty(prEl, emptyReason('orders', 'all'));
-            } else {
-                var ph = '<table class="brikpanel-dash-table"><thead><tr>' +
-                    '<th>#</th>' +
-                    '<th>' + (i18n.product || 'Product') + '</th>' +
-                    '<th>' + (i18n.source || 'Source') + '</th>' +
-                    '<th>' + (i18n.qty_sold || 'Qty') + '</th>' +
-                    '<th>' + (i18n.revenue || 'Revenue') + '</th>' +
-                    '</tr></thead><tbody>';
-                products.forEach(function (p, i) {
-                    ph += '<tr>' +
-                        '<td class="rank">' + (i + 1) + '</td>' +
-                        '<td>' + escapeHtml(p.name) + '</td>' +
-                        '<td><span class="brikpanel-dash-source" style="background:' + escapeHtml(p.marketplace_color) + ';">' + escapeHtml(p.marketplace_label) + '</span></td>' +
-                        '<td>' + formatNumber(p.qty) + '</td>' +
-                        '<td>' + p.revenue_html + '</td>' +
-                        '</tr>';
-                });
-                ph += '</tbody></table>';
-                prEl.innerHTML = ph;
-                refitDashTable(prEl);
-            }
-        }
+    // A marketplace's brand colour from the server's palette, or '' for
+    // anything that is not a plain hex colour.
+    function mpColor(c) {
+        return /^#[0-9a-f]{3,8}$/i.test(String(c || '')) ? String(c) : '';
     }
 
-    function renderMarketplaceShareChart(rows) {
-        var canvas = document.getElementById('brikpanel-mp-share-chart');
-        if (!canvas || typeof Chart === 'undefined') return;
+    // The ring's colour for each marketplace: the server's (its brand colour,
+    // or a steady tone of it when another of the store's marketplaces has
+    // nearly the same colour, Brikpanel_Dashboard::mp_tones()).
+    function mpPartColors(rows) {
+        return rows.map(function (r) { return mpColor(r.tone) || mpColor(r.color) || '#8a8a8a'; });
+    }
 
-        rows = Array.isArray(rows) ? rows : [];
-        var labels = rows.map(function (r) { return r.label; });
-        var data   = rows.map(function (r) { return r.revenue; });
-        var colors = rows.map(function (r) { return r.color; });
+    // A marketplace's mark: its initial on its colour.
+    function mpChip(row, color) {
+        var chip = document.createElement('span');
+        chip.className = 'bp-dv-mp-chip';
+        chip.setAttribute('aria-hidden', 'true');
+        var c = mpColor(color) || mpColor(row && row.color);
+        if (c) chip.style.setProperty('--bp-mp', c);
+        var initial = monogram(row && row.label);
+        chip.textContent = (Array.from ? Array.from(initial)[0] : initial.charAt(0)) || '';
+        return chip;
+    }
 
-        // No marketplace revenue: the reason instead of an empty ring.
-        if (!data.some(function (v) { return Number(v) > 0; })) {
-            setChartEmpty(canvas, emptyReason('orders', 'all'));
+    // Why a marketplace card is empty: a window without any paid order says
+    // so (and when the last one was); a window with orders only on the
+    // website keeps the given sentence.
+    function mpEmptyReason(fallback) {
+        return emptyReason('orders', 'all', fallback || i18n.mp_none);
+    }
+
+    function renderMarketplace(d) {
+        var section = document.getElementById('brikpanel-marketplace-section');
+        if (!section) return;
+        var mp = d && d.marketplace;
+        // A copy of the data from before BrikMarket was turned on.
+        section.hidden = !mp;
+        if (!mp) return;
+        dvCards('mp').forEach(function (card) {
+            drawMpSummary(card, mp, d);
+            drawMpColumns(card, d);
+            schedulePlay(card, function () { playMpCard(card); });
+        });
+        dvCards('mp-top').forEach(function (card) {
+            drawMpTop(card, mp);
+            schedulePlay(card, function () { playProductBars(card); });
+        });
+    }
+
+    function drawMpSummary(card, mp, d) {
+        var totals = mp.totals || {};
+        var deltas = mp.deltas || {};
+        var rows = Array.isArray(mp.by_marketplace) ? mp.by_marketplace : [];
+        var orders = Number(totals.orders) || 0;
+        var colors = mpPartColors(rows);
+
+        updateCard('card-mp-sales', totals.revenue_html || escapeHtml(money(totals.revenue || 0)));
+        updateCard('card-mp-orders', escapeHtml(formatNumber(orders)));
+        updateCard('card-mp-aov', totals.aov_html || escapeHtml(money(totals.aov || 0)));
+        updateDelta('delta-mp-sales', deltas.revenue);
+        updateDelta('delta-mp-orders', deltas.orders);
+        updateDelta('delta-mp-aov', deltas.aov);
+
+        // One marketplace: its name beside the title says whose figures these are.
+        var one = dvSlot(card, 'one');
+        if (one) {
+            one.textContent = '';
+            if (rows.length === 1) {
+                one.appendChild(mpChip(rows[0], colors[0]));
+                var name = document.createElement('span');
+                name.className = 'bp-dv-mp-one-name';
+                name.setAttribute('dir', 'auto');
+                name.textContent = String(rows[0].label || '');
+                one.appendChild(name);
+            }
+        }
+
+        drawMpMix(card, totals, rows, colors, d || {});
+    }
+
+    // A share as the legend writes it: one decimal, none for 0 and 100, and
+    // "<0.1%" for a part too small to round to a tenth.
+    function mpPct(v) {
+        if (v > 0 && v < 0.05) return '<' + fmtPct(0.1, 1);
+        return fmtPct(v, v <= 0 || v >= 99.95 ? 0 : 1);
+    }
+
+    // Where the period's sales came from: the website first, then each
+    // marketplace by sales, as one ring and a line for each part (its colour,
+    // name, money and share). A part under the pointer or the keyboard stands
+    // out; its line holds the orders and the average order in a bubble.
+    function drawMpMix(card, totals, rows, colors, d) {
+        var slot = dvSlot(card, 'mix');
+        var box = dvSlot(card, 'mixbox');
+        if (!slot || !box) return;
+        var lead = slot.querySelector('.bp-dv-lead');
+        if (!(Number(totals.orders) > 0)) {
+            if (lead) lead.hidden = true;
+            box.classList.remove('is-narrow');
+            showEmpty(box, mpEmptyReason());
             return;
         }
-        var wasHidden = setChartEmpty(canvas, null);
+        if (lead) lead.hidden = false;
+        var parts = [{
+            key: 'site',
+            name: i18n.mp_website || '',
+            v: Math.max(0, Number(totals.site_revenue) || 0),
+            color: MP_SITE_COLOR,
+            orders: Number(d.order_count) || 0,
+            aov: Number(d.aov_raw) || 0
+        }];
+        rows.forEach(function (r, i) {
+            parts.push({
+                key: 'mp' + i,
+                name: String(r.label || ''),
+                v: Math.max(0, Number(r.revenue) || 0),
+                color: colors[i],
+                orders: Number(r.orders) || 0,
+                aov: Number(r.aov) || 0
+            });
+        });
+        var total = 0;
+        parts.forEach(function (p) { total += p.v; });
+        parts.forEach(function (p) { p.pct = total > 0 ? p.v / total * 100 : 0; });
 
-        if (mpShareChart) {
-            mpShareChart.data.labels = labels;
-            mpShareChart.data.datasets[0].data = data;
-            mpShareChart.data.datasets[0].backgroundColor = colors;
-            if (wasHidden) mpShareChart.resize();
-            mpShareChart.update();
+        // Beside its lines on a card of 280px or more (a smaller ring under
+        // 400px, a phone), above them on a narrower one.
+        var w = box.clientWidth || 300;
+        var narrow = w < 280;
+        var compact = !narrow && w < 400;
+        box.classList.toggle('is-narrow', narrow);
+        box.classList.toggle('is-compact', compact);
+        box.textContent = '';
+        if (V) box.appendChild(V.ring(parts.map(function (p) { return { key: p.key, pct: p.pct, color: p.color }; }), narrow ? 120 : (compact ? 96 : 124)));
+        var list = document.createElement('ul');
+        list.className = 'bp-dv-mp-mixleg';
+        box.appendChild(list);
+        parts.forEach(function (p) {
+            var li = document.createElement('li');
+            li.className = 'bp-dv-mp-mixitem' + (p.v > 0 ? '' : ' is-zero');
+            li.setAttribute('data-k', p.key);
+            li.setAttribute('tabindex', '0');
+            li.setAttribute('data-bp-tip', 'top');
+            var sw = document.createElement('i');
+            sw.className = 'bp-dv-sw';
+            sw.style.setProperty('--bp-ring', p.color);
+            sw.setAttribute('aria-hidden', 'true');
+            var name = document.createElement('span');
+            name.className = 'bp-dv-lname';
+            var label = document.createElement('span');
+            label.className = 'bp-dv-mp-mixname';
+            label.setAttribute('dir', 'auto');
+            label.textContent = p.name;
+            name.appendChild(label);
+            var small = document.createElement('small');
+            setIsolated(small, money(p.v));
+            name.appendChild(small);
+            var pct = document.createElement('b');
+            pct.className = 'bp-dv-lpct';
+            setIsolated(pct, mpPct(p.pct));
+            var bubble = document.createElement('span');
+            bubble.className = 'brikpanel-tip bp-dv-tipbox';
+            bubble.setAttribute('role', 'tooltip');
+            var tipRows = [[i18n.sales || '', money(p.v)], [i18n.orders || '', formatNumber(p.orders)]];
+            if (p.orders > 0) tipRows.push([i18n.aov_label || '', money(p.aov)]);
+            if (V) V.tip.fill(bubble, { title: p.name, rows: tipRows });
+            li.appendChild(sw);
+            li.appendChild(name);
+            li.appendChild(pct);
+            li.appendChild(bubble);
+            list.appendChild(li);
+        });
+        wireMpMix(card, box);
+    }
+
+    // An arc or a line under the pointer, or a line with the focus, lights up
+    // its part and dims the rest (the Order rates card's way).
+    function wireMpMix(card, box) {
+        var setHl = function (key) {
+            card.classList.toggle('is-hl', !!key);
+            box.querySelectorAll('[data-k]').forEach(function (n) {
+                var same = !!key && n.getAttribute('data-k') === key;
+                n.classList.toggle('is-on', same);
+                n.classList.toggle('is-dim', !!key && !same);
+            });
+        };
+        var keyOf = function (t) {
+            var n = t && t.closest ? t.closest('[data-k]') : null;
+            return n && box.contains(n) ? n.getAttribute('data-k') : null;
+        };
+        box.onpointerover = function (e) { setHl(keyOf(e.target)); };
+        box.onpointerleave = function () { setHl(null); };
+        box.onfocusin = function (e) { setHl(keyOf(e.target)); };
+        box.onfocusout = function () { setHl(null); };
+    }
+
+    function playMpCard(card) {
+        if (!V) return;
+        card.querySelectorAll('.bp-dv-ring').forEach(function (svg) {
+            V.anim(svg, [{ opacity: 0, transform: 'rotate(-40deg) scale(.92)' }, { opacity: 1, transform: 'rotate(0) scale(1)' }], { duration: 620, delay: 60, easing: V.EASE_OUT });
+        });
+        card.querySelectorAll('.bp-dv-mp-mixitem').forEach(function (li, i) {
+            V.anim(li, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 360, delay: 160 + i * 70, easing: V.EASE_OUT });
+        });
+        var cols = card.querySelectorAll('.bp-dv-col');
+        var step = cols.length ? Math.min(14, 420 / cols.length) : 0;
+        Array.prototype.forEach.call(cols, function (c, i) {
+            V.anim(c, [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 480, delay: 60 + i * step, easing: V.EASE_OUT });
+        });
+    }
+
+    // A day as the date button writes it (shortRangeLabel()): day and month
+    // while the whole period is in the store's current year, the short date
+    // with its year otherwise.
+    function mpDayLabel(day, thisYear) {
+        if (!BF) return String(day || '');
+        return thisYear ? BF.dayMonth(day) : BF.dateShort(day);
+    }
+
+    // The marketplace part of each point of the sales series: every
+    // order's sales ('ra') less the website's ('r'). Null without 'ra' (a copy
+    // of the data from before 3.3.53).
+    function mpSeries(d) {
+        var ss = d && d.sales_series;
+        var cur = ss && Array.isArray(ss.cur) ? ss.cur : [];
+        if (!cur.some(function (x) { return x && x.ra !== undefined; })) return null;
+        return {
+            unit: ss.unit === 'hour' ? 'hour' : 'day',
+            pts: cur.map(function (x) {
+                return x ? { t: String(x.t || ''), v: Math.max(0, (Number(x.ra) || 0) - (Number(x.r) || 0)) } : null;
+            })
+        };
+    }
+
+    // Marketplace sales through the period, day by day (hour by hour on a
+    // one-day period): what the sales chart, website orders only, leaves out.
+    // A long period folds into weeks, or into as many days a column as the
+    // card's width allows. Nothing sold: no columns.
+    function drawMpColumns(card, d) {
+        var box = dvSlot(card, 'cols');
+        if (!box || !V) return;
+        var series = mpSeries(d);
+        var sold = !!series && series.pts.some(function (p) { return p && p.v > 0; });
+        box.hidden = !sold;
+        if (!sold) {
+            box.textContent = '';
             return;
         }
-
-        var ctx = canvas.getContext('2d');
-        mpShareChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: data,
-                    backgroundColor: colors,
-                    borderColor: '#ffffff',
-                    borderWidth: 2,
-                    hoverOffset: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: { boxWidth: 12, padding: 10, font: { size: 12 } }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function (ctx) {
-                                var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
-                                var pct   = total > 0 ? (ctx.parsed / total) * 100 : 0;
-                                return ctx.label + ': ' + fmtPct(pct, 1);
-                            }
-                        }
-                    }
-                }
+        var w = box.clientWidth;
+        if (!w) return;
+        var hourly = series.unit === 'hour';
+        var pts = series.pts;
+        var groups = [];
+        if (hourly) {
+            groups = pts.map(function (p, i) { return { from: i, to: i, v: p ? p.v : null }; });
+        } else {
+            var room = Math.max(12, Math.floor(w / 5));
+            var per = pts.length <= room ? 1 : (Math.ceil(pts.length / 7) <= room ? 7 : Math.ceil(pts.length / room));
+            for (var i = 0; i < pts.length; i += per) {
+                var v = 0;
+                for (var j = i; j < Math.min(pts.length, i + per); j++) v += pts[j] ? pts[j].v : 0;
+                groups.push({ from: i, to: Math.min(pts.length, i + per) - 1, v: v });
+            }
+        }
+        var year = String(CFG.store_today || '').slice(0, 4);
+        var ends = [pts[0], pts[pts.length - 1]];
+        var thisYear = ends.every(function (p) { return p && p.t.slice(0, 4) === year; });
+        var label = function (i) {
+            if (hourly) return hourLabel(i);
+            var p = pts[i];
+            return p ? mpDayLabel(p.t.slice(0, 10), thisYear) : '';
+        };
+        var aria = hourly ? (i18n.mp_cols_hour || '') : (i18n.mp_cols_day || '');
+        box.setAttribute('aria-label', aria);
+        V.columns(box, {
+            values: groups.map(function (g) { return g.v; }),
+            first: label(0),
+            last: label(pts.length - 1),
+            ariaLabel: aria,
+            live: dvSlot(card, 'cols-live'),
+            tipAt: function (k) {
+                var g = groups[k];
+                if (!g) return { title: '', rows: [] };
+                var title = hourly
+                    ? (BF ? BF.range(hourLabel(g.from), hourLabel(g.from, '59')) : '')
+                    : (g.from === g.to ? label(g.from) : (BF ? BF.range(label(g.from), label(g.to)) : label(g.from)));
+                return { title: title, rows: [[i18n.sales || '', g.v === null ? (i18n.sales_not_yet || '') : money(g.v)]] };
             }
         });
+    }
+
+    function drawMpTop(card, mp) {
+        var marketplaces = Array.isArray(mp.by_marketplace) ? mp.by_marketplace.length : 0;
+        card.querySelectorAll('[data-bp-dv-view]').forEach(function (panel) {
+            var view = panel.getAttribute('data-bp-dv-view');
+            if (view === 'products') drawMpProducts(panel, mp.top_products, marketplaces);
+            else if (view === 'categories') drawMpCategories(panel, mp.categories, marketplaces);
+        });
+    }
+
+    // Products by sales; with two marketplaces or more each names where it sold.
+    function drawMpProducts(panel, items, marketplaces) {
+        items = Array.isArray(items) ? items : [];
+        if (!items.length) {
+            // Orders whose lines carry no product name list nothing.
+            showEmpty(panel, mpEmptyReason(marketplaces ? i18n.no_data : i18n.mp_none));
+            return;
+        }
+        var max = 0;
+        items.forEach(function (p) { max = Math.max(max, Number(p.revenue) || 0); });
+        var ul = document.createElement('ul');
+        ul.className = 'bp-dv-plist';
+        items.forEach(function (p, i) {
+            var qty = Math.max(0, Number(p.qty) || 0);
+            ul.appendChild(mpTopRow(String(p.name || ''), marketplaces > 1 ? String(p.marketplace_label || '') : '', Number(p.revenue) || 0, max, BF ? BF.count(i18n.mp_units_sold, qty) : String(qty), i + 1));
+        });
+        panel.textContent = '';
+        panel.appendChild(ul);
+    }
+
+    // Categories by sales, as many rows as the products tab (no jump between
+    // tabs). Lines without a catalog product have no category.
+    function drawMpCategories(panel, cats, marketplaces) {
+        cats = Array.isArray(cats) ? cats.slice(0, 5) : [];
+        if (!cats.length) {
+            if (marketplaces) showEmpty(panel, { text: i18n.mp_no_categories || i18n.no_data || '', note: '', preset: '' });
+            else showEmpty(panel, mpEmptyReason());
+            return;
+        }
+        var max = 0;
+        cats.forEach(function (c) { max = Math.max(max, Number(c.revenue) || 0); });
+        var ul = document.createElement('ul');
+        ul.className = 'bp-dv-plist';
+        cats.forEach(function (c, i) {
+            var n = Math.max(0, Number(c.orders) || 0);
+            ul.appendChild(mpTopRow(String(c.name || ''), '', Number(c.revenue) || 0, max, BF ? BF.count(i18n.camp_orders, n) : String(n), i + 1));
+        });
+        panel.textContent = '';
+        panel.appendChild(ul);
+    }
+
+    // A row of the Products list's look (productRow()): rank, initials, the
+    // name (and the marketplace it sold on) with its bar, the sales and the
+    // line under them.
+    function mpTopRow(name, where, sales, max, sub, rank) {
+        var li = document.createElement('li');
+        li.className = 'bp-dv-prow';
+        var nameHtml = '<span class="bp-dv-pname" dir="auto" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</span>';
+        if (where) {
+            nameHtml = '<span class="bp-dv-pline">' + nameHtml + '<span class="bp-dv-ptype" dir="auto">' + escapeHtml(where) + '</span></span>';
+        }
+        li.innerHTML =
+            '<span class="bp-dv-rank">' + escapeHtml(formatNumber(rank)) + '</span>' +
+            '<span class="bp-dv-ptile" aria-hidden="true">' + escapeHtml(monogram(name)) + '</span>' +
+            '<span class="bp-dv-pmain">' + nameHtml +
+            '<span class="bp-dv-pbar"><i style="width:' + (max > 0 ? Math.min(100, Math.max(0, sales) / max * 100) : 0).toFixed(1) + '%"></i></span></span>' +
+            '<span class="bp-dv-pval"><b><bdi>' + escapeHtml(money(sales)) + '</bdi></b><span><bdi>' + escapeHtml(sub) + '</bdi></span></span>';
+        return li;
     }
 
     // =========================================================================

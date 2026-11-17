@@ -60,6 +60,8 @@ class Brikpanel_Dashboard {
         'locations' => [ 'region', 'world' ],
         // What the Locations card shows (3.3.40).
         'locations_view' => [ 'orders', 'customers', 'visitors' ],
+        // Best sellers on marketplaces (BrikMarket, 3.3.53).
+        'mp'        => [ 'products', 'categories' ],
     ];
 
     // The Most viewed pages window loads this many rows at a time; the Excel
@@ -2216,70 +2218,77 @@ class Brikpanel_Dashboard {
         <?php
     }
 
+    /**
+     * Marketplaces (BrikMarket): one row of two cards, filled by
+     * renderMarketplace() in brikpanel-dashboard.js. The first sums the
+     * period's marketplace sales (sales, orders, average order and their
+     * change), draws them day by day (hour by hour on a one-day period: the
+     * sales chart counts website orders only) and shows in one ring where the
+     * period's sales came from: the store's own website and each marketplace,
+     * with the share and the money of each beside it. The second lists what
+     * sold best there by sales, products or categories (the tab this user
+     * opened last).
+     *
+     * Up to 3.3.52 this was four figure cards, a card per marketplace, a share
+     * ring and two tables, three rows in all. Nearly every store sells on one
+     * marketplace (Salih, 16 Nov 2026), where the ring was a full circle and
+     * the marketplace's card repeated the figures above it.
+     *
+     * @return void
+     */
     public function render_section_marketplace_analytics() {
         if ( ! function_exists( 'brikpanel_brikmarket_active' ) || ! brikpanel_brikmarket_active() ) {
             return;
         }
+        $figures   = [
+            'sales'  => [ __( 'Sales', 'brikpanel' ), 'card-mp-sales', 'delta-mp-sales' ],
+            'orders' => [ __( 'Orders', 'brikpanel' ), 'card-mp-orders', 'delta-mp-orders' ],
+            'aov'    => [ __( 'Avg. order value', 'brikpanel' ), 'card-mp-aov', 'delta-mp-aov' ],
+        ];
+        $top_title = __( 'Best sellers on marketplaces', 'brikpanel' );
+        $panels    = [
+            'products'   => [ __( 'Products', 'brikpanel' ), wp_unique_id( 'bp-dv-mp-products-' ) ],
+            'categories' => [ __( 'Categories', 'brikpanel' ), wp_unique_id( 'bp-dv-mp-categories-' ) ],
+        ];
+        $selected  = self::tab_for( 'mp', array_keys( $panels ), 'products' );
         ?>
-            <!-- Marketplace Analytics (BrikMarket) -->
-            <div class="brikpanel-dash-marketplace" id="brikpanel-marketplace-section" data-empty="0">
-                <!-- Marketplace KPI cards -->
-                <div class="brikpanel-dash-cards brikpanel-dash-mp-cards">
-                    <div class="brikpanel-dash-card">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Marketplace sales', 'brikpanel' ); ?></span>
-                        <span class="brikpanel-dash-card-value" id="card-mp-sales">--</span>
-                        <span class="brikpanel-dash-card-delta" id="delta-mp-sales"></span>
+            <section class="bp-dv-row bp-dv-row--11 bp-dv-mp-row" id="brikpanel-marketplace-section">
+                <article class="bp-dv-card bp-dv-mp" data-bp-dv="mp" aria-labelledby="bp-dv-mp-title">
+                    <div class="bp-dv-card-h">
+                        <h2 class="bp-dv-title" id="bp-dv-mp-title"><?php echo esc_html_x( 'Marketplaces', 'dashboard card title: sales from the marketplaces BrikMarket connects', 'brikpanel' ); ?></h2>
+                        <?php // The marketplace's name while the period has one, the script writes it. ?>
+                        <div class="bp-dv-aside bp-dv-mp-one" data-bp-dv-slot="one"></div>
                     </div>
-                    <div class="brikpanel-dash-card">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Marketplace orders', 'brikpanel' ); ?></span>
-                        <span class="brikpanel-dash-card-value" id="card-mp-orders">--</span>
-                        <span class="brikpanel-dash-card-delta" id="delta-mp-orders"></span>
-                    </div>
-                    <div class="brikpanel-dash-card">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Avg. marketplace order', 'brikpanel' ); ?></span>
-                        <span class="brikpanel-dash-card-value" id="card-mp-aov">--</span>
-                        <span class="brikpanel-dash-card-delta" id="delta-mp-aov"></span>
-                    </div>
-                    <div class="brikpanel-dash-card">
-                        <span class="brikpanel-dash-card-label"><?php esc_html_e( 'Share of total revenue', 'brikpanel' ); ?></span>
-                        <span class="brikpanel-dash-card-value" id="card-mp-share">--</span>
-                        <span class="brikpanel-dash-card-delta brikpanel-dash-card-delta-static" id="delta-mp-share"></span>
-                    </div>
-                </div>
-
-                <!-- Per-marketplace breakdown -->
-                <div class="brikpanel-dash-row brikpanel-dash-row-1-1">
-                    <div class="brikpanel-dash-panel">
-                        <h2><?php esc_html_e( 'Revenue by marketplace', 'brikpanel' ); ?></h2>
-                        <div class="brikpanel-dash-mp-list" id="brikpanel-mp-list">
-                            <p class="brikpanel-dash-empty"><?php esc_html_e( 'Loading...', 'brikpanel' ); ?></p>
+                    <div class="bp-dv-card-body bp-dv-mp-body">
+                        <div class="bp-dv-mp-figs" data-bp-tiles>
+                            <?php foreach ( $figures as $metric => $figure ) : ?>
+                                <div class="bp-dv-mp-fig" data-metric="mp_<?php echo esc_attr( $metric ); ?>">
+                                    <span class="bp-dv-mp-label"><?php echo esc_html( $figure[0] ); ?></span>
+                                    <span class="brikpanel-dash-card-value bp-dv-mp-value" id="<?php echo esc_attr( $figure[1] ); ?>">--</span>
+                                    <span class="brikpanel-dash-card-delta" id="<?php echo esc_attr( $figure[2] ); ?>"></span>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php // Marketplace sales day by day (hour by hour on one day): the sales chart counts website orders only. ?>
+                        <div class="bp-dv-mp-cols" data-bp-dv-slot="cols" tabindex="0" role="group" hidden></div>
+                        <span class="screen-reader-text" aria-live="polite" data-bp-dv-slot="cols-live"></span>
+                        <?php // Where the period's sales came from: the website and each marketplace, one ring (Salih, 16 Nov 2026). ?>
+                        <div class="bp-dv-mp-mix" data-bp-dv-slot="mix">
+                            <p class="bp-dv-lead" hidden><?php esc_html_e( 'Where your sales came from', 'brikpanel' ); ?></p>
+                            <div class="bp-dv-mp-mix-box" data-bp-dv-slot="mixbox"></div>
                         </div>
                     </div>
-                    <div class="brikpanel-dash-panel">
-                        <h2><?php esc_html_e( 'Marketplace share', 'brikpanel' ); ?></h2>
-                        <div class="brikpanel-dash-chart-wrap brikpanel-dash-chart-short">
-                            <canvas id="brikpanel-mp-share-chart"></canvas>
-                        </div>
-                        <p class="brikpanel-dash-empty brikpanel-dash-chart-empty" hidden></p>
+                </article>
+                <article class="bp-dv-card bp-dv-mp-top" data-bp-dv="mp-top" aria-labelledby="bp-dv-mp-top-title">
+                    <div class="bp-dv-card-h">
+                        <h2 class="bp-dv-title" id="bp-dv-mp-top-title"><?php echo esc_html( $top_title ); ?></h2>
+                        <div class="bp-dv-aside"><?php $this->tab_row( $top_title, $panels, $selected ); ?></div>
                     </div>
-                </div>
-
-                <!-- Top categories + per-marketplace categories -->
-                <div class="brikpanel-dash-row brikpanel-dash-row-1-1">
-                    <div class="brikpanel-dash-panel">
-                        <h2><?php esc_html_e( 'Top categories from marketplaces', 'brikpanel' ); ?></h2>
-                        <div class="brikpanel-dash-table-wrap" id="brikpanel-mp-categories">
-                            <p class="brikpanel-dash-empty"><?php esc_html_e( 'Loading...', 'brikpanel' ); ?></p>
-                        </div>
-                    </div>
-                    <div class="brikpanel-dash-panel">
-                        <h2><?php esc_html_e( 'Top marketplace products', 'brikpanel' ); ?></h2>
-                        <div class="brikpanel-dash-table-wrap" id="brikpanel-mp-products">
-                            <p class="brikpanel-dash-empty"><?php esc_html_e( 'Loading...', 'brikpanel' ); ?></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <?php foreach ( $panels as $view => $panel ) : ?>
+                        <div class="bp-dv-panel bp-dv-list-body" id="<?php echo esc_attr( $panel[1] ); ?>" data-bp-dv-view="<?php echo esc_attr( $view ); ?>" role="tabpanel"<?php echo $view !== $selected ? ' hidden' : ''; ?>></div>
+                    <?php endforeach; ?>
+                </article>
+            </section>
         <?php
     }
 
@@ -4195,11 +4204,13 @@ class Brikpanel_Dashboard {
         // region, and the locations may carry a region map (focus). "g5": the
         // locations carry the visitors' countries (3.3.40). "g6": ad spend in
         // another currency is converted with the Settings > Currency rates and
-        // the copy carries what had no rate (3.3.41).
+        // the copy carries what had no rate (3.3.41). "g7": the marketplace
+        // products and categories are in the store's currency, the products
+        // ordered by sales, and the totals carry the website's sales (3.3.53).
         // The rates themselves join the key: a deleted rate fires no hook, and
         // a copy holding converted spend must not outlive the rate behind it.
         $fx_for_key = function_exists( 'brikpanel_fx_rates_signature' ) ? brikpanel_fx_rates_signature() : '0';
-        $cache_key  = 'bp_dash_g6_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key . '_fx' . $fx_for_key;
+        $cache_key  = 'bp_dash_g7_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key . '_fx' . $fx_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $this->with_data_ver( $this->with_tracking_state( $this->with_today( $cached ) ), $cache_ver ) );
@@ -5798,8 +5809,9 @@ class Brikpanel_Dashboard {
      * The sales chart's series: the current period day by day (hour by hour
      * for a single day) with the previous period of the same length under
      * it, daily visitors for the store cards' small lines and, while
-     * BrikMarket is active, revenue from every channel for the Total sales
-     * card (the chart itself counts website orders only, like before).
+     * BrikMarket is active, revenue from every channel ('ra', by the day and
+     * since 3.3.53 by the hour too) for the Total sales card and the
+     * Marketplaces card (the chart itself counts website orders only).
      *
      * @param array $dates      calculate_dates().
      * @param bool  $exclude_mp BrikMarket is active.
@@ -5831,8 +5843,16 @@ class Brikpanel_Dashboard {
         if ( 'hour' === $unit ) {
             $is_today = $first === $today;
             $upto     = $is_today ? (int) $now->format( 'G' ) : 23;
+            // With BrikMarket, every hour also carries all orders' sales
+            // ('ra', as the days do): the Marketplaces card draws the
+            // marketplace part hour by hour, the Total sales line counts it.
+            $all_hours = $exclude_mp ? $this->day_hours( $this->fold_sales_buckets( $this->sales_bucket_rows( $dates['start_gmt'], $dates['end_gmt'], false ), 'hour' ), $first, $upto ) : null;
             foreach ( $this->day_hours( $this->fold_sales_buckets( $cur_rows, 'hour' ), $first, $upto ) as $h => $x ) {
-                $out['cur'][] = null === $x ? null : [ 't' => $first . ' ' . str_pad( (string) $h, 2, '0', STR_PAD_LEFT ) . ':00', 'r' => $x['r'], 'o' => $x['o'] ];
+                $point = null === $x ? null : [ 't' => $first . ' ' . str_pad( (string) $h, 2, '0', STR_PAD_LEFT ) . ':00', 'r' => $x['r'], 'o' => $x['o'] ];
+                if ( null !== $point && null !== $all_hours ) {
+                    $point['ra'] = isset( $all_hours[ $h ]['r'] ) ? $all_hours[ $h ]['r'] : $point['r'];
+                }
+                $out['cur'][] = $point;
             }
             if ( $with_prev ) {
                 $prev_day = (string) $prev['start_local'];
@@ -6440,6 +6460,90 @@ class Brikpanel_Dashboard {
     // path uses wp_posts + wp_postmeta and wp_woocommerce_order_items.
     // =========================================================================
 
+    /**
+     * Every marketplace this store has ever sold on (the BrikMarket order
+     * marker), kept for 12 hours. Read from the marker's index, a few
+     * milliseconds even on a large store.
+     *
+     * @return string[] Marketplace ids.
+     */
+    private function mp_store_ids() {
+        $cached = get_transient( 'brikpanel_mp_store_ids' );
+        if ( is_array( $cached ) ) {
+            return $cached;
+        }
+        global $wpdb;
+        $meta_key = brikpanel_marketplace_meta_key();
+        $ids      = $this->is_hpos()
+            ? $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT meta_value FROM {$wpdb->prefix}wc_orders_meta WHERE meta_key = %s AND meta_value <> '' LIMIT 50", $meta_key ) )
+            : $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value <> '' LIMIT 50", $meta_key ) );
+        $ids = array_values( array_unique( array_map( 'strval', (array) $ids ) ) );
+        set_transient( 'brikpanel_mp_store_ids', $ids, function_exists( 'brikpanel_cache_ttl' ) ? brikpanel_cache_ttl( 12 * HOUR_IN_SECONDS ) : 12 * HOUR_IN_SECONDS );
+        return $ids;
+    }
+
+    /**
+     * The colour each marketplace takes in the Marketplaces card's ring
+     * (3.3.53): its brand colour, unless that is too close to the website's
+     * dark grey or to a marketplace before it (Amazon, Trendyol and
+     * Hepsiburada are all orange), then a lighter, else a darker, tone of it.
+     * Worked out over every marketplace the store has sold on, in the
+     * palette's fixed order, so a marketplace keeps its colour whichever
+     * period is on screen, and a store on one marketplace sees its brand
+     * colour.
+     *
+     * @param string[] $period_ids Marketplaces of the period on screen (one
+     *                             the 12-hour list does not know yet is added).
+     * @return array<string,string> Marketplace id => #rrggbb.
+     */
+    private function mp_tones( array $period_ids ) {
+        $ids   = array_values( array_unique( array_merge( $this->mp_store_ids(), array_map( 'strval', $period_ids ) ) ) );
+        $order = array_keys( brikpanel_marketplace_palette() );
+        usort(
+            $ids,
+            function ( $a, $b ) use ( $order ) {
+                $ia = array_search( $a, $order, true );
+                $ib = array_search( $b, $order, true );
+                $ia = false === $ia ? PHP_INT_MAX : $ia;
+                $ib = false === $ib ? PHP_INT_MAX : $ib;
+                return $ia === $ib ? strcmp( $a, $b ) : $ia <=> $ib;
+            }
+        );
+        $used  = [ [ 48, 48, 48 ] ]; // The website, #303030.
+        $tones = [];
+        foreach ( $ids as $id ) {
+            $meta = brikpanel_marketplace_meta( $id );
+            $hex  = preg_match( '/^#([0-9a-f]{3}|[0-9a-f]{6})$/i', (string) $meta['color'] ) ? substr( (string) $meta['color'], 1 ) : '8a8a8a';
+            if ( 3 === strlen( $hex ) ) {
+                $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+            }
+            $base = [ hexdec( substr( $hex, 0, 2 ) ), hexdec( substr( $hex, 2, 2 ) ), hexdec( substr( $hex, 4, 2 ) ) ];
+            $pick = $base;
+            foreach ( [ 0, 0.45, -0.35, 0.7, -0.6 ] as $k ) {
+                $c = array_map(
+                    function ( $v ) use ( $k ) {
+                        return $k >= 0 ? $v + ( 255 - $v ) * $k : $v * ( 1 + $k );
+                    },
+                    $base
+                );
+                $far = true;
+                foreach ( $used as $u ) {
+                    if ( sqrt( ( $u[0] - $c[0] ) ** 2 + ( $u[1] - $c[1] ) ** 2 + ( $u[2] - $c[2] ) ** 2 ) < 70 ) {
+                        $far = false;
+                        break;
+                    }
+                }
+                if ( $far ) {
+                    $pick = $c;
+                    break;
+                }
+            }
+            $used[]       = $pick;
+            $tones[ $id ] = sprintf( '#%02x%02x%02x', (int) round( $pick[0] ), (int) round( $pick[1] ), (int) round( $pick[2] ) );
+        }
+        return $tones;
+    }
+
     private function get_marketplace_analytics( $start_gmt, $end_gmt, $prev_start_gmt, $prev_end_gmt, $site_revenue ) {
         global $wpdb;
 
@@ -6500,7 +6604,16 @@ class Brikpanel_Dashboard {
         // 3) Marketplace top products (top 5 across all marketplaces).
         $top_products = $this->mp_top_products( $start_gmt, $end_gmt, $is_hpos, $include_statuses, $status_placeholders, $meta_key );
 
-        // 4) Build per-marketplace payload sorted by revenue desc.
+        // 4) Build per-marketplace payload sorted by revenue desc. Each
+        //    marketplace's ring colour stays the same from period to period.
+        $tones          = $this->mp_tones(
+            array_map(
+                function ( $r ) {
+                    return (string) $r->marketplace_id;
+                },
+                $rows_current
+            )
+        );
         $by_marketplace = [];
         foreach ( $rows_current as $r ) {
             $mp_id   = (string) $r->marketplace_id;
@@ -6529,6 +6642,8 @@ class Brikpanel_Dashboard {
                 'id'             => $mp_id,
                 'label'          => $meta['label'],
                 'color'          => $meta['color'],
+                // The colour in the Marketplaces card's ring (3.3.53).
+                'tone'           => isset( $tones[ $mp_id ] ) ? $tones[ $mp_id ] : $meta['color'],
                 'logo'           => $meta['logo'] ?? '',
                 'orders'         => $orders,
                 'revenue'        => $rev,
@@ -6584,6 +6699,8 @@ class Brikpanel_Dashboard {
                 'aov_html'         => wc_price( $aov_current ),
                 'share_total_pct'  => $share_of_total_pct,
                 'site_revenue'          => (float) $site_revenue,
+                // The website's part of the Marketplaces card's ring (3.3.53).
+                'site_revenue_html'     => wc_price( (float) $site_revenue ),
                 'combined_revenue'      => $combined_revenue,
                 'combined_revenue_html' => $combined_revenue_html,
             ],
@@ -6704,6 +6821,38 @@ class Brikpanel_Dashboard {
     }
 
     /**
+     * The rate that turns an amount of a marketplace order (a line's total)
+     * into the store's base currency: the order's base-currency snapshot over
+     * its own total, the snapshot the marketplace sales figure sums
+     * (mp_totals_by_marketplace()). An order without a snapshot, or with a
+     * zero total, keeps its amounts as they are.
+     *
+     * Up to 3.3.52 the lines were summed in each order's own currency, so on a
+     * store selling in dollars an Amazon order in lira listed a product at
+     * "$6,999.00" under marketplace sales of $1,443.08.
+     *
+     * Joins onto mp_order_header_clause()'s FROM (aliases o or p).
+     *
+     * @param bool $is_hpos HPOS order tables.
+     * @return array{join: string, rate: string}
+     */
+    private function mp_line_rate_sql( $is_hpos ) {
+        global $wpdb;
+        if ( $is_hpos ) {
+            $fx = brikpanel_base_total_sql( true, 'o.id', 'o.total_amount', 'bpfx' );
+            return [
+                'join' => $fx['join'],
+                'rate' => "COALESCE(CAST({$fx['expr']} AS DECIMAL(20,6)) / NULLIF(o.total_amount, 0), 1)",
+            ];
+        }
+        $fx = brikpanel_base_total_sql( false, 'p.ID', 'bpot.meta_value', 'bpfx' );
+        return [
+            'join' => " LEFT JOIN {$wpdb->postmeta} bpot ON bpot.post_id = p.ID AND bpot.meta_key = '_order_total' AND " . brikpanel_sql_first_meta_guard( 'post', 'bpot' ) . $fx['join'],
+            'rate' => "COALESCE(CAST({$fx['expr']} AS DECIMAL(20,6)) / NULLIF(CAST(bpot.meta_value AS DECIMAL(20,6)), 0), 1)",
+        ];
+    }
+
+    /**
      * Top categories per marketplace.
      *
      * Categories require a WC product to read taxonomy terms from. We try
@@ -6722,6 +6871,7 @@ class Brikpanel_Dashboard {
         global $wpdb;
 
         $clause = $this->mp_order_header_clause( $start_gmt, $end_gmt, $is_hpos, $include_statuses, $status_placeholders, $meta_key );
+        $fx     = $this->mp_line_rate_sql( $is_hpos );
 
         // COALESCE: _product_id wins; otherwise resolve via SKU lookup.
         //
@@ -6736,8 +6886,8 @@ class Brikpanel_Dashboard {
                     tt.term_id                    AS term_id,
                     t.name                        AS term_name,
                     COUNT(DISTINCT {$clause['order_alias']}) AS orders,
-                    COALESCE(SUM(CAST(im_total.meta_value AS DECIMAL(20,6))), 0) AS revenue
-             FROM {$clause['from']}
+                    COALESCE(SUM(CAST(im_total.meta_value AS DECIMAL(20,6)) * {$fx['rate']}), 0) AS revenue
+             FROM {$clause['from']}{$fx['join']}
              LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta im_pid
                  ON oi.order_item_id = im_pid.order_item_id AND im_pid.meta_key = '_product_id'
              LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta im_sku
@@ -6783,14 +6933,18 @@ class Brikpanel_Dashboard {
         global $wpdb;
 
         $clause = $this->mp_order_header_clause( $start_gmt, $end_gmt, $is_hpos, $include_statuses, $status_placeholders, $meta_key );
+        $fx     = $this->mp_line_rate_sql( $is_hpos );
 
+        // Ordered by sales in the store's currency since 3.3.53 (by units up
+        // to 3.3.52): the card lists what brought the most money, each row
+        // with its sales, its bar and the units under them.
         $sql = $wpdb->prepare(
             "SELECT oi.order_item_name AS name,
                     {$clause['marketplace_alias']} AS marketplace_id,
                     SUM(CAST(im_qty.meta_value AS UNSIGNED))            AS qty,
-                    SUM(CAST(im_total.meta_value AS DECIMAL(20,6)))     AS revenue,
+                    SUM(CAST(im_total.meta_value AS DECIMAL(20,6)) * {$fx['rate']}) AS revenue,
                     MAX(CAST(im_pid.meta_value AS UNSIGNED))            AS product_id
-             FROM {$clause['from']}
+             FROM {$clause['from']}{$fx['join']}
              LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta im_qty
                  ON oi.order_item_id = im_qty.order_item_id AND im_qty.meta_key = '_qty'
              LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta im_total
@@ -6800,7 +6954,7 @@ class Brikpanel_Dashboard {
              WHERE {$clause['where']}
              AND oi.order_item_name <> ''
              GROUP BY oi.order_item_name, marketplace_id
-             ORDER BY qty DESC, revenue DESC
+             ORDER BY revenue DESC, qty DESC
              LIMIT 5",
             $clause['args']
         );

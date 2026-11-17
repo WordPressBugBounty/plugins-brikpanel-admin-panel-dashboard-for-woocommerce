@@ -111,6 +111,17 @@ body.brikpanel-has-topbar .brikpanel-order-header {
     top: var(--bp-topbar-height) !important;
 }
 
+/* MailPoet pins its own header (logo and tabs) to the top of the page column
+   and, at 600px and below, moves it 46px down: the room WordPress keeps there
+   for its admin bar as #wpbody padding, which the rule above takes away. Under
+   our bar that left a 46px gap above MailPoet's header and laid the header over
+   the first 46px of the page (measured at 390px: header 98-162, page from 116).
+   A foreign element, so the selector has to beat MailPoet's own
+   `.wrap .mailpoet-top-bar { top: 46px }`; from 601px up MailPoet uses top: 0. */
+@media screen and (max-width: 600px) {
+    body.brikpanel-has-topbar .wrap .mailpoet-top-bar { top: 0; }
+}
+
 /* On embedded wc-admin screens (orders/products/coupons list tables, settings)
    WooCommerce injects a `.woocommerce-layout` notice-list wrapper before the
    page `.wrap`. Its core 10px top padding leaves a visible gap between our
