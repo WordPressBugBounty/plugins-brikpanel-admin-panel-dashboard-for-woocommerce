@@ -1010,7 +1010,9 @@ function brikpanel_settings_fields() {
             'name'              => __('Polling interval (seconds)', 'brikpanel'),
             'id'                => 'brikpanel_order_notify_interval',
             'type'              => 'number',
-            'desc'              => __('How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300.', 'brikpanel'),
+            // The top bar, the Store Health shield and the Live visitors box
+            // follow it too (brikpanel_admin_refresh_seconds()).
+            'desc'              => __('How often the admin checks for new orders and refreshes the top bar and the Live visitors box. Lower values feel more instant; higher values reduce server load. Min 10, max 300.', 'brikpanel'),
             'default'           => '30',
             'css'               => 'width: 80px;',
             'custom_attributes' => [

@@ -264,7 +264,9 @@ class Brikpanel_BrikControl {
             'ajax_url' => admin_url( 'admin-ajax.php' ),
             'nonce'    => wp_create_nonce( self::NONCE_ACTION ),
             'page_url' => admin_url( 'admin.php?page=' . self::PAGE_SLUG ),
-            'refresh_interval' => 60000,
+            // Milliseconds between two refreshes: the "Polling interval"
+            // setting, never faster than once a minute.
+            'refresh_interval' => ( function_exists( 'brikpanel_admin_refresh_seconds' ) ? brikpanel_admin_refresh_seconds( 60 ) : 60 ) * 1000,
             // "5 min ago" comes with every status reply (last_scan_relative),
             // written by relative_time() with _n().
             'i18n'     => [

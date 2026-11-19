@@ -9801,7 +9801,7 @@ msgstr "Retourconcept"
 #: front-end/order-statuses/brikpanel-order-statuses.php:266
 msgctxt "Order status"
 msgid "Change"
-msgstr "Wijzigen"
+msgstr "Omruiling"
 
 #: front-end/order-statuses/brikpanel-order-statuses.php:434
 #, php-format
@@ -11618,8 +11618,8 @@ msgid "Polling interval (seconds)"
 msgstr "Polling-interval (seconden)"
 
 #: front-end/orders/brikpanel-orders.php:1013
-msgid "How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
-msgstr "Hoe vaak de admin controleert op nieuwe bestellingen. Lagere waarden voelen directer aan; hogere waarden verminderen de serverbelasting. Min 10, max 300."
+msgid "How often the admin checks for new orders and refreshes the top bar and the Live visitors box. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
+msgstr "Hoe vaak de admin controleert op nieuwe bestellingen en de bovenbalk en het vak Live bezoekers vernieuwt. Lagere waarden voelen directer aan; hogere waarden verminderen de serverbelasting. Min 10, max 300."
 
 #: front-end/orders/brikpanel-orders.php:1027
 #: front-end/orders/brikpanel-orders.php:1072

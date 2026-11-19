@@ -9801,7 +9801,7 @@ msgstr "İade Taslağı"
 #: front-end/order-statuses/brikpanel-order-statuses.php:266
 msgctxt "Order status"
 msgid "Change"
-msgstr "Değişiklik"
+msgstr "Değişim"
 
 #: front-end/order-statuses/brikpanel-order-statuses.php:434
 #, php-format
@@ -11618,8 +11618,8 @@ msgid "Polling interval (seconds)"
 msgstr "Yoklama aralığı (saniye)"
 
 #: front-end/orders/brikpanel-orders.php:1013
-msgid "How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
-msgstr "Yönetimde yeni siparişlerin ne sıklıkla kontrol edildiği. Düşük değerler daha anlık hissettirir; yüksek değerler sunucu yükünü azaltır. Min 10, maks 300."
+msgid "How often the admin checks for new orders and refreshes the top bar and the Live visitors box. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
+msgstr "Yönetimde yeni siparişlerin ne sıklıkla kontrol edildiği. Üst çubuk ve Canlı ziyaretçiler kutusu da bu sıklıkla yenilenir. Düşük değerler daha anlık hissettirir; yüksek değerler sunucu yükünü azaltır. Min 10, maks 300."
 
 #: front-end/orders/brikpanel-orders.php:1027
 #: front-end/orders/brikpanel-orders.php:1072

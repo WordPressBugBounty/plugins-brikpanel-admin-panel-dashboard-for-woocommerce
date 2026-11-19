@@ -5574,9 +5574,12 @@
     function startLivePolling() {
         if (liveInterval || liveStale) return;
         fetchLiveVisitors();
-        // 30s: a visitor stays "live" for at least 75s after their last ping,
-        // so a faster poll only adds server load without showing anything new.
-        liveInterval = setInterval(fetchLiveVisitors, 30000);
+        // At least 30 s: a visitor stays "live" for at least 75 s after their
+        // last ping, so a faster poll only adds server load without showing
+        // anything new. Slower when the store sets a longer "Polling
+        // interval" (Notifications), which paces the top bar too.
+        var liveSec = Math.max(30, Math.min(300, parseInt(CFG.live_refresh, 10) || 30));
+        liveInterval = setInterval(fetchLiveVisitors, liveSec * 1000);
     }
 
     function stopLivePolling() {

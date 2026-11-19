@@ -11758,8 +11758,8 @@ msgid "Polling interval (seconds)"
 msgstr "Интервал опроса (секунды)"
 
 #: front-end/orders/brikpanel-orders.php:1013
-msgid "How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
-msgstr "Как часто администратор проверяет новые заказы. Меньшие значения ощущаются более мгновенными; большие значения уменьшают нагрузку на сервер. Мин 10, макс 300."
+msgid "How often the admin checks for new orders and refreshes the top bar and the Live visitors box. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
+msgstr "Как часто администратор проверяет новые заказы и обновляет верхнюю панель и блок активных посетителей. Меньшие значения ощущаются более мгновенными; большие значения уменьшают нагрузку на сервер. Мин 10, макс 300."
 
 #: front-end/orders/brikpanel-orders.php:1027
 #: front-end/orders/brikpanel-orders.php:1072

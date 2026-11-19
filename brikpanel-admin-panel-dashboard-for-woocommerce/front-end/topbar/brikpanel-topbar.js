@@ -810,9 +810,18 @@
         });
     }
 
+    // The "Polling interval" setting (Notifications) paces this refresh as
+    // well, so a store on a small server can slow it down. Never faster than
+    // every 30 seconds, never slower than the setting's 300.
+    function topbarRefreshMs() {
+        var cfg = window.brikpanelTopbar || {};
+        var sec = parseInt(cfg.refresh, 10) || 30;
+        return Math.max(30, Math.min(300, sec)) * 1000;
+    }
+
     function startTopbarPolling() {
         stopTopbarPolling();
-        topbarInterval = setInterval(fetchTopbarStats, 30000);
+        topbarInterval = setInterval(fetchTopbarStats, topbarRefreshMs());
     }
 
     function stopTopbarPolling() {

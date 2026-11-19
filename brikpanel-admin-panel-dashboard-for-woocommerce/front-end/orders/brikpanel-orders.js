@@ -550,7 +550,7 @@ function brikpanelNewOrdersBar() {
 		$bar.hidden = false;
 	}
 
-	// polled: the minute poll, which sends the version it knows (the server
+	// polled: the list's own poll (below), which sends the version it knows (the server
 	// then skips the count while nothing changed) and passes a newer one on.
 	function ask(polled = false) {
 		if (busy) {
@@ -600,10 +600,15 @@ function brikpanelNewOrdersBar() {
 	document.addEventListener('brikpanel:new-orders', () => {
 		if (counts && !document.hidden) ask();
 	});
+	// The list asks on its own only while no news comes from the top bar (the
+	// bar is off). Both follow the "Polling interval" setting: the bar sends
+	// its news at that pace, so a list that heard from it within one interval
+	// (and a little slack) stays quiet. At least once a minute.
+	const gap = Math.max(60, Math.min(300, parseInt(cfg.refresh, 10) || 60)) * 1000;
 	setInterval(() => {
-		if (document.hidden || Date.now() - heardAt < 70000) return;
+		if (document.hidden || Date.now() - heardAt < gap + 10000) return;
 		ask(true);
-	}, 60000);
+	}, gap);
 }
 
 /**

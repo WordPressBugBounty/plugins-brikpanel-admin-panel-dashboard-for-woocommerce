@@ -1750,8 +1750,12 @@ class Brikpanel_Dashboard {
         $placeholders = implode( ', ', array_fill( 0, count( $admins ), '%d' ) );
 
         if ( $is_hpos ) {
+            // An empty (NULL) customer is a guest, never an administrator:
+            // see brikpanel_admin_order_exclusion_sql().
             return [
-                'sql'  => ' AND o.customer_id ' . ( $only ? 'IN' : 'NOT IN' ) . " ({$placeholders})",
+                'sql'  => $only
+                    ? " AND o.customer_id IN ({$placeholders})"
+                    : " AND (o.customer_id IS NULL OR o.customer_id NOT IN ({$placeholders}))",
                 'args' => $admins,
             ];
         }

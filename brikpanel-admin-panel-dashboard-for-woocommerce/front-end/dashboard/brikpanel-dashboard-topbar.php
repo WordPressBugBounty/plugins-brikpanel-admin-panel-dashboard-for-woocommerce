@@ -244,6 +244,9 @@ class Brikpanel_Dashboard_Topbar {
         wp_localize_script( 'brikpanel_topbar_scripts', 'brikpanelTopbar', [
             'ajax_url'        => admin_url( 'admin-ajax.php' ),
             'nonce'           => wp_create_nonce( self::NONCE_ACTION ),
+            // Seconds between two refreshes of the live count and the bell:
+            // the "Polling interval" setting, never faster than 30 seconds.
+            'refresh'         => function_exists( 'brikpanel_admin_refresh_seconds' ) ? brikpanel_admin_refresh_seconds( 30 ) : 30,
             'cache_nonce'     => class_exists( 'Brikpanel_Cache_Clear' ) ? wp_create_nonce( Brikpanel_Cache_Clear::NONCE_ACTION ) : '',
             'cache_action'    => class_exists( 'Brikpanel_Cache_Clear' ) ? Brikpanel_Cache_Clear::AJAX_ACTION : '',
             // Where LiteSpeed is asked to send a background purge back to: a

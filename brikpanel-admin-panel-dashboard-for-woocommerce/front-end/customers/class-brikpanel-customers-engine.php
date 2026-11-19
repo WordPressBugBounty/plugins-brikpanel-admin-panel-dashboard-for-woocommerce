@@ -940,9 +940,12 @@ final class Brikpanel_Customers_Engine {
 				  ))
 				  AND (o.customer_id > 0 OR NOT EXISTS (
 					SELECT 1 FROM {$t} p
-					WHERE p.customer_id = 0 AND p.billing_email = o.billing_email
+					WHERE (p.customer_id = 0 OR p.customer_id IS NULL) AND p.billing_email = o.billing_email
 					  AND p.type = 'shop_order' AND p.status IN ({$counted_in}) AND p.date_created_gmt < %s
 				  ))";
+			// A guest's earlier order may carry an empty (NULL) customer instead
+			// of 0 (OpenPOS reserves its order rows that way); both are guests.
+			// The email equality still picks the index, as before.
 			// One look-up per kind of customer, each a plain lookup on the
 			// (customer_id, billing_email) index. A single subquery with an OR
 			// for the email read every guest order of the store for each order
@@ -1040,7 +1043,8 @@ final class Brikpanel_Customers_Engine {
 			$where[]  = ( $hpos ? 'o.customer_id' : 'IFNULL(m.cu + 0, 0)' ) . ' = %d';
 			$params[] = (int) $k['id'];
 		} else {
-			$where[]  = $hpos ? 'o.customer_id = 0 AND o.billing_email = %s' : 'IFNULL(m.cu + 0, 0) = 0 AND LOWER(m.em) = %s';
+			// An empty (NULL) customer is a guest too (OpenPOS till orders).
+			$where[]  = $hpos ? '(o.customer_id = 0 OR o.customer_id IS NULL) AND o.billing_email = %s' : 'IFNULL(m.cu + 0, 0) = 0 AND LOWER(m.em) = %s';
 			$params[] = (string) $k['email'];
 		}
 		if ( $apply_exclusions && function_exists( 'brikpanel_excluded_customer_sql' ) ) {

@@ -279,6 +279,64 @@ function brikpanel_cos_migrate_legacy_statuses() {
 }
 add_action( 'init', 'brikpanel_cos_migrate_legacy_statuses', 4 );
 
+/**
+ * Correct the legacy status labels that were seeded from a wrong translation.
+ *
+ * brikpanel_cos_migrate_legacy_statuses() writes each label once, in the
+ * language of the request that runs it, and the saved label never reads the
+ * translation files again. Before 3.3.54 three bundled translations were
+ * wrong: "Change" (an exchange: the customer swaps an item) came out as the
+ * verb in Dutch and Brazilian Portuguese and as "modification" in Turkish,
+ * and the Brazilian "Return Draft" as "send back to draft". The files are
+ * fixed; this fixes the stores that were seeded before that.
+ *
+ * A label changes only while it is still exactly the text BrikPanel seeded,
+ * and into the corrected text of the same language, whatever language the
+ * site runs in now. A label the merchant renamed is theirs and stays as it is.
+ * Called once, from brikpanel_maybe_upgrade_db() on the way up from a version
+ * before 3.3.54, so a merchant who later picks one of these words again
+ * keeps it.
+ *
+ * @return bool True when a label was corrected.
+ */
+function brikpanel_cos_repair_legacy_labels() {
+	// slug => [ label seeded from the wrong translation => corrected label ].
+	// Not run through _x(): each pair belongs to one language, not to the
+	// language of whichever request happens to run the upgrade.
+	$fixes = [
+		'change'       => [
+			'Wijzigen'   => 'Omruiling', // nl_NL.
+			'Alterar'    => 'Troca',     // pt_BR.
+			'Değişiklik' => 'Değişim',   // tr_TR.
+		],
+		'return-draft' => [
+			'Devolver para Rascunho' => 'Rascunho de devolução', // pt_BR.
+		],
+	];
+
+	$rows = get_option( BRIKPANEL_CUSTOM_STATUSES_OPTION, [] );
+	if ( ! is_array( $rows ) ) {
+		return false;
+	}
+
+	$changed = false;
+	foreach ( $fixes as $slug => $pairs ) {
+		if ( ! isset( $rows[ $slug ]['label'] ) || ! is_string( $rows[ $slug ]['label'] ) ) {
+			continue;
+		}
+		$label = $rows[ $slug ]['label'];
+		if ( isset( $pairs[ $label ] ) ) {
+			$rows[ $slug ]['label'] = $pairs[ $label ];
+			$changed                = true;
+		}
+	}
+
+	if ( $changed ) {
+		update_option( BRIKPANEL_CUSTOM_STATUSES_OPTION, $rows );
+	}
+	return $changed;
+}
+
 // =============================================================================
 // GLOBAL REGISTRATION — runs on every request, not only in admin.
 // =============================================================================

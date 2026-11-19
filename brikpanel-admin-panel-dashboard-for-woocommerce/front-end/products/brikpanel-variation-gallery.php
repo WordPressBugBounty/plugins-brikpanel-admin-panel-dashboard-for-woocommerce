@@ -13,6 +13,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Tells a storefront plugin that shows these pictures itself (BrikFront's Variation gallery reads
+// _brikpanel_variation_gallery) that this BrikPanel asks first, through the brikpanel_variation_gallery_storefront
+// filter below, so a product page never gets two galleries. The editor keeps saving the pictures either way.
+if (!defined('BRIKPANEL_VARIATION_GALLERY_ASKS')) {
+    define('BRIKPANEL_VARIATION_GALLERY_ASKS', true);
+}
+
 if (get_option('brikpanel_simple_product_editor', 'yes') !== 'yes') {
     return;
 }
@@ -25,6 +32,11 @@ if (get_option('brikpanel_variation_gallery_enabled', 'yes') !== 'yes') {
  * Add variation gallery image data to the variation JSON sent to the frontend.
  */
 add_filter('woocommerce_available_variation', function ($data, $product, $variation) {
+    // False while another plugin shows the variation's pictures (BrikFront's Variation gallery module).
+    if (!apply_filters('brikpanel_variation_gallery_storefront', true)) {
+        return $data;
+    }
+
     $gallery_ids = get_post_meta($variation->get_id(), '_brikpanel_variation_gallery', true);
 
     if (empty($gallery_ids) || !is_array($gallery_ids)) {
@@ -64,7 +76,7 @@ add_filter('woocommerce_available_variation', function ($data, $product, $variat
  * Enqueue the frontend gallery swap script on single product pages.
  */
 add_action('wp_enqueue_scripts', function () {
-    if (!is_product()) {
+    if (!is_product() || !apply_filters('brikpanel_variation_gallery_storefront', true)) {
         return;
     }
 

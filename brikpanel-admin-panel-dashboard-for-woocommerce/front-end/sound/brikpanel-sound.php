@@ -64,6 +64,24 @@ function brikpanel_order_notify_settings() {
 }
 
 /**
+ * How often one of the admin's background refreshes runs, in seconds.
+ *
+ * The "Polling interval" setting paces every request the admin sends on its
+ * own while a screen is open: the new-order check, the top bar's numbers, the
+ * Store Health shield, the dashboard's Live visitors box and the Orders list.
+ * A store on a small server slows all of them with that one setting. None of
+ * them runs faster than `$floor`, its pace before the setting reached it, so
+ * the default (30 seconds) changes nothing.
+ *
+ * @param int $floor Fastest pace this refresh may run at, in seconds.
+ * @return int Seconds between two refreshes.
+ */
+function brikpanel_admin_refresh_seconds( $floor ) {
+    $settings = brikpanel_order_notify_settings();
+    return max( max( 10, (int) $floor ), (int) $settings['interval'] );
+}
+
+/**
  * Enqueue popup assets in the WordPress admin (not inside the front end).
  *
  * Skipped entirely when:

@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.53
+Stable tag: 3.3.54
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -519,6 +519,12 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.54 (2026-11-19) =
+* Fix: **OpenPOS till sales on the dashboard.** With HPOS, orders whose customer field was left empty, such as OpenPOS till sales, were missing from Total sales, Revenue, Orders, Avg. order value and Net profit. They now count as guest orders, on the dashboard and in Customers.
+* Fix: **The top bar follows "Polling interval".** The top bar, the Store Health shield, the dashboard's Live visitors box and the Orders list now refresh at the pace set in WooCommerce → Settings → BrikPanel → Notifications, but never faster than before. In our test at 120 seconds, one open tab sent 15 BrikPanel requests in 9.5 minutes instead of 34. The default of 30 seconds changes nothing.
+* Fix: **Order status names in Dutch, Brazilian Portuguese and Turkish.** The older "Change" (exchange) status had the wrong word in these languages, and "Return Draft" in Brazilian Portuguese. Stores that got a wrong name are corrected on update, unless you renamed the status yourself.
+* Dev: **New filter `brikpanel_variation_gallery_storefront`.** Return false to keep BrikPanel's variation pictures off the product page, for a plugin that shows them itself. The product editor still saves them.
+
 = 3.3.53 (2026-11-17) =
 * Tweak: **A compact Marketplaces section.** With BrikMarket, the marketplace part of the dashboard is two cards instead of three rows. "Marketplaces" shows sales, orders and average order value with their change, and marketplace sales day by day, or hour by hour for a single day. "Best sellers on marketplaces" has tabs for products and categories.
 * New: **Where your sales came from.** A ring in the Marketplaces card splits the period's sales between your website and each marketplace, with the amount and share of each. Each marketplace keeps its colour from one period to the next.
@@ -556,12 +562,3 @@ The full release history of every version is in changelog.txt, included with the
 * Tweak: **A Google Sheets page left open stays quiet.** In a background tab, the page no longer asks your server for its status every 30 seconds. It checks once when you come back.
 * Fix: **Status changes reach the sheet with Redis or Memcached.** With a persistent object cache, an order's first status change after it was exported did not reach the sheet.
 * Fix: **Statuses set in the sheet stay.** With "One row per line item", a status you set in the sheet could be switched back by the next check, before the order's other rows were updated.
-
-= 3.3.48 (2026-11-08) =
-* New: **Phones keep a product you have not saved.** On a phone, the product screen keeps a new or draft product on the device until you save it, with its photos, also the ones still uploading in the media window. If the phone closes the app before you save (iPhones close Home Screen apps left in the background), the next new product offers it back. Restore brings it back as a draft, variations included. Nothing is saved to your store until you tap Restore.
-* New: **A stuck page says why.** When an admin page is still not ready after 15 seconds, a small box at the top shows how long it has waited, whether the wait is your server or the connection between this computer and your site, and what to try, such as turning off HTTP/3 (QUIC). A page that never arrives is explained on the next one. The timings stay in your browser.
-* Fix: **The phone app finds a hidden login page.** With a security plugin that hides the login page, such as Defender, WPS Hide Login or Solid Security, the phone app stayed on an error page once its login ended. It now opens through a small login page that goes to the login address the phone remembers, or lets you type it. An iPhone app already stuck on that error page needs to be added to the Home Screen once more.
-* Tweak: **Lighter screens on phones.** On a phone, BrikPanel's screens and the order screens no longer load the Ctrl+K command palette of WordPress and WooCommerce, which needs a keyboard, or the data it searches. The product screen also skips Yoast SEO's AI content planner, which only works in the block editor. In our phone tests the product screen loaded a quarter to a third less and was ready 1.5 to 3 seconds sooner.
-* Tweak: **A lighter order bell and visit counter.** The new-order sound is 40 KB instead of 428 KB. The storefront visit counter is now a file the browser keeps between pages, instead of 26 KB of code inside every page.
-* Tweak: **Speed numbers with a "slow" answer.** In the deactivation survey, "It slowed down my site" and "Something did not work" also send a summary of this browser's page timings and a few server facts: object cache, number of plugins, late background jobs, WP-Cron and web server. The window lists every value before you send.
-* Fix: **Duplicated product names translate correctly.** In German, Spanish, French, Dutch, Brazilian Portuguese, Russian and Turkish, a duplicated product's name ended in the verb, such as "(Kopieren)" instead of "(Kopie)". In Polish, the Copy buttons now say "Kopiuj".

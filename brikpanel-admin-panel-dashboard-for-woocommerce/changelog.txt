@@ -2,6 +2,12 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.54 (2026-11-19) =
+* Fix: **OpenPOS till sales on the dashboard.** With HPOS, orders whose customer field was left empty, such as OpenPOS till sales, were missing from Total sales, Revenue, Orders, Avg. order value and Net profit. They now count as guest orders, on the dashboard and in Customers.
+* Fix: **The top bar follows "Polling interval".** The top bar, the Store Health shield, the dashboard's Live visitors box and the Orders list now refresh at the pace set in WooCommerce → Settings → BrikPanel → Notifications, but never faster than before. In our test at 120 seconds, one open tab sent 15 BrikPanel requests in 9.5 minutes instead of 34. The default of 30 seconds changes nothing.
+* Fix: **Order status names in Dutch, Brazilian Portuguese and Turkish.** The older "Change" (exchange) status had the wrong word in these languages, and "Return Draft" in Brazilian Portuguese. Stores that got a wrong name are corrected on update, unless you renamed the status yourself.
+* Dev: **New filter `brikpanel_variation_gallery_storefront`.** Return false to keep BrikPanel's variation pictures off the product page, for a plugin that shows them itself. The product editor still saves them.
+
 = 3.3.53 (2026-11-17) =
 * Tweak: **A compact Marketplaces section.** With BrikMarket, the marketplace part of the dashboard is two cards instead of three rows. "Marketplaces" shows sales, orders and average order value with their change, and marketplace sales day by day, or hour by hour for a single day. "Best sellers on marketplaces" has tabs for products and categories.
 * New: **Where your sales came from.** A ring in the Marketplaces card splits the period's sales between your website and each marketplace, with the amount and share of each. Each marketplace keeps its colour from one period to the next.

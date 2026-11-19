@@ -11618,8 +11618,8 @@ msgid "Polling interval (seconds)"
 msgstr "Intervalo de sondeo (segundos)"
 
 #: front-end/orders/brikpanel-orders.php:1013
-msgid "How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
-msgstr "Con qué frecuencia la administración comprueba nuevos pedidos. Valores más bajos parecen más instantáneos; valores más altos reducen la carga del servidor. Mín 10, máx 300."
+msgid "How often the admin checks for new orders and refreshes the top bar and the Live visitors box. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
+msgstr "Con qué frecuencia la administración comprueba nuevos pedidos y actualiza la barra superior y el cuadro Visitantes en vivo. Valores más bajos parecen más instantáneos; valores más altos reducen la carga del servidor. Mín 10, máx 300."
 
 #: front-end/orders/brikpanel-orders.php:1027
 #: front-end/orders/brikpanel-orders.php:1072

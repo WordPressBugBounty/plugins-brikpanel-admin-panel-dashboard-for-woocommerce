@@ -1310,8 +1310,15 @@ function brikpanel_admin_order_exclusion_sql( $hpos, $id_column = '' ) {
     $placeholders = implode( ', ', array_fill( 0, count( $admin_ids ), '%d' ) );
 
     if ( $hpos ) {
+        // An order whose customer column is empty (NULL) is a guest order, not
+        // an admin's. WooCommerce writes 0 for guests, but a plugin that
+        // reserves the order row itself (OpenPOS writes only id, status, type
+        // and currency) leaves NULL, and WooCommerce never rewrites an
+        // unchanged 0. "NULL NOT IN (...)" is unknown, which dropped every
+        // such paid order from every figure (wiztechit, OpenPOS till sales,
+        // November 2026).
         return [
-            'sql'  => " AND customer_id NOT IN ({$placeholders})",
+            'sql'  => " AND (customer_id IS NULL OR customer_id NOT IN ({$placeholders}))",
             'args' => $admin_ids,
         ];
     }
@@ -1949,10 +1956,13 @@ function brikpanel_excluded_customer_ids() {
  * is safe and avoids dragging an ever-growing placeholder list through
  * every $wpdb->prepare() call site.
  *
+ * An empty (NULL) customer column is a guest, as in
+ * brikpanel_admin_order_exclusion_sql(): "NULL NOT IN (...)" would drop it.
+ *
  * @param string $customer_id_expr SQL expression evaluating to the order's
  *                                  customer user ID (0 for guests), e.g.
  *                                  'o.customer_id' on HPOS.
- * @return string Leading-space ' AND (<expr>) NOT IN (1,2,3)' or ''.
+ * @return string Leading-space ' AND ( (<expr>) IS NULL OR (<expr>) NOT IN (1,2,3) )' or ''.
  */
 function brikpanel_excluded_customer_sql( $customer_id_expr ) {
     $ids = brikpanel_excluded_customer_ids();
@@ -1960,7 +1970,7 @@ function brikpanel_excluded_customer_sql( $customer_id_expr ) {
         return '';
     }
     $list = implode( ',', array_map( 'absint', $ids ) );
-    return " AND ( {$customer_id_expr} ) NOT IN ({$list})";
+    return " AND ( ( {$customer_id_expr} ) IS NULL OR ( {$customer_id_expr} ) NOT IN ({$list}) )";
 }
 
 // =============================================================================

@@ -171,7 +171,8 @@ final class Brikpanel_Customer_Profile {
 				$sql     .= ' AND o.customer_id = %d';
 				$params[] = (int) $k['id'];
 			} else {
-				$sql     .= ' AND o.customer_id = 0 AND o.billing_email = %s';
+				// An empty (NULL) customer is a guest too (OpenPOS till orders).
+				$sql     .= ' AND (o.customer_id = 0 OR o.customer_id IS NULL) AND o.billing_email = %s';
 				$params[] = (string) $k['email'];
 			}
 			$sql .= ' ORDER BY o.date_created_gmt DESC, o.id DESC';

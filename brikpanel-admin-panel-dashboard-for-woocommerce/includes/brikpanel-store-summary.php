@@ -3421,7 +3421,7 @@ class Brikpanel_Store_Summary {
 				   FROM {$wpdb->prefix}wc_orders o
 				   INNER JOIN {$tbl_metrics} m ON m.customer_key = CONCAT('e:', LOWER(o.billing_email))
 				   WHERE o.type='shop_order' AND o.status IN ({$paid})
-				     AND o.customer_id = 0 AND o.billing_email <> ''
+				     AND (o.customer_id = 0 OR o.customer_id IS NULL) AND o.billing_email <> ''
 				     AND o.date_created_gmt >= %s
 				   GROUP BY ym
 				 ) u

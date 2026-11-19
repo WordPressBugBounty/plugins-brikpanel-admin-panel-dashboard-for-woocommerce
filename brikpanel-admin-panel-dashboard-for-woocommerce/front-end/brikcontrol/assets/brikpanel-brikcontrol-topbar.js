@@ -3,7 +3,8 @@
  *
  * Drives the shield button + dropdown rendered by Brikpanel_BrikControl::render_topbar_button.
  * Server pre-renders the markup with stale-but-valid data; this script:
- *   - polls /wp-admin/admin-ajax.php every 60s for fresh status
+ *   - polls /wp-admin/admin-ajax.php for fresh status every minute, or at the
+ *     "Polling interval" setting when that is longer (refresh_interval)
  *   - updates badge color, count, and dropdown rows in place
  *   - handles the "Rescan now" button (kicks off Action Scheduler async scan)
  *

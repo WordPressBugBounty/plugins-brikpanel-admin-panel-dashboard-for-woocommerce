@@ -9796,12 +9796,12 @@ msgstr "Relatório de clientes"
 #: front-end/order-statuses/brikpanel-order-statuses.php:265
 msgctxt "Order status"
 msgid "Return Draft"
-msgstr "Devolver para Rascunho"
+msgstr "Rascunho de devolução"
 
 #: front-end/order-statuses/brikpanel-order-statuses.php:266
 msgctxt "Order status"
 msgid "Change"
-msgstr "Alterar"
+msgstr "Troca"
 
 #: front-end/order-statuses/brikpanel-order-statuses.php:434
 #, php-format
@@ -11618,8 +11618,8 @@ msgid "Polling interval (seconds)"
 msgstr "Intervalo de polling (segundos)"
 
 #: front-end/orders/brikpanel-orders.php:1013
-msgid "How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
-msgstr "Com que frequência o admin verifica novos pedidos. Valores menores parecem mais instantâneos; valores maiores reduzem a carga no servidor. Min 10, max 300."
+msgid "How often the admin checks for new orders and refreshes the top bar and the Live visitors box. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
+msgstr "Com que frequência o admin verifica novos pedidos e atualiza a barra superior e o quadro Visitantes ao vivo. Valores menores parecem mais instantâneos; valores maiores reduzem a carga no servidor. Min 10, max 300."
 
 #: front-end/orders/brikpanel-orders.php:1027
 #: front-end/orders/brikpanel-orders.php:1072

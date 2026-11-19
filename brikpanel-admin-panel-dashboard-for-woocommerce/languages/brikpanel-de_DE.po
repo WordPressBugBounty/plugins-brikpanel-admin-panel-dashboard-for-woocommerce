@@ -11616,8 +11616,8 @@ msgid "Polling interval (seconds)"
 msgstr "Abfrageintervall (Sekunden)"
 
 #: front-end/orders/brikpanel-orders.php:1013
-msgid "How often the admin checks for new orders. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
-msgstr "Wie oft der Admin nach neuen Bestellungen sucht. Niedrigere Werte fühlen sich sofortiger an; höhere Werte reduzieren die Serverlast. Min 10, max 300."
+msgid "How often the admin checks for new orders and refreshes the top bar and the Live visitors box. Lower values feel more instant; higher values reduce server load. Min 10, max 300."
+msgstr "Wie oft der Admin nach neuen Bestellungen sucht und die obere Leiste sowie das Live-Besucher-Feld aktualisiert. Niedrigere Werte fühlen sich sofortiger an; höhere Werte reduzieren die Serverlast. Min 10, max 300."
 
 #: front-end/orders/brikpanel-orders.php:1027
 #: front-end/orders/brikpanel-orders.php:1072

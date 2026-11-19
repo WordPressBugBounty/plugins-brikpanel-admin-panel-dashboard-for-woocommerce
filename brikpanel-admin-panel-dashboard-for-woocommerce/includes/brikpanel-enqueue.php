@@ -533,6 +533,9 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
         // inside this year, like the server writes it.
         'store_today' => wp_date('Y-m-d'),
         'nonce'    => wp_create_nonce('brikpanel_dashboard_nonce'),
+        // Seconds between two refreshes of the Live visitors box: the
+        // "Polling interval" setting, never faster than 30 seconds.
+        'live_refresh' => function_exists('brikpanel_admin_refresh_seconds') ? brikpanel_admin_refresh_seconds(30) : 30,
         'export_url'   => admin_url('admin-post.php'),
         'export_nonce' => wp_create_nonce('brikpanel_dashboard_export'),
         'currency' => function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$',
@@ -1683,6 +1686,11 @@ function brikpanel_enqueue_woo_assets($hook) {
                 // The data version this list was printed at: the "new orders"
                 // bar asks for a count only once the version moves past it.
                 'data_ver'      => function_exists( 'brikpanel_data_cache_ver' ) ? (int) brikpanel_data_cache_ver() : 0,
+                // Seconds between the list's own checks when the top bar's
+                // news stops coming (the bar is off): the "Polling interval"
+                // setting, never faster than once a minute. The top bar
+                // follows the same setting, so its news keeps the list quiet.
+                'refresh'       => function_exists( 'brikpanel_admin_refresh_seconds' ) ? brikpanel_admin_refresh_seconds( 60 ) : 60,
                 'i18n'     => [
                     // The "1 new order · Show" bar above a list left open.
                     'new_orders'        => function_exists( 'brikpanel_js_plural' )

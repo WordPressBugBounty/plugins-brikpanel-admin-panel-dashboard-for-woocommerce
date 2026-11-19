@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.53
+ * Version: 3.3.54
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.53');
+define('BRIKPANEL_VERSION', '3.3.54');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -2311,6 +2311,13 @@ function brikpanel_maybe_upgrade_db() {
     // into another; read-time rewriting covers the requests before this runs.
     if (function_exists('brikpanel_nav_config_migrate_stored')) {
         brikpanel_nav_config_migrate_stored();
+    }
+    // The legacy "Return Draft" / "Change" labels seeded from a wrong Dutch,
+    // Brazilian Portuguese or Turkish translation get the corrected text, once,
+    // on the way up from a version before the fix. Only labels still exactly
+    // as seeded change; see brikpanel_cos_repair_legacy_labels().
+    if ($stored && version_compare((string) $stored, '3.3.54', '<') && function_exists('brikpanel_cos_repair_legacy_labels')) {
+        brikpanel_cos_repair_legacy_labels();
     }
     // Re-assert autoload on the write-once markers. Idempotent, and running it
     // on every version bump means a call site that drifts one back to
