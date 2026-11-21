@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.54
+Stable tag: 3.3.55
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -519,6 +519,12 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.55 (2026-11-21) =
+* Fix: **Coupons keep their discount type.** Saving a coupon whose type comes from another plugin or your theme, in the coupon window or by changing its amount in the table, turned it into a percentage discount: a $10 coupon became 10% off. Saving now never changes the type, and the window always lists the coupon's own type.
+* New: **Other plugins' coupon fields in the coupon window.** The discount types, fields, tabs and boxes that other plugins and your theme add to WooCommerce's coupon screen now work in BrikPanel's coupon window. Turn on "Auto-show fields other plugins add" in WooCommerce → Settings → BrikPanel → Coupons, or pick plugins in "Additional coupon data sections".
+* New: **Fields from your other plugins in a folded box.** Fields those settings do not show wait in a folded box at the bottom of the coupon window. Open it to edit them, or use "Always show these fields". A duplicated coupon keeps their values.
+* Tweak: **Coupon types by name in "Copy everything".** The Store Summary lists each coupon's type as WooCommerce names it, such as "Fixed cart discount", instead of its code.
+
 = 3.3.54 (2026-11-19) =
 * Fix: **OpenPOS till sales on the dashboard.** With HPOS, orders whose customer field was left empty, such as OpenPOS till sales, were missing from Total sales, Revenue, Orders, Avg. order value and Net profit. They now count as guest orders, on the dashboard and in Customers.
 * Fix: **The top bar follows "Polling interval".** The top bar, the Store Health shield, the dashboard's Live visitors box and the Orders list now refresh at the pace set in WooCommerce → Settings → BrikPanel → Notifications, but never faster than before. In our test at 120 seconds, one open tab sent 15 BrikPanel requests in 9.5 minutes instead of 34. The default of 30 seconds changes nothing.
@@ -554,11 +560,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **A smoother globe.** The globe turns at the same speed on every screen, no longer makes the whole page redraw as countries turn away, and draws at its real size on high-resolution screens instead of four times larger. In our Firefox test, slow frames went from 39 to 0. Scrolling with the mouse over the globe now scrolls the page.
 * Fix: **A corrected address that gets its code on screen.** After "Wrong address? Edit it", a code shown on screen instead of emailed now appears in the popup, instead of a "Sent to your new address" note.
 * Fix: **Coupon codes on a Turkish dashboard.** The Coupons list and the coupon window show codes with a plain I, BRIK instead of BRİK.
-
-= 3.3.49 (2026-11-10) =
-* Tweak: **Google Sheets two-way sync is much lighter.** Each check of the sheet now loads only the orders, products and expenses whose rows changed, instead of every row. On our test store, one check of 1,208 orders ran 24 database queries instead of 5,403.
-* New: **"Manual only" for two-way sync.** On the Google Sheets page, Orders, Products and Expenses have a "Manual only" choice under "Poll interval": BrikPanel stops checking the sheet on a schedule, and "Pull now" brings your edits in. Every 5 minutes stays the default.
-* Tweak: **Bulk status changes update the sheet in one go.** Changing the status of 20 orders at once now takes one background job and 2 Google requests instead of 19 jobs and 38 requests. Rows Google refuses are tried again, up to three times.
-* Tweak: **A Google Sheets page left open stays quiet.** In a background tab, the page no longer asks your server for its status every 30 seconds. It checks once when you come back.
-* Fix: **Status changes reach the sheet with Redis or Memcached.** With a persistent object cache, an order's first status change after it was exported did not reach the sheet.
-* Fix: **Statuses set in the sheet stay.** With "One row per line item", a status you set in the sheet could be switched back by the next check, before the order's other rows were updated.

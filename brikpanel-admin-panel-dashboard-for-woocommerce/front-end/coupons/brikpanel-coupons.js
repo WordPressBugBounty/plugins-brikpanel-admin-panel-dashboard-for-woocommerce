@@ -254,10 +254,17 @@
         $('#bpc-code').on('input', updateCouponLink);
         $('#bpc-copy-link').on('click', copyCouponLink);
 
-        // Discount type changes prefix symbol
+        // Discount type changes prefix symbol, and the type other plugins'
+        // fields follow (syncTypeMirror()).
         $('#bpc-discount-type').on('change', function () {
             updateAmountPrefix();
+            syncTypeMirror();
         });
+
+        // Other plugins' fields: the folded box, and the two links that turn
+        // their display setting on and off.
+        $(document).on('click', '.bpc-ext__toggle', togglePluginFold);
+        $(document).on('click', '.bpc-ext__always, .bpc-ext__hide', switchPluginFields);
 
         // Token pickers (products / exclude products / categories / exclude categories)
         bindTokenPickers();
@@ -864,7 +871,7 @@
         $('#bpc-coupon-id').val(isNew ? '' : coupon.id);
         $('#bpc-code').val(isNew ? '' : coupon.code);
         $('#bpc-description').val(isNew ? '' : coupon.description);
-        $('#bpc-discount-type').val(isNew ? 'percent' : coupon.discount_type);
+        setDrawerType(isNew ? 'percent' : coupon.discount_type);
         $('#bpc-amount').val(isNew ? '' : coupon.amount);
         $('#bpc-free-shipping').prop('checked', isNew ? false : coupon.free_shipping === 'yes');
         $('#bpc-expiry').val(isNew ? '' : coupon.expiry_date);
@@ -891,15 +898,8 @@
         $('#bpc-max-items').val(isNew ? '' : (coupon.max_items || ''));
         updateCouponLink();
 
-        // Other plugins' settings for this coupon are on WooCommerce's own
-        // coupon screen: a saved coupon gets the note and the link there.
-        var $note = $('#bpc-plugin-note');
-        if (CP.plugin_settings && !isNew && CP.coupon_edit_url) {
-            $('#bpc-plugin-note-link').attr('href', CP.coupon_edit_url.replace('__ID__', String(coupon.id)));
-            $note.prop('hidden', false);
-        } else {
-            $note.prop('hidden', true);
-        }
+        // What other plugins and the theme add to this coupon.
+        loadPluginFields(isNew ? 0 : coupon.id);
 
         // Clear any leftover search input / suggestions in token pickers.
         $('.brikpanel-cp-token-input').val('');
@@ -997,15 +997,24 @@
             data.limit_usage_to_x_items = $('#bpc-limit-items').val();
         }
 
+        // Other plugins' fields on the form go along under their own names
+        // (brackets kept, so PHP reads them as WooCommerce's screen posts
+        // them), with their owners, whose own save then runs.
+        var ext = pluginFieldPairs();
+        if (ext.owners.length) {
+            data.bp_cp_owners = JSON.stringify(ext.owners);
+        }
+        var body = $.param(data, true) + (ext.pairs.length ? '&' + $.param(ext.pairs) : '');
+
         $.ajax({
             url: CP.ajax_url,
             type: 'POST',
-            data: data,
-            traditional: true,
+            data: body,
             success: function (res) {
                 $btn.prop('disabled', false).text(couponId > 0 ? CP.i18n.save_changes : CP.i18n.create);
                 if (res.success) {
-                    showToast(res.data.message, 'success');
+                    // Saved; a plugin whose own save stopped is named in red.
+                    showToast(res.data.message, res.data.warning ? 'error' : 'success');
                     closeDrawer();
                     fetchCoupons();
                 } else {
@@ -1371,8 +1380,13 @@
             case 'percent': return CP.i18n.type_percent;
             case 'fixed_cart': return CP.i18n.type_fixed_cart;
             case 'fixed_product': return CP.i18n.type_fixed_product;
-            default: return type;
+            // Another plugin's type: its own name (wc_get_coupon_types()).
+            default: return (CP.type_labels && CP.type_labels[type]) || type;
         }
+    }
+
+    function isFixedType(type) {
+        return type === 'fixed_cart' || type === 'fixed_product';
     }
 
     // The store's price format and separators, the percent sign where the
@@ -1382,7 +1396,11 @@
         if (!amount || parseFloat(amount) === 0) return '<span class="brikpanel-cp-text-muted">&mdash;</span>';
         var BF = window.brikpanelFormat;
         if (!BF) return escHtml(amount);
-        return escHtml(type === 'percent' ? BF.percent(parseFloat(amount), 2) : BF.money(parseFloat(amount)));
+        if (type === 'percent') return escHtml(BF.percent(parseFloat(amount), 2));
+        if (isFixedType(type)) return escHtml(BF.money(parseFloat(amount)));
+        // Another plugin's type: what its amount means is that plugin's, so
+        // the number alone, neither % nor a price.
+        return escHtml(BF.number(parseFloat(amount), 2, true));
     }
 
     /* The coupon link: the store's home page with ?bp-coupon=CODE (the
@@ -1423,11 +1441,214 @@
 
     function updateAmountPrefix() {
         var type = $('#bpc-discount-type').val();
+        var $prefix = $('#bpc-amount-prefix');
         if (type === 'percent') {
-            $('#bpc-amount-prefix').text('%');
+            $prefix.text('%').removeClass('is-empty');
+        } else if (isFixedType(type)) {
+            $prefix.text(CP.currency).removeClass('is-empty');
         } else {
-            $('#bpc-amount-prefix').text(CP.currency);
+            // Another plugin's type: no sign (see formatAmount()).
+            $prefix.text('').addClass('is-empty');
         }
+    }
+
+    // =========================================================================
+    // DISCOUNT TYPES AND OTHER PLUGINS' FIELDS
+    // =========================================================================
+
+    // The window's list offers WooCommerce's types and the ones the settings
+    // show (as printed, or as ajax_plugin_fields() sends them). A coupon whose
+    // own type is not among them gets it as an extra option while it is open,
+    // so the box is never empty and saving never changes the type.
+    function setDrawerType(type) {
+        var $sel = $('#bpc-discount-type');
+        $sel.find('option[data-bpc-own]').remove();
+        if (type && !$sel.find('option').filter(function () { return this.value === type; }).length) {
+            $('<option>').val(type).text(getTypeOptionLabel(type)).attr('data-bpc-own', '1').appendTo($sel);
+        }
+        $sel.val(type || 'percent');
+        updateAmountPrefix();
+        syncTypeMirror();
+    }
+
+    function getTypeOptionLabel(type) {
+        return (CP.type_labels && CP.type_labels[type]) || type;
+    }
+
+    function refreshTypeOptions(types) {
+        if (!types || typeof types !== 'object') return;
+        var $sel = $('#bpc-discount-type');
+        var current = $sel.val();
+        $sel.empty();
+        $.each(types, function (value, label) {
+            $('<option>').val(value).text(label).appendTo($sel);
+        });
+        setDrawerType(current);
+    }
+
+    // select#discount_type, hidden in WooCommerce's frame around other
+    // plugins' fields, follows the window's type: plugins show or hide their
+    // fields by it, as on WooCommerce's coupon screen.
+    function syncTypeMirror() {
+        var $mirror = $('#discount_type');
+        if (!$mirror.length) return;
+        var type = $('#bpc-discount-type').val() || '';
+        if (type && !$mirror.find('option').filter(function () { return this.value === type; }).length) {
+            $('<option>').val(type).text(getTypeOptionLabel(type)).appendTo($mirror);
+        }
+        $mirror.val(type).trigger('change');
+    }
+
+    var pluginFieldsRequest = 0;
+
+    // The fields other plugins and the theme add to this coupon (0: a new
+    // one), drawn by the server as WooCommerce's screen draws them. Their
+    // own inline scripts run as the markup goes in, as there.
+    function loadPluginFields(couponId) {
+        var $ext = $('#bpc-ext');
+        if (!CP.plugin_fields || !$ext.length) return;
+        var $body = $('#bpc-ext-body');
+        var token = ++pluginFieldsRequest;
+        $ext.prop('hidden', false).attr('aria-busy', 'true').removeData('loaded');
+        $body.html('<p class="bpc-ext__state">' + escHtml(CP.i18n.ext_loading) + '</p>');
+        $.ajax({
+            url: CP.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'brikpanel_coupon_plugin_fields',
+                security: CP.nonce,
+                coupon_id: couponId || 0
+            },
+            success: function (res) {
+                if (token !== pluginFieldsRequest) return;
+                $ext.removeAttr('aria-busy');
+                if (!res || !res.success) {
+                    $body.html('<p class="bpc-ext__state is-failed">' + escHtml(CP.i18n.ext_failed) + '</p>');
+                    return;
+                }
+                refreshTypeOptions(res.data.types);
+                if (!res.data.html) {
+                    $body.empty();
+                    $ext.prop('hidden', true);
+                    return;
+                }
+                $body.html(res.data.html);
+                $ext.data('loaded', true);
+                initPluginFields($body);
+            },
+            error: function () {
+                if (token !== pluginFieldsRequest) return;
+                $ext.removeAttr('aria-busy');
+                $body.html('<p class="bpc-ext__state is-failed">' + escHtml(CP.i18n.ext_failed) + '</p>');
+            }
+        });
+    }
+
+    // WooCommerce's own helpers, started the way its coupon screen starts
+    // them: help tips, product and customer search boxes, date pickers. Then
+    // each plugin tab is clicked once, for plugins that fill their panel then.
+    function initPluginFields($body) {
+        $(document.body).trigger('wc-enhanced-select-init');
+        $(document.body).trigger('init_tooltips');
+        if ($.fn.datepicker) {
+            $body.find('.date-picker').each(function () {
+                if (!$(this).hasClass('hasDatepicker')) {
+                    $(this).datepicker({ dateFormat: 'yy-mm-dd', numberOfMonths: 1, showButtonPanel: true });
+                }
+            });
+        }
+        $body.find('.bpc-ext__tabs li[data-bpc-plugin-tab] a').each(function () {
+            try {
+                $(this).trigger('click');
+            } catch (e) {
+                // another plugin's tab handler; its panel stays as printed
+            }
+        });
+        syncTypeMirror();
+    }
+
+    // Opened once, the folded box's fields go with the save (data-held is
+    // dropped); the person's choice is kept for every coupon.
+    function togglePluginFold() {
+        var $toggle = $(this);
+        var $fold = $toggle.closest('.bpc-ext__fold');
+        var open = !$fold.hasClass('is-open');
+        $fold.toggleClass('is-open', open);
+        $toggle.attr('aria-expanded', open ? 'true' : 'false');
+        $fold.find('.bpc-ext__foldbody').prop('hidden', !open);
+        if (open) {
+            $fold.removeAttr('data-held');
+            $(document.body).trigger('wc-enhanced-select-init');
+        }
+        $.post(CP.ajax_url, {
+            action: 'brikpanel_cp_fold_state',
+            security: CP.nonce,
+            open: open ? '1' : '0'
+        });
+    }
+
+    // "Always show these fields" / "Hide these fields": the same two
+    // settings as WooCommerce > Settings > BrikPanel > Coupons, then the
+    // fields (and the type list) are drawn again for this coupon.
+    function switchPluginFields() {
+        var $btn = $(this);
+        if ($btn.prop('disabled')) return;
+        var show = $btn.hasClass('bpc-ext__always');
+        var label = $btn.text();
+        $btn.prop('disabled', true).text(show ? CP.i18n.turning_on : CP.i18n.hiding);
+        $.ajax({
+            url: CP.ajax_url,
+            type: 'POST',
+            data: {
+                action: show ? 'brikpanel_cp_enable_plugin_fields' : 'brikpanel_cp_disable_plugin_fields',
+                security: CP.nonce
+            },
+            success: function (res) {
+                if (res && res.success) {
+                    loadPluginFields(parseInt($('#bpc-coupon-id').val(), 10) || 0);
+                    return;
+                }
+                $btn.prop('disabled', false).text(label);
+                showToast((res && res.data && res.data.message) || CP.i18n.error, 'error');
+            },
+            error: function () {
+                $btn.prop('disabled', false).text(label);
+                showToast(CP.i18n.error, 'error');
+            }
+        });
+    }
+
+    // Other plugins' fields on the form: the open ones, and the folded box's
+    // once it was opened. Name/value pairs as a form would post them
+    // (unticked boxes left out), and the owners whose fields they are. A
+    // field under one of the window's own names is left out, the window's
+    // value wins.
+    function pluginFieldPairs() {
+        var out = { pairs: [], owners: [] };
+        var $ext = $('#bpc-ext');
+        if (!$ext.length || !$ext.data('loaded')) return out;
+        var own = {};
+        $.each(CP.own_keys || [], function (i, key) { own[key] = true; });
+        $ext.find('.bpc-ext__group').each(function () {
+            var $group = $(this);
+            if ($group.closest('[data-held]').length) return;
+            out.owners.push(String($group.attr('data-owner') || ''));
+            $group.find(':input[name]').each(function () {
+                var el = this;
+                var name = el.name;
+                if (!name || el.disabled || own[name.replace(/\[.*$/, '')]) return;
+                var type = (el.type || '').toLowerCase();
+                if (type === 'button' || type === 'submit' || type === 'reset' || type === 'file' || type === 'image') return;
+                if ((type === 'checkbox' || type === 'radio') && !el.checked) return;
+                var value = $(el).val();
+                if (el.tagName === 'SELECT' && el.multiple) {
+                    $.each(value || [], function (i, v) { out.pairs.push({ name: name, value: v }); });
+                    return;
+                }
+                out.pairs.push({ name: name, value: value === null || value === undefined ? '' : value });
+            });
+        });
+        return out;
     }
 
     function generateCouponCode() {

@@ -996,34 +996,399 @@
     margin-inline-start: 0.375rem;
 }
 
-/* Other plugins' settings live on WooCommerce's coupon screen: a note at
-   the top of the drawer with the link there. */
-.brikpanel-cp-plugin-note {
+/* ---------- Other plugins' fields ----------
+   What other plugins and the theme add to WooCommerce's coupon screen, at the
+   end of the window, inside WooCommerce's own frame (#woocommerce-coupon-data)
+   so their scripts find it. WooCommerce's admin styles give that frame a tab
+   column, floats and a 162px label column; here the fields look like the
+   window's own: label on top, 40px boxes. Open owners first, each under its
+   name; the rest in the folded "Fields from your other plugins" box. */
+.brikpanel-cp-drawer-section:has(+ .bpc-ext[hidden]) {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.bpc-ext {
     display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    padding: 0.625rem 0.75rem;
-    border: 1px solid var(--border);
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.bpc-ext[hidden] {
+    display: none;
+}
+
+#bpc-ext .bpc-ext__frame,
+#bpc-ext .bpc-ext__frame > .inside,
+#bpc-ext #coupon_options {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    overflow: visible;
+}
+
+#bpc-ext .bpc-ext__body,
+#bpc-ext .bpc-ext__card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+}
+
+#bpc-ext .bpc-ext__tabs {
+    display: none !important;
+}
+
+#bpc-ext .bpc-ext__state {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+#bpc-ext .bpc-ext__state.is-failed {
+    color: var(--error);
+}
+
+#bpc-ext .bpc-ext__group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+#bpc-ext .bpc-ext__group + .bpc-ext__group {
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+
+#bpc-ext .bpc-ext__name {
+    margin: 0;
+    padding: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+#bpc-ext .bpc-ext__where {
+    margin: 0 0 0.25rem;
+    padding: 0;
+    font-size: 0.75rem;
+    font-weight: 550;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+/* WooCommerce's panels are all shown (its tab script would hide all but one),
+   full width, no label column, and as tall as their fields (WooCommerce gives
+   a panel 175px for its tab column). */
+#bpc-ext .woocommerce_options_panel,
+#bpc-ext .panel {
+    display: block !important;
+    float: none !important;
+    width: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    color: var(--text);
+}
+
+#bpc-ext .options_group {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+}
+
+#bpc-ext p.form-field,
+#bpc-ext fieldset.form-field {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0 0 0.75rem !important;
+    padding: 0 !important;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+#bpc-ext p.form-field:last-child,
+#bpc-ext fieldset.form-field:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* A field the plugin's own script hid stays hidden (its inline display
+   loses to the flex above otherwise). */
+#bpc-ext p.form-field[style*="display: none"],
+#bpc-ext p.form-field[style*="display:none"] {
+    display: none !important;
+}
+
+#bpc-ext p.form-field::after,
+#bpc-ext fieldset.form-field::after {
+    content: none;
+}
+
+#bpc-ext label,
+#bpc-ext legend {
+    float: none !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+#bpc-ext input[type="text"],
+#bpc-ext input[type="number"],
+#bpc-ext input[type="email"],
+#bpc-ext input[type="url"],
+#bpc-ext input[type="tel"],
+#bpc-ext input[type="search"],
+#bpc-ext input[type="date"],
+#bpc-ext input[type="password"],
+#bpc-ext select,
+#bpc-ext textarea {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    float: none !important;
+    height: var(--brikpanel-control-h, 2.5rem);
+    margin: 0 !important;
+    padding: 0 0.75rem;
+    border: 1px solid var(--input-border);
     border-radius: 0.5rem;
-    background: #f7f7f7;
-    color: var(--text-secondary, #616161);
+    background-color: var(--card);
+    box-shadow: none;
+    font-family: inherit;
+    font-size: 0.875rem;
+    line-height: normal;
+    color: var(--text);
+}
+
+#bpc-ext textarea,
+#bpc-ext select[multiple] {
+    height: auto;
+    min-height: 5rem;
+    padding: 0.5rem 0.75rem;
+    line-height: 1.5;
+}
+
+#bpc-ext input:focus,
+#bpc-ext select:focus,
+#bpc-ext textarea:focus {
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 1px var(--input-focus);
+    outline: none;
+}
+
+#bpc-ext input::placeholder,
+#bpc-ext textarea::placeholder {
+    color: var(--text-placeholder);
+}
+
+#bpc-ext .description {
+    display: block;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0.75rem;
+    font-style: normal;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+/* A help tip sits right after its label. */
+#bpc-ext p.form-field:has(> label ~ .woocommerce-help-tip) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+#bpc-ext p.form-field:has(> label ~ .woocommerce-help-tip) > * {
+    flex: 0 0 100%;
+    order: 2;
+}
+
+#bpc-ext p.form-field:has(> label ~ .woocommerce-help-tip) > label {
+    flex: 0 1 auto;
+    order: 0;
+}
+
+#bpc-ext p.form-field:has(> label ~ .woocommerce-help-tip) > .woocommerce-help-tip {
+    flex: 0 0 auto;
+    order: 1;
+    float: none !important;
+    margin: 0 !important;
+}
+
+/* A checkbox field: the label on top, the box and its text on one line. */
+#bpc-ext p.form-field:has(> input[type="checkbox"]) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.5rem;
+}
+
+#bpc-ext p.form-field:has(> input[type="checkbox"]) > label {
+    flex: 0 0 100%;
+}
+
+#bpc-ext p.form-field:has(> input[type="checkbox"]) > .description {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+#bpc-ext input[type="checkbox"],
+#bpc-ext input[type="radio"] {
+    float: none !important;
+    margin: 0 !important;
+}
+
+#bpc-ext .select2-container {
+    width: 100% !important;
+    max-width: 100%;
+}
+
+#bpc-ext .bpc-ext__box {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+}
+
+#bpc-ext .bpc-ext__box > .inside {
+    margin: 0;
+    padding: 0;
+}
+
+/* The folded box: its title line is the button (name, how many plugins,
+   chevron), like "Fields from your other plugins" in the product editor. */
+#bpc-ext .bpc-ext__fold {
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--card);
+}
+
+#bpc-ext .bpc-ext__toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    font: inherit;
+    color: var(--text);
+    text-align: start;
+    cursor: pointer;
+}
+
+#bpc-ext .bpc-ext__toggle:focus-visible {
+    outline: 2px solid var(--input-focus);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+#bpc-ext .bpc-ext__toggle-name {
+    min-width: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+#bpc-ext .bpc-ext__count {
+    flex: none;
+    min-width: 1.25rem;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 550;
+    line-height: 1.4;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+#bpc-ext .bpc-ext__chev {
+    flex: none;
+    margin-inline-start: auto;
+    color: var(--text-secondary);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#bpc-ext .bpc-ext__fold.is-open .bpc-ext__chev {
+    transform: rotate(180deg);
+}
+
+#bpc-ext .bpc-ext__foldbody {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+#bpc-ext .bpc-ext__foldbody[hidden] {
+    display: none;
+}
+
+#bpc-ext .bpc-ext__foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin: 0;
+    padding: 0;
     font-size: 0.8125rem;
     line-height: 1.5;
 }
 
-.brikpanel-cp-plugin-note[hidden] {
-    display: none;
+#bpc-ext .bpc-ext__link {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--text-secondary);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
 }
 
-.brikpanel-cp-plugin-note svg {
-    flex: 0 0 auto;
-    margin-top: 0.15rem;
-}
-
-.brikpanel-cp-plugin-note a {
+#bpc-ext .bpc-ext__link:hover {
     color: var(--text);
-    font-weight: 550;
+}
+
+#bpc-ext .bpc-ext__link:focus-visible {
+    outline: 2px solid var(--input-focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+#bpc-ext .bpc-ext__link:disabled {
+    cursor: default;
+    text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #bpc-ext .bpc-ext__chev {
+        transition: none;
+    }
 }
 
 /* ---------- Input Group ---------- */
@@ -1050,6 +1415,12 @@
     font-size: 0.875rem;
     font-weight: 500;
     white-space: nowrap;
+}
+
+/* Another plugin's discount type: what its amount means is that plugin's,
+   so no % or currency sign (updateAmountPrefix()). */
+.brikpanel-cp-input-prefix.is-empty {
+    display: none;
 }
 
 .brikpanel-cp-input-group input {

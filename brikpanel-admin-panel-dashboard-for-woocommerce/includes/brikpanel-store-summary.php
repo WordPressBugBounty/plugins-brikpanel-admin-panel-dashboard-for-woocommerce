@@ -1829,7 +1829,11 @@ class Brikpanel_Store_Summary {
 			} else {
 				$amount_str = $this->money( $r->amount );
 			}
-			$lines[] = '| ' . $this->md_cell( $r->code ) . ' | ' . $this->md_cell( $r->discount_type ?: '—' ) . ' | ' . $amount_str . ' | ' . brikpanel_number( $r->usage_count ) . ' | ' . $this->md_cell( $r->status ) . ' |';
+			// The type's name as WooCommerce lists it, another plugin's type
+			// included ("Loyalty discount", not "loyalty_discount").
+			$type_label = ( '' !== (string) $r->discount_type && function_exists( 'wc_get_coupon_type' ) ) ? wp_strip_all_tags( (string) wc_get_coupon_type( (string) $r->discount_type ) ) : '';
+			$type_cell  = '' !== $type_label ? $type_label : ( $r->discount_type ?: '—' );
+			$lines[] = '| ' . $this->md_cell( $r->code ) . ' | ' . $this->md_cell( $type_cell ) . ' | ' . $amount_str . ' | ' . brikpanel_number( $r->usage_count ) . ' | ' . $this->md_cell( $r->status ) . ' |';
 		}
 
 		$fn = $this->footnote( 'wc_coupons' );

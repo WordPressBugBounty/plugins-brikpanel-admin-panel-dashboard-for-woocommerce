@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.54
+ * Version: 3.3.55
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.54');
+define('BRIKPANEL_VERSION', '3.3.55');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -836,6 +836,9 @@ function brikpanel_init_admin() {
     brikpanel_require('front-end/products/brikpanel-products-list.php');
     brikpanel_require('front-end/products/brikpanel-product-code.php');
     brikpanel_require('front-end/products/brikpanel-category-enhancements.php');
+    // Other plugins' hooks on WooCommerce screens BrikPanel replaces (the
+    // coupon window reads and saves their fields through it).
+    brikpanel_require('includes/brikpanel-foreign-hooks.php');
     brikpanel_require('front-end/coupons/brikpanel-coupons.php');
     // The one customer list (Customers page, Segments, Ctrl+K, the bell).
     brikpanel_require('front-end/customers/class-brikpanel-customers-engine.php');

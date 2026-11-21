@@ -15,6 +15,43 @@ if (!defined('ABSPATH')) {
 
 class Brikpanel_Coupons {
 
+    /**
+     * "Auto-show fields other plugins add" (WooCommerce > Settings > BrikPanel
+     * > Coupons): everything other plugins and the theme add to WooCommerce's
+     * coupon screen shows open in the coupon window, their discount types too.
+     */
+    const AUTO_OPTION = 'brikpanel_coupons_plugin_fields_auto';
+
+    /** "Additional coupon data sections": owner keys shown without the switch above. */
+    const SELECTED_OPTION = 'brikpanel_coupons_plugin_fields_selected';
+
+    /** What "Hide these fields" turned off, for "Always show these fields" to put back. */
+    const PARKED_OPTION = 'brikpanel_coupons_plugin_fields_parked';
+
+    /** Per person: the folded "Fields from your other plugins" box is kept open. */
+    const OPEN_META = 'brikpanel_cp_plugin_fields_open';
+
+    /** WooCommerce's own discount types, always offered. */
+    const CORE_TYPES = ['percent', 'fixed_cart', 'fixed_product'];
+
+    /** The field sections of WooCommerce's coupon screen and the hook each prints. */
+    const SECTION_HOOKS = [
+        'general'           => 'woocommerce_coupon_options',
+        'usage_restriction' => 'woocommerce_coupon_options_usage_restriction',
+        'usage_limit'       => 'woocommerce_coupon_options_usage_limit',
+    ];
+
+    /**
+     * Payload keys of the window's own save: a field another plugin prints
+     * under one of these names is not sent along, BrikPanel's value wins.
+     */
+    const OWN_KEYS = [
+        'action', 'security', 'coupon_id', 'code', 'description', 'discount_type', 'amount', 'free_shipping',
+        'expiry_date', 'minimum_amount', 'maximum_amount', 'individual_use', 'exclude_sale_items', 'usage_limit',
+        'usage_limit_per_user', 'product_ids', 'excluded_product_ids', 'category_ids', 'excluded_category_ids',
+        'email_restrictions', 'limit_usage_to_x_items', 'auto_apply', 'min_items', 'max_items', 'bp_cp_owners',
+    ];
+
     public function __construct() {
         if (get_option('brikpanel_modern_coupons', 'yes') !== 'yes') {
             return;
@@ -32,6 +69,12 @@ class Brikpanel_Coupons {
         add_action('wp_ajax_brikpanel_coupons_search_products', [$this, 'ajax_search_products']);
         add_action('wp_ajax_brikpanel_coupons_search_categories', [$this, 'ajax_search_categories']);
         add_action('wp_ajax_brikpanel_coupons_search_users', [$this, 'ajax_search_users']);
+
+        // What other plugins and the theme add to WooCommerce's coupon screen.
+        add_action('wp_ajax_brikpanel_coupon_plugin_fields', [$this, 'ajax_plugin_fields']);
+        add_action('wp_ajax_brikpanel_cp_fold_state', [$this, 'ajax_fold_state']);
+        add_action('wp_ajax_brikpanel_cp_enable_plugin_fields', [$this, 'ajax_enable_plugin_fields']);
+        add_action('wp_ajax_brikpanel_cp_disable_plugin_fields', [$this, 'ajax_disable_plugin_fields']);
     }
 
     /**
@@ -54,94 +97,433 @@ class Brikpanel_Coupons {
     }
 
     /**
-     * Whether another plugin adds settings to WooCommerce's coupon screen
-     * (Auto Coupons, Smart Coupons, B2BKing…). The drawer does not draw
-     * them, so it points to that screen when there are any.
-     *
-     * Reads who is hooked, fires nothing: a callback on one of WooCommerce's
-     * coupon panel actions, or a tab added by `woocommerce_coupon_data_tabs`,
-     * that comes from neither WooCommerce (its Brands feature hooks the usage
-     * restriction panel) nor BrikPanel.
+     * Whether another plugin or the theme adds anything to WooCommerce's
+     * coupon screen: a discount type, fields, a tab of its own or a box.
      *
      * @return bool
      */
     public static function coupon_plugin_settings() {
-        static $cached = null;
-        if (null !== $cached) {
-            return $cached;
+        return (bool) self::plugin_additions();
+    }
+
+    /**
+     * What other plugins and the theme add to WooCommerce's coupon screen, per
+     * owner, for the lists: the settings picker, the page's scripts and the
+     * window's types. Read on the newest coupon, names and labels only.
+     *
+     * Most stores have none and finding out fires every coupon hook, so a
+     * "none" answer is kept for an hour under a key that changes with the
+     * active plugins, the theme and the versions (fingerprint()).
+     *
+     * @return array<string, array> See collect().
+     */
+    public static function plugin_additions() {
+        static $memo = null;
+        if ($memo !== null) {
+            return $memo;
         }
-        global $wp_filter;
-        $own = array_filter([
-            defined('WC_ABSPATH') ? self::real_dir(WC_ABSPATH) : '',
-            defined('BRIKPANEL_PATH') ? self::real_dir(BRIKPANEL_PATH) : '',
-        ]);
-        $hooks = ['woocommerce_coupon_options', 'woocommerce_coupon_options_usage_restriction', 'woocommerce_coupon_options_usage_limit', 'woocommerce_coupon_data_panels'];
-        foreach ($hooks as $hook) {
-            if (empty($wp_filter[$hook]) || !($wp_filter[$hook] instanceof WP_Hook)) {
-                continue;
+        // The settings save runs before the admin includes load (WooCommerce
+        // does not check a multiselect against its options): answer nothing
+        // and remember nothing, the render after it reads again.
+        if (!self::admin_ready()) {
+            return [];
+        }
+        $key = 'bpc_tp_' . self::fingerprint();
+        if ('no' === get_transient($key)) {
+            return $memo = [];
+        }
+        $memo = self::collect(self::probe_coupon(), false);
+        $want = $memo ? 'yes' : 'no';
+        if (get_transient($key) !== $want) {
+            set_transient($key, $want, HOUR_IN_SECONDS);
+        }
+        return $memo;
+    }
+
+    /**
+     * Fires WooCommerce's coupon screen hooks the way that screen does, one
+     * callback at a time (includes/brikpanel-foreign-hooks.php), and sorts
+     * what each plugin or the theme adds by owner. WordPress', WooCommerce's
+     * and BrikPanel's own callbacks are left out (WooCommerce's Brands field
+     * included, as before: it is WooCommerce's).
+     *
+     * The screen is the coupon edit screen while it runs (screen, post,
+     * pagenow, thepostid): WooCommerce's field helpers and many plugins read
+     * those. Everything is put back in `finally`.
+     *
+     * @param WC_Coupon $coupon    Coupon to draw for (id 0: a new coupon).
+     * @param bool      $with_html Keep the printed markup (the window), or only names and labels.
+     * @return array<string, array{name: string, dir: string, types: array<string,string>, sections: array<string,string[]>, tabs: array<string,array{label: string, target: string, class: string}>, panels: string[], boxes: array<string,array{title: string, html: string}>, labels: string[]}>
+     */
+    public static function collect($coupon, $with_html = false) {
+        $owners = [];
+        if (!self::admin_ready() || !($coupon instanceof WC_Coupon)) {
+            return $owners;
+        }
+
+        $coupon_id = (int) $coupon->get_id();
+        $post      = $coupon_id ? get_post($coupon_id) : null;
+        if (!($post instanceof WP_Post) || $post->post_type !== 'shop_coupon') {
+            // WooCommerce's field helpers read $post->ID when no id is set.
+            $coupon_id = 0;
+            $post      = new WP_Post((object) ['ID' => 0, 'post_type' => 'shop_coupon', 'post_status' => 'auto-draft', 'post_title' => '', 'filter' => 'raw']);
+        }
+
+        global $wp_meta_boxes;
+        $saved = [];
+        foreach (['current_screen', 'post', 'post_type', 'typenow', 'taxnow', 'pagenow', 'thepostid'] as $global) {
+            $saved[$global] = isset($GLOBALS[$global]) ? $GLOBALS[$global] : null;
+        }
+        $had_boxes    = is_array($wp_meta_boxes) && array_key_exists('shop_coupon', $wp_meta_boxes);
+        $boxes_before = $had_boxes ? $wp_meta_boxes['shop_coupon'] : null;
+
+        try {
+            set_current_screen('shop_coupon');
+            if (function_exists('brikpanel_mark_screen_classic')) {
+                brikpanel_mark_screen_classic();
             }
-            foreach ($wp_filter[$hook]->callbacks as $callbacks) {
-                foreach ($callbacks as $callback) {
-                    $file = self::callback_file($callback['function'] ?? null);
-                    if ($file === '') {
+            $GLOBALS['post']      = $post;
+            $GLOBALS['post_type'] = 'shop_coupon';
+            $GLOBALS['typenow']   = 'shop_coupon';
+            $GLOBALS['pagenow']   = $coupon_id ? 'post.php' : 'post-new.php';
+            $GLOBALS['thepostid'] = $coupon_id;
+
+            // Discount types.
+            foreach (self::type_owners() as $key => $row) {
+                self::owner_slot($owners, $row['owner']);
+                $owners[$key]['types'] = $row['types'];
+            }
+
+            // Fields in WooCommerce's three sections.
+            foreach (self::SECTION_HOOKS as $section => $hook) {
+                foreach (Brikpanel_Foreign_Hooks::chunks($hook, [$coupon_id, $coupon]) as $chunk) {
+                    if ($chunk['html'] === '') {
                         continue;
                     }
-                    $mine = false;
-                    foreach ($own as $dir) {
-                        if (strpos($file, $dir) === 0) {
-                            $mine = true;
-                            break;
-                        }
+                    $key = $chunk['owner']['key'];
+                    self::owner_slot($owners, $chunk['owner']);
+                    $owners[$key]['labels']               = array_merge($owners[$key]['labels'], self::field_labels($chunk['html']));
+                    $owners[$key]['sections'][$section][] = $with_html ? $chunk['html'] : '';
+                }
+            }
+
+            // Tabs of their own, and the panels behind them. The base list is
+            // WooCommerce's own three tabs, only used to tell what was added.
+            $core_tabs = [
+                'general'           => ['label' => 'General', 'target' => 'general_coupon_data', 'class' => 'general_coupon_data'], // i18n-ignore: comparison base, never shown
+                'usage_restriction' => ['label' => 'Usage restriction', 'target' => 'usage_restriction_coupon_data', 'class' => ''], // i18n-ignore: comparison base, never shown
+                'usage_limit'       => ['label' => 'Usage limits', 'target' => 'usage_limit_coupon_data', 'class' => ''], // i18n-ignore: comparison base, never shown
+            ];
+            $tabs = Brikpanel_Foreign_Hooks::filter_additions('woocommerce_coupon_data_tabs', $core_tabs);
+            foreach ($tabs['added'] as $key => $row) {
+                foreach ($row['entries'] as $tab_key => $tab) {
+                    if (!is_array($tab)) {
+                        continue;
                     }
-                    if (!$mine) {
-                        return $cached = true;
+                    self::owner_slot($owners, $row['owner']);
+                    $label = wp_strip_all_tags((string) (isset($tab['label']) ? $tab['label'] : $tab_key));
+                    $owners[$key]['tabs'][sanitize_key((string) $tab_key)] = [
+                        'label'  => $label,
+                        'target' => sanitize_html_class((string) (isset($tab['target']) ? $tab['target'] : '')),
+                        'class'  => implode(' ', array_filter(array_map('sanitize_html_class', (array) (isset($tab['class']) ? $tab['class'] : [])))),
+                    ];
+                    $owners[$key]['labels'][] = $label;
+                }
+            }
+            foreach (Brikpanel_Foreign_Hooks::chunks('woocommerce_coupon_data_panels', [$coupon_id, $coupon]) as $chunk) {
+                if ($chunk['html'] === '') {
+                    continue;
+                }
+                $key = $chunk['owner']['key'];
+                self::owner_slot($owners, $chunk['owner']);
+                $owners[$key]['labels']   = array_merge($owners[$key]['labels'], self::field_labels($chunk['html']));
+                $owners[$key]['panels'][] = $with_html ? $chunk['html'] : '';
+            }
+
+            // Boxes of their own (WordPress draws them on a coupon that exists).
+            if ($coupon_id) {
+                $wp_meta_boxes['shop_coupon'] = [];
+                try {
+                    Brikpanel_Foreign_Hooks::die_guard(static function () use ($post) {
+                        do_action('add_meta_boxes', 'shop_coupon', $post);
+                        do_action('add_meta_boxes_shop_coupon', $post);
+                    });
+                } catch (\Throwable $e) {
+                    unset($e); // the boxes registered before the failure still count
+                }
+                foreach ((array) $wp_meta_boxes['shop_coupon'] as $priorities) {
+                    foreach ((array) $priorities as $boxes) {
+                        foreach ((array) $boxes as $box_id => $box) {
+                            if (empty($box) || !is_array($box) || empty($box['callback']) || in_array((string) $box_id, self::CORE_BOXES, true)) {
+                                continue;
+                            }
+                            $owner = Brikpanel_Foreign_Hooks::owner($box['callback']);
+                            if ($owner === null) {
+                                continue;
+                            }
+                            $html = $with_html ? self::render_box($box, $post) : '';
+                            if ($with_html && $html === '') {
+                                continue;
+                            }
+                            $title = wp_strip_all_tags((string) $box['title']);
+                            self::owner_slot($owners, $owner);
+                            $owners[$owner['key']]['boxes'][(string) $box_id] = ['title' => $title, 'html' => $html];
+                            $owners[$owner['key']]['labels'][]               = $title;
+                        }
                     }
                 }
             }
-        }
-        try {
-            $core = ['general' => [], 'usage_restriction' => [], 'usage_limit' => []];
-            $tabs = apply_filters('woocommerce_coupon_data_tabs', $core);
-            if (is_array($tabs) && array_diff_key($tabs, $core)) {
-                return $cached = true;
-            }
         } catch (\Throwable $e) {
-            unset($e);
+            error_log('[BrikPanel] Reading what other plugins add to coupons stopped: ' . $e->getMessage());
+        } finally {
+            if ($had_boxes) {
+                $wp_meta_boxes['shop_coupon'] = $boxes_before;
+            } elseif (is_array($wp_meta_boxes)) {
+                unset($wp_meta_boxes['shop_coupon']);
+            }
+            foreach ($saved as $global => $value) {
+                $GLOBALS[$global] = $value;
+            }
         }
-        return $cached = false;
+
+        foreach ($owners as $key => $row) {
+            $owners[$key]['labels'] = array_values(array_unique(array_filter(array_map('trim', $row['labels']), 'strlen')));
+            if (!$row['types'] && !$row['sections'] && !$row['tabs'] && !$row['panels'] && !$row['boxes']) {
+                unset($owners[$key]);
+            }
+        }
+        return $owners;
     }
 
     /**
-     * @param mixed $function A WP_Hook callback.
-     * @return string The file that declares it (real path), '' when unknown.
+     * Which plugin added which discount type, from each callback of
+     * `woocommerce_coupon_discount_types` on its own. A type no single
+     * callback adds by itself (it builds on another plugin's, or its callback
+     * throws alone) is still another plugin's: it goes under "Other code".
+     *
+     * @return array<string, array{owner: array, types: array<string,string>}>
      */
-    private static function callback_file($function) {
-        try {
-            if (is_string($function) && strpos($function, '::') !== false) {
-                $function = explode('::', $function, 2);
-            }
-            if ($function instanceof \Closure || (is_string($function) && function_exists($function))) {
-                $ref = new \ReflectionFunction($function);
-            } elseif (is_array($function) && count($function) === 2) {
-                $ref = new \ReflectionMethod(is_object($function[0]) ? get_class($function[0]) : (string) $function[0], (string) $function[1]);
-            } elseif (is_object($function) && method_exists($function, '__invoke')) {
-                $ref = new \ReflectionMethod($function, '__invoke');
-            } else {
-                return '';
-            }
-            $file = (string) $ref->getFileName();
-        } catch (\Throwable $e) {
-            return '';
+    public static function type_owners() {
+        static $memo = null;
+        if ($memo !== null) {
+            return $memo;
         }
-        return $file === '' ? '' : wp_normalize_path((string) (realpath($file) ?: $file));
+        $memo = [];
+        if (!function_exists('wc_get_coupon_types')) {
+            return $memo;
+        }
+        $all   = wc_get_coupon_types();
+        $base  = array_intersect_key($all, array_flip(self::CORE_TYPES));
+        $found = Brikpanel_Foreign_Hooks::filter_additions('woocommerce_coupon_discount_types', $base);
+        $taken = [];
+        foreach ($found['added'] as $key => $row) {
+            foreach (array_intersect_key($row['entries'], $all) as $slug => $label) {
+                if (!isset($memo[$key])) {
+                    $memo[$key] = ['owner' => $row['owner'], 'types' => []];
+                }
+                $memo[$key]['types'][(string) $slug] = wp_strip_all_tags((string) $all[$slug]);
+                $taken[$slug] = true;
+            }
+        }
+        foreach (array_diff_key($all, $base, $taken) as $slug => $label) {
+            if (!isset($memo['other:types'])) {
+                $memo['other:types'] = ['owner' => ['key' => 'other:types', 'name' => __('Other code', 'brikpanel'), 'dir' => ''], 'types' => []];
+            }
+            $memo['other:types']['types'][(string) $slug] = wp_strip_all_tags((string) $label);
+        }
+        return $memo;
     }
 
     /**
-     * @param string $dir Directory.
-     * @return string Its real path with a trailing slash.
+     * Whether the settings show this owner's additions open: the switch is on,
+     * or it is picked in "Additional coupon data sections".
+     *
+     * @param string $key Owner key.
+     * @return bool
      */
-    private static function real_dir($dir) {
-        return trailingslashit(wp_normalize_path((string) (realpath($dir) ?: $dir)));
+    public static function owner_shown($key) {
+        if (get_option(self::AUTO_OPTION, 'no') === 'yes') {
+            return true;
+        }
+        return in_array((string) $key, array_map('strval', (array) get_option(self::SELECTED_OPTION, [])), true);
+    }
+
+    /**
+     * The discount types the window offers, value => label: WooCommerce's
+     * three always; another plugin's when the settings show that plugin; and
+     * the coupon's own type whatever the settings say, so that opening and
+     * saving a coupon never changes its type.
+     *
+     * @param WC_Coupon|null $coupon The coupon being edited.
+     * @return array<string,string>
+     */
+    public static function type_options($coupon = null) {
+        $all     = function_exists('wc_get_coupon_types') ? wc_get_coupon_types() : [];
+        $options = [
+            'percent'       => __('Percentage discount', 'brikpanel'),
+            'fixed_cart'    => __('Fixed cart discount', 'brikpanel'),
+            'fixed_product' => __('Fixed product discount', 'brikpanel'),
+        ];
+        foreach (self::type_owners() as $key => $row) {
+            if (!self::owner_shown($key)) {
+                continue;
+            }
+            foreach ($row['types'] as $slug => $label) {
+                if (isset($all[$slug]) && !isset($options[$slug])) {
+                    $options[$slug] = $label;
+                }
+            }
+        }
+        if ($coupon instanceof WC_Coupon && $coupon->get_id()) {
+            $own = (string) $coupon->get_discount_type();
+            if (isset($all[$own]) && !isset($options[$own])) {
+                $options[$own] = wp_strip_all_tags((string) $all[$own]);
+            }
+        }
+        return $options;
+    }
+
+    /**
+     * The choices of "Additional coupon data sections": owner key => its name
+     * and the first things it adds, e.g. "WoodMart Child (Loyalty discount,
+     * Loyalty tier)".
+     *
+     * @return array<string,string>
+     */
+    public static function settings_choices() {
+        $choices = [];
+        foreach (self::plugin_additions() as $key => $row) {
+            $parts = array_values(array_unique(array_filter(array_merge(array_values($row['types']), $row['labels']), 'strlen')));
+            $label = $row['name'];
+            if ($parts) {
+                $label .= ' (' . implode(', ', array_slice($parts, 0, 4)) . (count($parts) > 4 ? ', …' : '') . ')';
+            }
+            $choices[$key] = $label;
+        }
+        return $choices;
+    }
+
+    /**
+     * The newest coupon, for drawing what plugins add without a coupon in hand
+     * (a new, empty one when the store has none).
+     *
+     * @return WC_Coupon
+     */
+    public static function probe_coupon() {
+        $ids = get_posts([
+            'post_type'        => 'shop_coupon',
+            'post_status'      => ['publish', 'draft', 'pending', 'private', 'future'],
+            'posts_per_page'   => 1,
+            'orderby'          => 'ID',
+            'order'            => 'DESC',
+            'fields'           => 'ids',
+            'no_found_rows'    => true,
+            'suppress_filters' => true,
+        ]);
+        return new WC_Coupon($ids ? (int) $ids[0] : 0);
+    }
+
+    /** WordPress' and WooCommerce's own boxes on the coupon screen. */
+    const CORE_BOXES = [
+        'submitdiv', 'slugdiv', 'postcustom', 'commentsdiv', 'commentstatusdiv', 'authordiv', 'revisionsdiv',
+        'postexcerpt', 'postimagediv', 'trackbacksdiv', 'pageparentdiv', 'formatdiv', 'woocommerce-coupon-data',
+    ];
+
+    /**
+     * @param array $owners Owners so far, by reference.
+     * @param array $owner  Owner from Brikpanel_Foreign_Hooks::owner().
+     * @return void
+     */
+    private static function owner_slot(array &$owners, array $owner) {
+        if (!isset($owners[$owner['key']])) {
+            $owners[$owner['key']] = [
+                'name'     => (string) $owner['name'],
+                'dir'      => (string) $owner['dir'],
+                'types'    => [],
+                'sections' => [],
+                'tabs'     => [],
+                'panels'   => [],
+                'boxes'    => [],
+                'labels'   => [],
+            ];
+        }
+    }
+
+    /**
+     * What a box another plugin registered for coupons prints.
+     *
+     * @param array   $box  Box from $wp_meta_boxes.
+     * @param WP_Post $post The coupon.
+     * @return string Markup, '' when it printed nothing or failed.
+     */
+    private static function render_box(array $box, $post) {
+        $hook = 'brikpanel_cp_render_box';
+        add_action($hook, $box['callback'], 10, 2);
+        try {
+            list($html, $threw) = Brikpanel_Foreign_Hooks::capture($hook, [$post, $box]);
+        } finally {
+            remove_action($hook, $box['callback'], 10);
+        }
+        return $threw ? '' : $html;
+    }
+
+    /**
+     * The text of each <label> in some markup, for naming what a plugin adds.
+     *
+     * @param string $html Markup.
+     * @return string[]
+     */
+    private static function field_labels($html) {
+        if (!preg_match_all('/<label\b[^>]*>(.*?)<\/label>/is', (string) $html, $m)) {
+            return [];
+        }
+        $out = [];
+        foreach ($m[1] as $raw) {
+            $text = trim((string) preg_replace('/\s+/u', ' ', wp_strip_all_tags(html_entity_decode((string) $raw, ENT_QUOTES, 'UTF-8'))));
+            if ($text !== '' && strlen($text) <= 80) {
+                $out[] = $text;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Whether this request can draw the coupon screen: the admin includes
+     * (screens, boxes) are loaded and WooCommerce is there.
+     *
+     * @return bool
+     */
+    private static function admin_ready() {
+        return function_exists('add_meta_box') && function_exists('set_current_screen') && class_exists('WP_Screen')
+            && class_exists('WC_Coupon') && class_exists('Brikpanel_Foreign_Hooks');
+    }
+
+    /**
+     * Everything that can change whether this store adds anything to coupons:
+     * the active plugins, must-use plugins, the theme and its functions.php,
+     * BrikPanel's and WooCommerce's versions. A change is a new key, so a stale
+     * answer is never read.
+     *
+     * @return string
+     */
+    private static function fingerprint() {
+        $parts = (array) get_option('active_plugins', []);
+        if (is_multisite()) {
+            $parts = array_merge($parts, array_keys((array) get_site_option('active_sitewide_plugins', [])));
+        }
+        sort($parts);
+        if (function_exists('wp_get_mu_plugins')) {
+            foreach (wp_get_mu_plugins() as $file) {
+                $parts[] = basename($file) . '@' . (int) @filemtime($file);
+            }
+        }
+        $parts[] = get_stylesheet() . '|' . get_template();
+        foreach (array_unique([get_stylesheet_directory(), get_template_directory()]) as $dir) {
+            $parts[] = (int) @filemtime($dir . '/functions.php');
+        }
+        $parts[] = defined('BRIKPANEL_VERSION') ? BRIKPANEL_VERSION : '';
+        $parts[] = defined('WC_VERSION') ? WC_VERSION : '';
+        return substr(md5(implode('|', $parts)), 0, 12);
     }
 
     // =========================================================================
@@ -196,6 +578,17 @@ class Brikpanel_Coupons {
     public function render_page() {
         $currency = get_woocommerce_currency_symbol();
         $fields   = self::enabled_fields();
+        // What other plugins and the theme add to coupons: their types join the
+        // type list when shown, their fields come into the window (filled in
+        // per coupon by ajax_plugin_fields()).
+        $plugin_owners = self::plugin_additions();
+        $has_plugin_ui = false;
+        foreach ($plugin_owners as $plugin_owner) {
+            if ($plugin_owner['sections'] || $plugin_owner['panels'] || $plugin_owner['boxes'] || $plugin_owner['tabs']) {
+                $has_plugin_ui = true;
+                break;
+            }
+        }
 
         // Count coupons by status
         $counts  = wp_count_posts('shop_coupon');
@@ -344,20 +737,6 @@ class Brikpanel_Coupons {
                 <div class="brikpanel-cp-drawer-body">
                     <input type="hidden" id="bpc-coupon-id" value="">
 
-                    <?php
-                    // Other plugins' coupon settings live only on WooCommerce's
-                    // own coupon screen (this drawer does not draw them). The
-                    // script shows the note for a saved coupon when
-                    // coupon_plugin_settings() found any.
-                    ?>
-                    <div class="brikpanel-cp-plugin-note" id="bpc-plugin-note" hidden>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                        <span>
-                            <?php esc_html_e('Other plugins add settings to this coupon.', 'brikpanel'); ?>
-                            <a href="#" id="bpc-plugin-note-link"><?php esc_html_e('Open in WooCommerce', 'brikpanel'); ?></a>
-                        </span>
-                    </div>
-
                     <!-- General Section -->
                     <div class="brikpanel-cp-drawer-section">
                         <h4 class="brikpanel-cp-drawer-section-title"><?php esc_html_e('General', 'brikpanel'); ?></h4>
@@ -382,10 +761,16 @@ class Brikpanel_Coupons {
                         <div class="brikpanel-cp-qe-row">
                             <div class="brikpanel-cp-qe-field">
                                 <label for="bpc-discount-type"><?php esc_html_e('Discount type', 'brikpanel'); ?></label>
+                                <?php
+                                // WooCommerce's three types, and another plugin's when the
+                                // settings show it (type_options()). A coupon whose own type
+                                // is not in this list gets it added by the script, so saving
+                                // never changes its type.
+                                ?>
                                 <select id="bpc-discount-type" class="brikpanel-cp-select full brikpanel-control">
-                                    <option value="percent"><?php esc_html_e('Percentage discount', 'brikpanel'); ?></option>
-                                    <option value="fixed_cart"><?php esc_html_e('Fixed cart discount', 'brikpanel'); ?></option>
-                                    <option value="fixed_product"><?php esc_html_e('Fixed product discount', 'brikpanel'); ?></option>
+                                    <?php foreach (self::type_options() as $type_value => $type_label) : ?>
+                                    <option value="<?php echo esc_attr($type_value); ?>"><?php echo esc_html($type_label); ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="brikpanel-cp-qe-field">
@@ -586,6 +971,32 @@ class Brikpanel_Coupons {
                             <span class="brikpanel-cp-usage-count-display" id="bpc-usage-count-display">0</span>
                         </div>
                     </div>
+
+                    <?php if ($has_plugin_ui) : ?>
+                    <?php
+                    // What other plugins and the theme add to WooCommerce's coupon
+                    // screen, filled in per coupon by ajax_plugin_fields(). The
+                    // frame is WooCommerce's own (#woocommerce-coupon-data >
+                    // .inside > #coupon_options) and select#discount_type follows
+                    // the window's type: plugin scripts that bind to those when
+                    // the page loads (ShopBuilder Pro shows its fields by the type)
+                    // find them, as on WooCommerce's screen.
+                    ?>
+                    <div class="bpc-ext" id="bpc-ext" hidden>
+                        <div id="woocommerce-coupon-data" class="bpc-ext__frame">
+                            <div class="inside">
+                                <div id="coupon_options" class="panel-wrap coupon_data">
+                                    <select id="discount_type" class="bpc-ext__mirror" tabindex="-1" aria-hidden="true" hidden>
+                                        <?php foreach (wc_get_coupon_types() as $type_value => $type_label) : ?>
+                                        <option value="<?php echo esc_attr($type_value); ?>"><?php echo esc_html($type_label); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="bpc-ext__body" id="bpc-ext-body"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="brikpanel-cp-drawer-footer">
@@ -883,11 +1294,27 @@ class Brikpanel_Coupons {
         $coupon->set_code($code);
         $coupon->set_description(sanitize_textarea_field($_POST['description'] ?? ''));
 
-        $discount_type = sanitize_key($_POST['discount_type'] ?? 'percent');
-        if (!in_array($discount_type, ['percent', 'fixed_cart', 'fixed_product'], true)) {
-            $discount_type = 'percent';
+        // The type must be one the window offers (type_options(): WooCommerce's
+        // three, another plugin's the settings show, and this coupon's own).
+        // Anything else leaves a saved coupon's type as it is. A type the old
+        // fixed list did not know became "percent" here, so a 10 $ coupon of a
+        // theme's own type came back as 10 % after any save, the table's
+        // amount edit included (wp.org sstefanov, 21 Nov 2026).
+        $type_options  = self::type_options($coupon->get_id() ? $coupon : null);
+        $discount_type = isset($_POST['discount_type']) && is_string($_POST['discount_type'])
+            ? sanitize_text_field(wp_unslash($_POST['discount_type']))
+            : '';
+        if (isset($type_options[$discount_type])) {
+            if (!$coupon->get_id() || $discount_type !== $coupon->get_discount_type()) {
+                try {
+                    $coupon->set_discount_type($discount_type);
+                } catch (WC_Data_Exception $e) {
+                    wp_send_json_error(['message' => __('Choose a discount type.', 'brikpanel')]);
+                }
+            }
+        } elseif (!$coupon->get_id()) {
+            wp_send_json_error(['message' => __('Choose a discount type.', 'brikpanel')]);
         }
-        $coupon->set_discount_type($discount_type);
 
         $amount = floatval($_POST['amount'] ?? 0);
         $coupon->set_amount($amount);
@@ -1011,10 +1438,383 @@ class Brikpanel_Coupons {
             brikpanel_wc_coupon_sync_status($coupon->get_id(), 'publish');
         }
 
+        // Other plugins' fields that were on the form (shown open, or their
+        // folded box opened) are saved by those plugins, as on WooCommerce's
+        // screen. A plugin whose fields were not on the form is never asked:
+        // several clear a value whose field is absent (B2BKing's coupon role).
+        $posted_owners = isset($_POST['bp_cp_owners']) && is_string($_POST['bp_cp_owners'])
+            ? sanitize_text_field(wp_unslash($_POST['bp_cp_owners']))
+            : '';
+        $failed = $this->save_plugin_fields($coupon->get_id(), $posted_owners);
+
+        $message = $coupon_id > 0 ? __('Coupon updated!', 'brikpanel') : __('Coupon created!', 'brikpanel');
+        if ($failed) {
+            /* translators: %s: names of the plugins whose coupon fields could not be saved, comma separated. */
+            $message = sprintf(__('Coupon saved, but these plugins could not save their fields: %s', 'brikpanel'), implode(', ', $failed));
+        }
+
         wp_send_json_success([
-            'message'   => $coupon_id > 0 ? __('Coupon updated!', 'brikpanel') : __('Coupon created!', 'brikpanel'),
+            'message'   => $message,
             'coupon_id' => $coupon->get_id(),
+            'warning'   => (bool) $failed,
         ]);
+    }
+
+    // =========================================================================
+    // OTHER PLUGINS' COUPON FIELDS
+    // =========================================================================
+
+    /**
+     * The fields other plugins and the theme add to WooCommerce's coupon
+     * screen, drawn for one coupon (0: a new one) for the window.
+     *
+     * Owners the settings show come open, each under its name; the rest wait
+     * in the folded "Fields from your other plugins" box, open only for a
+     * person who opened it before. Discount types are not here: they are in
+     * the type list (type_options()).
+     */
+    public function ajax_plugin_fields() {
+        check_ajax_referer('brikpanel_coupons_nonce', 'security');
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+        }
+
+        $coupon_id = isset($_POST['coupon_id']) ? absint(wp_unslash($_POST['coupon_id'])) : 0;
+        if ($coupon_id) {
+            if (get_post_type($coupon_id) !== 'shop_coupon' || !current_user_can('edit_post', $coupon_id)) {
+                wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+            }
+            $coupon = new WC_Coupon($coupon_id);
+        } else {
+            $coupon = new WC_Coupon();
+        }
+
+        // Another plugin's markup goes back inside JSON: a stray echo or
+        // notice of theirs must not break the reply.
+        ob_start();
+        $owners = self::collect($coupon, true);
+        ob_end_clean();
+
+        $shown = [];
+        $fold  = [];
+        foreach ($owners as $key => $row) {
+            if (!$row['sections'] && !$row['panels'] && !$row['boxes']) {
+                continue; // types only, or a tab whose panel printed nothing
+            }
+            if (self::owner_shown($key)) {
+                $shown[$key] = $row;
+            } else {
+                $fold[$key] = $row;
+            }
+        }
+
+        wp_send_json_success([
+            'html'  => self::plugin_fields_html($shown, $fold, $owners, $coupon_id),
+            'types' => self::type_options($coupon_id ? $coupon : null),
+        ]);
+    }
+
+    /**
+     * The markup of the window's part for other plugins, see ajax_plugin_fields().
+     *
+     * WooCommerce's panel ids (general_coupon_data…) go on the first panel of
+     * each section, once: plugin scripts look their fields up under them.
+     * Another plugin's markup is printed as that plugin printed it, the way
+     * WooCommerce's own screen prints it.
+     *
+     * @param array $shown     Owners shown open.
+     * @param array $fold      Owners in the folded box.
+     * @param array $owners    Every owner, for the hidden tab list.
+     * @param int   $coupon_id Coupon, 0 for a new one.
+     * @return string
+     */
+    private static function plugin_fields_html(array $shown, array $fold, array $owners, $coupon_id) {
+        if (!$shown && !$fold) {
+            return '';
+        }
+        $used_ids = [];
+        $edit_url = $coupon_id ? admin_url('post.php?post=' . (int) $coupon_id . '&action=edit') : '';
+        $manage   = current_user_can('manage_woocommerce');
+
+        // WooCommerce's tab list, hidden: plugins that fill a panel when its
+        // tab is clicked find their tab (the script clicks each one once).
+        $tabs = '<ul class="coupon_data_tabs wc-tabs bpc-ext__tabs" aria-hidden="true">';
+        foreach (['general' => 'general_coupon_data', 'usage_restriction' => 'usage_restriction_coupon_data', 'usage_limit' => 'usage_limit_coupon_data'] as $tab_key => $target) {
+            $tabs .= '<li class="' . esc_attr($tab_key . '_options ' . $tab_key . '_tab') . '"><a href="#' . esc_attr($target) . '" tabindex="-1"></a></li>';
+        }
+        foreach ($owners as $row) {
+            foreach ($row['tabs'] as $tab_key => $tab) {
+                $tabs .= '<li class="' . esc_attr(trim($tab_key . '_options ' . $tab_key . '_tab ' . $tab['class'])) . '" data-bpc-plugin-tab="1">'
+                    . '<a href="#' . esc_attr($tab['target']) . '" tabindex="-1"><span>' . esc_html($tab['label']) . '</span></a></li>';
+            }
+        }
+        $tabs .= '</ul>';
+
+        $html = $tabs;
+
+        if ($shown) {
+            $html .= '<div class="bpc-ext__card">';
+            foreach ($shown as $key => $row) {
+                $html .= self::owner_group_html($key, $row, $used_ids);
+            }
+            $foot = [];
+            if ($manage) {
+                $foot[] = '<button type="button" class="bpc-ext__link bpc-ext__hide">' . esc_html__('Hide these fields', 'brikpanel') . '</button>';
+            }
+            if ($edit_url) {
+                $foot[] = '<a class="bpc-ext__link" href="' . esc_url($edit_url) . '">' . esc_html__('Open in WooCommerce', 'brikpanel') . '</a>';
+            }
+            if ($foot) {
+                $html .= '<p class="bpc-ext__foot">' . implode('', $foot) . '</p>';
+            }
+            $html .= '</div>';
+        }
+
+        if ($fold) {
+            $open  = 'yes' === get_user_meta(get_current_user_id(), self::OPEN_META, true);
+            $count = count($fold);
+            $num   = function_exists('brikpanel_number') ? brikpanel_number($count) : (string) $count;
+            $html .= '<div class="bpc-ext__fold' . ($open ? ' is-open' : '') . '"' . ($open ? '' : ' data-held="1"') . '>'
+                . '<button type="button" class="bpc-ext__toggle" aria-expanded="' . ($open ? 'true' : 'false') . '" aria-controls="bpc-ext-fold">'
+                . '<span class="bpc-ext__toggle-name">' . esc_html__('Fields from your other plugins', 'brikpanel') . '</span>'
+                . '<span class="bpc-ext__count">' . esc_html($num) . '</span>'
+                . '<svg class="bpc-ext__chev" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false"><path d="M5 7.5l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                . '</button>'
+                . '<div class="bpc-ext__foldbody" id="bpc-ext-fold"' . ($open ? '' : ' hidden') . '>';
+            foreach ($fold as $key => $row) {
+                $html .= self::owner_group_html($key, $row, $used_ids);
+            }
+            $foot = [];
+            if ($manage) {
+                $foot[] = '<button type="button" class="bpc-ext__link bpc-ext__always">' . esc_html__('Always show these fields', 'brikpanel') . '</button>';
+            }
+            if ($edit_url) {
+                $foot[] = '<a class="bpc-ext__link" href="' . esc_url($edit_url) . '">' . esc_html__('Open in WooCommerce', 'brikpanel') . '</a>';
+            }
+            if ($foot) {
+                $html .= '<p class="bpc-ext__foot">' . implode('', $foot) . '</p>';
+            }
+            $html .= '</div></div>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * One owner's part of the window: its name, then what it prints in each
+     * of WooCommerce's sections, its own tab panels and its boxes.
+     *
+     * @param string $key      Owner key.
+     * @param array  $row      Owner from collect() with markup.
+     * @param array  $used_ids WooCommerce panel ids already given out, by reference.
+     * @return string
+     */
+    private static function owner_group_html($key, array $row, array &$used_ids) {
+        $titles = [
+            'general'           => __('General', 'brikpanel'),
+            'usage_restriction' => __('Usage restrictions', 'brikpanel'),
+            'usage_limit'       => __('Usage limits', 'brikpanel'),
+        ];
+        $out = '<section class="bpc-ext__group" data-owner="' . esc_attr($key) . '">'
+            . '<h4 class="bpc-ext__name">' . esc_html($row['name']) . '</h4>';
+        foreach ($row['sections'] as $section => $chunks) {
+            $target = $section . '_coupon_data';
+            $id     = isset($used_ids[$target]) ? '' : ' id="' . esc_attr($target) . '"';
+            $used_ids[$target] = true;
+            $out .= '<div class="panel woocommerce_options_panel bpc-ext__panel"' . $id . ' data-section="' . esc_attr($section) . '">'
+                . '<p class="bpc-ext__where">' . esc_html(isset($titles[$section]) ? $titles[$section] : $section) . '</p>'
+                . implode("\n", $chunks)
+                . '</div>';
+        }
+        foreach ($row['panels'] as $panel) {
+            $out .= '<div class="bpc-ext__tabpanel">' . $panel . '</div>';
+        }
+        foreach ($row['boxes'] as $box_id => $box) {
+            $out .= '<div id="' . esc_attr($box_id) . '" class="postbox bpc-ext__box">'
+                . '<p class="bpc-ext__where">' . esc_html($box['title']) . '</p>'
+                . '<div class="inside">' . $box['html'] . '</div>'
+                . '</div>';
+        }
+        return $out . '</section>';
+    }
+
+    /**
+     * The owners whose fields were on the form, from the window's save: known
+     * to draw something on this coupon, so a forged key cannot reach a plugin
+     * that has nothing here.
+     *
+     * @param int    $coupon_id Saved coupon.
+     * @param string $json      The posted owner list (JSON), as sent by the window.
+     * @return array{owners: string[], boxes: string[]} Owner keys, and those of them with a box.
+     */
+    private function posted_owners($coupon_id, $json) {
+        $none = ['owners' => [], 'boxes' => []];
+        if (!is_string($json) || $json === '') {
+            return $none;
+        }
+        $posted = json_decode($json, true);
+        if (!is_array($posted)) {
+            return $none;
+        }
+        $keys = [];
+        foreach ($posted as $key) {
+            if (is_string($key) && preg_match('/^(plugin|theme|mu|other):[a-z0-9_\-]{1,120}$/', $key)) {
+                $keys[$key] = true;
+            }
+        }
+        if (!$keys) {
+            return $none;
+        }
+        $owners = self::collect(new WC_Coupon($coupon_id), false);
+        $out    = $none;
+        foreach ($owners as $key => $row) {
+            if (!isset($keys[$key]) || (!$row['sections'] && !$row['panels'] && !$row['boxes'])) {
+                continue;
+            }
+            $out['owners'][] = $key;
+            if ($row['boxes']) {
+                $out['boxes'][] = $key;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Runs the save of the plugins whose fields were on the form, and only
+     * theirs, with what the form posted under the plugins' own field names:
+     * WooCommerce's two coupon save hooks, and for a plugin with a box of its
+     * own the post save hooks WordPress fires on its screen. WooCommerce's own
+     * coupon save is never run (it rebuilds every coupon field from the post),
+     * BrikPanel saved those already.
+     *
+     * @param int    $coupon_id Saved coupon.
+     * @param string $json      The posted owner list (JSON).
+     * @return string[] Names of the plugins whose save stopped (threw, or called wp_die()).
+     */
+    private function save_plugin_fields($coupon_id, $json) {
+        $coupon_id = (int) $coupon_id;
+        if (!$coupon_id || $json === '' || !class_exists('Brikpanel_Foreign_Hooks')) {
+            return [];
+        }
+        $posted = $this->posted_owners($coupon_id, $json);
+        if (!$posted['owners']) {
+            return [];
+        }
+
+        $post   = get_post($coupon_id);
+        $failed = [];
+        $failed = array_merge($failed, Brikpanel_Foreign_Hooks::dispatch_only('woocommerce_process_shop_coupon_meta', [$coupon_id, $post], $posted['owners']));
+        $failed = array_merge($failed, Brikpanel_Foreign_Hooks::dispatch_only('woocommerce_coupon_options_save', [$coupon_id, new WC_Coupon($coupon_id)], $posted['owners']));
+        if ($posted['boxes']) {
+            $post = get_post($coupon_id);
+            $failed = array_merge($failed, Brikpanel_Foreign_Hooks::dispatch_only('save_post_shop_coupon', [$coupon_id, $post, true], $posted['boxes']));
+            $failed = array_merge($failed, Brikpanel_Foreign_Hooks::dispatch_only('save_post', [$coupon_id, $post, true], $posted['boxes']));
+            $failed = array_merge($failed, Brikpanel_Foreign_Hooks::dispatch_only('edit_post', [$coupon_id, $post], $posted['boxes']));
+        }
+        return array_values(array_unique($failed));
+    }
+
+    /**
+     * Remembers whether this person keeps the folded "Fields from your other
+     * plugins" box open. Opened once, it stays open on every coupon for them.
+     */
+    public function ajax_fold_state() {
+        check_ajax_referer('brikpanel_coupons_nonce', 'security');
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+        }
+        $open = isset($_POST['open']) && is_string($_POST['open']) && '1' === sanitize_key(wp_unslash($_POST['open']));
+        if ($open) {
+            update_user_meta(get_current_user_id(), self::OPEN_META, 'yes');
+        } else {
+            delete_user_meta(get_current_user_id(), self::OPEN_META);
+        }
+        wp_send_json_success();
+    }
+
+    /**
+     * "Always show these fields": turns on "Auto-show fields other plugins
+     * add", or puts back the state "Hide these fields" parked (the switch, or
+     * a hand-picked list). Same as the product editor's link.
+     */
+    public function ajax_enable_plugin_fields() {
+        check_ajax_referer('brikpanel_coupons_nonce', 'security');
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+        }
+        $parked   = get_option(self::PARKED_OPTION, []);
+        $auto     = (is_array($parked) && isset($parked['auto'])) ? (string) $parked['auto'] : '';
+        $selected = (is_array($parked) && isset($parked['selected'])) ? array_values(array_map('strval', (array) $parked['selected'])) : [];
+        if ('yes' === $auto || $selected) {
+            update_option(self::AUTO_OPTION, 'yes' === $auto ? 'yes' : 'no');
+            update_option(self::SELECTED_OPTION, $selected);
+        } else {
+            update_option(self::AUTO_OPTION, 'yes');
+        }
+        delete_option(self::PARKED_OPTION);
+        wp_send_json_success();
+    }
+
+    /**
+     * "Hide these fields": parks what was on (not autoloaded) and turns both
+     * settings off, so "Always show these fields" can put it back.
+     */
+    public function ajax_disable_plugin_fields() {
+        check_ajax_referer('brikpanel_coupons_nonce', 'security');
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+        }
+        $auto     = (string) get_option(self::AUTO_OPTION, 'no');
+        $selected = (array) get_option(self::SELECTED_OPTION, []);
+        if ('yes' === $auto || $selected) {
+            update_option(self::PARKED_OPTION, ['auto' => $auto, 'selected' => $selected], false);
+        }
+        update_option(self::SELECTED_OPTION, []);
+        update_option(self::AUTO_OPTION, 'no');
+        wp_send_json_success();
+    }
+
+    /**
+     * Copies the values of other plugins' fields from one coupon to its
+     * duplicate: the stored values under the names their fields post (and the
+     * same name with a leading underscore, a common way to store them).
+     * Nothing else is copied, a plugin's own counters stay with the original.
+     *
+     * @param int $from Original coupon.
+     * @param int $to   Its copy.
+     * @return void
+     */
+    private static function copy_plugin_field_values($from, $to) {
+        $names = [];
+        foreach (self::collect(new WC_Coupon($from), true) as $row) {
+            $markup = '';
+            foreach ($row['sections'] as $chunks) {
+                $markup .= implode('', $chunks);
+            }
+            $markup .= implode('', $row['panels']);
+            foreach ($row['boxes'] as $box) {
+                $markup .= $box['html'];
+            }
+            if (preg_match_all('/\bname\s*=\s*(["\'])([^"\'\[\]]+)/i', $markup, $m)) {
+                foreach ($m[2] as $name) {
+                    $names[$name] = true;
+                }
+            }
+        }
+        $skip = array_flip(array_merge(self::OWN_KEYS, [
+            'coupon_amount', 'customer_email', 'exclude_product_ids', 'product_categories', 'exclude_product_categories',
+            'usage_count', 'date_expires', '_used_by', '_edit_lock', '_edit_last', 'post_ID', '_wpnonce', 'woocommerce_meta_nonce',
+        ]));
+        foreach (array_keys($names) as $name) {
+            foreach ([$name, '_' . $name] as $meta_key) {
+                if (isset($skip[$meta_key]) || !metadata_exists('post', $from, $meta_key) || metadata_exists('post', $to, $meta_key)) {
+                    continue;
+                }
+                foreach (get_post_meta($from, $meta_key, false) as $value) {
+                    add_post_meta($to, $meta_key, wp_slash($value));
+                }
+            }
+        }
     }
 
     // =========================================================================
@@ -1150,6 +1950,12 @@ class Brikpanel_Coupons {
         brikpanel_wc_coupon_set_status($new_coupon, 'draft');
 
         $new_coupon->save();
+
+        // The copy keeps what other plugins' fields hold too (a theme's
+        // "Loyalty tier", B2BKing's role), as a copy made by hand would.
+        if ($new_coupon->get_id()) {
+            self::copy_plugin_field_values($original->get_id(), $new_coupon->get_id());
+        }
 
         // A duplicate must never go live on its own. On a WooCommerce without
         // the setter the copy is created as 'publish', so this is the call that
@@ -1529,3 +2335,20 @@ class Brikpanel_Coupons {
 }
 
 new Brikpanel_Coupons();
+
+/**
+ * Tell Import / Export about the coupon window's "other plugins' fields"
+ * state. Internal, not portable: the parked option is the undo of one "Hide
+ * these fields" click on one site (deleted when "Always show these fields"
+ * uses it), and the per-person "folded box kept open" is a habit of one
+ * account on one site.
+ *
+ * @param array $map Registry so far.
+ * @return array
+ */
+add_filter('brikpanel_exportable_option_keys', 'brikpanel_cp_register_internal_export_keys');
+function brikpanel_cp_register_internal_export_keys($map) {
+    $map[Brikpanel_Coupons::PARKED_OPTION] = ['class' => 'internal'];
+    $map[Brikpanel_Coupons::OPEN_META]     = ['class' => 'internal'];
+    return $map;
+}

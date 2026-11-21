@@ -5002,9 +5002,6 @@ msgstr "Дата истечения"
 msgid "Edit coupon"
 msgstr "Изменить купон"
 
-#: front-end/coupons/brikpanel-coupons.php:356
-msgid "Other plugins add settings to this coupon."
-msgstr "Другие плагины добавляют настройки к этому купону."
 
 #: front-end/coupons/brikpanel-coupons.php:357
 #: front-end/products/brikpanel-product-editor.php:1879
@@ -22628,3 +22625,32 @@ msgstr[2] "продано %s"
 #: front-end/dashboard/brikpanel-dashboard.php:2277
 msgid "Where your sales came from"
 msgstr "Откуда пришли ваши продажи"
+
+msgid "Other code"
+msgstr "Другой код"
+
+msgid "Choose a discount type."
+msgstr "Выберите тип скидки."
+
+#. translators: %s: names of the plugins whose coupon fields could not be saved, comma separated.
+#, php-format
+msgid "Coupon saved, but these plugins could not save their fields: %s"
+msgstr "Купон сохранён, но эти плагины не смогли сохранить свои поля: %s"
+
+msgid "Shows the discount types and fields other plugins and your theme add to WooCommerce's coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce's three discount types."
+msgstr "Показывает в окне купона, сразу раскрытыми, типы скидок и поля, которые другие плагины и ваша тема добавляют на экран купонов WooCommerce. Когда выключено, их поля ждут в свёрнутом блоке внизу окна, а новые купоны получают только три типа скидок WooCommerce."
+
+msgid "Additional coupon data sections"
+msgstr "Дополнительные разделы данных купона"
+
+msgid "Only needed when \"Auto-show fields other plugins add\" is off. Pick the plugins whose discount types and fields always show in the coupon window."
+msgstr "Нужно только когда «Автоматически показывать поля, добавленные другими плагинами» выключено. Выберите плагины, чьи типы скидок и поля всегда видны в окне купона."
+
+msgid "No other plugin or theme adds anything to coupons on this store."
+msgstr "В этом магазине ни другие плагины, ни тема ничего не добавляют к купонам."
+
+msgid "Loading the fields your other plugins add…"
+msgstr "Загрузка полей, которые добавляют ваши другие плагины…"
+
+msgid "The fields your other plugins add could not be loaded."
+msgstr "Не удалось загрузить поля, которые добавляют ваши другие плагины."

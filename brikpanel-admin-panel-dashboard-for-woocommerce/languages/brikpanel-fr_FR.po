@@ -4914,9 +4914,6 @@ msgstr "Date d'expiration"
 msgid "Edit coupon"
 msgstr "Modifier le code promo"
 
-#: front-end/coupons/brikpanel-coupons.php:356
-msgid "Other plugins add settings to this coupon."
-msgstr "D’autres extensions ajoutent des réglages à ce code promo."
 
 #: front-end/coupons/brikpanel-coupons.php:357
 #: front-end/products/brikpanel-product-editor.php:1879
@@ -22405,3 +22402,32 @@ msgstr[1] "%s vendus"
 #: front-end/dashboard/brikpanel-dashboard.php:2277
 msgid "Where your sales came from"
 msgstr "D’où viennent vos ventes"
+
+msgid "Other code"
+msgstr "Autre code"
+
+msgid "Choose a discount type."
+msgstr "Choisissez un type de remise."
+
+#. translators: %s: names of the plugins whose coupon fields could not be saved, comma separated.
+#, php-format
+msgid "Coupon saved, but these plugins could not save their fields: %s"
+msgstr "Code promo enregistré, mais ces extensions n'ont pas pu enregistrer leurs champs : %s"
+
+msgid "Shows the discount types and fields other plugins and your theme add to WooCommerce's coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce's three discount types."
+msgstr "Affiche, ouverts dans la fenêtre du code promo, les types de remise et les champs que d'autres extensions et votre thème ajoutent à l'écran des codes promo de WooCommerce. Désactivé, leurs champs attendent dans un encadré replié en bas de la fenêtre, et les nouveaux codes promo ne proposent que les trois types de remise de WooCommerce."
+
+msgid "Additional coupon data sections"
+msgstr "Sections de données de code promo supplémentaires"
+
+msgid "Only needed when \"Auto-show fields other plugins add\" is off. Pick the plugins whose discount types and fields always show in the coupon window."
+msgstr "Nécessaire uniquement lorsque « Afficher automatiquement les champs ajoutés par d'autres extensions » est désactivé. Choisissez les extensions dont les types de remise et les champs s'affichent toujours dans la fenêtre du code promo."
+
+msgid "No other plugin or theme adds anything to coupons on this store."
+msgstr "Aucune autre extension ni aucun thème n'ajoute quoi que ce soit aux codes promo sur cette boutique."
+
+msgid "Loading the fields your other plugins add…"
+msgstr "Chargement des champs ajoutés par vos autres extensions…"
+
+msgid "The fields your other plugins add could not be loaded."
+msgstr "Les champs ajoutés par vos autres extensions n'ont pas pu être chargés."

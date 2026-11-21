@@ -4914,9 +4914,6 @@ msgstr "Son kullanma tarihi"
 msgid "Edit coupon"
 msgstr "Kuponu düzenle"
 
-#: front-end/coupons/brikpanel-coupons.php:356
-msgid "Other plugins add settings to this coupon."
-msgstr "Başka eklentiler bu kupona ayar ekliyor."
 
 #: front-end/coupons/brikpanel-coupons.php:357
 #: front-end/products/brikpanel-product-editor.php:1879
@@ -22402,3 +22399,32 @@ msgstr[1] "%s adet satıldı"
 #: front-end/dashboard/brikpanel-dashboard.php:2277
 msgid "Where your sales came from"
 msgstr "Satışlarınız nereden geldi"
+
+msgid "Other code"
+msgstr "Diğer kod"
+
+msgid "Choose a discount type."
+msgstr "Bir indirim türü seçin."
+
+#. translators: %s: names of the plugins whose coupon fields could not be saved, comma separated.
+#, php-format
+msgid "Coupon saved, but these plugins could not save their fields: %s"
+msgstr "Kupon kaydedildi, ancak şu eklentiler kendi alanlarını kaydedemedi: %s"
+
+msgid "Shows the discount types and fields other plugins and your theme add to WooCommerce's coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce's three discount types."
+msgstr "Diğer eklentilerin ve temanızın WooCommerce kupon ekranına eklediği indirim türlerini ve alanları kupon penceresinde açık gösterir. Kapalıyken alanları pencerenin altındaki katlı bir kutuda bekler ve yeni kuponlarda yalnızca WooCommerce'in üç indirim türü bulunur."
+
+msgid "Additional coupon data sections"
+msgstr "Ek kupon veri bölümleri"
+
+msgid "Only needed when \"Auto-show fields other plugins add\" is off. Pick the plugins whose discount types and fields always show in the coupon window."
+msgstr "Yalnızca «Diğer eklentilerin eklediği alanları otomatik göster» kapalıyken gerekir. İndirim türleri ve alanları kupon penceresinde her zaman görünecek eklentileri seçin."
+
+msgid "No other plugin or theme adds anything to coupons on this store."
+msgstr "Bu mağazada başka hiçbir eklenti veya tema kuponlara bir şey eklemiyor."
+
+msgid "Loading the fields your other plugins add…"
+msgstr "Diğer eklentilerinizin eklediği alanlar yükleniyor…"
+
+msgid "The fields your other plugins add could not be loaded."
+msgstr "Diğer eklentilerinizin eklediği alanlar yüklenemedi."

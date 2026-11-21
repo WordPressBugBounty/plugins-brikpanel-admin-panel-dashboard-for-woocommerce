@@ -4914,9 +4914,6 @@ msgstr "Vervaldatum"
 msgid "Edit coupon"
 msgstr "Kortingsbon bewerken"
 
-#: front-end/coupons/brikpanel-coupons.php:356
-msgid "Other plugins add settings to this coupon."
-msgstr "Andere plugins voegen instellingen toe aan deze kortingsbon."
 
 #: front-end/coupons/brikpanel-coupons.php:357
 #: front-end/products/brikpanel-product-editor.php:1879
@@ -22404,3 +22401,32 @@ msgstr[1] "%s verkocht"
 #: front-end/dashboard/brikpanel-dashboard.php:2277
 msgid "Where your sales came from"
 msgstr "Waar uw verkopen vandaan kwamen"
+
+msgid "Other code"
+msgstr "Overige code"
+
+msgid "Choose a discount type."
+msgstr "Kies een kortingstype."
+
+#. translators: %s: names of the plugins whose coupon fields could not be saved, comma separated.
+#, php-format
+msgid "Coupon saved, but these plugins could not save their fields: %s"
+msgstr "Kortingsbon opgeslagen, maar deze plugins konden hun velden niet opslaan: %s"
+
+msgid "Shows the discount types and fields other plugins and your theme add to WooCommerce's coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce's three discount types."
+msgstr "Toont de kortingstypes en velden die andere plugins en uw thema aan het kortingsbonscherm van WooCommerce toevoegen, open in het kortingsbonvenster. Staat dit uit, dan wachten hun velden in een ingeklapt vak onderaan het venster en krijgen nieuwe kortingsbonnen alleen de drie kortingstypes van WooCommerce."
+
+msgid "Additional coupon data sections"
+msgstr "Aanvullende kortingsbongegevenssecties"
+
+msgid "Only needed when \"Auto-show fields other plugins add\" is off. Pick the plugins whose discount types and fields always show in the coupon window."
+msgstr "Alleen nodig wanneer „Velden van andere plugins automatisch weergeven” uit staat. Kies de plugins waarvan de kortingstypes en velden altijd in het kortingsbonvenster staan."
+
+msgid "No other plugin or theme adds anything to coupons on this store."
+msgstr "In deze winkel voegt geen andere plugin of thema iets toe aan kortingsbonnen."
+
+msgid "Loading the fields your other plugins add…"
+msgstr "De velden van uw andere plugins worden geladen…"
+
+msgid "The fields your other plugins add could not be loaded."
+msgstr "De velden van uw andere plugins konden niet worden geladen."

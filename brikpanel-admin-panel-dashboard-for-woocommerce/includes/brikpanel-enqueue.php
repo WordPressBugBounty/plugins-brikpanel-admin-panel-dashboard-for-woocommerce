@@ -1392,6 +1392,183 @@ function brikpanel_aes_callback_redeclares_function($function) {
 }
 
 /**
+ * Takes off admin_enqueue_scripts the callbacks that cannot run twice, before
+ * a BrikPanel screen fires that hook again as another screen (the product
+ * editor as post.php for a product, the coupon window as post.php for a
+ * coupon). Two kinds:
+ *
+ *   (a) Plugins shipping their own asset registry that throws InvalidAsset on
+ *       duplicate handles (e.g. Google Listings & Ads), matched by namespace
+ *       on Closure callbacks.
+ *   (b) Plugins that declare a named function inside their enqueue callback
+ *       (brikpanel_aes_callback_redeclares_function()): a second call is an
+ *       uncatchable "Cannot redeclare" fatal.
+ *
+ * Their assets were registered by the natural fire, so skipping the second
+ * run is safe. Put back with brikpanel_aes_reattach_callbacks().
+ *
+ * @return array{hook: WP_Hook|null, detached: array<int, array{0: int, 1: mixed, 2: array}>}
+ */
+function brikpanel_aes_detach_unsafe_callbacks() {
+    global $wp_filter;
+    $state = ['hook' => null, 'detached' => []];
+    $unsafe_namespaces = [
+        'GoogleListingsAndAds',
+    ];
+    if (!isset($wp_filter['admin_enqueue_scripts']) || !is_object($wp_filter['admin_enqueue_scripts']) || empty($wp_filter['admin_enqueue_scripts']->callbacks)) {
+        return $state;
+    }
+    $aes_hook      = $wp_filter['admin_enqueue_scripts'];
+    $state['hook'] = $aes_hook;
+    foreach ($aes_hook->callbacks as $aes_priority => $aes_callbacks) {
+        if (!is_array($aes_callbacks)) {
+            continue;
+        }
+        foreach ($aes_callbacks as $aes_key => $aes_cb) {
+            if (empty($aes_cb['function'])) {
+                continue;
+            }
+            $aes_fn     = $aes_cb['function'];
+            $aes_detach = false;
+
+            // (a) Closure in an asset-registry namespace that rejects
+            //     duplicate handles.
+            if ($aes_fn instanceof Closure) {
+                try {
+                    $aes_ref   = new ReflectionFunction($aes_fn);
+                    $aes_scope = $aes_ref->getClosureScopeClass();
+                    if ($aes_scope) {
+                        $aes_class = $aes_scope->getName();
+                        foreach ($unsafe_namespaces as $aes_ns) {
+                            if (strpos($aes_class, $aes_ns) !== false) {
+                                $aes_detach = true;
+                                break;
+                            }
+                        }
+                    }
+                } catch (\Throwable $aes_e) {
+                    // Reflection failed — leave callback in place.
+                }
+            }
+
+            // (b) Any callback whose body declares a named function would
+            //     fatal on the re-fire.
+            if (!$aes_detach && brikpanel_aes_callback_redeclares_function($aes_fn)) {
+                $aes_detach = true;
+            }
+
+            if ($aes_detach) {
+                $state['detached'][] = [$aes_priority, $aes_key, $aes_cb];
+                unset($aes_hook->callbacks[$aes_priority][$aes_key]);
+            }
+        }
+        if (isset($aes_hook->callbacks[$aes_priority]) && empty($aes_hook->callbacks[$aes_priority])) {
+            unset($aes_hook->callbacks[$aes_priority]);
+        }
+    }
+    return $state;
+}
+
+/**
+ * Puts back what brikpanel_aes_detach_unsafe_callbacks() took off, so any
+ * later admin_enqueue_scripts consumer on the same request sees the full set.
+ *
+ * @param array $state From brikpanel_aes_detach_unsafe_callbacks().
+ * @return void
+ */
+function brikpanel_aes_reattach_callbacks(array $state) {
+    if (empty($state['detached']) || empty($state['hook'])) {
+        return;
+    }
+    $aes_hook = $state['hook'];
+    foreach ($state['detached'] as $aes_detached) {
+        list($aes_priority, $aes_key, $aes_cb) = $aes_detached;
+        if (!isset($aes_hook->callbacks[$aes_priority]) || !is_array($aes_hook->callbacks[$aes_priority])) {
+            $aes_hook->callbacks[$aes_priority] = [];
+        }
+        $aes_hook->callbacks[$aes_priority][$aes_key] = $aes_cb;
+    }
+    ksort($aes_hook->callbacks);
+}
+
+/**
+ * Loads what other plugins' fields in the coupon window lean on
+ * (front-end/coupons/brikpanel-coupons.php): their own scripts, and
+ * WooCommerce's coupon screen scripts and styles (help tips, product search
+ * boxes, woocommerce_admin), as WooCommerce's coupon screen loads them.
+ * admin_enqueue_scripts is fired again as post.php for a coupon, the way the
+ * product editor does it for a product.
+ *
+ * This page's isolation sweep (includes/brikpanel-asset-isolation.php) takes
+ * plugins' scripts off; the folders of the plugins and the theme that add
+ * something to coupons are kept, on this page only.
+ *
+ * @param array $owners Brikpanel_Coupons::plugin_additions().
+ * @return void
+ */
+function brikpanel_coupons_load_screen_assets(array $owners) {
+    $needles = [];
+    foreach ($owners as $key => $owner) {
+        $folder = basename(untrailingslashit((string) (isset($owner['dir']) ? $owner['dir'] : '')));
+        if ($folder === '' || $folder === '.') {
+            continue;
+        }
+        if (strpos((string) $key, 'plugin:') === 0) {
+            $needles[] = '/plugins/' . $folder . '/';
+        } elseif (strpos((string) $key, 'theme:') === 0) {
+            $needles[] = '/themes/' . $folder . '/';
+        }
+    }
+    if ($needles) {
+        add_filter('brikpanel_isolation_keep_handle', static function ($keep, $handle, $src) use ($needles) {
+            if ($keep) {
+                return $keep;
+            }
+            foreach ($needles as $needle) {
+                if (strpos((string) $src, $needle) !== false) {
+                    return true;
+                }
+            }
+            return false;
+        }, 10, 3);
+    }
+
+    $saved = [];
+    foreach (['current_screen', 'post', 'post_type', 'typenow', 'taxnow', 'pagenow', 'thepostid'] as $global) {
+        $saved[$global] = isset($GLOBALS[$global]) ? $GLOBALS[$global] : null;
+    }
+    $probe      = class_exists('Brikpanel_Coupons') ? Brikpanel_Coupons::probe_coupon() : null;
+    $probe_post = ($probe && $probe->get_id()) ? get_post($probe->get_id()) : null;
+    if (!($probe_post instanceof WP_Post)) {
+        $probe_post = new WP_Post((object) ['ID' => 0, 'post_type' => 'shop_coupon', 'post_status' => 'auto-draft', 'post_title' => '', 'filter' => 'raw']);
+    }
+    $aes_state    = brikpanel_aes_detach_unsafe_callbacks();
+    $queue_before = isset($GLOBALS['wp_scripts']) && $GLOBALS['wp_scripts'] instanceof WP_Scripts ? $GLOBALS['wp_scripts']->queue : [];
+    try {
+        set_current_screen('shop_coupon');
+        if (function_exists('brikpanel_mark_screen_classic')) {
+            brikpanel_mark_screen_classic();
+        }
+        $GLOBALS['post']      = $probe_post;
+        $GLOBALS['post_type'] = 'shop_coupon';
+        $GLOBALS['typenow']   = 'shop_coupon';
+        $GLOBALS['pagenow']   = 'post.php';
+        $GLOBALS['thepostid'] = (int) $probe_post->ID;
+        do_action('admin_enqueue_scripts', 'post.php');
+    } catch (\Throwable $e) {
+        error_log('[BrikPanel] admin_enqueue_scripts re-fire for the coupon window halted: ' . $e->getMessage());
+    } finally {
+        if (isset($GLOBALS['wp_scripts']) && $GLOBALS['wp_scripts'] instanceof WP_Scripts) {
+            brikpanel_front_load_core_scripts($GLOBALS['wp_scripts'], $queue_before);
+        }
+        brikpanel_aes_reattach_callbacks($aes_state);
+        foreach ($saved as $global => $value) {
+            $GLOBALS[$global] = $value;
+        }
+    }
+}
+
+/**
  * Which single-order screen this request is, if any.
  *
  * The modern order screen covers editing an order and adding a new one, on
@@ -2358,60 +2535,7 @@ function brikpanel_enqueue_woo_assets($hook) {
             //       redeclare" fatal that try/catch cannot stop, white-screening
             //       the editor — matched by scanning the callback body, for any
             //       callback shape (Closure, [object, method], string).
-            global $wp_filter;
-            $brikpanel_detached_aes = [];
-            $brikpanel_unsafe_namespaces = [
-                'GoogleListingsAndAds',
-            ];
-            if (isset($wp_filter['admin_enqueue_scripts']) && is_object($wp_filter['admin_enqueue_scripts']) && !empty($wp_filter['admin_enqueue_scripts']->callbacks)) {
-                $aes_hook = $wp_filter['admin_enqueue_scripts'];
-                foreach ($aes_hook->callbacks as $aes_priority => $aes_callbacks) {
-                    if (!is_array($aes_callbacks)) {
-                        continue;
-                    }
-                    foreach ($aes_callbacks as $aes_key => $aes_cb) {
-                        if (empty($aes_cb['function'])) {
-                            continue;
-                        }
-                        $aes_fn     = $aes_cb['function'];
-                        $aes_detach = false;
-
-                        // (a) Closure in an asset-registry namespace that
-                        //     rejects duplicate handles.
-                        if ($aes_fn instanceof Closure) {
-                            try {
-                                $aes_ref   = new ReflectionFunction($aes_fn);
-                                $aes_scope = $aes_ref->getClosureScopeClass();
-                                if ($aes_scope) {
-                                    $aes_class = $aes_scope->getName();
-                                    foreach ($brikpanel_unsafe_namespaces as $aes_ns) {
-                                        if (strpos($aes_class, $aes_ns) !== false) {
-                                            $aes_detach = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            } catch (\Throwable $aes_e) {
-                                // Reflection failed — leave callback in place.
-                            }
-                        }
-
-                        // (b) Any callback whose body declares a named function
-                        //     would fatal on the re-fire.
-                        if (!$aes_detach && brikpanel_aes_callback_redeclares_function($aes_fn)) {
-                            $aes_detach = true;
-                        }
-
-                        if ($aes_detach) {
-                            $brikpanel_detached_aes[] = [$aes_priority, $aes_key, $aes_cb];
-                            unset($aes_hook->callbacks[$aes_priority][$aes_key]);
-                        }
-                    }
-                    if (isset($aes_hook->callbacks[$aes_priority]) && empty($aes_hook->callbacks[$aes_priority])) {
-                        unset($aes_hook->callbacks[$aes_priority]);
-                    }
-                }
-            }
+            $brikpanel_aes_state = brikpanel_aes_detach_unsafe_callbacks();
 
             // SEOPress's universal metabox is ~1.5 MB of React + wp-components
             // that only does anything when its mount node
@@ -2469,16 +2593,7 @@ function brikpanel_enqueue_woo_assets($hook) {
 
             // Restore detached callbacks so any later do_action consumers
             // (rare on the same request, but possible) still see the full set.
-            if (!empty($brikpanel_detached_aes) && isset($aes_hook)) {
-                foreach ($brikpanel_detached_aes as $aes_detached) {
-                    list($aes_priority, $aes_key, $aes_cb) = $aes_detached;
-                    if (!isset($aes_hook->callbacks[$aes_priority]) || !is_array($aes_hook->callbacks[$aes_priority])) {
-                        $aes_hook->callbacks[$aes_priority] = [];
-                    }
-                    $aes_hook->callbacks[$aes_priority][$aes_key] = $aes_cb;
-                }
-                ksort($aes_hook->callbacks);
-            }
+            brikpanel_aes_reattach_callbacks($brikpanel_aes_state);
 
             // Rank Math — the natural + re-fired admin_enqueue_scripts above
             // may still miss enqueueing the metabox assets because the Assets
@@ -3159,6 +3274,20 @@ function brikpanel_enqueue_woo_assets($hook) {
             true
         );
 
+        // What other plugins and the theme add to coupons (types, fields,
+        // tabs, boxes). With fields to draw, their scripts load here too.
+        $cp_owners    = class_exists('Brikpanel_Coupons') ? Brikpanel_Coupons::plugin_additions() : [];
+        $cp_plugin_ui = false;
+        foreach ($cp_owners as $cp_owner) {
+            if ($cp_owner['sections'] || $cp_owner['panels'] || $cp_owner['boxes'] || $cp_owner['tabs']) {
+                $cp_plugin_ui = true;
+                break;
+            }
+        }
+        if ($cp_plugin_ui) {
+            brikpanel_coupons_load_screen_assets($cp_owners);
+        }
+
         wp_localize_script('brikpanel_coupons_scripts', 'brikpanelCP', [
             'ajax_url'        => admin_url('admin-ajax.php'),
             'nonce'           => wp_create_nonce('brikpanel_coupons_nonce'),
@@ -3169,10 +3298,16 @@ function brikpanel_enqueue_woo_assets($hook) {
             // store's home page plus ?bp-coupon=CODE.
             'link_base'       => home_url('/'),
             'link_var'        => class_exists('Brikpanel_Auto_Coupons') ? Brikpanel_Auto_Coupons::LINK_VAR : 'bp-coupon',
-            // Other plugins' settings for a coupon live on WooCommerce's own
-            // coupon screen; the drawer links there when there are any.
-            'plugin_settings' => class_exists('Brikpanel_Coupons') && Brikpanel_Coupons::coupon_plugin_settings(),
-            'coupon_edit_url' => admin_url('post.php?post=__ID__&action=edit'),
+            // Every registered discount type's name: the table's Type column,
+            // and a coupon whose own type the window's list does not offer
+            // (Brikpanel_Coupons::type_options()).
+            'type_labels'     => function_exists('wc_get_coupon_types') ? array_map('wp_strip_all_tags', wc_get_coupon_types()) : [],
+            // Fields other plugins and the theme add to coupons: the window
+            // asks for a coupon's fields (Brikpanel_Coupons::ajax_plugin_fields()).
+            'plugin_fields'   => $cp_plugin_ui,
+            // The window's own payload keys: another plugin's field under one
+            // of these names is not sent along (Brikpanel_Coupons::OWN_KEYS).
+            'own_keys'        => class_exists('Brikpanel_Coupons') ? Brikpanel_Coupons::OWN_KEYS : [],
             'i18n'      => [
                 'auto_badge'              => __('Auto', 'brikpanel'),
                 'auto_title'              => __('Added to carts automatically', 'brikpanel'),
@@ -3212,6 +3347,10 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'add_coupon'              => __('Add coupon', 'brikpanel'),
                 'edit_coupon'             => __('Edit coupon', 'brikpanel'),
                 'code_required'           => __('Coupon code is required.', 'brikpanel'),
+                'ext_loading'             => __('Loading the fields your other plugins add…', 'brikpanel'),
+                'ext_failed'              => __('The fields your other plugins add could not be loaded.', 'brikpanel'),
+                'turning_on'              => __('Turning on…', 'brikpanel'),
+                'hiding'                  => __('Hiding…', 'brikpanel'),
                 'type_percent'            => __('Percentage', 'brikpanel'),
                 'type_fixed_cart'         => __('Fixed cart', 'brikpanel'),
                 'type_fixed_product'      => __('Fixed product', 'brikpanel'),

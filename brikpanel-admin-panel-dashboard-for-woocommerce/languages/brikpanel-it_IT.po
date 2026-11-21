@@ -4914,9 +4914,6 @@ msgstr "Data di scadenza"
 msgid "Edit coupon"
 msgstr "Modifica coupon"
 
-#: front-end/coupons/brikpanel-coupons.php:356
-msgid "Other plugins add settings to this coupon."
-msgstr "Altri plugin aggiungono impostazioni a questo coupon."
 
 #: front-end/coupons/brikpanel-coupons.php:357
 #: front-end/products/brikpanel-product-editor.php:1879
@@ -22406,3 +22403,32 @@ msgstr[1] "%s venduti"
 #: front-end/dashboard/brikpanel-dashboard.php:2277
 msgid "Where your sales came from"
 msgstr "Da dove arrivano le tue vendite"
+
+msgid "Other code"
+msgstr "Altro codice"
+
+msgid "Choose a discount type."
+msgstr "Scegli un tipo di sconto."
+
+#. translators: %s: names of the plugins whose coupon fields could not be saved, comma separated.
+#, php-format
+msgid "Coupon saved, but these plugins could not save their fields: %s"
+msgstr "Coupon salvato, ma questi plugin non sono riusciti a salvare i loro campi: %s"
+
+msgid "Shows the discount types and fields other plugins and your theme add to WooCommerce's coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce's three discount types."
+msgstr "Mostra aperti nella finestra del coupon i tipi di sconto e i campi che altri plugin e il tuo tema aggiungono alla schermata dei coupon di WooCommerce. Se disattivato, i loro campi restano in un riquadro chiuso in fondo alla finestra e i nuovi coupon hanno solo i tre tipi di sconto di WooCommerce."
+
+msgid "Additional coupon data sections"
+msgstr "Sezioni dati coupon aggiuntive"
+
+msgid "Only needed when \"Auto-show fields other plugins add\" is off. Pick the plugins whose discount types and fields always show in the coupon window."
+msgstr "Necessario solo quando «Mostra automaticamente i campi aggiunti da altri plugin» è disattivato. Scegli i plugin i cui tipi di sconto e campi si vedono sempre nella finestra del coupon."
+
+msgid "No other plugin or theme adds anything to coupons on this store."
+msgstr "In questo negozio nessun altro plugin o tema aggiunge qualcosa ai coupon."
+
+msgid "Loading the fields your other plugins add…"
+msgstr "Caricamento dei campi aggiunti dagli altri tuoi plugin…"
+
+msgid "The fields your other plugins add could not be loaded."
+msgstr "Non è stato possibile caricare i campi aggiunti dagli altri tuoi plugin."

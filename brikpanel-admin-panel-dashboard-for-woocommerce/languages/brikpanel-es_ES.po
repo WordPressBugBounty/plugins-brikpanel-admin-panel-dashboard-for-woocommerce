@@ -4914,9 +4914,6 @@ msgstr "Fecha de caducidad"
 msgid "Edit coupon"
 msgstr "Editar cupón"
 
-#: front-end/coupons/brikpanel-coupons.php:356
-msgid "Other plugins add settings to this coupon."
-msgstr "Otros plugins añaden ajustes a este cupón."
 
 #: front-end/coupons/brikpanel-coupons.php:357
 #: front-end/products/brikpanel-product-editor.php:1879
@@ -22403,3 +22400,32 @@ msgstr[1] "%s vendidos"
 #: front-end/dashboard/brikpanel-dashboard.php:2277
 msgid "Where your sales came from"
 msgstr "De dónde vinieron tus ventas"
+
+msgid "Other code"
+msgstr "Otro código"
+
+msgid "Choose a discount type."
+msgstr "Elige un tipo de descuento."
+
+#. translators: %s: names of the plugins whose coupon fields could not be saved, comma separated.
+#, php-format
+msgid "Coupon saved, but these plugins could not save their fields: %s"
+msgstr "Cupón guardado, pero estos plugins no pudieron guardar sus campos: %s"
+
+msgid "Shows the discount types and fields other plugins and your theme add to WooCommerce's coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce's three discount types."
+msgstr "Muestra abiertos en la ventana del cupón los tipos de descuento y los campos que otros plugins y tu tema añaden a la pantalla de cupones de WooCommerce. Si está desactivado, sus campos esperan en un cuadro plegado al final de la ventana y los cupones nuevos solo tienen los tres tipos de descuento de WooCommerce."
+
+msgid "Additional coupon data sections"
+msgstr "Secciones adicionales de datos del cupón"
+
+msgid "Only needed when \"Auto-show fields other plugins add\" is off. Pick the plugins whose discount types and fields always show in the coupon window."
+msgstr "Solo es necesario cuando «Mostrar automáticamente los campos que añaden otros plugins» está desactivado. Elige los plugins cuyos tipos de descuento y campos se muestran siempre en la ventana del cupón."
+
+msgid "No other plugin or theme adds anything to coupons on this store."
+msgstr "En esta tienda ningún otro plugin ni tema añade nada a los cupones."
+
+msgid "Loading the fields your other plugins add…"
+msgstr "Cargando los campos que añaden tus otros plugins…"
+
+msgid "The fields your other plugins add could not be loaded."
+msgstr "No se pudieron cargar los campos que añaden tus otros plugins."

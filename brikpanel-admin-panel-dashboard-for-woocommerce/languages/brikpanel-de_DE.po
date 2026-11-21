@@ -4912,9 +4912,6 @@ msgstr "Ablaufdatum"
 msgid "Edit coupon"
 msgstr "Gutschein bearbeiten"
 
-#: front-end/coupons/brikpanel-coupons.php:356
-msgid "Other plugins add settings to this coupon."
-msgstr "Andere Plugins fügen diesem Gutschein Einstellungen hinzu."
 
 #: front-end/coupons/brikpanel-coupons.php:357
 #: front-end/products/brikpanel-product-editor.php:1879
@@ -22406,3 +22403,32 @@ msgstr[1] "%s verkauft"
 #: front-end/dashboard/brikpanel-dashboard.php:2277
 msgid "Where your sales came from"
 msgstr "Woher Ihre Umsätze kamen"
+
+msgid "Other code"
+msgstr "Anderer Code"
+
+msgid "Choose a discount type."
+msgstr "Wählen Sie eine Rabattart."
+
+#. translators: %s: names of the plugins whose coupon fields could not be saved, comma separated.
+#, php-format
+msgid "Coupon saved, but these plugins could not save their fields: %s"
+msgstr "Gutschein gespeichert, aber diese Plugins konnten ihre Felder nicht speichern: %s"
+
+msgid "Shows the discount types and fields other plugins and your theme add to WooCommerce's coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce's three discount types."
+msgstr "Zeigt die Rabattarten und Felder, die andere Plugins und Ihr Theme dem Gutscheinbildschirm von WooCommerce hinzufügen, geöffnet im Gutscheinfenster. Wenn aus, warten ihre Felder in einem eingeklappten Feld unten im Fenster, und neue Gutscheine erhalten nur die drei Rabattarten von WooCommerce."
+
+msgid "Additional coupon data sections"
+msgstr "Zusätzliche Gutscheindaten-Bereiche"
+
+msgid "Only needed when \"Auto-show fields other plugins add\" is off. Pick the plugins whose discount types and fields always show in the coupon window."
+msgstr "Nur nötig, wenn „Von anderen Plugins hinzugefügte Felder automatisch anzeigen“ aus ist. Wählen Sie die Plugins, deren Rabattarten und Felder im Gutscheinfenster immer angezeigt werden."
+
+msgid "No other plugin or theme adds anything to coupons on this store."
+msgstr "Kein anderes Plugin und kein Theme fügt in diesem Shop etwas zu Gutscheinen hinzu."
+
+msgid "Loading the fields your other plugins add…"
+msgstr "Die Felder Ihrer anderen Plugins werden geladen…"
+
+msgid "The fields your other plugins add could not be loaded."
+msgstr "Die Felder Ihrer anderen Plugins konnten nicht geladen werden."

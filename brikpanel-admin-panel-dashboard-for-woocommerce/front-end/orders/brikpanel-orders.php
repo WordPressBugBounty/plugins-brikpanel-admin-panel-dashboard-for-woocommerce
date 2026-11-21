@@ -340,6 +340,15 @@ function brikpanel_settings_fields() {
         ? Brikpanel_Product_Editor::collect_wc_variation_sections()
         : [];
 
+    // What other plugins and the theme add to WooCommerce's coupon screen, for
+    // "Additional coupon data sections". Read only for the Coupons section
+    // (WooCommerce's settings screen sets $current_section): finding out fires
+    // every coupon hook (front-end/coupons/brikpanel-coupons.php).
+    $coupon_plugin_choices = ( class_exists( 'Brikpanel_Coupons' )
+        && isset( $GLOBALS['current_section'] ) && 'coupons' === $GLOBALS['current_section'] )
+        ? Brikpanel_Coupons::settings_choices()
+        : [];
+
     // While "Ignore BrikPanel's access rules" is on, a line under "Block pages
     // hidden from the menu" says nothing is blocked. WooCommerce prints a
     // checkbox's string desc_tip as-is inside <p class="description">; the note
@@ -869,6 +878,24 @@ function brikpanel_settings_fields() {
             'type'    => 'checkbox',
             'desc'    => __('Show a "Limit usage to X items" field that caps how many matching items the discount applies to per cart.', 'brikpanel'),
             'default' => 'no',
+        ],
+        [
+            'name'    => __('Auto-show fields other plugins add', 'brikpanel'),
+            'id'      => 'brikpanel_coupons_plugin_fields_auto',
+            'type'    => 'checkbox',
+            'desc'    => __('Shows the discount types and fields other plugins and your theme add to WooCommerce\'s coupon screen, open in the coupon window. When off, their fields wait in a folded box at the bottom of the window, and new coupons get only WooCommerce\'s three discount types.', 'brikpanel'),
+            'default' => 'no',
+        ],
+        [
+            'name'     => __('Additional coupon data sections', 'brikpanel'),
+            'id'       => 'brikpanel_coupons_plugin_fields_selected',
+            'type'     => 'multiselect',
+            'class'    => 'wc-enhanced-select',
+            'desc'     => $coupon_plugin_choices
+                ? __('Only needed when "Auto-show fields other plugins add" is off. Pick the plugins whose discount types and fields always show in the coupon window.', 'brikpanel')
+                : __('No other plugin or theme adds anything to coupons on this store.', 'brikpanel'),
+            'options'  => $coupon_plugin_choices,
+            'default'  => [],
         ],
         [
             'type' => 'sectionend',
