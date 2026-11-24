@@ -163,6 +163,39 @@ html.bp-exit-lock {
 	width: 100%;
 }
 
+/* The free help offer at the top of the three problem reasons' panels
+   (3.3.56): a quiet grey box like the speed list, with the shared secondary
+   button that opens the wordpress.org support forum in a new tab. */
+.bp-exit__help {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.25rem;
+	padding: 0.75rem 0.875rem;
+	background: #f7f7f7;
+	border: 1px solid #e3e3e3;
+	border-radius: 0.5rem;
+}
+
+.bp-exit__help-title {
+	margin: 0;
+	font-size: 0.8125rem;
+	font-weight: 600;
+	line-height: 1.4;
+	color: #303030;
+}
+
+.bp-exit__help-text {
+	margin: 0;
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	color: #616161;
+}
+
+.bp-exit__help-link {
+	margin-block-start: 0.375rem;
+}
+
 /* The speed numbers "slow" and "something did not work" send, listed before
    Send: closed by default, a quiet line under the comment box. */
 .bp-exit__diag {

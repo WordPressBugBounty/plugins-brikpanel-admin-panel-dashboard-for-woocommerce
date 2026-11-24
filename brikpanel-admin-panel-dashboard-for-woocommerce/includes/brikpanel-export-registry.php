@@ -296,6 +296,9 @@ function brikpanel_export_core_table() {
 		'brikpanel_ea_last_flush',
 		'brikpanel_ea_lead_id',
 		'brikpanel_brikmentor_claim_id',
+		// Somebody on this site answered the welcome tour's "where did you
+		// first hear about BrikPanel?" (front-end/welcome/brikpanel-welcome-source.php).
+		'brikpanel_welcome_source_sent',
 		// Store health results and their working state.
 		'brikpanel_brikcontrol_results',
 		'brikpanel_brikcontrol_progress',

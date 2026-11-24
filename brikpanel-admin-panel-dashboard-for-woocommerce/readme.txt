@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.55
+Stable tag: 3.3.56
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -451,7 +451,7 @@ The built-in WooCommerce analytics are slow, refresh on a delay, only show histo
 
 = Is BrikPanel just a CSS reskin of the WooCommerce admin? =
 
-No. BrikPanel is a real **woocommerce admin dashboard plugin** with custom database tables for visitor tracking, custom AJAX endpoints for every interaction, real conversion analytics, a working bulk editor, a real product editor, a real coupon manager, and a real custom login system. Other plugins (Dashify, UiPress) mostly restyle the admin. BrikPanel rebuilds the parts of WooCommerce that needed to be rebuilt.
+More than that. BrikPanel restyles the WooCommerce admin, as Dashify or UiPress do, into a clean, Shopify-style panel, and it is a real **woocommerce admin dashboard plugin** with conversion analytics, a bulk editor, a product editor, a coupon manager and a custom login. Only want the new look? Turn off the storefront switches under "Does BrikPanel slow down my WooCommerce store?".
 
 = Can I use BrikPanel as a WordPress admin theme or admin skin for my store? =
 
@@ -476,7 +476,7 @@ By default, nothing. BrikPanel only contacts an external service for features yo
 * **Newsletter and survey (optional).** The Newsletter row in WooCommerce > Settings > BrikPanel offers occasional emails about new features. Only if you type your email and tick the consent box are that address, your site address, site language and BrikPanel version sent to brksoft.com. Unsubscribe from any email. A dashboard card links to a short survey on brksoft.com, carrying only your admin language. Privacy policy: https://brksoft.com/privacy-policy/ . Terms: https://brksoft.com/terms-and-conditions/
 * **Google Sheets sync and Google / Meta Ads (optional).** If you connect these, BrikPanel exchanges data with Google, Meta and our helper at brksoft.com to run the sync and read your ad spend: Google Sheets uses it only for authentication, while every Google Ads and Meta Ads request (ad account ID and token, site address, date range) passes through it. 
 * **Phone notifications (optional).** Encrypted, via the phone browser's push service (Apple, Google, Mozilla or Microsoft); see Installation.
-* **Deactivation survey (optional).** "Skip and deactivate" sends nothing. "Send and deactivate" sends your answer, days in use, BrikPanel, WordPress, WooCommerce and PHP versions and admin language to brksoft.com; "slowed down my site" and "did not work" add the speed numbers the window lists (browser page timings, object cache, plugin count, late jobs, WP-Cron, server type). No site address, email or store data; the IP is used only against floods and not stored. Privacy policy: https://brksoft.com/privacy-policy/
+* **Exit survey and welcome question (optional).** Nothing is sent until you answer. "Send and deactivate" sends your answer, days in use, BrikPanel, WordPress, WooCommerce and PHP versions and admin language; "slowed down my site" and "did not work" add the speed numbers the window lists. The tour's "Where did you first hear about BrikPanel?" sends the tapped answer, an optional note, BrikPanel version and admin language. Both go to brksoft.com without site address, email or store data; the IP is used only against floods, never stored. Privacy policy: https://brksoft.com/privacy-policy/
 
 = Does deleting BrikPanel delete my data? =
 
@@ -519,6 +519,13 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.56 (2026-11-23) =
+* New: **Free help before you deactivate.** When you deactivate BrikPanel because something did not work, it conflicted with another plugin or it slowed down your site, the window now offers free help on the support forum. "A feature I need is missing" links there too, to ask for it.
+* New: **A support button in the top bar.** The headset button between Create and the order bell opens the support forum in a new tab. Turn it off or hide it from some roles in WooCommerce → Settings → BrikPanel → Dashboard → Top bar items.
+* New: **"Where did you first hear about BrikPanel?"** On new installs, the welcome tour's last screen asks this once per site. Nothing is sent unless you tap an answer.
+* Fix: **WhatsApp buttons on PagBank orders.** PagBank's official plugin keeps the customer's mobile in its own "Celular" field and leaves WooCommerce's phone empty, so the WhatsApp buttons did not show. The orders list, the order screen and the customer page now use that number when the phone is empty.
+* Fix: **WhatsApp links for Brazil's area code 55.** A number such as (55) 99123-4567 lost Brazil's country code in the link. It now opens the right chat.
+
 = 3.3.55 (2026-11-21) =
 * Fix: **Coupons keep their discount type.** Saving a coupon whose type comes from another plugin or your theme, in the coupon window or by changing its amount in the table, turned it into a percentage discount: a $10 coupon became 10% off. Saving now never changes the type, and the window always lists the coupon's own type.
 * New: **Other plugins' coupon fields in the coupon window.** The discount types, fields, tabs and boxes that other plugins and your theme add to WooCommerce's coupon screen now work in BrikPanel's coupon window. Turn on "Auto-show fields other plugins add" in WooCommerce → Settings → BrikPanel → Coupons, or pick plugins in "Additional coupon data sections".
@@ -548,15 +555,3 @@ The full release history of every version is in changelog.txt, included with the
 
 = 3.3.51 (2026-11-13) =
 * Tweak: **The DB-IP link sits next to visitor countries.** It now ends the grey line under the globe on the Locations card's Visitors tab, and the Live visitors card while a visitor's flag shows. The line at the bottom of the dashboard is gone.
-
-= 3.3.50 (2026-11-13) =
-* New: **One signup code per email.** The signup popup gives each email address its discount code once, used or not. While the code is still valid, the popup shows it again. This is on for every store, also after this update. Setting: Cart abandonment → Email popup → "One code per email".
-* New: **Signup codes for new customers only.** A new setting, "New customers only", gives no popup code to email addresses that already have an order. The visitor is still subscribed.
-* Tweak: **No code, one clear line.** When one of these settings keeps the code back, no code email goes out and the popup says the address is not eligible. You can write that line for each language.
-* New: **"Month to date" on the dashboard.** Next to Today and 7 days, "Month to date" shows this month from the 1st to today, compared with the same days of last month.
-* Tweak: **A one-line dashboard header.** The date button shows the range you picked and opens the calendar, so the date line under the title is gone.
-* New: **A sales map for any country.** In the Locations card, a country with a map icon opens its own map, its states, provinces or regions shaded by orders, with its top regions and cities beside it. The button at the top opens the map of the country with the most orders, and on a map the country's name lists the others. World goes back to the globe. 49 countries have a map.
-* Tweak: **One Locations card.** The globe and the lists now sit side by side in one card, with the number of countries and the busiest one above them. Pointing at a country in the list turns the globe to it.
-* Fix: **A smoother globe.** The globe turns at the same speed on every screen, no longer makes the whole page redraw as countries turn away, and draws at its real size on high-resolution screens instead of four times larger. In our Firefox test, slow frames went from 39 to 0. Scrolling with the mouse over the globe now scrolls the page.
-* Fix: **A corrected address that gets its code on screen.** After "Wrong address? Edit it", a code shown on screen instead of emailed now appears in the popup, instead of a "Sent to your new address" note.
-* Fix: **Coupon codes on a Turkish dashboard.** The Coupons list and the coupon window show codes with a plain I, BRIK instead of BRİK.

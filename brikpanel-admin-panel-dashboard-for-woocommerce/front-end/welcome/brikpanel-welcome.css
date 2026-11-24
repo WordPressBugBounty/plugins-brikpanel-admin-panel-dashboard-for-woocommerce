@@ -822,6 +822,305 @@ html.brikpanel-welcome-lock {
     color: #303030;
 }
 
+/* ── Final panel: "Where did you first hear about BrikPanel?" ───────────────── */
+/* On a new install the panel's heading is the question (front-end/welcome/
+   brikpanel-welcome-source.php). One tap sends: the answers are big, white and
+   raised so they read as buttons; the quick links under them are flat and grey
+   so they read as links. */
+.brikpanel-welcome-source {
+    margin: 0;
+    animation: brikpanel-welcome-in 0.7s var(--bw-ease) 0.26s both;
+}
+
+/* The handwritten hint over the answers' end corner, with its arrow; after the
+   first tap it says thank you and the arrow becomes a tick. */
+.brikpanel-welcome-source-hint {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 2px;
+    min-height: 30px;
+    margin: 4px 0 2px;
+    padding-inline-end: 10px;
+}
+
+/* Appearance sets the merchant's font on every brikpanel- element with
+   !important at (0,1,2); two classes and !important keep the handwriting. */
+.brikpanel-welcome-source-hint .brikpanel-welcome-source-hint-text {
+    font-family: "BrikPanel Caveat", "Segoe Print", "Bradley Hand", cursive !important;
+    font-size: 21px;
+    font-weight: 600;
+    line-height: 1;
+    color: #616161;
+    padding-bottom: 6px;
+    clip-path: inset(-20% 100% -20% -15%);
+    animation: brikpanel-welcome-write calc(0.6s * var(--bw-ink-pace)) cubic-bezier(0.4, 0.1, 0.6, 1) calc(0.2s * var(--bw-ink-pace)) forwards;
+}
+
+.brikpanel-welcome-source-hint .brikpanel-welcome-source-hint-text:dir(rtl) {
+    clip-path: inset(-20% -15% -20% 100%);
+}
+
+.brikpanel-welcome-source-hint .brikpanel-welcome-source-hint-text[hidden] {
+    display: none;
+}
+
+.brikpanel-welcome-source-ink {
+    flex: none;
+    display: block;
+    overflow: visible;
+    filter: url(#brikpanel-welcome-rough);
+}
+
+.brikpanel-welcome-source-ink[hidden] {
+    display: none;
+}
+
+.brikpanel-welcome-source-ink:dir(rtl) {
+    transform: scaleX(-1);
+}
+
+.brikpanel-welcome-source-ink path {
+    fill: none;
+    stroke: #616161;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: brikpanel-welcome-draw calc(var(--dur, 0.5s) * var(--bw-ink-pace)) cubic-bezier(0.55, 0.1, 0.25, 1) calc(var(--dd, 0s) * var(--bw-ink-pace)) forwards;
+}
+
+.brikpanel-welcome-source-ink path:first-child {
+    --dd: 0.5s;
+    --dur: 0.55s;
+}
+
+.brikpanel-welcome-source-ink path:nth-child(2) {
+    --dd: 1s;
+    --dur: 0.25s;
+}
+
+.brikpanel-welcome-source-ink.brikpanel-welcome-source-ink--tick path:first-child {
+    --dd: 0.05s;
+    --dur: 0.45s;
+    stroke: #1a8917;
+    stroke-width: 2.4;
+}
+
+.brikpanel-welcome-source-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.brikpanel-welcome-source-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    margin: 0;
+    padding-block: 7px;
+    padding-inline: 8px 12px;
+    box-sizing: border-box;
+    border: 1px solid #e3e3e3;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+    color: #303030;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 550;
+    line-height: 1.3;
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.15s var(--bw-ease);
+}
+
+@media (hover: hover) {
+    .brikpanel-welcome-source-opt:hover {
+        border-color: #c9c9c9;
+        background: #fafafa;
+        box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
+}
+
+.brikpanel-welcome-source-opt:active {
+    transform: scale(0.985);
+}
+
+.brikpanel-welcome-source-opt:focus {
+    outline: none;
+}
+
+.brikpanel-welcome-source-opt:focus-visible {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--brikpanel-ui-focus, #303030);
+}
+
+.brikpanel-welcome-source-opt[aria-pressed="true"] {
+    border-color: #303030;
+    background: #303030;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    transform: none;
+}
+
+.brikpanel-welcome-source-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: #f1f1f1;
+    color: #303030;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.brikpanel-welcome-source-icon > svg {
+    transition: opacity 0.15s ease, transform 0.2s var(--bw-ease);
+}
+
+.brikpanel-welcome-source-opt[aria-pressed="true"] .brikpanel-welcome-source-icon {
+    background: #ffffff;
+    color: #303030;
+}
+
+.brikpanel-welcome-source-opt[aria-pressed="true"] .brikpanel-welcome-source-icon > svg {
+    opacity: 0;
+    transform: scale(0.6);
+}
+
+.brikpanel-welcome-source-check {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.15s ease, transform 0.25s var(--bw-drop);
+}
+
+.brikpanel-welcome-source-opt[aria-pressed="true"] .brikpanel-welcome-source-check {
+    opacity: 1;
+    transform: none;
+}
+
+/* Words wrap whole ("ChatGPT or an-other AI" read badly with automatic
+   hyphens); only a word longer than the line breaks. */
+.brikpanel-welcome-source-label {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+}
+
+/* The optional note under YouTube, social media and somewhere else. Layout
+   only: the box is the shared brikpanel-control, the button brikpanel-btn. */
+.brikpanel-welcome-source-more {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0 0;
+    animation: brikpanel-welcome-in 0.4s var(--bw-ease) both;
+}
+
+.brikpanel-welcome-source-more[hidden] {
+    display: none;
+}
+
+.brikpanel-welcome-source-input {
+    flex: 1 1 10rem;
+    min-width: 0;
+}
+
+.brikpanel-welcome-source-send {
+    flex: none;
+    min-height: var(--brikpanel-control-h, 40px);
+}
+
+.brikpanel-welcome-source-foot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 0;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: #616161;
+}
+
+.brikpanel-welcome-source-foot > svg {
+    flex: none;
+}
+
+.brikpanel-welcome-jump {
+    margin: 22px 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #616161;
+    animation: brikpanel-welcome-in 0.7s var(--bw-ease) 0.3s both;
+}
+
+/* Quick links under the question: one flat grey line each, two per row. */
+.brikpanel-welcome-links.brikpanel-welcome-links--compact {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 0 20px;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+}
+
+.brikpanel-welcome-links--compact > li + li {
+    border-top: 0;
+}
+
+.brikpanel-welcome-links--compact .brikpanel-welcome-link {
+    gap: 10px;
+    min-height: 40px;
+    padding-block: 4px;
+    padding-inline: 5px 12px;
+    border-radius: 10px;
+    background: #f6f6f6;
+}
+
+.brikpanel-welcome-links--compact .brikpanel-welcome-link:hover {
+    background: #efefef;
+}
+
+.brikpanel-welcome-links--compact .brikpanel-welcome-link:focus-visible {
+    box-shadow: 0 0 0 2px var(--brikpanel-ui-focus, #303030);
+}
+
+.brikpanel-welcome-links--compact .brikpanel-welcome-link-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.brikpanel-welcome-links--compact .brikpanel-welcome-link-title {
+    overflow: hidden;
+    font-size: 13.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.brikpanel-welcome-links--compact .brikpanel-welcome-link-desc {
+    display: none;
+}
+
+/* Only the arrow of "Open" stays; the word is still read out. */
+.brikpanel-welcome-links--compact .brikpanel-welcome-link-cta {
+    font-size: 0;
+    color: #616161;
+}
+
 /* ── Footer ─────────────────────────────────────────────────────────────────── */
 .brikpanel-welcome-footer {
     flex: none;
@@ -963,6 +1262,18 @@ body.rtl .brikpanel-welcome-overlay .brikpanel-welcome-arrow {
         font-size: 22px;
     }
 
+    /* A thumb-sized answer; the label may take two lines. */
+    .brikpanel-welcome-source-opt {
+        min-height: 50px;
+        gap: 8px;
+        padding-inline: 7px 8px;
+        font-size: 13.5px;
+    }
+
+    .brikpanel-welcome-jump {
+        margin-top: 18px;
+    }
+
     .brikpanel-welcome-footer {
         gap: 8px;
         min-height: 64px;
@@ -988,8 +1299,29 @@ body.rtl .brikpanel-welcome-overlay .brikpanel-welcome-arrow {
     .brikpanel-welcome-text,
     .brikpanel-welcome-chips,
     .brikpanel-welcome-links,
+    .brikpanel-welcome-source,
+    .brikpanel-welcome-source-more,
+    .brikpanel-welcome-jump,
     .brikpanel-welcome-slot.is-next {
         animation: none;
+    }
+
+    .brikpanel-welcome-source-ink path {
+        animation: none;
+        stroke-dashoffset: 0;
+    }
+
+    .brikpanel-welcome-source-hint .brikpanel-welcome-source-hint-text,
+    .brikpanel-welcome-source-hint .brikpanel-welcome-source-hint-text:dir(rtl) {
+        animation: none;
+        clip-path: none;
+    }
+
+    .brikpanel-welcome-source-opt,
+    .brikpanel-welcome-source-icon,
+    .brikpanel-welcome-source-icon > svg,
+    .brikpanel-welcome-source-check {
+        transition: none;
     }
 
     .brikpanel-welcome-ink path {

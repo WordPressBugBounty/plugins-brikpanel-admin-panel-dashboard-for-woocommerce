@@ -22428,3 +22428,119 @@ msgstr "Diğer eklentilerinizin eklediği alanlar yükleniyor…"
 
 msgid "The fields your other plugins add could not be loaded."
 msgstr "Diğer eklentilerinizin eklediği alanlar yüklenemedi."
+
+#: front-end/welcome/brikpanel-welcome-source.php:61
+msgid "WordPress plugin search"
+msgstr "WordPress eklenti araması"
+
+#: front-end/welcome/brikpanel-welcome-source.php:66
+msgid "Google search"
+msgstr "Google araması"
+
+#: front-end/welcome/brikpanel-welcome-source.php:73
+msgid "Which channel or video? (optional)"
+msgstr "Hangi kanal ya da video? (isteğe bağlı)"
+
+#: front-end/welcome/brikpanel-welcome-source.php:76
+msgid "ChatGPT or another AI"
+msgstr "ChatGPT ya da başka bir yapay zekâ"
+
+#: front-end/welcome/brikpanel-welcome-source.php:81
+msgid "A friend or colleague"
+msgstr "Bir arkadaş ya da meslektaş"
+
+#: front-end/welcome/brikpanel-welcome-source.php:86
+msgid "My developer or agency"
+msgstr "Geliştiricim ya da ajansım"
+
+#: front-end/welcome/brikpanel-welcome-source.php:91
+msgid "Social media or a forum"
+msgstr "Sosyal medya ya da bir forum"
+
+#: front-end/welcome/brikpanel-welcome-source.php:93
+msgid "Which site or group? (optional)"
+msgstr "Hangi site ya da grup? (isteğe bağlı)"
+
+#: front-end/welcome/brikpanel-welcome-source.php:96
+msgid "Somewhere else"
+msgstr "Başka bir yerde"
+
+#: front-end/welcome/brikpanel-welcome-source.php:98
+msgid "Where? (optional)"
+msgstr "Nerede? (isteğe bağlı)"
+
+#: front-end/welcome/brikpanel-welcome-source.php:178
+msgctxt "welcome tour handwritten note"
+msgid "just one tap"
+msgstr "tek dokunuş yeter"
+
+#: front-end/welcome/brikpanel-welcome-source.php:179
+msgctxt "welcome tour handwritten note"
+msgid "thank you!"
+msgstr "teşekkürler!"
+
+#: front-end/welcome/brikpanel-welcome-source.php:196
+msgid "Your note"
+msgstr "Notunuz"
+
+#: front-end/welcome/brikpanel-welcome-source.php:197
+msgctxt "welcome tour note button"
+msgid "Send"
+msgstr "Gönder"
+
+#: front-end/welcome/brikpanel-welcome-source.php:201
+msgid "Sent anonymously. No email, no site address."
+msgstr "Anonim gönderilir. E-posta ya da site adresi gitmez."
+
+#: front-end/welcome/brikpanel-welcome.php:109
+msgid "Thank you! Your answer was sent anonymously."
+msgstr "Teşekkürler! Cevabınız anonim olarak gönderildi."
+
+#: front-end/welcome/brikpanel-welcome.php:110
+msgid "Your note was sent too. Thank you!"
+msgstr "Notunuz da gönderildi. Teşekkürler!"
+
+#: front-end/welcome/brikpanel-welcome.php:111
+msgctxt "welcome tour note button"
+msgid "Sent"
+msgstr "Gönderildi"
+
+#: front-end/welcome/brikpanel-welcome.php:318
+msgid "Where did you first hear about BrikPanel?"
+msgstr "BrikPanel'i ilk nerede duydunuz?"
+
+#: front-end/welcome/brikpanel-welcome.php:319
+msgid "BrikPanel is free and built by a small team. Your answer tells us where to find more store owners like you."
+msgstr "BrikPanel ücretsiz ve küçük bir ekip geliştiriyor. Cevabınız, sizin gibi başka mağaza sahiplerini nerede bulacağımızı bize gösterir."
+
+#: front-end/welcome/brikpanel-welcome.php:321
+msgid "Or jump straight in"
+msgstr "Ya da doğrudan geçin"
+
+#: includes/brikpanel-exit-survey.php:171
+msgid "We fix problems like this for free"
+msgstr "Bu tür sorunları ücretsiz düzeltiyoruz"
+
+#: includes/brikpanel-exit-survey.php:172
+msgid "Tell us what happened on the BrikPanel support forum. Most problems are fixed within a day or two."
+msgstr "Ne olduğunu BrikPanel destek forumunda bize yazın. Sorunların çoğunu bir iki gün içinde düzeltiyoruz."
+
+#: includes/brikpanel-exit-survey.php:174
+msgid "Open the support forum"
+msgstr "Destek forumunu aç"
+
+#: front-end/dashboard/brikpanel-topbar-items.php:723
+msgid "Support forum button"
+msgstr "Destek forumu düğmesi"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:460
+msgid "Something not working? Ask us for free help"
+msgstr "Bir şey çalışmıyor mu? Bizden ücretsiz yardım isteyin"
+
+#: includes/brikpanel-exit-survey.php:174
+msgid "Tell us what you need"
+msgstr "Neye ihtiyacınız olduğunu bize yazın"
+
+#: includes/brikpanel-exit-survey.php:175
+msgid "Ask for it on the BrikPanel support forum. We answer every request, and many of them are added in a new version."
+msgstr "BrikPanel destek forumunda isteyin. Her isteği cevaplıyoruz, birçoğu yeni bir sürümle ekleniyor."

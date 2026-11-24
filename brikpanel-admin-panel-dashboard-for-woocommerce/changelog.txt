@@ -2,6 +2,13 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.56 (2026-11-23) =
+* New: **Free help before you deactivate.** When you deactivate BrikPanel because something did not work, it conflicted with another plugin or it slowed down your site, the window now offers free help on the support forum. "A feature I need is missing" links there too, to ask for it.
+* New: **A support button in the top bar.** The headset button between Create and the order bell opens the support forum in a new tab. Turn it off or hide it from some roles in WooCommerce → Settings → BrikPanel → Dashboard → Top bar items.
+* New: **"Where did you first hear about BrikPanel?"** On new installs, the welcome tour's last screen asks this once per site. Nothing is sent unless you tap an answer.
+* Fix: **WhatsApp buttons on PagBank orders.** PagBank's official plugin keeps the customer's mobile in its own "Celular" field and leaves WooCommerce's phone empty, so the WhatsApp buttons did not show. The orders list, the order screen and the customer page now use that number when the phone is empty.
+* Fix: **WhatsApp links for Brazil's area code 55.** A number such as (55) 99123-4567 lost Brazil's country code in the link. It now opens the right chat.
+
 = 3.3.55 (2026-11-21) =
 * Fix: **Coupons keep their discount type.** Saving a coupon whose type comes from another plugin or your theme, in the coupon window or by changing its amount in the table, turned it into a percentage discount: a $10 coupon became 10% off. Saving now never changes the type, and the window always lists the coupon's own type.
 * New: **Other plugins' coupon fields in the coupon window.** The discount types, fields, tabs and boxes that other plugins and your theme add to WooCommerce's coupon screen now work in BrikPanel's coupon window. Turn on "Auto-show fields other plugins add" in WooCommerce → Settings → BrikPanel → Coupons, or pick plugins in "Additional coupon data sections".

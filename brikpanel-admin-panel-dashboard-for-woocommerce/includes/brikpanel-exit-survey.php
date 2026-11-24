@@ -150,6 +150,46 @@ function brikpanel_exit_survey_diag_reasons() {
 }
 
 /**
+ * Reasons whose panel opens with the free help offer (3.3.56): something
+ * broke, clashed or slowed the site down, the problems a fix can keep the
+ * store from leaving over, or a feature is missing, which a request on the
+ * forum often adds. The box links to the wordpress.org support forum and
+ * sends nothing; the window's buttons stay where they are.
+ *
+ * @return string[]
+ */
+function brikpanel_exit_survey_help_reasons() {
+	return [ 'conflict', 'broken', 'slow', 'missing' ];
+}
+
+/**
+ * The free help offer printed at the top of a reason's panel. Shown and
+ * hidden with its panel, so the script needs nothing for it. A missing
+ * feature gets its own words: that person has a request, not a problem.
+ *
+ * @param string $reason The reason whose panel the box opens.
+ */
+function brikpanel_exit_survey_render_help( $reason = '' ) {
+	if ( 'missing' === $reason ) {
+		$title = __( 'Tell us what you need', 'brikpanel' );
+		$text  = __( 'Ask for it on the BrikPanel support forum. We answer every request, and many of them are added in a new version.', 'brikpanel' );
+	} else {
+		$title = __( 'We fix problems like this for free', 'brikpanel' );
+		$text  = __( 'Tell us what happened on the BrikPanel support forum. Most problems are fixed within a day or two.', 'brikpanel' );
+	}
+	?>
+	<div class="bp-exit__help">
+		<p class="bp-exit__help-title"><?php echo esc_html( $title ); ?></p>
+		<p class="bp-exit__help-text"><?php echo esc_html( $text ); ?></p>
+		<a class="brikpanel-btn brikpanel-btn--secondary bp-exit__help-link" href="<?php echo esc_url( BRIKPANEL_SUPPORT_URL ); ?>" target="_blank" rel="noopener noreferrer">
+			<?php esc_html_e( 'Open the support forum', 'brikpanel' ); ?>
+			<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'brikpanel' ); ?></span>
+		</a>
+	</div>
+	<?php
+}
+
+/**
  * Facts about the server sent with the speed numbers. Computed once per
  * request: the window lists them, the answer reads them again on its own
  * request.
@@ -434,6 +474,11 @@ function brikpanel_exit_survey_render() {
 							<span><?php echo esc_html( $reason['label'] ); ?></span>
 						</label>
 						<div class="bp-exit__more" id="<?php echo esc_attr( $id . '-more' ); ?>" data-reason="<?php echo esc_attr( $key ); ?>" hidden>
+							<?php
+							if ( in_array( $key, brikpanel_exit_survey_help_reasons(), true ) ) {
+								brikpanel_exit_survey_render_help( $key );
+							}
+							?>
 							<?php if ( 'one_feature' === $key ) : ?>
 								<div class="brikpanel-field">
 									<label for="bp-exit-feature"><?php esc_html_e( 'What did you install BrikPanel for?', 'brikpanel' ); ?></label>

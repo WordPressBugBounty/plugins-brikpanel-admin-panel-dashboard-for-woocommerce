@@ -89,9 +89,9 @@ final class Brikpanel_Customer_Profile {
 		if ( '' === $name ) {
 			$name = $email;
 		}
-		$phone = $user && '' !== $account['phone'] ? $account['phone'] : ( $latest ? (string) $latest->get_billing_phone() : '' );
 		$city    = $latest && '' !== $latest->get_billing_city() ? (string) $latest->get_billing_city() : (string) ( $account['city'] ?? '' );
 		$country = $latest && '' !== $latest->get_billing_country() ? (string) $latest->get_billing_country() : (string) ( $account['country'] ?? '' );
+		$phone   = self::phone( $user, $account, $latest, $country );
 
 		// Since when: the earlier of sign-up and first order (any status).
 		$registered = $user ? (string) $user->user_registered : '';
@@ -459,6 +459,54 @@ final class Brikpanel_Customer_Profile {
 		}
 		$wpdb->last_error = '';
 		return $out;
+	}
+
+	/**
+	 * The number to reach the customer by: the account's phone, the latest
+	 * order's, then a mobile kept in a field of its own (PagBank and Brazilian
+	 * Market save the required "Celular" there and leave the phone empty), the
+	 * first one WhatsApp can dial. As typed.
+	 *
+	 * @param WP_User|null  $user    Account, or null for a guest.
+	 * @param array         $account The account's billing details.
+	 * @param WC_Order|null $latest  Latest order.
+	 * @param string        $country Billing country, for numbers typed without one.
+	 * @return string
+	 */
+	private static function phone( $user, array $account, $latest, $country ) {
+		$phones = [];
+		if ( $user ) {
+			$phones[] = (string) ( $account['phone'] ?? '' );
+		}
+		if ( $latest ) {
+			$phones[] = (string) $latest->get_billing_phone();
+		}
+		if ( ! function_exists( 'brikpanel_pick_phone' ) ) {
+			// Helpers missing: the first number as before.
+			foreach ( $phones as $phone ) {
+				if ( '' !== $phone ) {
+					return $phone;
+				}
+			}
+			return '';
+		}
+		if ( $user ) {
+			// WooCommerce keeps a classic checkout field on the account under
+			// the order meta key without its leading underscore
+			// (billing_cellphone), a block checkout field under the same key.
+			foreach ( brikpanel_order_mobile_meta_keys() as $key ) {
+				if ( 0 === strpos( $key, '_billing_' ) ) {
+					$phones[] = get_user_meta( $user->ID, substr( $key, 1 ), true );
+				} elseif ( 0 === strpos( $key, '_wc_billing/' ) ) {
+					$phones[] = get_user_meta( $user->ID, $key, true );
+				}
+			}
+		}
+		if ( $latest ) {
+			$phones = array_merge( $phones, brikpanel_order_phones( $latest ) );
+		}
+		$picked = brikpanel_pick_phone( $phones, $country );
+		return $picked['phone'];
 	}
 
 	/**

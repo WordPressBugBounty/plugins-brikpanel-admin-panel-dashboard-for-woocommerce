@@ -247,6 +247,195 @@
         }).then(go, go);
     }
 
+    /* ── Where did you first hear about BrikPanel? ────────────────────────── */
+    // One tap sends the answer, there is no Send button. A random token made
+    // for this tour lets a changed answer or a note replace the first row on
+    // brksoft.com instead of adding a second one. The request goes to
+    // admin-ajax (front-end/welcome/brikpanel-welcome-source.php), which passes
+    // it on without the site address. sendBeacon so a tap followed at once by a
+    // link to another screen still arrives.
+    var source = one('[data-bw-source]');
+    var sourceAnswer = '';
+    var sourceNoteSent = '';
+    var sourceToken = '';
+    var sourceInput = null;
+    var sourceMore = null;
+    // Each request of this tour is numbered: they travel side by side and may
+    // arrive in another order, and brksoft.com keeps only the newest one.
+    var sourceSeq = 0;
+
+    function sourceTokenFor() {
+        var bytes = new Uint8Array(16);
+        var c = window.crypto || window.msCrypto;
+        if (c && c.getRandomValues) {
+            c.getRandomValues(bytes);
+        } else {
+            for (var i = 0; i < 16; i++) {
+                bytes[i] = Math.floor(Math.random() * 256);
+            }
+        }
+        var hex = '';
+        for (var j = 0; j < bytes.length; j++) {
+            hex += (bytes[j] < 16 ? '0' : '') + bytes[j].toString(16);
+        }
+        return hex;
+    }
+
+    function sourcePost(note) {
+        if (!sourceAnswer || !cfg.ajax_url || !cfg.nonce) {
+            return;
+        }
+        var fd = new FormData();
+        fd.append('action', 'brikpanel_welcome_source');
+        fd.append('_wpnonce', cfg.nonce);
+        fd.append('answer', sourceAnswer);
+        fd.append('token', sourceToken);
+        fd.append('detail', note || '');
+        sourceSeq += 1;
+        fd.append('seq', String(sourceSeq));
+        if (navigator.sendBeacon) {
+            try {
+                if (navigator.sendBeacon(cfg.ajax_url, fd)) {
+                    return;
+                }
+            } catch (e) {
+                // fall through to fetch
+            }
+        }
+        if (window.fetch) {
+            window.fetch(cfg.ajax_url, {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+                keepalive: true
+            }).catch(function () {});
+        }
+    }
+
+    // A note typed but not sent goes out when the tour closes or a link is followed.
+    function sourceFlush() {
+        // Only while the note box belongs to the picked answer.
+        if (!sourceInput || !sourceAnswer || !sourceMore || sourceMore.hidden) {
+            return;
+        }
+        var note = sourceInput.value.trim();
+        if (note && note !== sourceNoteSent) {
+            sourceNoteSent = note;
+            sourcePost(note);
+        }
+    }
+
+    function sourceInit(box) {
+        var opts = Array.prototype.slice.call(box.querySelectorAll('[data-bw-answer]'));
+        var more = box.querySelector('[data-bw-source-more]');
+        sourceMore = more;
+        var send = box.querySelector('[data-bw-source-send]');
+        var hint = box.querySelector('[data-bw-source-hint]');
+        var thanks = box.querySelector('[data-bw-source-thanks]');
+        var arrow = box.querySelector('[data-bw-source-arrow]');
+        var tick = box.querySelector('[data-bw-source-tick]');
+        var said = box.querySelector('[data-bw-source-live]');
+        var sendLabel = send ? send.textContent : '';
+        sourceInput = box.querySelector('[data-bw-source-input]');
+        sourceToken = sourceTokenFor();
+
+        function announce(text) {
+            if (said && text) {
+                said.textContent = '';
+                // A fresh text node, so a screen reader reads the same words again.
+                window.setTimeout(function () {
+                    said.textContent = text;
+                }, 30);
+            }
+        }
+
+        function resetSend() {
+            if (send) {
+                send.textContent = sendLabel;
+                send.disabled = false;
+            }
+        }
+
+        opts.forEach(function (opt) {
+            opt.addEventListener('click', function () {
+                var key = opt.getAttribute('data-bw-answer') || '';
+                if (!key || key === sourceAnswer) {
+                    return;
+                }
+                var first = !sourceAnswer;
+                sourceAnswer = key;
+                sourceNoteSent = '';
+                opts.forEach(function (o) {
+                    o.setAttribute('aria-pressed', o === opt ? 'true' : 'false');
+                });
+                box.classList.add('is-answered');
+
+                var prompt = opt.getAttribute('data-bw-prompt') || '';
+                if (more && sourceInput) {
+                    more.hidden = !prompt;
+                    sourceInput.value = '';
+                    sourceInput.placeholder = prompt;
+                    resetSend();
+                }
+                if (first) {
+                    if (hint) {
+                        hint.hidden = true;
+                    }
+                    if (thanks) {
+                        thanks.hidden = false;
+                    }
+                    // An svg has no `hidden` property, only the attribute.
+                    if (arrow) {
+                        arrow.setAttribute('hidden', '');
+                    }
+                    if (tick) {
+                        tick.removeAttribute('hidden');
+                    }
+                    announce(i18n.source_thanks);
+                }
+                sourcePost('');
+            });
+        });
+
+        function sendNote() {
+            if (!sourceInput || !sourceAnswer) {
+                return;
+            }
+            var note = sourceInput.value.trim();
+            if (!note || note === sourceNoteSent) {
+                return;
+            }
+            sourceNoteSent = note;
+            sourcePost(note);
+            if (send && i18n.source_sent) {
+                send.textContent = i18n.source_sent;
+                send.disabled = true;
+            }
+            announce(i18n.source_noted);
+        }
+
+        if (send) {
+            send.addEventListener('click', sendNote);
+        }
+        if (sourceInput) {
+            sourceInput.addEventListener('input', function () {
+                if (sourceInput.value.trim() !== sourceNoteSent) {
+                    resetSend();
+                }
+            });
+            sourceInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.isComposing) {
+                    e.preventDefault();
+                    sendNote();
+                }
+            });
+        }
+    }
+
+    if (source) {
+        sourceInit(source);
+    }
+
     function swallowSearch(e) {
         // Ctrl/Cmd+K would open the search palette behind the tour.
         if (dialog.open && (e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')) {
@@ -273,6 +462,7 @@
             return;
         }
         closing = true;
+        sourceFlush();
         dismiss();
         if (!moving()) {
             finish();
@@ -321,6 +511,11 @@
         if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') {
             return;
         }
+        // In the note box the arrows move the caret, not the tour.
+        var t = e.target;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) {
+            return;
+        }
         var rtl = window.getComputedStyle(dialog).direction === 'rtl';
         var forward = (e.key === 'ArrowRight') !== rtl;
         e.preventDefault();
@@ -356,6 +551,7 @@
     // page as it is.
     all('[data-bw-cta]').forEach(function (link) {
         link.addEventListener('click', function (e) {
+            sourceFlush();
             if (link.hasAttribute('data-bw-here')) {
                 e.preventDefault();
                 close();

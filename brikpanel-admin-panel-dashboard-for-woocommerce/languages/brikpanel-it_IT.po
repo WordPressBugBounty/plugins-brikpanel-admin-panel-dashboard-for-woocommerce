@@ -22432,3 +22432,119 @@ msgstr "Caricamento dei campi aggiunti dagli altri tuoi plugin…"
 
 msgid "The fields your other plugins add could not be loaded."
 msgstr "Non è stato possibile caricare i campi aggiunti dagli altri tuoi plugin."
+
+#: front-end/welcome/brikpanel-welcome-source.php:61
+msgid "WordPress plugin search"
+msgstr "Ricerca plugin di WordPress"
+
+#: front-end/welcome/brikpanel-welcome-source.php:66
+msgid "Google search"
+msgstr "Ricerca su Google"
+
+#: front-end/welcome/brikpanel-welcome-source.php:73
+msgid "Which channel or video? (optional)"
+msgstr "Quale canale o video? (facoltativo)"
+
+#: front-end/welcome/brikpanel-welcome-source.php:76
+msgid "ChatGPT or another AI"
+msgstr "ChatGPT o un'altra IA"
+
+#: front-end/welcome/brikpanel-welcome-source.php:81
+msgid "A friend or colleague"
+msgstr "Un amico o un collega"
+
+#: front-end/welcome/brikpanel-welcome-source.php:86
+msgid "My developer or agency"
+msgstr "Il mio sviluppatore o la mia agenzia"
+
+#: front-end/welcome/brikpanel-welcome-source.php:91
+msgid "Social media or a forum"
+msgstr "Social network o un forum"
+
+#: front-end/welcome/brikpanel-welcome-source.php:93
+msgid "Which site or group? (optional)"
+msgstr "Quale sito o gruppo? (facoltativo)"
+
+#: front-end/welcome/brikpanel-welcome-source.php:96
+msgid "Somewhere else"
+msgstr "Altrove"
+
+#: front-end/welcome/brikpanel-welcome-source.php:98
+msgid "Where? (optional)"
+msgstr "Dove? (facoltativo)"
+
+#: front-end/welcome/brikpanel-welcome-source.php:178
+msgctxt "welcome tour handwritten note"
+msgid "just one tap"
+msgstr "basta un tocco"
+
+#: front-end/welcome/brikpanel-welcome-source.php:179
+msgctxt "welcome tour handwritten note"
+msgid "thank you!"
+msgstr "grazie!"
+
+#: front-end/welcome/brikpanel-welcome-source.php:196
+msgid "Your note"
+msgstr "La tua nota"
+
+#: front-end/welcome/brikpanel-welcome-source.php:197
+msgctxt "welcome tour note button"
+msgid "Send"
+msgstr "Invia"
+
+#: front-end/welcome/brikpanel-welcome-source.php:201
+msgid "Sent anonymously. No email, no site address."
+msgstr "Inviato in forma anonima. Niente email, niente indirizzo del sito."
+
+#: front-end/welcome/brikpanel-welcome.php:109
+msgid "Thank you! Your answer was sent anonymously."
+msgstr "Grazie! La tua risposta è stata inviata in forma anonima."
+
+#: front-end/welcome/brikpanel-welcome.php:110
+msgid "Your note was sent too. Thank you!"
+msgstr "Anche la tua nota è stata inviata. Grazie!"
+
+#: front-end/welcome/brikpanel-welcome.php:111
+msgctxt "welcome tour note button"
+msgid "Sent"
+msgstr "Inviato"
+
+#: front-end/welcome/brikpanel-welcome.php:318
+msgid "Where did you first hear about BrikPanel?"
+msgstr "Dove hai sentito parlare di BrikPanel per la prima volta?"
+
+#: front-end/welcome/brikpanel-welcome.php:319
+msgid "BrikPanel is free and built by a small team. Your answer tells us where to find more store owners like you."
+msgstr "BrikPanel è gratuito ed è creato da un piccolo team. La tua risposta ci dice dove trovare altri titolari di negozi come te."
+
+#: front-end/welcome/brikpanel-welcome.php:321
+msgid "Or jump straight in"
+msgstr "Oppure vai direttamente"
+
+#: includes/brikpanel-exit-survey.php:171
+msgid "We fix problems like this for free"
+msgstr "Risolviamo gratis problemi come questo"
+
+#: includes/brikpanel-exit-survey.php:172
+msgid "Tell us what happened on the BrikPanel support forum. Most problems are fixed within a day or two."
+msgstr "Raccontaci cosa è successo nel forum di supporto di BrikPanel. La maggior parte dei problemi viene risolta in uno o due giorni."
+
+#: includes/brikpanel-exit-survey.php:174
+msgid "Open the support forum"
+msgstr "Apri il forum di supporto"
+
+#: front-end/dashboard/brikpanel-topbar-items.php:723
+msgid "Support forum button"
+msgstr "Pulsante Forum di supporto"
+
+#: front-end/dashboard/brikpanel-dashboard-topbar.php:460
+msgid "Something not working? Ask us for free help"
+msgstr "Qualcosa non funziona? Chiedici aiuto gratis"
+
+#: includes/brikpanel-exit-survey.php:174
+msgid "Tell us what you need"
+msgstr "Dicci di cosa hai bisogno"
+
+#: includes/brikpanel-exit-survey.php:175
+msgid "Ask for it on the BrikPanel support forum. We answer every request, and many of them are added in a new version."
+msgstr "Chiedilo nel forum di supporto di BrikPanel. Rispondiamo a ogni richiesta e molte vengono aggiunte in una nuova versione."

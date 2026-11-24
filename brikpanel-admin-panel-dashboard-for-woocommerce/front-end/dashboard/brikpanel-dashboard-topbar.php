@@ -451,6 +451,18 @@ class Brikpanel_Dashboard_Topbar {
                     <?php endif; ?>
 
                     <?php $slot( 'right', 'after', 'create' ); ?>
+                    <?php $slot( 'right', 'before', 'support' ); ?>
+
+                    <!-- Support forum (3.3.56): free help on the wordpress.org
+                         forum, in a new tab. Its own top bar item ("support"),
+                         on by default, so an agency can hide it. -->
+                    <?php if ( brikpanel_topbar_item_is_visible( 'support' ) ) : ?>
+                    <a class="brikpanel-topbar-icon-btn brikpanel-topbar-support" href="<?php echo esc_url( BRIKPANEL_SUPPORT_URL ); ?>" target="_blank" rel="noopener noreferrer" title="<?php esc_attr_e( 'Something not working? Ask us for free help', 'brikpanel' ); ?>" aria-label="<?php esc_attr_e( 'Something not working? Ask us for free help', 'brikpanel' ); ?>">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5v-1.75a8.5 8.5 0 0 1 17 0v1.75"/><path d="M3.5 13.5h2.75a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1-1.25 1.25h-1.5a1.25 1.25 0 0 1-1.25-1.25z"/><path d="M20.5 13.5h-2.75a1.25 1.25 0 0 0-1.25 1.25v3a1.25 1.25 0 0 0 1.25 1.25h1.5a1.25 1.25 0 0 0 1.25-1.25z"/><path d="M20.5 18v.5a3 3 0 0 1-3 3h-4"/></svg>
+                    </a>
+                    <?php endif; ?>
+
+                    <?php $slot( 'right', 'after', 'support' ); ?>
                     <?php $slot( 'right', 'before', 'phone_app' ); ?>
                     <?php
                     // The phone app button (front-end/push/brikpanel-push-admin.php): on a

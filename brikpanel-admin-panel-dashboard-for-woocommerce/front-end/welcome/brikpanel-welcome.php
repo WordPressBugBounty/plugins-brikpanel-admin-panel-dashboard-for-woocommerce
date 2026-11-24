@@ -16,6 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// "Where did you first hear about BrikPanel?" on the last panel, and its AJAX.
+require_once __DIR__ . '/brikpanel-welcome-source.php';
+
 /* ── Dismiss AJAX ────────────────────────────────────────────────────────────── */
 add_action( 'wp_ajax_brikpanel_dismiss_welcome', function () {
     check_ajax_referer( 'brikpanel_welcome_nonce' );
@@ -100,8 +103,12 @@ add_action( 'admin_enqueue_scripts', function () {
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'brikpanel_welcome_nonce' ),
         'i18n'     => [
-            'next'   => _x( 'Next', 'welcome tour button', 'brikpanel' ),
-            'finish' => _x( 'Finish', 'welcome tour button', 'brikpanel' ),
+            'next'          => _x( 'Next', 'welcome tour button', 'brikpanel' ),
+            'finish'        => _x( 'Finish', 'welcome tour button', 'brikpanel' ),
+            // The "where did you hear about BrikPanel" question on the last panel.
+            'source_thanks' => __( 'Thank you! Your answer was sent anonymously.', 'brikpanel' ),
+            'source_noted'  => __( 'Your note was sent too. Thank you!', 'brikpanel' ),
+            'source_sent'   => _x( 'Sent', 'welcome tour note button', 'brikpanel' ),
         ],
     ] );
 } );
@@ -299,11 +306,24 @@ add_action( 'admin_footer', function () {
                         </section>
                     <?php endforeach; ?>
 
-                    <section class="brikpanel-welcome-panel brikpanel-welcome-panel--done" data-bw-panel="<?php echo (int) $count; ?>" hidden>
+                    <?php
+                    // On a new install the last panel asks where the owner heard
+                    // about BrikPanel, and the quick links shrink to one line each
+                    // under it (front-end/welcome/brikpanel-welcome-source.php).
+                    $ask = brikpanel_welcome_source_applies();
+                    ?>
+                    <section class="brikpanel-welcome-panel brikpanel-welcome-panel--done<?php echo $ask ? ' brikpanel-welcome-panel--ask' : ''; ?>" data-bw-panel="<?php echo (int) $count; ?>" hidden>
                         <p class="brikpanel-welcome-kicker brikpanel-welcome-kicker--done" data-bw-kicker><?php esc_html_e( 'All set', 'brikpanel' ); ?></p>
-                        <h3 class="brikpanel-welcome-heading"><?php esc_html_e( 'You are ready to go', 'brikpanel' ); ?></h3>
-                        <p class="brikpanel-welcome-text"><?php esc_html_e( 'Everything is already switched on. Jump straight to the part you need.', 'brikpanel' ); ?></p>
-                        <ul class="brikpanel-welcome-links">
+                        <?php if ( $ask ) : ?>
+                            <h3 class="brikpanel-welcome-heading" id="brikpanel-welcome-source-title"><?php esc_html_e( 'Where did you first hear about BrikPanel?', 'brikpanel' ); ?></h3>
+                            <p class="brikpanel-welcome-text"><?php esc_html_e( 'BrikPanel is free and built by a small team. Your answer tells us where to find more store owners like you.', 'brikpanel' ); ?></p>
+                            <?php echo wp_kses( brikpanel_welcome_source_markup( 'brikpanel-welcome-source-title' ), brikpanel_welcome_source_kses() ); ?>
+                            <p class="brikpanel-welcome-jump"><?php esc_html_e( 'Or jump straight in', 'brikpanel' ); ?></p>
+                        <?php else : ?>
+                            <h3 class="brikpanel-welcome-heading"><?php esc_html_e( 'You are ready to go', 'brikpanel' ); ?></h3>
+                            <p class="brikpanel-welcome-text"><?php esc_html_e( 'Everything is already switched on. Jump straight to the part you need.', 'brikpanel' ); ?></p>
+                        <?php endif; ?>
+                        <ul class="brikpanel-welcome-links<?php echo $ask ? ' brikpanel-welcome-links--compact' : ''; ?>">
                             <?php foreach ( $links as $link ) : ?>
                                 <li>
                                     <a class="brikpanel-welcome-link" href="<?php echo esc_url( $link['url'] ); ?>" data-bw-cta<?php echo $link['here'] ? ' data-bw-here' : ''; ?>>

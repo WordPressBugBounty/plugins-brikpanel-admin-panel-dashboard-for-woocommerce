@@ -281,6 +281,7 @@ function brikpanel_topbar_builtin_item_keys() {
         'live',
         'search',
         'create',
+        'support',
         'phone_app',
         'notifications',
         'hidden_notices',
@@ -715,6 +716,12 @@ function brikpanel_topbar_items_label_map() {
         'create'        => [
             'label' => __( 'Quick create button', 'brikpanel' ),
             'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+        ],
+        // Headset that opens the wordpress.org support forum (3.3.56). On by
+        // default like every item: an absent key in the hidden list shows it.
+        'support'       => [
+            'label' => __( 'Support forum button', 'brikpanel' ),
+            'icon'  => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5v-1.75a8.5 8.5 0 0 1 17 0v1.75"/><path d="M3.5 13.5h2.75a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1-1.25 1.25h-1.5a1.25 1.25 0 0 1-1.25-1.25z"/><path d="M20.5 13.5h-2.75a1.25 1.25 0 0 0-1.25 1.25v3a1.25 1.25 0 0 0 1.25 1.25h1.5a1.25 1.25 0 0 0 1.25-1.25z"/><path d="M20.5 18v.5a3 3 0 0 1-3 3h-4"/></svg>',
         ],
         'notifications' => [
             'label' => __( 'Order notifications', 'brikpanel' ),

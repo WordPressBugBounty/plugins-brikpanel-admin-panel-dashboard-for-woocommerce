@@ -2108,6 +2108,39 @@ function brikpanel_is_dialable_e164( $digits ) {
 }
 
 /**
+ * How many digits a nationally written number has (trunk zero left out), for
+ * the countries where that count alone tells a local number from an
+ * international one typed without the "+".
+ *
+ * Only countries where this is both certain and needed are listed. Brazil: a
+ * national number is 10 digits (landline) or 11 (mobile) and a full one 12 or
+ * 13, while its area code 55 (Santa Maria and the west of Rio Grande do Sul) is
+ * also the country code, so "(55) 99123-4567" read as already international
+ * and lost its +55.
+ *
+ * @param string $country Two-letter country code.
+ * @return int[] Digit counts, empty when the country is not listed.
+ */
+function brikpanel_national_number_lengths( $country ) {
+	$map = array(
+		'BR' => array( 10, 11 ),
+	);
+
+	$country = strtoupper( (string) $country );
+	$lengths = isset( $map[ $country ] ) ? $map[ $country ] : array();
+
+	/**
+	 * Filter the digit counts of a country's nationally written numbers.
+	 *
+	 * @param int[]  $lengths Digit counts, without the trunk zero.
+	 * @param string $country Two-letter country code.
+	 */
+	$lengths = apply_filters( 'brikpanel_national_number_lengths', $lengths, $country );
+
+	return array_values( array_filter( array_map( 'intval', (array) $lengths ) ) );
+}
+
+/**
  * Turn a customer-typed phone number into the international digits WhatsApp
  * expects (no "+"), or '' when it cannot be dialled.
  *
@@ -2117,6 +2150,10 @@ function brikpanel_is_dialable_e164( $digits ) {
  * produces a link to a stranger, so the decision is made from the strongest
  * evidence available:
  *
+ *   N. The country is known and the number has exactly the length of one of
+ *      its national numbers (brikpanel_national_number_lengths()). Then it is
+ *      national, whatever it starts with, and the code goes in front. Checked
+ *      first, because rule A misreads a Brazilian number from area code 55.
  *   A. The number already starts with the country's own code. Then it is
  *      already international; prepending again gives "9090532…".
  *   B. The country is only a GUESS (nothing was captured for this shopper, so
@@ -2190,7 +2227,9 @@ function brikpanel_phone_to_e164( $raw, $country = '' ) {
 		return '';
 	}
 
-	if ( 0 === strpos( $local, $code ) && brikpanel_is_dialable_e164( $local ) ) {
+	if ( ! $guessed && in_array( strlen( $local ), brikpanel_national_number_lengths( $country ), true ) ) {
+		$number = $code . $local;                           // rule N
+	} elseif ( 0 === strpos( $local, $code ) && brikpanel_is_dialable_e164( $local ) ) {
 		$number = $local;                                   // rule A
 	} elseif ( $guessed && brikpanel_is_dialable_e164( $local ) && '' !== brikpanel_leading_dialing_code( $local ) ) {
 		$number = $local;                                   // rule B
@@ -2212,6 +2251,92 @@ function brikpanel_phone_to_e164( $raw, $country = '' ) {
 	 * @param string $country Two-letter country used to resolve it.
 	 */
 	return (string) apply_filters( 'brikpanel_phone_to_e164', $number, $raw, $country );
+}
+
+/**
+ * Order meta keys where a checkout keeps the customer's mobile number apart
+ * from the billing phone.
+ *
+ * Brazilian checkouts ask for the mobile ("Celular") in a field of its own.
+ * PagBank's official plugin adds a required one whenever no other plugin does,
+ * and Brazilian Market on WooCommerce has offered one for years; both save it
+ * on the order as _billing_cellphone (PagBank since 2.0.0 on the block
+ * checkout, 2.0.2 on the classic one). The block checkout also keeps its own
+ * copy under the field's id, read second in case that copy is all there is.
+ * WooCommerce's own phone field stays optional next to it, so shoppers fill in
+ * the mobile only and the billing phone is left empty (wp.org, Lincoln,
+ * 23 Nov 2026: no WhatsApp shortcut on any PagBank order).
+ *
+ * @return string[] Meta keys, best first.
+ */
+function brikpanel_order_mobile_meta_keys() {
+	/**
+	 * Filter the order meta keys read for a mobile number when the billing
+	 * phone is empty or cannot be dialled.
+	 *
+	 * @param string[] $keys Order meta keys, best first.
+	 */
+	$keys = apply_filters( 'brikpanel_order_mobile_meta_keys', array( '_billing_cellphone', '_wc_billing/pagbank/cellphone' ) );
+
+	return array_values( array_unique( array_filter( array_map( 'strval', (array) $keys ), 'strlen' ) ) );
+}
+
+/**
+ * A list of typed phone numbers, trimmed, without empty ones and repeats.
+ *
+ * @param array $phones Numbers as typed.
+ * @return string[]
+ */
+function brikpanel_clean_phone_list( array $phones ) {
+	$out = array();
+	foreach ( $phones as $phone ) {
+		$phone = is_scalar( $phone ) ? trim( (string) $phone ) : '';
+		if ( '' !== $phone && ! in_array( $phone, $out, true ) ) {
+			$out[] = $phone;
+		}
+	}
+	return $out;
+}
+
+/**
+ * The numbers a customer left on an order, best first: the billing phone,
+ * then a mobile a checkout kept in a field of its own
+ * (brikpanel_order_mobile_meta_keys()). Each as typed.
+ *
+ * Costs no query: the order's meta is already loaded with the order.
+ *
+ * @param WC_Order $order Order.
+ * @return string[]
+ */
+function brikpanel_order_phones( $order ) {
+	if ( ! is_a( $order, 'WC_Order' ) ) {
+		return array();
+	}
+	$phones = array( $order->get_billing_phone() );
+	foreach ( brikpanel_order_mobile_meta_keys() as $key ) {
+		$phones[] = $order->get_meta( $key );
+	}
+	return brikpanel_clean_phone_list( $phones );
+}
+
+/**
+ * The first number in a list that WhatsApp can dial, as typed and as
+ * international digits. When none can be dialled, the first number as typed
+ * and no digits, so a screen that shows the number still has one to show.
+ *
+ * @param array  $phones  Numbers as typed, best first.
+ * @param string $country Two-letter country they belong to.
+ * @return array{phone:string, e164:string}
+ */
+function brikpanel_pick_phone( array $phones, $country ) {
+	$phones = brikpanel_clean_phone_list( $phones );
+	foreach ( $phones as $phone ) {
+		$e164 = brikpanel_phone_to_e164( $phone, $country );
+		if ( '' !== $e164 ) {
+			return array( 'phone' => $phone, 'e164' => $e164 );
+		}
+	}
+	return array( 'phone' => $phones ? $phones[0] : '', 'e164' => '' );
 }
 
 /*

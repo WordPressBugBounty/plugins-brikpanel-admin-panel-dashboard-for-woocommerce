@@ -9,7 +9,8 @@
  *     under the billing address.
  *
  * Clicking opens https://wa.me/<number> — WhatsApp Web on desktop, the app on
- * mobile — pre-targeting the customer's billing phone from that order. The
+ * mobile — pre-targeting the customer's billing phone from that order (or the
+ * mobile a Brazilian checkout keeps apart, see brikpanel_order_whatsapp_number()). The
  * number is normalised to the international digits WhatsApp expects: any
  * non-digits are stripped and, when the customer typed a local number, the
  * order's billing-country dialing code is prepended so the chat actually opens.
@@ -133,8 +134,14 @@ function brikpanel_whatsapp_visible_for_user( $user = null ) {
  */
 
 /**
- * Normalise an order's billing phone into the international digits WhatsApp
- * expects. Returns '' when the order has no usable phone.
+ * Normalise an order's phone into the international digits WhatsApp expects.
+ * Returns '' when the order has no usable phone.
+ *
+ * The billing phone first. When it is empty or cannot be dialled, the mobile a
+ * Brazilian checkout keeps in a field of its own: PagBank's official plugin
+ * and Brazilian Market ask for a required "Celular" next to WooCommerce's
+ * optional phone, and most shoppers fill in only that one
+ * (brikpanel_order_phones() in includes/brikpanel-helpers.php).
  *
  * The work itself is done by the shared normaliser in includes/, which the
  * Abandoned Carts screen calls too, so the same customer never gets two
@@ -150,11 +157,12 @@ function brikpanel_order_whatsapp_number( $order ) {
 	if ( ! is_a( $order, 'WC_Order' ) ) {
 		return '';
 	}
-	if ( ! function_exists( 'brikpanel_phone_to_e164' ) ) {
+	if ( ! function_exists( 'brikpanel_phone_to_e164' ) || ! function_exists( 'brikpanel_pick_phone' ) ) {
 		return '';
 	}
 
-	$number = brikpanel_phone_to_e164( $order->get_billing_phone(), $order->get_billing_country() );
+	$picked = brikpanel_pick_phone( brikpanel_order_phones( $order ), $order->get_billing_country() );
+	$number = $picked['e164'];
 	if ( '' === $number ) {
 		return '';
 	}
