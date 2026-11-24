@@ -1780,6 +1780,9 @@ class Brikpanel_Sheets_Order_Sync {
 		if ( empty( $orders ) ) {
 			return $empty;
 		}
+		if ( in_array( 'product_categories', $columns, true ) ) {
+			self::prime_item_product_categories( $orders );
+		}
 
 		// Which orders already occupy sheet rows? An order can be "in the sheet
 		// but not marked synced" whenever a previous run appended its rows and
@@ -2438,6 +2441,21 @@ class Brikpanel_Sheets_Order_Sync {
 					return implode( '; ', $meta_strs );
 				}
 				return '';
+			case 'product_categories':
+				// get_product_id() is the parent for a variation, whose
+				// categories are the parent's. A deleted product has none.
+				if ( $item ) {
+					return implode( ', ', Brikpanel_Sheets_Mapping::product_category_names( (int) $item->get_product_id() ) );
+				}
+				$names = [];
+				foreach ( $order->get_items( 'line_item' ) as $it ) {
+					foreach ( Brikpanel_Sheets_Mapping::product_category_names( (int) $it->get_product_id() ) as $name ) {
+						if ( ! in_array( $name, $names, true ) ) {
+							$names[] = $name;
+						}
+					}
+				}
+				return implode( ', ', $names );
 			case 'quantity':
 				if ( $item ) { return (float) $item->get_quantity(); }
 				$sum = 0.0;
@@ -2533,6 +2551,37 @@ class Brikpanel_Sheets_Order_Sync {
 			}
 		}
 		return $out;
+	}
+
+	/**
+	 * Load the categories of every product in an export batch at once, so the
+	 * "Product categories" cells cost two queries for the batch instead of one
+	 * per product. A variation's item already names its parent, which is where
+	 * the categories are.
+	 *
+	 * @param WC_Order[] $orders
+	 * @return void
+	 */
+	private static function prime_item_product_categories( array $orders ) {
+		$ids = [];
+		foreach ( $orders as $order ) {
+			if ( ! is_object( $order ) || ! method_exists( $order, 'get_items' ) ) {
+				continue;
+			}
+			foreach ( $order->get_items( 'line_item' ) as $item ) {
+				$pid = (int) $item->get_product_id();
+				if ( $pid > 0 ) {
+					$ids[ $pid ] = $pid;
+				}
+			}
+		}
+		if ( empty( $ids ) ) {
+			return;
+		}
+		$ids = array_values( $ids );
+		// get_the_terms() reads the post first, then its term relationships.
+		_prime_post_caches( $ids, false, false );
+		update_object_term_cache( $ids, 'product' );
 	}
 
 	/**

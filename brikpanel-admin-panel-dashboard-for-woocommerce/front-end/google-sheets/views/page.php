@@ -402,11 +402,23 @@ $bp_gs_render_connect_error = function ( array $err ) {
 		<!-- PRODUCTS TAB                                                     -->
 		<!-- ============================================================== -->
 		<div class="bp-gs-tabpanel" data-panel="products">
+			<?php
+			// The columns whose sheet edits reach the store, read from the column
+			// catalogue the pull itself uses, so these texts cannot fall behind it
+			// again (until 3.3.57 they still said only Stock goes back, though
+			// prices, cost, stock status and status had gone back since 3.1.21).
+			$bp_gs_products_twoway = [];
+			foreach ( (array) $config['columns_products_catalogue'] as $bp_gs_col ) {
+				if ( ! empty( $bp_gs_col['writable'] ) && isset( $bp_gs_col['label'] ) ) {
+					$bp_gs_products_twoway[] = (string) $bp_gs_col['label'];
+				}
+			}
+			?>
 
 			<div class="bp-gs-card">
 				<div class="bp-gs-card-body">
 					<h2><?php esc_html_e( 'Product sync', 'brikpanel' ); ?></h2>
-					<p class="bp-gs-card-sub"><?php esc_html_e( 'Push WooCommerce products and variations to a tab so you can review stock at a glance. Variations get their own row. Edits to the Stock column flow back to WooCommerce.', 'brikpanel' ); ?></p>
+					<p class="bp-gs-card-sub"><?php esc_html_e( 'Push WooCommerce products and variations to a tab so you can review stock at a glance. Variations get their own row. Edits to the two-way columns flow back to WooCommerce.', 'brikpanel' ); ?></p>
 
 					<form class="bp-gs-form" data-flow="products">
 						<div class="bp-gs-field bp-gs-field-toggle">
@@ -448,13 +460,21 @@ $bp_gs_render_connect_error = function ( array $err ) {
 						<div class="bp-gs-section-divider"></div>
 
 						<div class="bp-gs-field bp-gs-field-toggle">
-							<span class="bp-gs-label"><?php esc_html_e( 'Two-way sync: apply stock edits from Sheets', 'brikpanel' ); ?></span>
+							<span class="bp-gs-label"><?php esc_html_e( 'Two-way sync: apply edits from Sheets', 'brikpanel' ); ?></span>
 							<label class="bp-gs-toggle">
 								<input type="checkbox" name="pull_enabled" <?php checked( $config['products_pull_enabled'], 'yes' ); ?>>
 								<span class="bp-gs-toggle-slider"></span>
 							</label>
 						</div>
-						<p class="bp-gs-help"><?php esc_html_e( 'When on, BrikPanel polls the Products tab and writes any Stock cell edits back to WooCommerce. Only the Stock column is read back; other edits (price, name, etc.) are display-only and get overwritten on the next push.', 'brikpanel' ); ?></p>
+						<p class="bp-gs-help">
+							<?php
+							printf(
+								/* translators: %s: comma-separated names of the columns whose edits in the sheet are written back to the store. */
+								esc_html__( 'When on, BrikPanel reads the Products tab and writes your edits in these columns back to WooCommerce: %s. Edits to any other column are display-only and get overwritten on the next push.', 'brikpanel' ),
+								esc_html( implode( ', ', $bp_gs_products_twoway ) )
+							);
+							?>
+						</p>
 
 						<div class="bp-gs-field">
 							<span class="bp-gs-label"><?php esc_html_e( 'Poll interval', 'brikpanel' ); ?></span>
@@ -477,7 +497,7 @@ $bp_gs_render_connect_error = function ( array $err ) {
 						<div class="bp-gs-actions">
 							<button type="button" class="bp-gs-btn bp-gs-btn-primary" data-action="save"><?php esc_html_e( 'Save', 'brikpanel' ); ?></button>
 							<button type="button" class="bp-gs-btn bp-gs-btn-secondary" data-action="sync-now"><?php esc_html_e( 'Sync now', 'brikpanel' ); ?></button>
-							<button type="button" class="bp-gs-btn bp-gs-btn-secondary" data-action="pull-now" title="<?php esc_attr_e( 'Read the Products tab right now and apply any Stock changes back to WooCommerce.', 'brikpanel' ); ?>"><?php esc_html_e( 'Pull now', 'brikpanel' ); ?></button>
+							<button type="button" class="bp-gs-btn bp-gs-btn-secondary" data-action="pull-now" title="<?php esc_attr_e( 'Read the Products tab right now and apply your edits back to WooCommerce.', 'brikpanel' ); ?>"><?php esc_html_e( 'Pull now', 'brikpanel' ); ?></button>
 							<button type="button" class="bp-gs-btn bp-gs-btn-link" data-action="reset-sync" data-reset-flow="products" title="<?php esc_attr_e( 'Wipe the Products tab in Google Sheets and re-push every product from scratch. Any manual edits in that tab will be lost.', 'brikpanel' ); ?>"><?php esc_html_e( 'Reset & re-push everything', 'brikpanel' ); ?></button>
 						</div>
 					</form>
@@ -487,7 +507,7 @@ $bp_gs_render_connect_error = function ( array $err ) {
 			<div class="bp-gs-card">
 				<div class="bp-gs-card-body">
 					<h2><?php esc_html_e( 'Columns to export', 'brikpanel' ); ?></h2>
-					<p class="bp-gs-card-sub"><?php esc_html_e( 'Product ID is mandatory so rows can be de-duplicated. Stock is the only column that flows back to WooCommerce.', 'brikpanel' ); ?></p>
+					<p class="bp-gs-card-sub"><?php esc_html_e( 'Product ID is mandatory so rows can be de-duplicated. Columns marked two-way flow back to WooCommerce.', 'brikpanel' ); ?></p>
 					<?php
 					Brikpanel_Sheets_Settings::render_column_mapper( 'products', $config['columns_products'], $config['columns_products_catalogue'] );
 					?>

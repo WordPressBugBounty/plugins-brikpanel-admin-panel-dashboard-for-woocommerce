@@ -2120,7 +2120,11 @@ function brikpanel_enqueue_woo_assets($hook) {
             true
         );
 
-        $per_page = get_option('brikpanel_products_per_page', 20);
+        // This user's own number from Screen Options, else the store's
+        // "Products per page" setting.
+        $per_page = class_exists('Brikpanel_Products_List')
+            ? Brikpanel_Products_List::get_user_per_page()
+            : max(1, min(100, (int) get_option('brikpanel_products_per_page', 20)));
 
         wp_localize_script('brikpanel_products_list_scripts', 'brikpanelPL', [
             'ajax_url'      => admin_url('admin-ajax.php'),
@@ -2229,6 +2233,16 @@ function brikpanel_enqueue_woo_assets($hook) {
                 'bulk_confirm'        => __('Apply this action to the selected products? This cannot be undone.', 'brikpanel'),
                 'bulk_cat_confirm'    => __('Apply this action to all products in the selected category? This cannot be undone.', 'brikpanel'),
                 'bulk_all_confirm'    => __('Apply this action to ALL products in the store? This cannot be undone.', 'brikpanel'),
+                'bulk_list_confirm'   => __('Apply this action to all products matching the current filters? This cannot be undone.', 'brikpanel'),
+                /* translators: %s: number of products in the filtered list. */
+                'bulk_scope_list'     => __('All products matching the current filters (%s)', 'brikpanel'),
+                // Bulk update's "Publish" / "Set as draft": which products a scope changes, and the confirmations.
+                'bulk_status_draft_hint'   => __('Published and scheduled products become drafts and leave the store. Private products and products pending review are not changed.', 'brikpanel'),
+                'bulk_status_publish_hint' => __('Drafts and products pending review go live, including drafts that were never on the store. Private and scheduled products are not changed.', 'brikpanel'),
+                'bulk_draft_confirm'       => __('Set these products as draft? Customers will not see them until you publish them again.', 'brikpanel'),
+                'bulk_draft_all_confirm'   => __('Set all published and scheduled products in the store as draft? Customers will not see them until you publish them again.', 'brikpanel'),
+                'bulk_publish_confirm'     => __('Publish these products? Drafts that were never on the store go live too.', 'brikpanel'),
+                'bulk_publish_all_confirm' => __('Publish every draft and every product pending review in the store? Drafts that were never on the store go live too.', 'brikpanel'),
                 'bulk_select_cat'     => __('Please select a category.', 'brikpanel'),
                 'bulk_no_selection'   => __('No products selected. Select products from the table first.', 'brikpanel'),
                 'bulk_select_terms'   => __('Please select at least one item to add.', 'brikpanel'),

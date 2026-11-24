@@ -99,6 +99,10 @@ class Brikpanel_Sheets_Mapping {
 				'product_sku'          => [ 'label' => __( 'SKU',                  'brikpanel' ), 'default' => true, 'group' => 'item' ],
 				'product_name'         => [ 'label' => __( 'Product name',         'brikpanel' ), 'default' => true, 'group' => 'item' ],
 				'variation_attributes' => [ 'label' => __( 'Variation attributes', 'brikpanel' ), 'default' => true, 'group' => 'item' ],
+				// The item's product categories as they are now (a variation
+				// reads its parent's). Kept in both row layouts: one row per
+				// order lists every category in the order once.
+				'product_categories'   => [ 'label' => __( 'Product categories',   'brikpanel' ), 'group' => 'item' ],
 				'quantity'             => [ 'label' => __( 'Quantity',             'brikpanel' ), 'default' => true, 'group' => 'item' ],
 				'unit_price'           => [ 'label' => __( 'Unit price',           'brikpanel' ), 'default' => true, 'group' => 'item' ],
 				'line_subtotal'        => [ 'label' => __( 'Line subtotal',        'brikpanel' ), 'group' => 'item' ],
@@ -116,6 +120,9 @@ class Brikpanel_Sheets_Mapping {
 				'sku'           => [ 'label' => __( 'SKU',            'brikpanel' ), 'default' => true ],
 				'name'          => [ 'label' => __( 'Name',           'brikpanel' ), 'default' => true ],
 				'variation_attributes' => [ 'label' => __( 'Variation attributes', 'brikpanel' ), 'default' => true ],
+				// Category names, one-way like the name: a variation row shows its
+				// parent's categories, since variations have none of their own.
+				'categories'    => [ 'label' => __( 'Categories',     'brikpanel' ) ],
 				'short_description' => [ 'label' => __( 'Short description', 'brikpanel' ) ],
 				'description'       => [ 'label' => __( 'Description',       'brikpanel' ) ],
 				// 'price' is the derived active price (read-only); merchants edit
@@ -418,6 +425,37 @@ class Brikpanel_Sheets_Mapping {
 	public static function is_writable( $flow, $column_key ) {
 		$cat = self::available_columns_for( $flow );
 		return ! empty( $cat[ $column_key ]['writable'] );
+	}
+
+	/**
+	 * A product's category names for a sheet cell, each name once, in the order
+	 * WordPress returns them (by name). Term names are stored HTML-encoded
+	 * ("Home &amp; Living"), so they are decoded to plain text. Variations have
+	 * no categories of their own: pass the parent product's id for them.
+	 *
+	 * Reads the object-term cache that loading the product already primed, so
+	 * a row costs no extra query in the usual case.
+	 *
+	 * @param int $product_id Product (not variation) id.
+	 * @return string[]
+	 */
+	public static function product_category_names( $product_id ) {
+		$product_id = (int) $product_id;
+		if ( $product_id <= 0 ) {
+			return [];
+		}
+		$terms = get_the_terms( $product_id, 'product_cat' );
+		if ( ! is_array( $terms ) ) {
+			return [];
+		}
+		$names = [];
+		foreach ( $terms as $term ) {
+			$name = isset( $term->name ) ? trim( brikpanel_plain_name( (string) $term->name ) ) : '';
+			if ( $name !== '' && ! in_array( $name, $names, true ) ) {
+				$names[] = $name;
+			}
+		}
+		return $names;
 	}
 
 	// =========================================================================

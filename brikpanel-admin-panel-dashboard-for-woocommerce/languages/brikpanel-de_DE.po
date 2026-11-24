@@ -8969,10 +8969,6 @@ msgstr "Pflichtspalten (Bestell-ID, Zeilenartikel-ID) sind immer enthalten, dami
 msgid "Product sync"
 msgstr "Produkt-Synchronisierung"
 
-#: front-end/google-sheets/views/page.php:407
-msgid "Push WooCommerce products and variations to a tab so you can review stock at a glance. Variations get their own row. Edits to the Stock column flow back to WooCommerce."
-msgstr "Senden Sie WooCommerce-Produkte und -Varianten an eine Registerkarte, um Lagerbestände auf einen Blick zu prüfen. Varianten erhalten eine eigene Zeile. Änderungen in der Spalte „Lagerbestand\" werden zurück nach WooCommerce übertragen."
-
 #: front-end/google-sheets/views/page.php:411
 msgid "Enable product sync"
 msgstr "Produkt-Synchronisierung aktivieren"
@@ -8993,25 +8989,9 @@ msgstr "Noch keine Produktkategorien gefunden."
 msgid "Changing the categories? After saving, click \"Sync now\". The tab is rebuilt from scratch to match the new selection, with no empty gaps."
 msgstr "Ändern Sie die Kategorien? Klicken Sie nach dem Speichern auf „Jetzt synchronisieren“. Der Tab wird von Grund auf neu aufgebaut, passend zur neuen Auswahl und ohne leere Lücken."
 
-#: front-end/google-sheets/views/page.php:449
-msgid "Two-way sync: apply stock edits from Sheets"
-msgstr "Bidirektionale Synchronisierung: Lagerbestandsänderungen aus Sheets übernehmen"
-
-#: front-end/google-sheets/views/page.php:455
-msgid "When on, BrikPanel polls the Products tab and writes any Stock cell edits back to WooCommerce. Only the Stock column is read back; other edits (price, name, etc.) are display-only and get overwritten on the next push."
-msgstr "Wenn aktiviert, fragt BrikPanel die Produkte-Registerkarte ab und schreibt Änderungen in der Spalte „Lagerbestand\" zurück nach WooCommerce. Nur die Spalte „Lagerbestand\" wird zurückgelesen; andere Änderungen (Preis, Name usw.) werden nur angezeigt und beim nächsten Push überschrieben."
-
-#: front-end/google-sheets/views/page.php:476
-msgid "Read the Products tab right now and apply any Stock changes back to WooCommerce."
-msgstr "Die Produkte-Registerkarte sofort lesen und Lagerbestandsänderungen nach WooCommerce übernehmen."
-
 #: front-end/google-sheets/views/page.php:477
 msgid "Wipe the Products tab in Google Sheets and re-push every product from scratch. Any manual edits in that tab will be lost."
 msgstr "Die Produkte-Registerkarte in Google Sheets löschen und jedes Produkt von Grund auf neu übertragen. Alle manuellen Bearbeitungen in dieser Registerkarte gehen verloren."
-
-#: front-end/google-sheets/views/page.php:486
-msgid "Product ID is mandatory so rows can be de-duplicated. Stock is the only column that flows back to WooCommerce."
-msgstr "Die Produkt-ID ist erforderlich, damit Zeilen entdoppelt werden können. „Lagerbestand\" ist die einzige Spalte, die zurück nach WooCommerce fließt."
 
 #: front-end/google-sheets/views/page.php:505
 msgid "Reports sync"
@@ -22548,3 +22528,80 @@ msgstr "Sagen Sie uns, was Sie brauchen"
 #: includes/brikpanel-exit-survey.php:175
 msgid "Ask for it on the BrikPanel support forum. We answer every request, and many of them are added in a new version."
 msgstr "Fragen Sie im BrikPanel-Supportforum danach. Wir beantworten jede Anfrage, und viele davon kommen in einer neuen Version hinzu."
+
+#: includes/brikpanel-enqueue.php:2232
+msgid "Apply this action to all products matching the current filters? This cannot be undone."
+msgstr "Diese Aktion auf alle Produkte anwenden, die den aktuellen Filtern entsprechen? Dies kann nicht rückgängig gemacht werden."
+
+#. translators: %s: number of products in the filtered list.
+#: includes/brikpanel-enqueue.php:2234
+#, php-format
+msgid "All products matching the current filters (%s)"
+msgstr "Alle Produkte, die den aktuellen Filtern entsprechen (%s)"
+
+#: includes/brikpanel-enqueue.php:2236
+msgid "Published and scheduled products become drafts and leave the store. Private products and products pending review are not changed."
+msgstr "Veröffentlichte und geplante Produkte werden zu Entwürfen und verschwinden aus dem Shop. Private Produkte und Produkte mit ausstehender Überprüfung bleiben unverändert."
+
+#: includes/brikpanel-enqueue.php:2237
+msgid "Drafts and products pending review go live, including drafts that were never on the store. Private and scheduled products are not changed."
+msgstr "Entwürfe und Produkte mit ausstehender Überprüfung werden veröffentlicht, auch Entwürfe, die noch nie im Shop waren. Private und geplante Produkte bleiben unverändert."
+
+#: includes/brikpanel-enqueue.php:2238
+msgid "Set these products as draft? Customers will not see them until you publish them again."
+msgstr "Diese Produkte als Entwurf festlegen? Kunden sehen sie erst wieder, wenn Sie sie erneut veröffentlichen."
+
+#: includes/brikpanel-enqueue.php:2239
+msgid "Set all published and scheduled products in the store as draft? Customers will not see them until you publish them again."
+msgstr "Alle veröffentlichten und geplanten Produkte im Shop als Entwurf festlegen? Kunden sehen sie erst wieder, wenn Sie sie erneut veröffentlichen."
+
+#: includes/brikpanel-enqueue.php:2240
+msgid "Publish these products? Drafts that were never on the store go live too."
+msgstr "Diese Produkte veröffentlichen? Auch Entwürfe, die noch nie im Shop waren, werden veröffentlicht."
+
+#: includes/brikpanel-enqueue.php:2241
+msgid "Publish every draft and every product pending review in the store? Drafts that were never on the store go live too."
+msgstr "Alle Entwürfe und alle Produkte mit ausstehender Überprüfung im Shop veröffentlichen? Auch Entwürfe, die noch nie im Shop waren, werden veröffentlicht."
+
+#: front-end/google-sheets/views/page.php:421
+msgid ""
+"Push WooCommerce products and variations to a tab so you can review stock at "
+"a glance. Variations get their own row. Edits to the two-way columns flow "
+"back to WooCommerce."
+msgstr ""
+"Senden Sie WooCommerce-Produkte und -Varianten an eine Registerkarte, um "
+"Lagerbestände auf einen Blick zu prüfen. Varianten erhalten eine eigene "
+"Zeile. Änderungen in den beidseitigen Spalten werden zurück nach WooCommerce "
+"übertragen."
+
+#: front-end/google-sheets/views/page.php:463
+msgid "Two-way sync: apply edits from Sheets"
+msgstr "Bidirektionale Synchronisierung: Änderungen aus Sheets übernehmen"
+
+#. translators: %s: comma-separated names of the columns whose edits in the
+#. sheet are written back to the store.
+#: front-end/google-sheets/views/page.php:473
+#, php-format
+msgid ""
+"When on, BrikPanel reads the Products tab and writes your edits in these "
+"columns back to WooCommerce: %s. Edits to any other column are display-only "
+"and get overwritten on the next push."
+msgstr ""
+"Wenn aktiviert, liest BrikPanel die Produkte-Registerkarte und schreibt Ihre "
+"Änderungen in diesen Spalten zurück nach WooCommerce: %s. Änderungen in allen"
+" anderen Spalten werden nur angezeigt und beim nächsten Push überschrieben."
+
+#: front-end/google-sheets/views/page.php:500
+msgid ""
+"Read the Products tab right now and apply your edits back to WooCommerce."
+msgstr ""
+"Die Produkte-Registerkarte sofort lesen und Ihre Änderungen nach WooCommerce "
+"übernehmen."
+
+#: front-end/google-sheets/views/page.php:510
+msgid ""
+"Product ID is mandatory so rows can be de-duplicated. Columns marked two-way "
+"flow back to WooCommerce."
+msgstr ""
+"Die Produkt-ID ist erforderlich, damit Zeilen entdoppelt werden können. Als "
+"beidseitig markierte Spalten fließen zurück nach WooCommerce."

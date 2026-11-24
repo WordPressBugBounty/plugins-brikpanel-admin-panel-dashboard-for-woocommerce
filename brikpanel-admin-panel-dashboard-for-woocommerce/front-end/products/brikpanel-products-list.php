@@ -44,6 +44,7 @@ class Brikpanel_Products_List {
         add_action('wp_ajax_brikpanel_bulk_job_cancel',  [$this, 'ajax_bulk_job_cancel']);
         add_action('wp_ajax_brikpanel_pl_save_columns',  [$this, 'ajax_save_columns']);
         add_action('wp_ajax_brikpanel_pl_save_sort',     [$this, 'ajax_save_sort']);
+        add_action('wp_ajax_brikpanel_pl_save_per_page', [$this, 'ajax_save_per_page']);
         add_action('wp_ajax_brikpanel_save_product_order', [$this, 'ajax_save_product_order']);
         add_action('wp_ajax_brikpanel_start_custom_order', [$this, 'ajax_start_custom_order']);
 
@@ -295,6 +296,77 @@ class Brikpanel_Products_List {
         }
         update_user_meta(get_current_user_id(), self::USER_SORT_META, $sort);
         wp_send_json_success(['sort' => $sort]);
+    }
+
+    // =========================================================================
+    // PRODUCTS PER PAGE (per-user preference)
+    // =========================================================================
+    // Picked in Screen Options, for its user only, as WordPress's own lists
+    // keep "Number of items per page". Someone who has not picked a number
+    // sees the store's "Products per page" (WooCommerce > Settings >
+    // BrikPanel), which stays the starting number for everyone.
+
+    const USER_PER_PAGE_META = 'brikpanel_products_per_page';
+
+    // The most rows one request asks for (ajax_fetch_products() caps at it).
+    const PER_PAGE_MAX = 100;
+
+    // What Screen Options offers; the store's number and the user's own are
+    // added when they are not among these.
+    const PER_PAGE_CHOICES = [10, 20, 50, 100];
+
+    /**
+     * The store's "Products per page" setting, kept inside what one request
+     * can return (the field's min and max are only checked by the browser).
+     *
+     * @return int 1 to PER_PAGE_MAX.
+     */
+    public static function get_store_per_page() {
+        $n = (int) get_option('brikpanel_products_per_page', 20);
+        if ($n < 1) {
+            return 20;
+        }
+        return min($n, self::PER_PAGE_MAX);
+    }
+
+    /**
+     * How many products a page of the list shows for a user: the number they
+     * picked in Screen Options, or the store's.
+     *
+     * @param int $user_id User to resolve for; 0 means the current user.
+     * @return int 1 to PER_PAGE_MAX.
+     */
+    public static function get_user_per_page($user_id = 0) {
+        if (!$user_id) $user_id = get_current_user_id();
+        $saved = $user_id ? (int) get_user_meta($user_id, self::USER_PER_PAGE_META, true) : 0;
+        return ($saved >= 1 && $saved <= self::PER_PAGE_MAX) ? $saved : self::get_store_per_page();
+    }
+
+    /**
+     * The numbers Screen Options offers, smallest first: the usual choices,
+     * the store's number and the one the user has now.
+     *
+     * @param int $current The user's number (get_user_per_page()).
+     * @return int[]
+     */
+    private static function per_page_choices($current) {
+        $choices = array_unique(array_merge(self::PER_PAGE_CHOICES, [self::get_store_per_page(), (int) $current]));
+        sort($choices, SORT_NUMERIC);
+        return $choices;
+    }
+
+    public function ajax_save_per_page() {
+        check_ajax_referer('brikpanel_products_list_nonce', 'security');
+        if (!current_user_can('edit_products')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')], 403);
+        }
+        $raw = isset($_POST['per_page']) && is_scalar($_POST['per_page']) ? sanitize_text_field(wp_unslash($_POST['per_page'])) : '';
+        $n   = ctype_digit($raw) ? (int) $raw : 0;
+        if ($n < 1 || $n > self::PER_PAGE_MAX) {
+            wp_send_json_error(null, 400);
+        }
+        update_user_meta(get_current_user_id(), self::USER_PER_PAGE_META, $n);
+        wp_send_json_success(['per_page' => $n]);
     }
 
     // Conservative defaults sized for shared hosting (low memory_limit and
@@ -1195,6 +1267,18 @@ class Brikpanel_Products_List {
                 </option>
             <?php endforeach; ?>
         </optgroup>
+        <?php
+        // A product's status, for a whole category, the whole store or the
+        // filtered list at once (the selection bar only reaches the rows on
+        // one page). What each one changes: BULK_STATUS_ACTIONS.
+        ?>
+        <optgroup label="<?php esc_attr_e('Status', 'brikpanel'); ?>">
+            <?php // Someone who may only send products in for review gets no Publish (the job refuses it too). ?>
+            <?php if (brikpanel_user_can_publish_products()) : ?>
+                <option value="set_status_publish"><?php esc_html_e('Publish', 'brikpanel'); ?></option>
+            <?php endif; ?>
+            <option value="set_status_draft"><?php esc_html_e('Set as draft', 'brikpanel'); ?></option>
+        </optgroup>
         <optgroup label="<?php esc_attr_e('Maintenance', 'brikpanel'); ?>">
             <option value="repair_visibility"><?php esc_html_e('Fix store visibility (after import)', 'brikpanel'); ?></option>
         </optgroup>
@@ -2034,13 +2118,13 @@ class Brikpanel_Products_List {
                     </div>
                     <div class="brikpanel-pl-header-right">
                         <?php
-                        // The Columns list, also where people look for it: beside
-                        // Import, named like WordPress's own "Screen Options" (as
-                        // on the Orders list). The Columns chip in the filter row
-                        // opens the same list.
+                        // Products per page and the Columns list, where people look
+                        // for them: beside Import, named like WordPress's own
+                        // "Screen Options" (as on the Orders list). The Columns
+                        // chip in the filter row opens the same list.
                         ?>
                         <div class="brikpanel-pl-screen-menu" id="bpl-screen-menu">
-                            <button type="button" class="brikpanel-pl-btn secondary brikpanel-pl-screen-btn" id="bpl-screen-options-btn" aria-haspopup="true" aria-expanded="false" aria-controls="bpl-columns-popover" title="<?php esc_attr_e('Screen Options', 'brikpanel'); ?>">
+                            <button type="button" class="brikpanel-pl-btn secondary brikpanel-pl-screen-btn" id="bpl-screen-options-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="bpl-columns-popover" title="<?php esc_attr_e('Screen Options', 'brikpanel'); ?>">
                                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h8M15 6h2M3 14h2M9 14h8"/><circle cx="13" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg>
                                 <span class="brikpanel-pl-screen-label"><?php esc_html_e('Screen Options', 'brikpanel'); ?></span>
                             </button>
@@ -2241,11 +2325,28 @@ class Brikpanel_Products_List {
                                     <span class="brikpanel-pl-sort-toggle-label"><?php esc_html_e('Sort', 'brikpanel'); ?></span>
                                 </button>
                                 <div class="brikpanel-pl-columns-menu" id="bpl-columns-menu">
-                                    <button type="button" class="brikpanel-pl-chip-btn brikpanel-pl-columns-btn" id="bpl-columns-btn" aria-haspopup="true" aria-expanded="false">
+                                    <button type="button" class="brikpanel-pl-chip-btn brikpanel-pl-columns-btn" id="bpl-columns-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="bpl-columns-popover">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                                         <?php esc_html_e('Columns', 'brikpanel'); ?>
                                     </button>
-                                    <div class="brikpanel-pl-columns-popover" id="bpl-columns-popover" role="menu" hidden>
+                                    <div class="brikpanel-pl-columns-popover" id="bpl-columns-popover" role="dialog" aria-label="<?php esc_attr_e('Screen Options', 'brikpanel'); ?>" hidden>
+                                        <?php
+                                        // Products per page first: the column list runs
+                                        // past the screen's lower edge with plugin columns,
+                                        // and this is the one setting that is not a column.
+                                        // A pick reloads the list and is kept for this user
+                                        // (the per-page handler in brikpanel-products-list.js).
+                                        $bpl_per_page = self::get_user_per_page();
+                                        ?>
+                                        <div class="brikpanel-pl-perpage">
+                                            <label for="bpl-per-page"><?php esc_html_e('Products per page', 'brikpanel'); ?></label>
+                                            <select id="bpl-per-page" class="brikpanel-pl-chip is-solid">
+                                                <?php foreach (self::per_page_choices($bpl_per_page) as $bpl_per_page_n) : ?>
+                                                    <option value="<?php echo esc_attr($bpl_per_page_n); ?>"<?php selected($bpl_per_page, $bpl_per_page_n); ?>><?php echo esc_html(brikpanel_number($bpl_per_page_n)); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="brikpanel-pl-columns-heading"><?php esc_html_e('Columns', 'brikpanel'); ?></div>
                                         <?php
                                         $has_extra = false;
                                         foreach ($column_defs as $col_id => $def) :
@@ -2397,6 +2498,13 @@ class Brikpanel_Products_List {
                             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l5-5 5 5"/></svg>
                         </button>
                         <div class="brikpanel-overflow__menu brikpanel-pl-bulk-menu" id="bpl-bulk-more">
+                            <?php
+                            // The Trash view's own action, in place of Move to trash
+                            // there (updateBulkBar() swaps the two with `hidden`, which
+                            // the phone's sheet also skips): WordPress's Restore, which
+                            // also brings back a variable product's variations.
+                            ?>
+                            <button type="button" class="brikpanel-pl-btn secondary small" id="bpl-bulk-restore" hidden><?php esc_html_e('Restore', 'brikpanel'); ?></button>
                             <button type="button" class="brikpanel-pl-btn secondary small" id="bpl-bulk-export">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                 <?php esc_html_e('Export selected', 'brikpanel'); ?>
@@ -2567,6 +2675,8 @@ class Brikpanel_Products_List {
                                     </div>
                                 </div>
                             </div>
+                            <?php // Which products a status action changes in a scope (text from brikpanelPL.i18n). ?>
+                            <p class="brikpanel-pl-modal-hint" id="bpl-bulk-status-hint" style="display:none;"></p>
                             <!-- Variation attribute filter -->
                             <div id="bpl-bulk-varfilter-cat">
                                 <div class="brikpanel-pl-modal-divider"></div>
@@ -2922,46 +3032,31 @@ class Brikpanel_Products_List {
         }
     }
 
-    public function ajax_fetch_products() {
-        check_ajax_referer('brikpanel_products_list_nonce', 'security');
-
-        if (!current_user_can('edit_products')) {
-            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
-        }
-
-        // Show every product regardless of the admin's WPML language so the
-        // list matches the (language-agnostic) tab counts. See helper docblock.
-        self::use_all_languages_for_query();
-
-        $page     = max(1, intval($_POST['page'] ?? 1));
-        $per_page = max(1, min(100, intval($_POST['per_page'] ?? 20)));
+    /**
+     * The product query for the list as it is filtered now: its status view,
+     * search, category, brand, product type, featured and stock filters and
+     * the taxonomy chips. The list's own pages and the Bulk update window's
+     * "All products matching the current filters" both start from it, so the
+     * two always mean the same products. No paging and no order: the caller
+     * adds what it needs, and runs it through run_list_query().
+     *
+     * @param array $req The filter values as sent (slashed, as WordPress hands
+     *                   over $_POST).
+     * @return array{args: array, search: string} WP_Query arguments, and the
+     *         search term ('' when the list is not searched).
+     */
+    private static function list_filter_query(array $req) {
         // wp_unslash before sanitising: WordPress slashes $_POST, and while
         // WP_Query strips the slashes again for its own title/content half, the
-        // identifier clause below reads this raw term, so without unslashing a
-        // SKU containing an apostrophe could never match.
-        $search   = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
-        $status   = sanitize_key($_POST['status'] ?? 'any');
-        $category = intval($_POST['category'] ?? 0);
-        $brand        = intval($_POST['brand'] ?? 0);
-        $stock_filter = sanitize_key($_POST['stock_filter'] ?? '');
-        $product_type = sanitize_key($_POST['product_type'] ?? '');
-        $featured     = sanitize_key($_POST['featured'] ?? '');
-        $sort     = sanitize_text_field(wp_unslash($_POST['sort'] ?? 'date-desc'));
-        if (!in_array($sort, self::SORT_OPTIONS, true)) {
-            $sort = 'date-desc';
-        }
-
-        // Parse sort
-        $sort_parts = explode('-', $sort);
-        $orderby = $sort_parts[0] ?? 'date';
-        $order   = strtoupper($sort_parts[1] ?? 'DESC');
-
-        if (!in_array($orderby, ['date', 'title', 'price', 'menu'], true)) {
-            $orderby = 'date';
-        }
-        if (!in_array($order, ['ASC', 'DESC'], true)) {
-            $order = 'DESC';
-        }
+        // identifier clause reads this raw term, so without unslashing a SKU
+        // containing an apostrophe could never match.
+        $search       = sanitize_text_field(wp_unslash($req['search'] ?? ''));
+        $status       = sanitize_key($req['status'] ?? 'any');
+        $category     = intval($req['category'] ?? 0);
+        $brand        = intval($req['brand'] ?? 0);
+        $stock_filter = sanitize_key($req['stock_filter'] ?? '');
+        $product_type = sanitize_key($req['product_type'] ?? '');
+        $featured     = sanitize_key($req['featured'] ?? '');
 
         $statuses = ['any'];
         if ($status === 'publish') {
@@ -2985,39 +3080,12 @@ class Brikpanel_Products_List {
         }
 
         $args = [
-            'post_type'      => 'product',
-            'post_status'    => $statuses,
-            'posts_per_page' => $per_page,
-            'paged'          => $page,
-            'orderby'        => $orderby,
-            'order'          => $order,
+            'post_type'   => 'product',
+            'post_status' => $statuses,
         ];
-
-        if ($orderby === 'price') {
-            // Ordered by WooCommerce's price lookup table, as the storefront
-            // is (filter_price_sort_clauses()). The `_price` meta join used
-            // before dropped every product without a price row from the list.
-            $args['orderby'] = ['ID' => $order];
-            $args['brikpanel_pl_price_sort'] = $order;
-        } elseif ($orderby === 'menu') {
-            // Custom storefront order: products without an explicit
-            // menu_order (defaults to 0) tie-break by title, then ID, so the
-            // list is deterministic, matches WC frontend ordering, and pages
-            // line up with the whole order brikpanel_product_order_place()
-            // reads (equal names, such as two "Hoodie", keep one order).
-            $args['orderby'] = ['menu_order' => 'ASC', 'title' => 'ASC', 'ID' => 'ASC'];
-            unset($args['order']);
-        }
 
         if ($search) {
             $args['s'] = $search;
-            // The default WP_Query `s` only scans title/content/excerpt. Extend
-            // it to also match a product's own identifier meta and, for variable
-            // products, the identifier meta of any of its variations (returns
-            // the parent product). Which keys are scanned comes from
-            // brikpanel_product_search_meta_keys(); `_sku` unless filtered.
-            self::$sku_search_term = $search;
-            add_filter('posts_search', [__CLASS__, 'filter_search_include_sku'], 10, 2);
         }
 
         // Build tax_query incrementally so category + type + featured can
@@ -3074,8 +3142,8 @@ class Brikpanel_Products_List {
         // Generic product-taxonomy filters (Brand/Tag/custom) carried in from a
         // taxonomy "product count" link. Each is validated against the product's
         // registered taxonomies and matched by term slug, then ANDed in.
-        $raw_tax_filters = isset($_POST['tax_filters']) && is_array($_POST['tax_filters'])
-            ? wp_unslash($_POST['tax_filters'])
+        $raw_tax_filters = isset($req['tax_filters']) && is_array($req['tax_filters'])
+            ? wp_unslash($req['tax_filters'])
             : [];
         if (!empty($raw_tax_filters)) {
             $allowed_taxonomies = get_object_taxonomies('product');
@@ -3155,20 +3223,43 @@ class Brikpanel_Products_List {
             ];
         }
 
-        // finally, not a trailing call: a third-party pre_get_posts /
-        // posts_clauses callback can throw out of WP_Query, and an escaped
-        // Throwable would leave our posts_search filter attached with a stale
-        // term for the rest of the request, silently widening every other
-        // search query on the page. The price order filter is scoped the same way.
-        $price_sort = $orderby === 'price';
+        return ['args' => $args, 'search' => $search ? $search : ''];
+    }
+
+    /**
+     * Runs a query from list_filter_query() with the list's identifier search
+     * attached (and its price order, when asked) for this one query only.
+     *
+     * WP_Query's own `s` scans title, content and excerpt; the list's search
+     * also matches a product's identifier meta and, for a variable product,
+     * that of any of its variations (it returns the parent). Which keys are
+     * scanned comes from brikpanel_product_search_meta_keys(), `_sku` unless
+     * filtered.
+     *
+     * finally, not a trailing call: a third-party pre_get_posts or
+     * posts_clauses callback can throw out of WP_Query, and an escaped
+     * Throwable would leave the posts_search filter attached with a stale term
+     * for the rest of the request, silently widening every other search query
+     * on the page. The price order filter is scoped the same way.
+     *
+     * @param array  $args       WP_Query arguments.
+     * @param string $search     The search term ('' for none).
+     * @param bool   $price_sort Order by WooCommerce's price lookup table.
+     * @return WP_Query
+     */
+    private static function run_list_query(array $args, $search, $price_sort = false) {
+        $search = (string) $search;
+        if ($search !== '') {
+            self::$sku_search_term = $search;
+            add_filter('posts_search', [__CLASS__, 'filter_search_include_sku'], 10, 2);
+        }
         if ($price_sort) {
             add_filter('posts_clauses', [__CLASS__, 'filter_price_sort_clauses'], 10, 2);
         }
         try {
-            $query = new WP_Query($args);
+            return new WP_Query($args);
         } finally {
-            // Scope the identifier search strictly to the query above.
-            if ($search) {
+            if ($search !== '') {
                 remove_filter('posts_search', [__CLASS__, 'filter_search_include_sku'], 10);
                 self::$sku_search_term = '';
             }
@@ -3176,6 +3267,67 @@ class Brikpanel_Products_List {
                 remove_filter('posts_clauses', [__CLASS__, 'filter_price_sort_clauses'], 10);
             }
         }
+    }
+
+    public function ajax_fetch_products() {
+        check_ajax_referer('brikpanel_products_list_nonce', 'security');
+
+        if (!current_user_can('edit_products')) {
+            wp_send_json_error(['message' => __('Permission denied.', 'brikpanel')]);
+        }
+
+        // Show every product regardless of the admin's WPML language so the
+        // list matches the (language-agnostic) tab counts. See helper docblock.
+        self::use_all_languages_for_query();
+
+        $page     = max(1, intval($_POST['page'] ?? 1));
+        $per_page = max(1, min(self::PER_PAGE_MAX, intval($_POST['per_page'] ?? 20)));
+        $sort     = sanitize_text_field(wp_unslash($_POST['sort'] ?? 'date-desc'));
+        if (!in_array($sort, self::SORT_OPTIONS, true)) {
+            $sort = 'date-desc';
+        }
+
+        // Parse sort
+        $sort_parts = explode('-', $sort);
+        $orderby = $sort_parts[0] ?? 'date';
+        $order   = strtoupper($sort_parts[1] ?? 'DESC');
+
+        if (!in_array($orderby, ['date', 'title', 'price', 'menu'], true)) {
+            $orderby = 'date';
+        }
+        if (!in_array($order, ['ASC', 'DESC'], true)) {
+            $order = 'DESC';
+        }
+
+        // What the list is filtered by (status view, search, category, brand,
+        // type, featured, stock, taxonomy chips). The Bulk update window's
+        // "All products matching the current filters" reads the same query.
+        $filter = self::list_filter_query($_POST);
+        $search = $filter['search'];
+        $args   = array_merge($filter['args'], [
+            'posts_per_page' => $per_page,
+            'paged'          => $page,
+            'orderby'        => $orderby,
+            'order'          => $order,
+        ]);
+
+        if ($orderby === 'price') {
+            // Ordered by WooCommerce's price lookup table, as the storefront
+            // is (filter_price_sort_clauses()). The `_price` meta join used
+            // before dropped every product without a price row from the list.
+            $args['orderby'] = ['ID' => $order];
+            $args['brikpanel_pl_price_sort'] = $order;
+        } elseif ($orderby === 'menu') {
+            // Custom storefront order: products without an explicit
+            // menu_order (defaults to 0) tie-break by title, then ID, so the
+            // list is deterministic, matches WC frontend ordering, and pages
+            // line up with the whole order brikpanel_product_order_place()
+            // reads (equal names, such as two "Hoodie", keep one order).
+            $args['orderby'] = ['menu_order' => 'ASC', 'title' => 'ASC', 'ID' => 'ASC'];
+            unset($args['order']);
+        }
+
+        $query = self::run_list_query($args, $search, $orderby === 'price');
 
         $products = [];
 
@@ -4011,20 +4163,27 @@ class Brikpanel_Products_List {
 
             switch ($action) {
                 case 'publish':
-                    wp_update_post(['ID' => $pid, 'post_status' => 'publish']);
-                    $count++;
-                    break;
                 case 'draft':
-                    wp_update_post(['ID' => $pid, 'post_status' => 'draft']);
+                    // A trashed product comes out through WordPress's Restore
+                    // first (bring_out_of_trash()), then takes the status.
+                    if (!self::bring_out_of_trash($pid)) {
+                        break;
+                    }
+                    wp_update_post(['ID' => $pid, 'post_status' => $action]);
                     $count++;
                     break;
                 case 'trash':
-                    wp_trash_post($pid);
-                    $count++;
+                    // Trashing and restoring ask for the delete permission, as
+                    // on WordPress's own list (wp-admin/edit.php) and on the
+                    // row's own Delete here.
+                    if (current_user_can('delete_post', $pid) && wp_trash_post($pid)) {
+                        $count++;
+                    }
                     break;
                 case 'restore':
-                    wp_untrash_post($pid);
-                    $count++;
+                    if (self::restore_product($pid)) {
+                        $count++;
+                    }
                     break;
                 case 'delete':
                     if (current_user_can('delete_post', $pid)) {
@@ -4105,6 +4264,76 @@ class Brikpanel_Products_List {
         foreach (array_unique(array_filter($cache_keys)) as $cache_key) {
             wp_cache_delete($cache_key, 'counts');
         }
+    }
+
+    /**
+     * Takes a product out of the trash the way WordPress's own Restore does,
+     * ahead of a status change. wp_untrash_post() gives back what trashing put
+     * away: WooCommerce brings out the variations it trashed with the product
+     * (and their attribute lookup rows, so storefront filters find them
+     * again), and WordPress brings back the reviews and the address. Changing
+     * the status of a trashed product straight to "publish" or "draft" skipped
+     * all of it: a variable product came back with no variation to buy, its
+     * reviews stayed hidden, and WordPress deleted the variations for good 30
+     * days later.
+     *
+     * @param int $product_id
+     * @return bool Whether the product is out of the trash; true when it was not in it.
+     */
+    private static function bring_out_of_trash($product_id) {
+        $product_id = (int) $product_id;
+        if ('trash' !== get_post_status($product_id)) {
+            return true;
+        }
+        return self::restore_product($product_id);
+    }
+
+    /**
+     * WordPress's Restore for one product, when the user may: restoring is a
+     * delete permission in WordPress (wp-admin/edit.php).
+     *
+     * Since WordPress 5.6 a restored post comes back as a draft. WooCommerce
+     * 5 and later give a product and its variations the status they had
+     * instead (WC_Post_Data::wp_untrash_post_status()); an older WooCommerce
+     * leaves the variations as drafts, which no customer can buy. Where that
+     * rule is missing, this restore applies the same one for itself.
+     *
+     * @param int $product_id
+     * @return bool Whether it came out of the trash.
+     */
+    private static function restore_product($product_id) {
+        $product_id = (int) $product_id;
+        if (!current_user_can('delete_post', $product_id)) {
+            return false;
+        }
+        $own_rule = !has_filter('wp_untrash_post_status', ['WC_Post_Data', 'wp_untrash_post_status']);
+        if ($own_rule) {
+            add_filter('wp_untrash_post_status', [__CLASS__, 'restored_product_status'], 10, 3);
+        }
+        try {
+            return (bool) wp_untrash_post($product_id);
+        } finally {
+            if ($own_rule) {
+                remove_filter('wp_untrash_post_status', [__CLASS__, 'restored_product_status'], 10);
+            }
+        }
+    }
+
+    /**
+     * WooCommerce's rule for a restored product or variation, for a
+     * WooCommerce that predates it: the status it had before the trash.
+     * Hooked only around restore_product().
+     *
+     * @param string $new_status      What WordPress would restore it to.
+     * @param int    $post_id
+     * @param string $previous_status Its status when it was trashed.
+     * @return string
+     */
+    public static function restored_product_status($new_status, $post_id, $previous_status) {
+        if ('' !== (string) $previous_status && in_array(get_post_type($post_id), ['product', 'product_variation'], true)) {
+            return (string) $previous_status;
+        }
+        return $new_status;
     }
 
     /**
@@ -4219,6 +4448,21 @@ class Brikpanel_Products_List {
     /** Upper bound on terms created from the free-text bulk term box, per request. */
     const BULK_MAX_NEW_TERMS = 50;
 
+    /**
+     * The Bulk update window's status actions: the status each one sets
+     * (`to`) and the statuses a product needs to change when it comes from a
+     * category, the whole store or the filtered list (`from`). "Set as draft"
+     * takes live and scheduled products off the store; "Publish" puts drafts
+     * and products waiting for review on it. Private products stay as they
+     * are: they are hidden on purpose, and publishing them would show them to
+     * everyone. A product picked by hand ("Selected products") changes from
+     * any status, as with the selection bar's own buttons.
+     */
+    const BULK_STATUS_ACTIONS = [
+        'set_status_publish' => ['to' => 'publish', 'from' => ['draft', 'pending']],
+        'set_status_draft'   => ['to' => 'draft', 'from' => ['publish', 'future']],
+    ];
+
     private static $bulk_update_actions = [
         'set_regular_price',
         'set_sale_price',
@@ -4235,6 +4479,8 @@ class Brikpanel_Products_List {
         'set_width',
         'set_height',
         'repair_visibility',
+        'set_status_publish',
+        'set_status_draft',
     ];
 
     /**
@@ -4259,6 +4505,22 @@ class Brikpanel_Products_List {
         self::use_all_languages_for_query();
 
         $mode = sanitize_key($_POST['mode'] ?? 'selected');
+
+        // A status action ("Publish", "Set as draft") reads a scope by the
+        // statuses it changes from (BULK_STATUS_ACTIONS); every other update
+        // reads published products only.
+        $status_rule = null;
+        if ($job_type === 'update') {
+            $maybe_status = sanitize_key($_POST['bulk_action'] ?? '');
+            if (isset(self::BULK_STATUS_ACTIONS[$maybe_status])) {
+                $status_rule = self::BULK_STATUS_ACTIONS[$maybe_status];
+                // The window shows no Publish to someone who may only send
+                // products in for review; a hand-made request is refused too.
+                if ('publish' === $status_rule['to'] && !brikpanel_user_can_publish_products()) {
+                    wp_send_json_error(['message' => __('You are not allowed to publish products.', 'brikpanel')]);
+                }
+            }
+        }
 
         // Detect taxonomy-purge intent early so we can allow an empty
         // product set when the user only wants to wipe taxonomies.
@@ -4286,7 +4548,7 @@ class Brikpanel_Products_List {
             } else {
                 $statuses = $job_type === 'delete'
                     ? ['publish', 'draft', 'pending', 'private', 'trash']
-                    : 'publish';
+                    : ($status_rule ? $status_rule['from'] : 'publish');
                 $ids = get_posts([
                     'post_type'      => 'product',
                     'post_status'    => $statuses,
@@ -4311,11 +4573,39 @@ class Brikpanel_Products_List {
         } elseif ($mode === 'all' && $job_type === 'update') {
             $ids = get_posts([
                 'post_type'      => 'product',
-                'post_status'    => 'publish',
+                'post_status'    => $status_rule ? $status_rule['from'] : 'publish',
                 'posts_per_page' => -1,
                 'fields'         => 'ids',
                 'no_found_rows'  => true,
             ]);
+        } elseif ($mode === 'list') {
+            // "All products matching the current filters": the list's own
+            // query (list_filter_query()), every page of it, so the job takes
+            // exactly the products the list holds, of every status it shows.
+            $list_req = isset($_POST['list']) && is_array($_POST['list']) ? $_POST['list'] : [];
+            $filter   = self::list_filter_query($list_req);
+            $args     = $filter['args'];
+            $statuses = (array) $args['post_status'];
+            if ($job_type === 'update') {
+                // A trashed product is restored or deleted, not edited.
+                if (in_array('trash', $statuses, true)) {
+                    wp_send_json_error(['message' => __('Invalid mode.', 'brikpanel')]);
+                }
+                if ($status_rule) {
+                    $statuses = array_values(array_intersect($statuses, $status_rule['from']));
+                }
+            }
+            if ($statuses) {
+                $args['post_status']            = $statuses;
+                $args['fields']                 = 'ids';
+                $args['posts_per_page']         = -1;
+                $args['no_found_rows']          = true;
+                $args['orderby']                = 'ID';
+                $args['order']                  = 'ASC';
+                $args['update_post_meta_cache'] = false;
+                $args['update_post_term_cache'] = false;
+                $ids = array_map('intval', self::run_list_query($args, $filter['search'])->posts);
+            }
         } else {
             wp_send_json_error(['message' => __('Invalid mode.', 'brikpanel')]);
         }
@@ -4413,6 +4703,16 @@ class Brikpanel_Products_List {
                     'attr_val'   => $attr_val,
                     'round_mode' => $round_mode,
                 ];
+                if ($status_rule) {
+                    // A product's status: no value and no variation filter. A
+                    // scope changes the statuses its rule names (a product may
+                    // move between prepare and its batch); products picked by
+                    // hand change from any status.
+                    $params['value']       = '';
+                    $params['attr_key']    = '';
+                    $params['attr_val']    = '';
+                    $params['status_from'] = $mode === 'selected' ? null : $status_rule['from'];
+                }
             }
         } else { // delete
             $fast = ($_POST['fast'] ?? '0') === '1';
@@ -4759,6 +5059,8 @@ class Brikpanel_Products_List {
         // fans out to all variations of a variable product exactly like price.
         $is_cogs = ($action === 'set_cogs');
         $is_repair = ($action === 'repair_visibility');
+        // "Publish" / "Set as draft": the product's own status (BULK_STATUS_ACTIONS).
+        $status_rule = self::BULK_STATUS_ACTIONS[$action] ?? null;
         $has_attr_filter = ($attr_key !== '' && $attr_val !== '');
         // A variation that sells from its product's shared stock has no stock
         // of its own: setting it here gave it a separate copy of the shared
@@ -4798,6 +5100,13 @@ class Brikpanel_Products_List {
 
         foreach ($parent_ids as $pid) {
             try {
+                if ($status_rule) {
+                    if ($this->apply_bulk_status((int) $pid, $status_rule['to'], $params['status_from'] ?? null)) {
+                        $processed++;
+                    }
+                    continue;
+                }
+
                 // Visibility repair re-aligns the product_visibility "outofstock"
                 // term and the meta-lookup column with the stored stock status.
                 // Needed after CSV/Excel imports that write _stock_status meta
@@ -4911,6 +5220,12 @@ class Brikpanel_Products_List {
             } catch (\Throwable $e) {
                 $errors[] = ['id' => $pid, 'message' => $e->getMessage()];
             }
+        }
+
+        // The status tabs' counters come from wp_count_posts(), which a
+        // persistent object cache can keep stale after a status change.
+        if ($status_rule && $processed) {
+            self::bust_product_counts();
         }
 
         // One sweep for products this batch left with no category at all.
@@ -5350,6 +5665,52 @@ class Brikpanel_Products_List {
         }
 
         return ['processed' => $processed, 'errors' => $errors];
+    }
+
+    /**
+     * One product's part of a bulk "Publish" or "Set as draft". A product from
+     * a scope changes only from the statuses its rule names (it may have moved
+     * since the job was prepared); one picked by hand changes from any status,
+     * out of the trash first through WordPress's Restore (bring_out_of_trash()).
+     * Saved through the product object, as the quick edit does, so
+     * WooCommerce's own update runs with its hooks and caches.
+     *
+     * @param int        $product_id
+     * @param string     $to   'publish' or 'draft'.
+     * @param array|null $from Statuses it may change from; null for any.
+     * @return bool Whether the product changed.
+     */
+    private function apply_bulk_status($product_id, $to, $from) {
+        // A variation's own status is its on/off switch, not this.
+        if ('product' !== get_post_type($product_id)) {
+            return false;
+        }
+        $current = (string) get_post_status($product_id);
+        if ($current === $to || '' === $current || 'auto-draft' === $current) {
+            return false;
+        }
+        if (null !== $from && !in_array($current, (array) $from, true)) {
+            return false;
+        }
+        if ('publish' === $to && !brikpanel_user_can_publish_products()) {
+            return false;
+        }
+        if ('trash' === $current) {
+            if (!self::bring_out_of_trash($product_id)) {
+                return false;
+            }
+            // WooCommerce gives a restored product the status it had.
+            if ((string) get_post_status($product_id) === $to) {
+                return true;
+            }
+        }
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            return false;
+        }
+        $product->set_status($to);
+        $product->save();
+        return true;
     }
 
     private function apply_bulk_action(&$product, $action, $value, $opts = []) {

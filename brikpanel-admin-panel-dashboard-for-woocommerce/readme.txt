@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.56
+Stable tag: 3.3.57
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -519,6 +519,16 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.57 (2026-11-24) =
+* New: **Product categories in Google Sheets.** The Products tab has a new "Categories" column and the Orders tab a "Product categories" column. A variation row shows its parent product's categories.
+* New: **Publish or draft many products at once.** The Bulk update window has a new Status group with "Publish" and "Set as draft", for selected products, a category or the whole store.
+* New: **Bulk actions on everything the filters show.** Bulk update and Bulk delete can apply to "All products matching the current filters", on every page of the list.
+* New: **Products per page in Screen Options.** On the products list, each user can pick 10, 20, 50 or 100 products per page. Users who never pick keep the number from the settings.
+* Fix: **Publishing a trashed product restores it properly.** A trashed variable product now comes back with its variations. In the Trash tab, the selection bar shows "Restore" instead of "Move to trash".
+* Fix: **Column choices in Screen Options are kept.** Turning a column on and quickly off again no longer brings it back after a reload.
+* Fix: **Google Sheets no longer misses product changes.** A product changed while a sync was running, or among more than 250 changed at once, now reaches the sheet right away. Category changes that do not save the product, such as bulk category actions and renamed categories, update the sheet too.
+* Fix: **Two-way product sync without a stock column.** Price, cost and status edits in the sheet now apply even when the Products tab has no Stock or Stock status column. The tab's help texts now name every column that syncs back.
+
 = 3.3.56 (2026-11-23) =
 * New: **Free help before you deactivate.** When you deactivate BrikPanel because something did not work, it conflicted with another plugin or it slowed down your site, the window now offers free help on the support forum. "A feature I need is missing" links there too, to ask for it.
 * New: **A support button in the top bar.** The headset button between Create and the order bell opens the support forum in a new tab. Turn it off or hide it from some roles in WooCommerce → Settings → BrikPanel → Dashboard → Top bar items.
@@ -552,6 +562,3 @@ The full release history of every version is in changelog.txt, included with the
 * New: **Four return emails.** New request for you; request received, approved and rejected for the customer. Edit them in WooCommerce → Settings → Emails.
 * Fix: **Numbers no longer hide in closed sidebar menus.** A closed menu item shows the total of the numbers in its list, such as Dashboard for Updates or Products for Reviews. "Site management" and your own headings show the total of their items while closed. Open one and each number is back on its own row.
 * Fix: **A long customer name no longer pushes Total off the orders list.** When the table runs out of room, the customer column gives way first and the name ends with "…". Point at it to see the full name. Names that fit look exactly as before.
-
-= 3.3.51 (2026-11-13) =
-* Tweak: **The DB-IP link sits next to visitor countries.** It now ends the grey line under the globe on the Locations card's Visitors tab, and the Live visitors card while a visitor's flag shows. The line at the bottom of the dashboard is gone.

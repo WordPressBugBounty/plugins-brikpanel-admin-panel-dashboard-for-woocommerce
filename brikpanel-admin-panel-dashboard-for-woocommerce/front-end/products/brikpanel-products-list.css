@@ -86,9 +86,10 @@
     margin-inline-start: auto;
 }
 
-/* "Screen Options": the Columns list, where people look for it. Its list
-   hangs from the button (the popover moves under whichever button opened
-   it). One level before the last it shows as its icon. */
+/* "Screen Options": Products per page and the Columns list, where people
+   look for them. Its list hangs from the button (the popover moves under
+   whichever button opened it). One level before the last it shows as its
+   icon. */
 .brikpanel-pl-screen-menu {
     position: relative;
     display: inline-flex;
@@ -871,6 +872,12 @@ html:has(.brikpanel-pl-bulk-bar:not([hidden])) body {
     font-size: .8125rem;
     font-weight: 550;
     transition: background-color .15s ease;
+}
+
+/* .brikpanel-pl-btn's inline-flex would show a hidden one: the bar swaps
+   Restore and Move to trash with `hidden` (updateBulkBar()). */
+.brikpanel-pl-bulk-menu > .brikpanel-pl-btn[hidden] {
+    display: none;
 }
 
 .brikpanel-pl-bulk-bar .brikpanel-pl-btn:hover {
@@ -3467,10 +3474,33 @@ body.brikpanel-pl-drawer-open {
     cursor: not-allowed;
 }
 
-/* Section header above 3rd-party (SEO/ASE/etc.) columns inside the
-   Columns dropdown — visually separates plugin-contributed entries from
-   BrikPanel's native columns. */
-.brikpanel-pl-columns-divider {
+/* Products per page, the first row of Screen Options: its words line up
+   with the column names below, the number sits at the row's end. */
+.brikpanel-pl-perpage {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-block: 0.25rem;
+    padding-inline: 0.625rem 0.25rem;
+}
+
+.brikpanel-pl-perpage label {
+    font-size: 0.8125rem;
+    color: #303030;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.brikpanel-pl-perpage select {
+    flex: none;
+}
+
+/* Section headers inside the Screen Options list: "Columns" under
+   Products per page, and "Plugin columns" above the 3rd-party (SEO/ASE/etc.)
+   columns, apart from BrikPanel's native ones. */
+.brikpanel-pl-columns-divider,
+.brikpanel-pl-columns-heading {
     margin: 0.375rem 0.25rem 0.125rem;
     padding: 0.375rem 0.375rem 0.25rem;
     border-top: 1px solid #e3e3e3;
@@ -4297,7 +4327,8 @@ tr.brikpanel-pl-row-placeholder td {
         gap: 8px;
     }
 
-    /* Screen Options chooses columns, and a phone shows none. */
+    /* Screen Options chooses columns, and a phone shows none; its list
+       grows as it scrolls, so Products per page has nothing to page. */
     .brikpanel-pl-screen-menu {
         display: none;
     }

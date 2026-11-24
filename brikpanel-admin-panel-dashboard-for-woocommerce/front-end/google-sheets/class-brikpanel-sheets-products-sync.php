@@ -73,6 +73,12 @@ class Brikpanel_Sheets_Products_Sync {
 
 	/** @var bool Whether the shutdown flush already ran. */
 	private static $push_flushed = false;
+
+	/** @var array<int, true> Posts being deleted in this request: losing their categories is not an edit. */
+	private static $deleting = [];
+
+	/** @var array<int, string> Category names as they were before an edit in this request, by term id. */
+	private static $category_names_before = [];
 	const PUSH_LOCK         = 'brikpanel_gs_products_push_lock';
 	const PULL_LOCK         = 'brikpanel_gs_products_pull_lock';
 	const LOCK_TTL          = 300;
@@ -319,6 +325,17 @@ class Brikpanel_Sheets_Products_Sync {
 		add_action( 'woocommerce_update_product',  [ $this, 'on_product_event' ], 10, 1 );
 		add_action( 'woocommerce_new_product_variation',    [ $this, 'on_product_event' ], 10, 1 );
 		add_action( 'woocommerce_update_product_variation', [ $this, 'on_product_event' ], 10, 1 );
+
+		// Category changes that never save the product: BrikPanel's bulk
+		// category action, a deleted category, imports and plugins writing
+		// terms directly. And category renames, which change no product at all.
+		// Each callback returns at once for any other taxonomy, and looks at
+		// the settings only when a product category really changed.
+		add_action( 'set_object_terms',           [ $this, 'on_object_terms_set' ], 10, 6 );
+		add_action( 'deleted_term_relationships', [ $this, 'on_object_terms_deleted' ], 10, 3 );
+		add_action( 'before_delete_post',         [ $this, 'on_before_delete_post' ], 10, 1 );
+		add_action( 'edit_terms',                 [ $this, 'on_category_editing' ], 10, 2 );
+		add_action( 'edited_term',                [ $this, 'on_category_edited' ], 10, 3 );
 	}
 
 	public function register_handlers() {
@@ -370,6 +387,161 @@ class Brikpanel_Sheets_Products_Sync {
 	}
 
 	/**
+	 * A product's categories were set (wp_set_object_terms). WooCommerce sets
+	 * the same list again on many saves, so an unchanged list is ignored.
+	 *
+	 * @param int    $object_id
+	 * @param array  $terms      Unused.
+	 * @param int[]  $tt_ids     Term taxonomy ids now set.
+	 * @param string $taxonomy
+	 * @param bool   $append     Whether the ids were added to the old ones.
+	 * @param int[]  $old_tt_ids Term taxonomy ids before.
+	 */
+	public function on_object_terms_set( $object_id, $terms, $tt_ids, $taxonomy, $append = false, $old_tt_ids = [] ) {
+		if ( 'product_cat' !== $taxonomy ) {
+			return;
+		}
+		$new = array_map( 'intval', (array) $tt_ids );
+		$old = array_map( 'intval', (array) $old_tt_ids );
+		if ( ! array_diff( $new, $old ) && ( $append || ! array_diff( $old, $new ) ) ) {
+			return;
+		}
+		$this->queue_category_change( [ (int) $object_id ], false );
+	}
+
+	/**
+	 * Categories were taken off a product (wp_remove_object_terms, which the
+	 * bulk "remove category" action calls and wp_set_object_terms also uses).
+	 *
+	 * @param int    $object_id
+	 * @param int[]  $tt_ids
+	 * @param string $taxonomy
+	 */
+	public function on_object_terms_deleted( $object_id, $tt_ids, $taxonomy ) {
+		if ( 'product_cat' !== $taxonomy || empty( $tt_ids ) ) {
+			return;
+		}
+		$this->queue_category_change( [ (int) $object_id ], false );
+	}
+
+	/**
+	 * Deleting a post removes its categories first; that is not an edit to push.
+	 *
+	 * @param int $post_id
+	 */
+	public function on_before_delete_post( $post_id ) {
+		self::$deleting[ (int) $post_id ] = true;
+	}
+
+	/**
+	 * Remember a product category's name before an edit, to tell a rename
+	 * from an edit of its slug, parent or description.
+	 *
+	 * @param int    $term_id
+	 * @param string $taxonomy
+	 */
+	public function on_category_editing( $term_id, $taxonomy ) {
+		if ( 'product_cat' !== $taxonomy ) {
+			return;
+		}
+		$term = get_term( (int) $term_id, 'product_cat' );
+		if ( $term instanceof WP_Term ) {
+			self::$category_names_before[ (int) $term_id ] = (string) $term->name;
+		}
+	}
+
+	/**
+	 * A product category was renamed: the rows of its products show the old
+	 * name until they are pushed again.
+	 *
+	 * @param int    $term_id
+	 * @param int    $tt_id
+	 * @param string $taxonomy
+	 */
+	public function on_category_edited( $term_id, $tt_id, $taxonomy ) {
+		$term_id = (int) $term_id;
+		if ( 'product_cat' !== $taxonomy || ! isset( self::$category_names_before[ $term_id ] ) ) {
+			return;
+		}
+		$before = self::$category_names_before[ $term_id ];
+		unset( self::$category_names_before[ $term_id ] );
+		$term = get_term( $term_id, 'product_cat' );
+		if ( ! ( $term instanceof WP_Term ) || (string) $term->name === $before ) {
+			return;
+		}
+		$ids = get_objects_in_term( $term_id, 'product_cat' );
+		if ( is_wp_error( $ids ) || empty( $ids ) ) {
+			return;
+		}
+		$this->queue_category_change( array_map( 'intval', (array) $ids ), true );
+	}
+
+	/**
+	 * Queue the products whose categories changed, when the sheet can show
+	 * it: the Categories column shows the names, and the category filter
+	 * decides which products are listed at all. A rename only matters to the
+	 * column, since the filter stores term ids. Only published and private
+	 * products are queued, the ones "Sync now" lists.
+	 *
+	 * @param int[] $ids    Product ids.
+	 * @param bool  $rename Whether only the category's name changed.
+	 */
+	private function queue_category_change( array $ids, $rename ) {
+		$shows_names = in_array( 'categories', Brikpanel_Sheets_Mapping::get_columns( 'products' ), true );
+		if ( ! $shows_names && ( $rename || empty( self::category_filter_ids() ) ) ) {
+			return;
+		}
+		$ids = array_values( array_unique( array_filter( $ids, static function ( $id ) {
+			return $id > 0 && ! isset( self::$deleting[ $id ] );
+		} ) ) );
+		if ( empty( $ids ) ) {
+			return;
+		}
+		if ( 1 === count( $ids ) ) {
+			// The usual case: one product, whose post is already loaded.
+			$post = get_post( $ids[0] );
+			$ids  = ( $post && 'product' === $post->post_type && in_array( $post->post_status, [ 'publish', 'private' ], true ) )
+				? $ids
+				: [];
+		} else {
+			$ids = self::listed_product_ids( $ids );
+		}
+		foreach ( $ids as $id ) {
+			$this->queue_push( $id );
+		}
+	}
+
+	/**
+	 * Of these ids, the published and private products. One query per
+	 * thousand ids, for a category that holds many products.
+	 *
+	 * @param int[] $ids
+	 * @return int[]
+	 */
+	private static function listed_product_ids( array $ids ) {
+		$out = [];
+		foreach ( array_chunk( $ids, 1000 ) as $chunk ) {
+			$found = get_posts( [
+				'post_type'              => 'product',
+				'post_status'            => [ 'publish', 'private' ],
+				'post__in'               => $chunk,
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'orderby'                => 'none',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+				'suppress_filters'       => true, // no language filter (WPML)
+				'lang'                   => '',   // no language filter (Polylang)
+			] );
+			foreach ( (array) $found as $id ) {
+				$out[] = (int) $id;
+			}
+		}
+		return $out;
+	}
+
+	/**
 	 * Add a product to the pending-push queue and schedule a debounced flush.
 	 *
 	 * The queue is a simple {product_id => 1} option so bursts of stock
@@ -416,15 +588,7 @@ class Brikpanel_Sheets_Products_Sync {
 		$ids                = array_keys( self::$pending_push );
 		self::$pending_push = [];
 
-		// Read the stored queue fresh: a push worker may have drained it, or
-		// another request added to it, since this request first loaded it.
-		wp_cache_delete( self::OPT_PUSH_QUEUE, 'options' );
-		$notoptions = wp_cache_get( 'notoptions', 'options' );
-		if ( is_array( $notoptions ) && isset( $notoptions[ self::OPT_PUSH_QUEUE ] ) ) {
-			unset( $notoptions[ self::OPT_PUSH_QUEUE ] );
-			wp_cache_set( 'notoptions', $notoptions, 'options' );
-		}
-		$queue = (array) get_option( self::OPT_PUSH_QUEUE, [] );
+		$queue = self::read_queue_fresh();
 		foreach ( $ids as $id ) {
 			$queue[ (string) $id ] = 1;
 		}
@@ -438,6 +602,23 @@ class Brikpanel_Sheets_Products_Sync {
 				[ 'unique' => true ]
 			);
 		}
+	}
+
+	/**
+	 * The stored push queue as the database holds it now, not the copy this
+	 * request read earlier: a push worker may have drained it, or another
+	 * request added to it, in the meantime.
+	 *
+	 * @return array<string, int>
+	 */
+	private static function read_queue_fresh() {
+		wp_cache_delete( self::OPT_PUSH_QUEUE, 'options' );
+		$notoptions = wp_cache_get( 'notoptions', 'options' );
+		if ( is_array( $notoptions ) && isset( $notoptions[ self::OPT_PUSH_QUEUE ] ) ) {
+			unset( $notoptions[ self::OPT_PUSH_QUEUE ] );
+			wp_cache_set( 'notoptions', $notoptions, 'options' );
+		}
+		return (array) get_option( self::OPT_PUSH_QUEUE, [] );
 	}
 
 	// =========================================================================
@@ -542,18 +723,6 @@ class Brikpanel_Sheets_Products_Sync {
 	}
 
 	private function push_slice( array $args, array $config, array $empty ) {
-		$client  = new Brikpanel_Sheets_Client();
-		$columns = Brikpanel_Sheets_Mapping::get_columns( 'products' );
-		$headers = Brikpanel_Sheets_Mapping::headers_for( 'products', $columns );
-
-		try {
-			$validations = self::build_dropdown_validations( $columns );
-			$client->ensure_tab( $config['spreadsheet_id'], $config['tab'], $headers, $validations );
-		} catch ( Brikpanel_Sheets_Exception $e ) {
-			Brikpanel_Sheets_Logger::log( 'products', 'ensure_tab failed: ' . $e->getMessage(), $e->http_code );
-			throw $e;
-		}
-
 		$force_all = ! empty( $args['force_all'] );
 		// A rebuild ("Sync now") re-appends every product into a freshly cleared
 		// tab so the result is contiguous and matches the current filter exactly.
@@ -567,7 +736,7 @@ class Brikpanel_Sheets_Products_Sync {
 		if ( $force_all ) {
 			$ids = $this->all_syncable_product_ids( self::BATCH_SIZE, $offset );
 		} else {
-			$queue = (array) get_option( self::OPT_PUSH_QUEUE, [] );
+			$queue = self::read_queue_fresh();
 			$ids   = array_map( 'intval', array_keys( $queue ) );
 			$ids   = array_slice( $ids, 0, self::BATCH_SIZE );
 		}
@@ -580,6 +749,21 @@ class Brikpanel_Sheets_Products_Sync {
 				self::finish_rebuild();
 			}
 			return $empty;
+		}
+
+		// The tab is checked only once there is something to write: a push job
+		// that finds the queue already drained by another one costs no call to
+		// Google. A rebuild's tab was set up by the wipe that started it.
+		$client  = new Brikpanel_Sheets_Client();
+		$columns = Brikpanel_Sheets_Mapping::get_columns( 'products' );
+		$headers = Brikpanel_Sheets_Mapping::headers_for( 'products', $columns );
+
+		try {
+			$validations = self::build_dropdown_validations( $columns );
+			$client->ensure_tab( $config['spreadsheet_id'], $config['tab'], $headers, $validations );
+		} catch ( Brikpanel_Sheets_Exception $e ) {
+			Brikpanel_Sheets_Logger::log( 'products', 'ensure_tab failed: ' . $e->getMessage(), $e->http_code );
+			throw $e;
 		}
 
 		$products = $this->expand_to_syncable_products( $ids );
@@ -759,13 +943,32 @@ class Brikpanel_Sheets_Products_Sync {
 		}
 
 		if ( ! $force_all ) {
-			// Drop processed IDs from queue.
-			$queue = (array) get_option( self::OPT_PUSH_QUEUE, [] );
+			// Drop processed IDs from the queue as it is NOW. The copy read at
+			// the start is seconds old: products changed while this batch was
+			// talking to Google were added by other requests, and writing the
+			// old copy back would erase them.
+			$queue = self::read_queue_fresh();
 			foreach ( $ids as $pid ) {
 				unset( $queue[ (string) $pid ] );
 			}
 			update_option( self::OPT_PUSH_QUEUE, $queue, false );
 			$more = ! empty( $queue );
+
+			// More than one batch was waiting (a bulk edit, a renamed category),
+			// or more arrived meanwhile. Nothing else would pick the rest up: a
+			// change schedules a push only when none is pending or running, and
+			// this one counts as running until it returns. Not unique for the
+			// same reason as the rebuild's paging job below. Each run schedules
+			// at most one successor and takes its ids off the queue, so the
+			// chain ends when the queue is empty.
+			if ( $more && class_exists( 'Brikpanel_Cron' ) ) {
+				Brikpanel_Cron::schedule_single(
+					time() + self::PUSH_DEBOUNCE_SEC,
+					self::HOOK_PUSH_FLUSH,
+					[],
+					[ 'unique' => false ]
+				);
+			}
 		} else {
 			$more = count( $ids ) >= self::BATCH_SIZE;
 
@@ -1015,15 +1218,26 @@ class Brikpanel_Sheets_Products_Sync {
 		$columns = Brikpanel_Sheets_Mapping::get_columns( 'products' );
 		$col_map = Brikpanel_Sheets_Mapping::column_index_map( $columns );
 
-		// product_id is the join key — without it we cannot match rows back
-		// to a Woo product. Both stock and stock_status are writable; we need
-		// at least one of them in the mapping to do anything useful.
+		// product_id is the join key: without it no row can be matched back to
+		// a product. With no two-way column in the mapping there is nothing to
+		// read back. Any two-way column counts: until 3.3.57 this asked for
+		// stock or stock status (the only two-way columns before 3.1.21), so a
+		// sheet that kept the prices but dropped both stock columns had its
+		// price, cost and status edits silently ignored.
 		if ( ! isset( $col_map['product_id'] ) ) {
 			return $empty;
 		}
 		$has_stock_col        = isset( $col_map['stock'] );
 		$has_stock_status_col = isset( $col_map['stock_status'] );
-		if ( ! $has_stock_col && ! $has_stock_status_col ) {
+		$catalogue            = Brikpanel_Sheets_Mapping::available_columns_for( 'products' );
+		$has_two_way_col      = false;
+		foreach ( $columns as $col ) {
+			if ( ! empty( $catalogue[ $col ]['writable'] ) ) {
+				$has_two_way_col = true;
+				break;
+			}
+		}
+		if ( ! $has_two_way_col ) {
 			return $empty;
 		}
 
@@ -1657,6 +1871,11 @@ class Brikpanel_Sheets_Products_Sync {
 					return implode( '; ', $attrs );
 				}
 				return '';
+			case 'categories':
+				// A variation is filed under its parent's categories, the same
+				// rule the category filter applies (product_matches_category).
+				$owner = $product->is_type( 'variation' ) ? (int) $product->get_parent_id() : (int) $product->get_id();
+				return implode( ', ', Brikpanel_Sheets_Mapping::product_category_names( $owner ) );
 			case 'short_description':
 			case 'description':
 				// Descriptions hold HTML; flatten to plain text so the cell stays

@@ -32,7 +32,9 @@
 
     var state = {
         page: 1,
-        per_page: PL.per_page || 20,
+        // This user's number from Screen Options, else the store's. A number:
+        // wp_localize_script hands it over as a string.
+        per_page: parseInt(PL.per_page, 10) || 20,
         search: '',
         status: 'any',
         category: '',
@@ -415,6 +417,27 @@
             });
     }
 
+    // Products per page from Screen Options, kept for this user the same way:
+    // one save at a time, a later pick follows the one in flight.
+    var perPageSaving = false;
+    var perPageQueued = null;
+    function rememberPerPage(n) {
+        if (perPageSaving) {
+            perPageQueued = n;
+            return;
+        }
+        perPageSaving = true;
+        $.post(PL.ajax_url, { action: 'brikpanel_pl_save_per_page', security: PL.nonce, per_page: n })
+            .always(function () {
+                perPageSaving = false;
+                var next = perPageQueued;
+                perPageQueued = null;
+                if (next !== null && next !== n) {
+                    rememberPerPage(next);
+                }
+            });
+    }
+
     // =========================================================================
     // INIT
     // =========================================================================
@@ -617,15 +640,35 @@
             }
         }
 
+        // One save at a time, the next one sent when the last answers, with
+        // the boxes as they are then. Two saves at once lost the later one: a
+        // save takes about 2 s, and WordPress skips writing a value that equals
+        // what the request read at its start, so turning a column on and back
+        // off within that time kept it on after a reload.
+        var colsSaving = false;
+        var colsSaveAgain = false;
+        function sendColumns() {
+            if (colsSaving) {
+                colsSaveAgain = true;
+                return;
+            }
+            colsSaving = true;
+            var payload = { action: 'brikpanel_pl_save_columns', security: PL.nonce, columns: {} };
+            $colsPopover.find('input[type="checkbox"][data-col]').each(function () {
+                payload.columns[$(this).data('col')] = this.checked ? 1 : 0;
+            });
+            $.post(PL.ajax_url, payload).always(function () {
+                colsSaving = false;
+                if (colsSaveAgain) {
+                    colsSaveAgain = false;
+                    sendColumns();
+                }
+            });
+        }
+
         function saveColumns() {
             clearTimeout(colsSaveTimer);
-            colsSaveTimer = setTimeout(function () {
-                var payload = { action: 'brikpanel_pl_save_columns', security: PL.nonce, columns: {} };
-                $colsPopover.find('input[type="checkbox"][data-col]').each(function () {
-                    payload.columns[$(this).data('col')] = this.checked ? 1 : 0;
-                });
-                $.post(PL.ajax_url, payload);
-            }, 400);
+            colsSaveTimer = setTimeout(sendColumns, 400);
         }
 
         // Two buttons open the Columns list: "Screen Options" in the header
@@ -677,6 +720,22 @@
             saveColumns();
             syncMessageSpans();
             refitTable();
+        });
+
+        // Products per page: the list reloads at once and the pick is kept for
+        // this user. The first product on screen stays on screen: the list
+        // opens the page that holds it at the new size (product 41 of a 20 a
+        // page view is on page 1 at 50 a page, on page 5 at 10).
+        $('#bpl-per-page').on('change', function () {
+            var n = parseInt(this.value, 10);
+            if (!(n >= 1 && n <= 100) || n === state.per_page) {
+                return;
+            }
+            var first = (state.page - 1) * state.per_page;
+            state.per_page = n;
+            state.page = Math.floor(first / n) + 1;
+            fetchProducts();
+            rememberPerPage(n);
         });
 
         // Crossing the phone width hides or shows columns: re-span the message row.
@@ -745,6 +804,7 @@
             openBulkModalForTaxonomy($(this).data('taxonomy'));
         });
 
+        $('#bpl-bulk-restore').on('click', function () { bulkAction('restore', $(this)); });
         $('#bpl-bulk-publish').on('click', function () { bulkAction('publish', $(this)); });
         $('#bpl-bulk-draft').on('click', function () { bulkAction('draft', $(this)); });
         $('#bpl-bulk-trash').on('click', function () { bulkAction('trash', $(this)); });
@@ -1272,13 +1332,11 @@
             escHtml(message || PL.i18n.error) + '</td></tr>');
     }
 
-    // What the server needs for one page of the list as it is filtered now.
-    function buildFetchData(page, perPage) {
+    // The list's filters, as the server reads them (list_filter_query()):
+    // for its pages and for Bulk update's "All products matching the current
+    // filters".
+    function listFilterParams() {
         return {
-            action: 'brikpanel_fetch_products',
-            security: PL.nonce,
-            page: page,
-            per_page: perPage,
             search: state.search,
             status: state.status,
             category: state.category,
@@ -1286,9 +1344,26 @@
             stock_filter: state.stock_filter,
             product_type: state.product_type,
             featured: state.featured,
-            tax_filters: state.tax_filters,
-            sort: state.sort
+            tax_filters: state.tax_filters
         };
+    }
+
+    // Whether any filter narrows the list (with none it holds the store).
+    function listIsFiltered() {
+        var f = listFilterParams();
+        return !!(f.search || (f.status && f.status !== 'any') || f.category || f.brand ||
+            f.stock_filter || f.product_type || f.featured || !$.isEmptyObject(f.tax_filters || {}));
+    }
+
+    // What the server needs for one page of the list as it is filtered now.
+    function buildFetchData(page, perPage) {
+        return $.extend({
+            action: 'brikpanel_fetch_products',
+            security: PL.nonce,
+            page: page,
+            per_page: perPage,
+            sort: state.sort
+        }, listFilterParams());
     }
 
     function fetchProducts(silent) {
@@ -3187,6 +3262,13 @@
         if (!bar) {
             return;
         }
+        // The Trash view offers Restore where the others offer Move to trash
+        // (a trashed product cannot go to the trash again). `hidden`, not
+        // display: a phone's sheet lists the menu's buttons and skips only
+        // hidden ones.
+        var inTrashView = state.status === 'trash';
+        $('#bpl-bulk-restore').prop('hidden', !inTrashView);
+        $('#bpl-bulk-trash').prop('hidden', inTrashView);
         // Other plugins' actions are asked for once, when the bar first shows.
         if (count > 0 || mSelecting) {
             loadPluginActions();
@@ -4135,13 +4217,16 @@
             filterTermList($(this).siblings('.bpl-bulk-term-list'), $(this).val());
         });
 
-        // Scope toggle (all / category)
+        // Scope toggle (category / all / the filtered list)
         $('#bpl-bulk-scope').on('change', function () {
             var scope = $(this).val();
             $('#bpl-bulk-cat-wrap').toggle(scope === 'category');
             if (scope === 'all') {
                 // Load variation attributes across the whole store
                 loadVariationAttributes(0);
+            } else if (scope === 'list') {
+                // The list's own category when it has one, else the store.
+                loadVariationAttributes(state.category || 0);
             } else {
                 loadVariationAttributes($('#bpl-bulk-cat').val());
             }
@@ -4227,6 +4312,54 @@
                action.indexOf('tax_remove__') === 0;
     }
 
+    // "Publish" / "Set as draft" (BULK_STATUS_ACTIONS on the server).
+    function isStatusAction(action) {
+        return action === 'set_status_publish' || action === 'set_status_draft';
+    }
+
+    // "All products matching the current filters" in both scope menus, with
+    // the list's count, while the list is filtered (unfiltered it is the
+    // store, which has its own entry). Bulk update leaves it out in the
+    // Trash view: a trashed product is restored or deleted, not edited.
+    function syncListScope() {
+        var filtered = listIsFiltered();
+        var label = filtered && BF ? BF.format(PL.i18n.bulk_scope_list, [fmtNum(state.total || 0)]) : '';
+        [['#bpl-bulk-scope', state.status !== 'trash'], ['#bpl-del-mode', true]].forEach(function (pair) {
+            var $sel = $(pair[0]);
+            var $opt = $sel.find('option[value="list"]'); // i18n-ignore: CSS selector
+            if (filtered && pair[1]) {
+                if (!$opt.length) {
+                    $opt = $('<option>').attr('value', 'list').appendTo($sel);
+                }
+                $opt.text(label);
+            } else if ($opt.length) {
+                if ($sel.val() === 'list') {
+                    $sel.val($sel.find('option').first().val());
+                }
+                $opt.remove();
+            }
+        });
+    }
+
+    // The confirmation for a scope ("By scope" tab) or, without one, for the
+    // checked rows. A status change can be undone, so it says what it does
+    // instead of "cannot be undone".
+    function bulkUpdateConfirm(scope, action) {
+        if (action === 'set_status_draft') {
+            return scope === 'all' ? PL.i18n.bulk_draft_all_confirm : PL.i18n.bulk_draft_confirm;
+        }
+        if (action === 'set_status_publish') {
+            return scope === 'all' ? PL.i18n.bulk_publish_all_confirm : PL.i18n.bulk_publish_confirm;
+        }
+        if (scope === 'all') {
+            return PL.i18n.bulk_all_confirm;
+        }
+        if (scope === 'list') {
+            return PL.i18n.bulk_list_confirm;
+        }
+        return scope === 'category' ? PL.i18n.bulk_cat_confirm : PL.i18n.bulk_confirm;
+    }
+
     function openBulkModal() {
         // Other plugins' actions join the "Selected products" list when they arrive.
         loadPluginActions();
@@ -4238,6 +4371,9 @@
         } else {
             $('#bpl-bulk-sel-info').text(PL.i18n.bulk_no_selection).addClass('brikpanel-pl-modal-warn');
         }
+
+        // The filtered list's scope follows the list as it is now.
+        syncListScope();
 
         // Reset scope selector to category (default)
         $('#bpl-bulk-scope').val('category').trigger('change');
@@ -4394,15 +4530,26 @@
         var isTax = isTaxAction(action);
         var isShipping = action === 'set_weight' || action === 'set_length' ||
                          action === 'set_width' || action === 'set_height';
+        var isStatus = isStatusAction(action);
         // Maintenance actions need no value: they recompute from existing data.
-        // Nor do other plugins' actions: the plugin decides what they do.
-        var isNoValue = action === 'repair_visibility' || action.indexOf(PLUGIN_VALUE) === 0;
+        // Nor do other plugins' actions (the plugin decides what they do) or
+        // a status change.
+        var isNoValue = action === 'repair_visibility' || isStatus || action.indexOf(PLUGIN_VALUE) === 0;
         // Rounding swaps the single value input for its own digit + direction picker.
         var isRound = action === 'round_prices';
 
         // The variation filter only applies to per-variation price/stock edits.
         if (which === 'cat') {
             $('#bpl-bulk-varfilter-cat').toggle(!isTax && !isShipping && !isNoValue);
+        }
+
+        // Which products a status change takes from a scope. Checked rows
+        // all change, so the "Selected products" tab needs no note.
+        var $statusHint = $('#bpl-bulk-status-hint');
+        if (isStatus && which === 'cat') {
+            $statusHint.text(action === 'set_status_publish' ? PL.i18n.bulk_status_publish_hint : PL.i18n.bulk_status_draft_hint).show();
+        } else {
+            $statusHint.hide();
         }
 
         $('#bpl-bulk-round-region').toggle(isRound);
@@ -4441,6 +4588,8 @@
         var which   = activeTab === 'bpl-bulk-tab-sel' ? 'sel' : 'cat';
         var action  = $('#bpl-bulk-action-' + which).val() || '';
         var isTax   = isTaxAction(action);
+        // A status is the product's own: no variation filter goes with it.
+        var noAttr  = isTax || isStatusAction(action);
 
         // Another plugin's action (only on "Selected products"): WordPress runs
         // it, as on WooCommerce's list. The window closes once it is confirmed.
@@ -4481,21 +4630,24 @@
             var scope = $('#bpl-bulk-scope').val();
             var catId = $('#bpl-bulk-cat').val();
             if (scope === 'category' && !catId) { showToast(PL.i18n.bulk_select_cat, 'error'); return; }
-            if (!confirm(scope === 'all' ? PL.i18n.bulk_all_confirm : PL.i18n.bulk_cat_confirm)) return;
+            if (!confirm(bulkUpdateConfirm(scope, action))) return;
             params = {
-                mode: scope === 'all' ? 'all' : 'category',
-                category: scope === 'all' ? '' : catId,
+                mode: (scope === 'all' || scope === 'list') ? scope : 'category',
+                category: scope === 'category' ? catId : '',
                 bulk_action: action,
                 value: isRound ? ($('#bpl-bulk-round-digits').val() || '2') : $('#bpl-bulk-value-cat').val(),
                 round_mode: roundMode,
                 term_ids: termIds,
                 new_terms: newTerms,
-                attr_key: isTax ? '' : ($('#bpl-bulk-attr-key').val() || ''),
-                attr_val: isTax ? '' : ($('#bpl-bulk-attr-val').val() || '')
+                attr_key: noAttr ? '' : ($('#bpl-bulk-attr-key').val() || ''),
+                attr_val: noAttr ? '' : ($('#bpl-bulk-attr-val').val() || '')
             };
+            if (scope === 'list') {
+                params.list = listFilterParams();
+            }
         } else {
             if (!state.selected.length) { showToast(PL.i18n.bulk_no_selection, 'error'); return; }
-            if (!confirm(PL.i18n.bulk_confirm)) return;
+            if (!confirm(bulkUpdateConfirm('', action))) return;
             params = {
                 mode: 'selected',
                 selected_ids: state.selected.join(','),
@@ -4531,7 +4683,8 @@
         var willDeleteProducts =
             (mode === 'selected' && state.selected.length > 0) ||
             (mode === 'category' && !!catId) ||
-            (mode === 'all');
+            (mode === 'all') ||
+            (mode === 'list');
 
         if (!willDeleteProducts && !hasTaxPurge) {
             if (mode === 'selected') {
@@ -4567,7 +4720,7 @@
 
         var params = {
             mode: mode,
-            category: catId || '',
+            category: mode === 'category' ? (catId || '') : '',
             selected_ids: mode === 'selected' ? state.selected.join(',') : '',
             permanent: permanent ? '1' : '0',
             delete_images: deleteImages ? '1' : '0',
@@ -4577,6 +4730,9 @@
             delete_attrs: delAttrs ? '1' : '0',
             delete_brands: delBrands ? '1' : '0'
         };
+        if (mode === 'list') {
+            params.list = listFilterParams();
+        }
 
         closeBulkModal();
         runBulkJob('delete', params);
@@ -4708,7 +4864,10 @@
             if (d.translations_skipped) {
                 bulkJob.translationsSkipped += parseInt(d.translations_skipped, 10) || 0;
             }
-            updateProgressModal(processedSoFar, d.total);
+            // The bar follows the products walked. What changed can be fewer
+            // (a product already a draft) or more (each variation of a price
+            // change counts): the end message gives that number.
+            updateProgressModal(Math.min(d.next_offset || 0, d.total || 0), d.total);
 
             if (d.done) {
                 finishProgressModal(jobType, processedSoFar, bulkJob.totalErrors, false);
