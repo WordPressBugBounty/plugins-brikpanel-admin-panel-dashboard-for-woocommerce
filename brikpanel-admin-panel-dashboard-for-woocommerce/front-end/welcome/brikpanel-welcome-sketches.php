@@ -46,6 +46,36 @@ function brikpanel_welcome_sketch_note( $modifier, $delay, $duration, $text ) {
 }
 
 /**
+ * The "Just one feature" card's drawing: WordPress's own admin, its black
+ * menu, one row circled. Printed through wp_kses(), so it carries no inline
+ * style: when each line draws is set in brikpanel-welcome.css, path by path.
+ *
+ * @return string Static SVG plus the escaped, translated note.
+ */
+function brikpanel_welcome_way_one_sketch() {
+	return '<svg class="brikpanel-welcome-ink" viewBox="0 0 400 250" aria-hidden="true" focusable="false">'
+		. '<path pathLength="1" d="M26 14 H374 C381 14 386 19 386 26 V224 C386 231 381 236 374 236 H26 C19 236 14 231 14 224 V26 C14 19 19 14 26 14 Z"/>'
+		. '<path class="is-fill is-ink" d="M26 14 H374 C381 14 386 19 386 26 V34 H14 V26 C14 19 19 14 26 14 Z"/>'
+		. '<path class="is-fill is-menu" d="M14 34 H84 V236 H26 C19 236 14 231 14 224 Z"/>'
+		. '<path pathLength="1" class="is-thin is-light" d="M24 50 H66 M24 68 H58 M24 86 H70 M24 104 H54 M24 122 H62 M24 158 H60 M24 176 H52 M24 194 H66 M24 212 H56"/>'
+		. '<path class="is-fill is-paper" d="M14 131 H84 V149 H14 Z"/>'
+		. '<path pathLength="1" class="is-bold" d="M24 140 H64"/>'
+		. '<path pathLength="1" class="is-bold" d="M100 54 H166"/>'
+		. '<path pathLength="1" class="is-thin" d="M182 47 H214 C218 47 220 49 220 53 C220 57 218 59 214 59 H182 C178 59 176 57 176 53 C176 49 178 47 182 47 Z"/>'
+		. '<path pathLength="1" d="M100 74 H372"/>'
+		. '<path pathLength="1" class="is-thin is-mid" d="M100 98 H372 M100 122 H372 M100 146 H372 M100 170 H372"/>'
+		. '<path pathLength="1" class="is-thin" d="M108 86 H150 M200 86 H236 M296 86 H330 M108 110 H144 M200 110 H240 M296 110 H322 M108 134 H156 M200 134 H230 M296 134 H334 M108 158 H140 M200 158 H238 M296 158 H326"/>'
+		. '<path pathLength="1" d="M60 123 C30 121 6 129 8 140 C10 152 36 157 64 156 C92 155 100 147 98 138 C96 129 80 123 52 125"/>'
+		. '<path pathLength="1" d="M182 204 C150 206 120 192 104 162"/>'
+		. '<path pathLength="1" d="M100 174 L102 160 L114 166"/>'
+		. '</svg>'
+		. '<span class="brikpanel-welcome-note brikpanel-welcome-note--is-one" dir="auto" aria-hidden="true">'
+		/* translators: Short handwritten note in a drawing of WordPress's admin, pointing at the one menu row BrikPanel adds. Two to four words. */
+		. esc_html_x( 'just this one', 'welcome tour handwritten note', 'brikpanel' )
+		. '</span>';
+}
+
+/**
  * The sketch for one tour step.
  *
  * @param string $key profit, orders, customers or connect.

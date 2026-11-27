@@ -99,6 +99,10 @@ class Brikpanel_Vendor_Order_Items {
 	 * @return bool
 	 */
 	private static function neutralized() {
+		// A store that keeps only Stock and suppliers keeps this (includes/brikpanel-one-feature.php).
+		if ( function_exists( 'brikpanel_neutralized_for' ) ) {
+			return brikpanel_neutralized_for( 'vendors' );
+		}
 		return function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize();
 	}
 }

@@ -145,6 +145,11 @@ class Brikpanel_Segments {
 	 * @return void
 	 */
 	private function print_orders_list_link( $own_box ) {
+		// WooCommerce's own list while BrikPanel is off, unless the store keeps
+		// Orders or the reports as its one feature (includes/brikpanel-one-feature.php).
+		if ( function_exists( 'brikpanel_neutralized_for' ) && brikpanel_neutralized_for( [ 'orders', 'segments' ] ) ) {
+			return;
+		}
 		$url = function_exists( 'brikpanel_module_url' ) ? brikpanel_module_url( self::PAGE_SLUG, [], '', false ) : '';
 		if ( '' === $url ) {
 			return;

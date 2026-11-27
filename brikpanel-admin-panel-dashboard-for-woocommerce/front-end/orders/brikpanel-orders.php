@@ -719,14 +719,18 @@ function brikpanel_settings_fields() {
             'name' => __('Analytics', 'brikpanel'),
             'type' => 'title',
             'id'   => 'brk_analytics_title',
-            'desc' => __('Decide which order statuses your analytics count. This drives every figure: Revenue, Orders, Average Order Value, Profit, Customer Lifetime Value and the order-rate breakdown. If you use a shipment-tracking or returns plugin that adds custom statuses (for example "Partially shipped", "Delivered" or "Partially refunded"), add them here so those orders stop being left out of your numbers.', 'brikpanel'),
+            // 3.3.58: shipping statuses join the list below by themselves
+            // (includes/brikpanel-status-buckets.php), so the last sentence
+            // no longer asks the merchant to add them by hand.
+            'desc' => __('Decide which order statuses your analytics count. This drives every figure: Revenue, Orders, Average Order Value, Profit, Customer Lifetime Value and the order-rate breakdown. A shipping status that another plugin adds (for example "Shipped" or "Delivered") is added below by itself once its orders turn out to be paid. Add any other status that means a sale yourself, so those orders stop being left out of your numbers.', 'brikpanel'),
         ],
         [
             'name'     => __('Statuses counted as valid sales', 'brikpanel'),
             'id'       => 'brikpanel_paid_statuses',
             'type'     => 'multiselect',
             'class'    => 'wc-enhanced-select',
-            'desc'     => __('Orders in these statuses are counted as real, completed sales across Revenue, Orders, AOV, Profit and Customer Lifetime Value. Defaults to Processing and Completed, which is what WooCommerce itself treats as paid. Leave empty to keep the default.', 'brikpanel'),
+            'desc'     => __('Orders in these statuses are counted as real, completed sales across Revenue, Orders, AOV, Profit and Customer Lifetime Value. Defaults to Processing and Completed, which is what WooCommerce itself treats as paid. Leave empty to keep the default.', 'brikpanel')
+                . ' ' . __('While you have not changed this list, BrikPanel adds a shipping status from another plugin to it by itself once its orders turn out to be paid. A status you remove is never added again.', 'brikpanel'),
             'desc_tip' => true,
             'options'  => $order_status_options,
             'default'  => brikpanel_default_paid_statuses(),

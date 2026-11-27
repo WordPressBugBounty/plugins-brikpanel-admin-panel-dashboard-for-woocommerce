@@ -480,6 +480,8 @@
                 setItemsSold('card-items-sold', d.items_sold_label);
                 setItemsSold('rates-items-sold', d.items_sold_label);
             });
+            // Orders of the period in a status nobody decided on yet.
+            safe('uncounted', function () { renderUncounted(d.uncounted); });
 
             // Profit (Revenue − Cost of goods − Expenses), the store cards'
             // small lines and the figures counting up.
@@ -611,6 +613,61 @@
         el.appendChild(phrase);
         el.hidden = text === '';
     }
+
+    // The question above the store cards (3.3.58): "7 orders in these dates
+    // are not counted as sales. They are in "On hold". Count them as sales?"
+    // The footer marks the box data-may-ask only on a page view BrikPanel's
+    // one-ask rules leave free (no welcome tour, no other ask, no notice box,
+    // no phone panel opening by itself); the figures say what to ask, worded
+    // in the viewer's language by the server. Text goes in as text.
+    function renderUncounted(u) {
+        var box = document.getElementById('brikpanel-uncounted');
+        if (!box) return;
+        if (!u || !u.status || box.getAttribute('data-may-ask') !== '1') {
+            box.hidden = true;
+            return;
+        }
+        var lead = box.querySelector('.brikpanel-dash-uncounted__lead');
+        var detail = box.querySelector('.brikpanel-dash-uncounted__detail');
+        if (lead) lead.textContent = typeof u.lead === 'string' ? u.lead : '';
+        if (detail) detail.textContent = typeof u.detail === 'string' ? u.detail : '';
+        box.setAttribute('data-status', String(u.status));
+        setUncountedBusy(box, false);
+        box.hidden = false;
+    }
+
+    function setUncountedBusy(box, busy) {
+        box.querySelectorAll('[data-bp-uncounted]').forEach(function (b) { b.disabled = !!busy; });
+        if (busy) box.setAttribute('aria-busy', 'true'); else box.removeAttribute('aria-busy');
+    }
+
+    // "Yes, count" puts the status in the valid-sales list, "No" never asks
+    // about it again; then the figures are fetched again, with the next
+    // status's question if one waits. Delegated, so it is bound once.
+    document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-bp-uncounted]') : null;
+        if (!btn) return;
+        var box = btn.closest('#brikpanel-uncounted');
+        var status = box ? (box.getAttribute('data-status') || '') : '';
+        if (!box || box.hidden || !status || btn.disabled) return;
+        setUncountedBusy(box, true);
+        var fd = new FormData();
+        fd.append('action', 'brikpanel_status_bucket_decide');
+        fd.append('security', CFG.nonce);
+        fd.append('status', status);
+        fd.append('decision', btn.getAttribute('data-bp-uncounted') === 'count' ? 'count' : 'skip');
+        fetch(CFG.ajax_url, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || !res.success) throw new Error('refused');
+                box.hidden = true;
+                fetchDashboardData();
+            })
+            .catch(function () {
+                setUncountedBusy(box, false);
+                showToast(i18n.uncounted_error, 'error');
+            });
+    });
 
     function updateDelta(id, value) {
         var el = document.getElementById(id);

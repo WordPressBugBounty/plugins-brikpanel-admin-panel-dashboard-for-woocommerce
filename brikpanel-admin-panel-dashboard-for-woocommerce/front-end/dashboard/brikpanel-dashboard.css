@@ -615,6 +615,52 @@
     margin-bottom: 1.25rem;
 }
 
+/* ===== Orders not counted as sales (3.3.58) =====
+   One line above the store cards, only while orders of the period sit in a
+   status nobody decided on: the question on the left, its two buttons on the
+   right; narrow, the buttons go under the text. Spaced like the sections
+   around it. The buttons keep the shared size (brikpanel-ui.css). */
+.brikpanel-dash-uncounted {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    padding-block: 0.75rem;
+    padding-inline: 1.25rem 1rem;
+    background: var(--bp-card);
+    border: 1px solid var(--bp-border);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    color: var(--bp-text);
+}
+.brikpanel-dash-uncounted[hidden] {
+    display: none;
+}
+.brikpanel-dash-uncounted__icon {
+    flex: 0 0 auto;
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--bp-text-secondary);
+}
+.brikpanel-dash-uncounted__text {
+    flex: 1 1 16rem;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    text-align: start;
+}
+.brikpanel-dash-uncounted__lead {
+    font-weight: 600;
+}
+.brikpanel-dash-uncounted__actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0.5rem;
+}
+
 /* Higher specificity (.brikpanel-dash-profit .…) so this always wins over the
    shared `.brikpanel-dash-cards` responsive rules regardless of source order.
    align-items:start so expanding the Expenses breakdown grows only that card

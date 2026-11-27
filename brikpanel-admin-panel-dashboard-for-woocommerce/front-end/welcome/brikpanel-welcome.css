@@ -1224,6 +1224,17 @@ body.rtl .brikpanel-welcome-overlay .brikpanel-welcome-arrow {
         display: none;
     }
 
+    /* Just one feature with the "where did you hear" question on the right:
+       the only sentence that says where the full panel is, so it stays. */
+    .brikpanel-welcome-lead--phone {
+        display: block;
+        font-size: 14px;
+    }
+
+    .brikpanel-welcome-lead[hidden] {
+        display: none;
+    }
+
     .brikpanel-welcome-stage {
         flex: none;
         height: 132px;
@@ -1355,6 +1366,904 @@ body.rtl .brikpanel-welcome-overlay .brikpanel-welcome-arrow {
     }
 }
 
+/* ── First screen: "What did you install BrikPanel for?" ─────────────────────── */
+/* front-end/welcome/brikpanel-welcome-intent.php. The first two screens spread
+   over the whole window, as BrikFront's setup guide does; the plate comes back
+   when the tour goes on. */
+.brikpanel-welcome-overlay[data-bw-view="intent"] .brikpanel-welcome-left,
+.brikpanel-welcome-overlay[data-bw-view="pick"] .brikpanel-welcome-left {
+    display: none;
+}
+
+.brikpanel-welcome-overlay[data-bw-view="intent"] .brikpanel-welcome-panels,
+.brikpanel-welcome-overlay[data-bw-view="pick"] .brikpanel-welcome-panels {
+    padding: 34px 48px 0;
+}
+
+.brikpanel-welcome-left.is-entering {
+    animation: brikpanel-welcome-left-in 0.65s var(--bw-ease) both;
+}
+
+/* One feature: the tour's step row is not this way's. */
+.brikpanel-welcome-overlay[data-bw-view="one"] .brikpanel-welcome-steps {
+    visibility: hidden;
+}
+
+.brikpanel-welcome-panel--intent,
+.brikpanel-welcome-panel--pick {
+    align-items: center;
+    text-align: center;
+}
+
+@media (min-width: 783px) {
+    .brikpanel-welcome-panel--intent,
+    .brikpanel-welcome-panel--pick {
+        justify-content: safe center;
+    }
+}
+
+.brikpanel-welcome-intent-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #303030;
+    animation: brikpanel-welcome-in 0.7s var(--bw-ease) 0.05s both;
+}
+
+.brikpanel-welcome-heading.brikpanel-welcome-heading--duo {
+    max-width: 760px;
+    margin-top: 14px;
+    font-size: 32px;
+    line-height: 1.12;
+}
+
+.brikpanel-welcome-heading.brikpanel-welcome-heading--duo:focus {
+    outline: none;
+}
+
+.brikpanel-welcome-heading-soft {
+    display: block;
+    color: #8a8a8a; /* contrast-ok: the grey half of a 32px two-tone heading, large text (3.5:1) */
+}
+
+.brikpanel-welcome-panel--pick .brikpanel-welcome-heading.brikpanel-welcome-heading--duo {
+    margin-top: 8px;
+}
+
+/* Centred: the kicker's room for the close button would push it off centre. */
+.brikpanel-welcome-panel--pick .brikpanel-welcome-kicker {
+    padding-inline-end: 0;
+}
+
+/* ── The two ways ───────────────────────────────────────────────────────────── */
+.brikpanel-welcome-ways {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 880px;
+    margin: 26px 0 0;
+    animation: brikpanel-welcome-in 0.7s var(--bw-ease) 0.2s both;
+}
+
+/* A card and, on the full panel's, the button that opens its screens large. */
+.brikpanel-welcome-way-slot {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    transition: transform 0.25s var(--bw-ease);
+}
+
+@media (hover: hover) {
+    .brikpanel-welcome-way-slot:hover {
+        transform: translateY(-3px);
+    }
+}
+
+.brikpanel-welcome-way {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 10px 10px 16px;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px #e3e3e3;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: box-shadow 0.2s ease;
+}
+
+.brikpanel-welcome-way::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.09);
+    opacity: 0;
+    pointer-events: none;
+    content: "";
+    transition: opacity 0.25s ease;
+}
+
+@media (hover: hover) {
+    .brikpanel-welcome-way-slot:hover .brikpanel-welcome-way::after {
+        opacity: 1;
+    }
+}
+
+.brikpanel-welcome-way input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.brikpanel-welcome-way.is-picked {
+    box-shadow: inset 0 0 0 2px #303030;
+}
+
+.brikpanel-welcome-way.is-focus {
+    outline: 2px solid var(--brikpanel-ui-focus, #303030);
+    outline-offset: 3px;
+}
+
+/* The drawing, on the tour's dotted paper. dir="ltr": it never turns round. */
+.brikpanel-welcome-way-art {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 10;
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #efefef;
+    background-image: radial-gradient(circle, rgba(48, 48, 48, 0.13) 1px, transparent 1.4px);
+    background-size: 18px 18px;
+    background-position: 9px 9px;
+    container-type: inline-size;
+}
+
+.brikpanel-welcome-way-art .brikpanel-welcome-ink {
+    position: absolute;
+    inset: 5% 5% 4%;
+    width: 90%;
+    height: 91%;
+}
+
+/* Two classes and !important against Appearance's font, as on every note. */
+.brikpanel-welcome-way-art .brikpanel-welcome-note {
+    position: absolute;
+    margin: 0;
+    font-family: "BrikPanel Caveat", "Segoe Print", "Bradley Hand", cursive !important;
+    font-size: max(15px, 6.2cqw);
+    font-weight: 600;
+    line-height: 1;
+    color: #303030;
+    white-space: nowrap;
+    clip-path: inset(-20% 100% -20% -15%);
+    animation: brikpanel-welcome-write calc(var(--dur, 0.8s) * var(--bw-ink-pace)) cubic-bezier(0.4, 0.1, 0.6, 1) calc(var(--dd, 0s) * var(--bw-ink-pace)) forwards;
+}
+
+.brikpanel-welcome-way-art .brikpanel-welcome-note--is-one {
+    left: 47%;
+    top: 73.5%;
+    transform: rotate(-3deg);
+    --dd: 2.9s;
+    --dur: 0.8s;
+}
+
+/* The one-feature drawing has no inline style (it is printed through wp_kses):
+   each line's start and length here, in drawing order. */
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(1) { --dd: 0.15s; --dur: 0.8s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(2) { --dd: 0.7s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(3) { --dd: 0.9s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(4) { --dd: 1.15s; --dur: 0.65s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(5) { --dd: 1.6s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(6) { --dd: 1.75s; --dur: 0.3s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(7) { --dd: 1.2s; --dur: 0.35s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(8) { --dd: 1.35s; --dur: 0.35s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(9) { --dd: 1.45s; --dur: 0.4s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(10) { --dd: 1.6s; --dur: 0.5s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(11) { --dd: 1.8s; --dur: 0.6s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(12) { --dd: 2.3s; --dur: 0.8s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(13) { --dd: 3.65s; --dur: 0.45s; }
+.brikpanel-welcome-way-art--one .brikpanel-welcome-ink path:nth-of-type(14) { --dd: 4.05s; --dur: 0.2s; }
+
+.brikpanel-welcome-way-art .brikpanel-welcome-ink .is-ink {
+    fill: #303030;
+}
+
+.brikpanel-welcome-way-art .brikpanel-welcome-ink .is-menu {
+    fill: #3d3d3d;
+}
+
+.brikpanel-welcome-way-art .brikpanel-welcome-ink .is-paper {
+    fill: #ffffff;
+}
+
+.brikpanel-welcome-way-art .brikpanel-welcome-ink .is-light {
+    stroke: #c9c9c9;
+}
+
+.brikpanel-welcome-way-art .brikpanel-welcome-ink .is-mid {
+    stroke: #8a8a8a;
+}
+
+.brikpanel-welcome-way-art .brikpanel-welcome-ink .is-bold {
+    stroke-width: 2.6;
+}
+
+/* Picked: a check pops on the drawing's corner. */
+.brikpanel-welcome-way-tick {
+    position: absolute;
+    top: 10px;
+    inset-inline-end: 10px;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #303030;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.brikpanel-welcome-way.is-picked .brikpanel-welcome-way-tick {
+    opacity: 1;
+    transform: none;
+}
+
+.brikpanel-welcome-way-text {
+    display: block;
+}
+
+.brikpanel-welcome-way-name {
+    display: block;
+    margin: 16px 8px 0;
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    color: #1a1a1a;
+}
+
+.brikpanel-welcome-way-line {
+    display: block;
+    margin: 4px 8px 14px;
+    font-size: 14px;
+    line-height: 1.45;
+    color: #616161;
+}
+
+.brikpanel-welcome-way-fact {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    gap: 6px;
+    max-width: calc(100% - 16px);
+    margin: auto 8px 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f6f6f7;
+    box-shadow: inset 0 0 0 1px #ececee;
+    color: #303030;
+    font-size: 12.5px;
+    font-weight: 550;
+    line-height: 1.35;
+}
+
+.brikpanel-welcome-way-fact svg {
+    flex: none;
+    color: #616161;
+}
+
+/* ── The full panel card: WooCommerce's own screens, then BrikPanel's ───────── */
+/* Real captures (front-end/welcome/images/), Orders then the Dashboard. A line
+   sweeps in from the right and BrikPanel comes in behind it: 0-10% Orders as
+   WooCommerce ships it, 10-20% the sweep, 20-44% BrikPanel, 44-50% fade to the
+   Dashboard, the same again, 94-100% fade back. */
+.brikpanel-welcome-ba {
+    position: absolute;
+    inset: 5%;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #f1f1f1;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 10px 24px -12px rgba(0, 0, 0, 0.35);
+    --bw-ba-time: 15s;
+    --bw-ba-ease: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.brikpanel-welcome-ba-pair,
+.brikpanel-welcome-ba-img {
+    position: absolute;
+    inset: 0;
+}
+
+.brikpanel-welcome-ba-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    object-position: top left;
+}
+
+.brikpanel-welcome-ba-pair--a {
+    animation: brikpanel-welcome-ba-a var(--bw-ba-time) linear infinite;
+}
+
+.brikpanel-welcome-ba-pair--b {
+    opacity: 0;
+    animation: brikpanel-welcome-ba-b var(--bw-ba-time) linear infinite;
+}
+
+.brikpanel-welcome-ba-pair--a .brikpanel-welcome-ba-after {
+    clip-path: inset(0 0 0 100%);
+    animation: brikpanel-welcome-ba-wipe-a var(--bw-ba-time) var(--bw-ba-ease) infinite;
+}
+
+.brikpanel-welcome-ba-pair--b .brikpanel-welcome-ba-after {
+    clip-path: inset(0 0 0 100%);
+    animation: brikpanel-welcome-ba-wipe-b var(--bw-ba-time) var(--bw-ba-ease) infinite;
+}
+
+.brikpanel-welcome-ba-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 100%;
+    width: 0;
+    animation: brikpanel-welcome-ba-line var(--bw-ba-time) var(--bw-ba-ease) infinite;
+}
+
+.brikpanel-welcome-ba-line > span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -1.5px;
+    width: 3px;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 0 12px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    animation: brikpanel-welcome-ba-line-show var(--bw-ba-time) linear infinite;
+}
+
+.brikpanel-welcome-ba-tag {
+    position: absolute;
+    bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 650;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.brikpanel-welcome-ba-tag--before {
+    left: 8px;
+    background: #ffffff;
+    color: #303030;
+    animation: brikpanel-welcome-ba-tag-before var(--bw-ba-time) linear infinite;
+}
+
+.brikpanel-welcome-ba-tag--after {
+    right: 8px;
+    background: #303030;
+    color: #ffffff;
+    opacity: 0;
+    animation: brikpanel-welcome-ba-tag-after var(--bw-ba-time) linear infinite;
+}
+
+/* Under the pointer the sweep holds still, so the screens can be read. */
+@media (hover: hover) {
+    .brikpanel-welcome-way-slot:hover .brikpanel-welcome-ba,
+    .brikpanel-welcome-way-slot:hover .brikpanel-welcome-ba * {
+        animation-play-state: paused;
+    }
+}
+
+/* "See it bigger", over the drawing's free corner (the art never turns round). */
+.brikpanel-welcome-ba-open {
+    position: absolute;
+    top: 26px;
+    left: 26px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    margin: 0;
+    padding: 0 10px 0 8px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.14);
+    color: #303030;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    cursor: zoom-in;
+}
+
+.brikpanel-welcome-ba-open:hover {
+    background: #ffffff;
+}
+
+.brikpanel-welcome-ba-open:focus {
+    outline: none;
+}
+
+.brikpanel-welcome-ba-open:focus-visible {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--brikpanel-ui-focus, #303030);
+}
+
+/* ── The bigger view ────────────────────────────────────────────────────────── */
+.brikpanel-welcome-compare {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 22px 26px;
+    box-sizing: border-box;
+    background: #ffffff;
+    animation: brikpanel-welcome-in 0.35s var(--bw-ease) both;
+}
+
+.brikpanel-welcome-compare[hidden] {
+    display: none;
+}
+
+.brikpanel-welcome-compare-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+}
+
+.brikpanel-welcome-compare-title {
+    margin: 0;
+    padding: 0;
+    font-size: 19px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: #1a1a1a;
+}
+
+.brikpanel-welcome-compare-tabs {
+    display: inline-flex;
+    margin-inline-start: auto;
+    padding: 3px;
+    border-radius: 10px;
+    background: #f6f6f7;
+    box-shadow: inset 0 0 0 1px #ececee;
+}
+
+.brikpanel-welcome-compare-tab {
+    margin: 0;
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #616161;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.brikpanel-welcome-compare-tab[aria-pressed="true"] {
+    background: #ffffff;
+    color: #1a1a1a;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 0 0 1px #e3e3e3;
+}
+
+.brikpanel-welcome-compare-tab:focus {
+    outline: none;
+}
+
+.brikpanel-welcome-compare-tab:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--brikpanel-ui-focus, #303030);
+}
+
+.brikpanel-welcome-compare-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The screens' 16:10 shape inside whatever room is left. */
+.brikpanel-welcome-compare-frame {
+    position: relative;
+    height: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 18px 40px -20px rgba(0, 0, 0, 0.4);
+    --bw-cut: 50%;
+}
+
+.brikpanel-welcome-compare-frame .brikpanel-welcome-ba-after {
+    clip-path: inset(0 0 0 var(--bw-cut));
+}
+
+.brikpanel-welcome-compare-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--bw-cut);
+    width: 3px;
+    margin-left: -1.5px;
+    background: #ffffff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 0 14px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+}
+
+.brikpanel-welcome-compare-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin: -19px 0 0 -19px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #303030;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* The whole frame is the slider: drag anywhere, or the arrow keys. */
+.brikpanel-welcome-compare-range {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.brikpanel-welcome-compare-frame.is-focus .brikpanel-welcome-compare-knob {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--brikpanel-ui-focus, #303030), 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.brikpanel-welcome-compare-frame .brikpanel-welcome-ba-tag {
+    bottom: 12px;
+    height: 26px;
+    padding: 0 12px;
+    font-size: 12.5px;
+    opacity: 1;
+    animation: none;
+}
+
+.brikpanel-welcome-compare-frame .brikpanel-welcome-ba-tag--before {
+    left: 12px;
+}
+
+.brikpanel-welcome-compare-frame .brikpanel-welcome-ba-tag--after {
+    right: 12px;
+}
+
+.brikpanel-welcome-compare-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brikpanel-welcome-compare-hint {
+    margin: 0;
+    font-size: 13px;
+    color: #616161;
+}
+
+/* Layout only: the look is the shared brikpanel-btn. */
+.brikpanel-welcome-compare-btn {
+    min-height: var(--brikpanel-control-h, 40px);
+}
+
+/* ── Second screen: which feature ───────────────────────────────────────────── */
+.brikpanel-welcome-picks {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 860px;
+    margin: 26px 0 0;
+    text-align: start;
+    animation: brikpanel-welcome-in 0.7s var(--bw-ease) 0.2s both;
+}
+
+.brikpanel-welcome-pick {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: 62px;
+    margin: 0;
+    padding-block: 10px;
+    padding-inline: 10px 14px;
+    box-sizing: border-box;
+    border: 1px solid #e3e3e3;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+    color: #303030;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.15s var(--bw-ease);
+}
+
+@media (hover: hover) {
+    .brikpanel-welcome-pick:hover {
+        border-color: #c9c9c9;
+        background: #fafafa;
+        box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+    }
+}
+
+.brikpanel-welcome-pick:active {
+    transform: scale(0.985);
+}
+
+.brikpanel-welcome-pick input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.brikpanel-welcome-pick.is-focus {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--brikpanel-ui-focus, #303030);
+}
+
+.brikpanel-welcome-pick.is-picked {
+    border-color: #303030;
+    background: #303030;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    transform: none;
+}
+
+.brikpanel-welcome-pick-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #f1f1f1;
+    color: #303030;
+    transition: background-color 0.15s ease;
+}
+
+.brikpanel-welcome-pick-icon > svg {
+    transition: opacity 0.15s ease, transform 0.2s var(--bw-ease);
+}
+
+.brikpanel-welcome-pick.is-picked .brikpanel-welcome-pick-icon {
+    background: #ffffff;
+}
+
+.brikpanel-welcome-pick.is-picked .brikpanel-welcome-pick-icon > svg {
+    opacity: 0;
+    transform: scale(0.6);
+}
+
+.brikpanel-welcome-pick-check {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #303030;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.15s ease, transform 0.25s var(--bw-drop);
+}
+
+.brikpanel-welcome-pick.is-picked .brikpanel-welcome-pick-check {
+    opacity: 1;
+    transform: none;
+}
+
+.brikpanel-welcome-pick-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: break-word;
+}
+
+.brikpanel-welcome-pick-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 20px 0 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #616161;
+    animation: brikpanel-welcome-in 0.7s var(--bw-ease) 0.3s both;
+}
+
+.brikpanel-welcome-pick-note svg {
+    flex: none;
+}
+
+.brikpanel-welcome-pick-error {
+    margin: 12px 0 0;
+    font-size: 13px;
+    font-weight: 550;
+    color: #d72c0d;
+}
+
+.brikpanel-welcome-links.brikpanel-welcome-links--compact[hidden],
+.brikpanel-welcome-links[hidden] {
+    display: none;
+}
+
+/* ── First screens on a tablet and a phone ──────────────────────────────────── */
+@media (max-width: 900px) {
+    .brikpanel-welcome-picks {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 782px) {
+    .brikpanel-welcome-overlay[data-bw-view="intent"] .brikpanel-welcome-panels,
+    .brikpanel-welcome-overlay[data-bw-view="pick"] .brikpanel-welcome-panels {
+        padding: 22px 20px 0;
+    }
+
+    .brikpanel-welcome-heading.brikpanel-welcome-heading--duo {
+        padding-inline: 34px;
+        font-size: 24px;
+    }
+
+    .brikpanel-welcome-ways {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .brikpanel-welcome-way {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0 12px;
+        padding: 8px;
+        text-align: start;
+    }
+
+    .brikpanel-welcome-way-art {
+        flex: none;
+        width: 112px;
+        border-radius: 10px;
+    }
+
+    .brikpanel-welcome-way-art .brikpanel-welcome-note,
+    .brikpanel-welcome-ba-open,
+    .brikpanel-welcome-ba-tag {
+        display: none;
+    }
+
+    .brikpanel-welcome-ba {
+        inset: 6%;
+        border-radius: 6px;
+    }
+
+    .brikpanel-welcome-way-tick {
+        top: 8px;
+        width: 24px;
+        height: 24px;
+    }
+
+    .brikpanel-welcome-way-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .brikpanel-welcome-way-name {
+        margin: 0;
+        font-size: 16px;
+    }
+
+    .brikpanel-welcome-way-line {
+        margin: 2px 0 0;
+        font-size: 13.5px;
+    }
+
+    .brikpanel-welcome-way-fact {
+        display: none;
+    }
+
+    .brikpanel-welcome-picks {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        margin-top: 16px;
+    }
+
+    .brikpanel-welcome-pick {
+        min-height: 50px;
+    }
+
+    .brikpanel-welcome-pick-note {
+        margin: 16px 0 8px;
+        text-align: start;
+    }
+}
+
+/* Reduced motion: no sweep. Orders cut in half, both names showing. */
+@media (prefers-reduced-motion: reduce) {
+    .brikpanel-welcome-left.is-entering,
+    .brikpanel-welcome-ways,
+    .brikpanel-welcome-picks,
+    .brikpanel-welcome-pick-note,
+    .brikpanel-welcome-intent-brand,
+    .brikpanel-welcome-compare,
+    .brikpanel-welcome-ba-pair--a,
+    .brikpanel-welcome-ba-pair--b,
+    .brikpanel-welcome-ba-pair--a .brikpanel-welcome-ba-after,
+    .brikpanel-welcome-ba-pair--b .brikpanel-welcome-ba-after,
+    .brikpanel-welcome-ba-line,
+    .brikpanel-welcome-ba-line > span,
+    .brikpanel-welcome-ba-tag--before,
+    .brikpanel-welcome-ba-tag--after {
+        animation: none;
+    }
+
+    .brikpanel-welcome-way-slot,
+    .brikpanel-welcome-way,
+    .brikpanel-welcome-way-tick,
+    .brikpanel-welcome-pick,
+    .brikpanel-welcome-pick-icon > svg,
+    .brikpanel-welcome-pick-check {
+        transition: none;
+    }
+
+    .brikpanel-welcome-way-art .brikpanel-welcome-note {
+        animation: none;
+        clip-path: none;
+    }
+
+    .brikpanel-welcome-ba-pair--a .brikpanel-welcome-ba-after {
+        clip-path: inset(0 0 0 50%);
+    }
+
+    .brikpanel-welcome-ba-line {
+        left: 50%;
+    }
+
+    .brikpanel-welcome-ba-line > span,
+    .brikpanel-welcome-ba-tag--after {
+        opacity: 1;
+    }
+}
+
 /* ── Keyframes ──────────────────────────────────────────────────────────────── */
 @keyframes brikpanel-welcome-rise {
     from {
@@ -1419,5 +2328,156 @@ body.rtl .brikpanel-welcome-overlay .brikpanel-welcome-arrow {
     }
     50% {
         border-color: rgba(255, 255, 255, 0.75);
+    }
+}
+
+@keyframes brikpanel-welcome-left-in {
+    from {
+        margin-inline-start: -420px;
+    }
+    to {
+        margin-inline-start: 0;
+    }
+}
+
+@keyframes brikpanel-welcome-ba-a {
+    0%,
+    44% {
+        opacity: 1;
+    }
+    50%,
+    94% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes brikpanel-welcome-ba-b {
+    0%,
+    44% {
+        opacity: 0;
+    }
+    50%,
+    94% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes brikpanel-welcome-ba-wipe-a {
+    0%,
+    10% {
+        clip-path: inset(0 0 0 100%);
+    }
+    20%,
+    50% {
+        clip-path: inset(0 0 0 0);
+    }
+    50.5%,
+    100% {
+        clip-path: inset(0 0 0 100%);
+    }
+}
+
+@keyframes brikpanel-welcome-ba-wipe-b {
+    0%,
+    60% {
+        clip-path: inset(0 0 0 100%);
+    }
+    70%,
+    100% {
+        clip-path: inset(0 0 0 0);
+    }
+}
+
+@keyframes brikpanel-welcome-ba-line {
+    0%,
+    10% {
+        left: 100%;
+    }
+    20% {
+        left: 0%;
+    }
+    20.5%,
+    60% {
+        left: 100%;
+    }
+    70%,
+    100% {
+        left: 0%;
+    }
+}
+
+@keyframes brikpanel-welcome-ba-line-show {
+    0%,
+    10% {
+        opacity: 0;
+    }
+    11%,
+    19% {
+        opacity: 1;
+    }
+    20%,
+    60% {
+        opacity: 0;
+    }
+    61%,
+    69% {
+        opacity: 1;
+    }
+    70%,
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Each name stays while its half of the screen shows: WooCommerce until the
+   line covers it, BrikPanel from the moment the line uncovers it. */
+@keyframes brikpanel-welcome-ba-tag-before {
+    0%,
+    16% {
+        opacity: 1;
+    }
+    18%,
+    47% {
+        opacity: 0;
+    }
+    50%,
+    66% {
+        opacity: 1;
+    }
+    68%,
+    97% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes brikpanel-welcome-ba-tag-after {
+    0%,
+    13% {
+        opacity: 0;
+    }
+    15%,
+    44% {
+        opacity: 1;
+    }
+    48%,
+    63% {
+        opacity: 0;
+    }
+    65%,
+    94% {
+        opacity: 1;
+    }
+    98%,
+    100% {
+        opacity: 0;
     }
 }

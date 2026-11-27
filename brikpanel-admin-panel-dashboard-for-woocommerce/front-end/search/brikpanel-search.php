@@ -302,6 +302,12 @@ class Brikpanel_Pro_Search {
 		if ( ! self::user_can_search() ) {
 			return;
 		}
+		// BrikPanel switched off (or one feature only): the palette's files are
+		// swept, so its trigger would be a dead "Search BrikPanel + K" in
+		// WordPress's own bar.
+		if ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() ) {
+			return;
+		}
 		$admin_bar->add_menu(
 			array(
 				'id'    => 'brikpanel-search',

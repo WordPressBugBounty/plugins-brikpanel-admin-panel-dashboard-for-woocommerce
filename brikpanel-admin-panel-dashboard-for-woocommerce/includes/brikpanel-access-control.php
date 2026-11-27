@@ -1113,8 +1113,16 @@ add_filter( 'screen_options_show_screen', static function ( $show ) {
 foreach ( brikpanel_access_gated_options() as $brikpanel_access_opt ) {
 	add_filter(
 		'pre_option_' . $brikpanel_access_opt,
-		static function ( $pre ) {
-			return brikpanel_access_should_neutralize() ? 'no' : $pre;
+		static function ( $pre ) use ( $brikpanel_access_opt ) {
+			if ( ! brikpanel_access_should_neutralize() ) {
+				return $pre;
+			}
+			// A store that keeps one feature keeps that feature's own toggles
+			// (includes/brikpanel-one-feature.php).
+			if ( function_exists( 'brikpanel_one_feature_keeps_option' ) && brikpanel_one_feature_keeps_option( $brikpanel_access_opt ) ) {
+				return $pre;
+			}
+			return 'no';
 		},
 		10,
 		1
@@ -1228,9 +1236,12 @@ function brikpanel_access_hide_menu() {
 
 	global $menu, $submenu;
 
+	// The rows of the one feature a store keeps (includes/brikpanel-one-feature.php).
+	$keep = function_exists( 'brikpanel_one_feature_menu_keep' ) ? brikpanel_one_feature_menu_keep() : [];
+
 	if ( is_array( $menu ) ) {
 		foreach ( $menu as $i => $item ) {
-			if ( isset( $item[2] ) && strpos( (string) $item[2], 'brikpanel' ) === 0 ) {
+			if ( isset( $item[2] ) && strpos( (string) $item[2], 'brikpanel' ) === 0 && ! in_array( (string) $item[2], $keep, true ) ) {
 				unset( $menu[ $i ] );
 			}
 		}
@@ -1238,12 +1249,12 @@ function brikpanel_access_hide_menu() {
 
 	if ( is_array( $submenu ) ) {
 		foreach ( $submenu as $parent => $items ) {
-			if ( strpos( (string) $parent, 'brikpanel' ) === 0 ) {
+			if ( strpos( (string) $parent, 'brikpanel' ) === 0 && ! in_array( (string) $parent, $keep, true ) ) {
 				unset( $submenu[ $parent ] );
 				continue;
 			}
 			foreach ( $items as $j => $sub ) {
-				if ( isset( $sub[2] ) && strpos( (string) $sub[2], 'brikpanel' ) === 0 ) {
+				if ( isset( $sub[2] ) && strpos( (string) $sub[2], 'brikpanel' ) === 0 && ! in_array( (string) $sub[2], $keep, true ) ) {
 					unset( $submenu[ $parent ][ $j ] );
 				}
 			}

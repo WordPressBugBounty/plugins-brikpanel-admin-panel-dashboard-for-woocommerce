@@ -30,9 +30,12 @@
  * browser draws it. (The most used invoice plugin needs separate add-ons for
  * Arabic and for Chinese, Japanese and Korean fonts.)
  *
- * No setting (owner's decision, 6 Nov 2026): it is on for everyone who may edit
- * orders, and off with the rest of BrikPanel when the master switch or personal
- * mode hands the user the stock WooCommerce admin.
+ * No on/off setting (owner's decision, 6 Nov 2026): it is on for everyone who may
+ * edit orders, and off with the rest of BrikPanel when the master switch or
+ * personal mode hands the user the stock WooCommerce admin. What a summary shows
+ * is the store's choice since 26 Nov 2026 (wp.org, wiztechit): Settings ›
+ * BrikPanel › Orders › Order summary, every part on until the store unticks it,
+ * plus an optional footer line.
  *
  * @package BrikPanel
  */
@@ -63,6 +66,15 @@ const BRIKPANEL_ORDER_PRINT_MAX = 250;
  */
 const BRIKPANEL_ORDER_PRINT_CHILD_KEYS = array( '_bundled_by', '_woosb_parent_id', '_wooco_parent_id', '_composite_parent' );
 
+/**
+ * Settings › BrikPanel › Orders › Order summary. Each part is its own yes/no
+ * option named BRIKPANEL_ORDER_PRINT_PART_PREFIX . part; the footer is one text.
+ */
+const BRIKPANEL_ORDER_PRINT_PART_PREFIX = 'brikpanel_order_print_';
+const BRIKPANEL_ORDER_PRINT_PARTS       = array( 'phone', 'email', 'images', 'sku', 'pick', 'prices' );
+const BRIKPANEL_ORDER_PRINT_FOOTER_OPT  = 'brikpanel_order_print_footer';
+const BRIKPANEL_ORDER_PRINT_FOOTER_MAX  = 2000;
+
 // =============================================================================
 // GATES
 // =============================================================================
@@ -86,7 +98,8 @@ function brikpanel_order_print_user_can() {
  * @return bool
  */
 function brikpanel_order_print_active() {
-	if ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() ) {
+	// Off with BrikPanel, unless the store keeps only Orders (includes/brikpanel-one-feature.php).
+	if ( function_exists( 'brikpanel_neutralized_for' ) ? brikpanel_neutralized_for( 'orders' ) : ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() ) ) {
 		return false;
 	}
 	return brikpanel_order_print_user_can();
@@ -866,6 +879,207 @@ function brikpanel_order_print_extra_fields( WC_Order $order ) {
 	return $config ? (array) brikpanel_order_fields_collect_rows( $order, $config ) : array();
 }
 
+/**
+ * Which of the parts a store may leave out print on this page. Every part is
+ * on until the store unticks it, so a store that never opens the setting
+ * prints what it always printed.
+ *
+ * @return array<string, bool> Part => shown.
+ */
+function brikpanel_order_print_shown_parts() {
+	$shown = array();
+	foreach ( BRIKPANEL_ORDER_PRINT_PARTS as $part ) {
+		$shown[ $part ] = 'no' !== get_option( BRIKPANEL_ORDER_PRINT_PART_PREFIX . $part, 'yes' );
+	}
+	return $shown;
+}
+
+/**
+ * The store's own line at the bottom of every summary (a thank-you, a returns
+ * address), or ''.
+ *
+ * @return string Plain text, line breaks kept.
+ */
+function brikpanel_order_print_footer_text() {
+	return trim( (string) get_option( BRIKPANEL_ORDER_PRINT_FOOTER_OPT, '' ) );
+}
+
+/**
+ * Whether the billing and the shipping address are the same place. WooCommerce
+ * copies the billing address into the shipping one when the customer does not
+ * tick "Ship to a different address", so most orders carry it twice and the
+ * summary printed it twice (wp.org, wiztechit, 26 Nov 2026).
+ *
+ * Compared as printed, the store's address format and every plugin filter on
+ * it applied, without markup, spacing or case: a plugin that adds a line to
+ * one of them (a VAT number under billing) makes them different, and both
+ * print as before.
+ *
+ * @param string $billing  Formatted billing address (HTML, lines joined by <br/>).
+ * @param string $shipping Formatted shipping address.
+ * @return bool
+ */
+function brikpanel_order_print_same_address( $billing, $shipping ) {
+	$flat = static function ( $address ) {
+		$text = wp_strip_all_tags( (string) preg_replace( '/<br\s*\/?>/i', ' ', (string) $address ) );
+		$text = trim( (string) preg_replace( '/\s+/u', ' ', html_entity_decode( $text, ENT_QUOTES, 'UTF-8' ) ) );
+		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $text, 'UTF-8' ) : strtolower( $text );
+	};
+	$a = $flat( $billing );
+	return '' !== $a && $a === $flat( $shipping );
+}
+
+/**
+ * Whether two phone numbers are the same line: the orders list's own test
+ * (separators, country code and a trunk zero do not count), else as typed.
+ *
+ * @param WC_Order $order    Order.
+ * @param string   $billing  Billing phone.
+ * @param string   $shipping Shipping phone.
+ * @return bool
+ */
+function brikpanel_order_print_same_phone( WC_Order $order, $billing, $shipping ) {
+	if ( function_exists( 'brikpanel_orders_compact_same_phone' ) ) {
+		return brikpanel_orders_compact_same_phone( $billing, (string) $order->get_billing_country(), $shipping, (string) $order->get_shipping_country() );
+	}
+	return $billing === $shipping;
+}
+
+/**
+ * A code (a SKU) that may break only at its own separators (AE-30418-BLK-XL),
+ * never inside a number: a long product name squeezed the SKU column and split
+ * 8861661 over three lines (wp.org, wiztechit, 26 Nov 2026). The same split as
+ * the supplier codes on the order page (Brikpanel_Vendor_Order_Items::breakable()).
+ *
+ * @param string $code Code.
+ * @return string Escaped HTML; print it through wp_kses() with <wbr> allowed.
+ */
+function brikpanel_order_print_breakable( $code ) {
+	$parts = preg_split( '/(?<=[\-_.\/])/', (string) $code, -1, PREG_SPLIT_NO_EMPTY );
+	return implode( '<wbr>', array_map( 'esc_html', (array) $parts ) );
+}
+
+// =============================================================================
+// SETTINGS (Settings › BrikPanel › Orders › Order summary)
+// =============================================================================
+
+/**
+ * The parts a store may leave out, in the order the setting lists them.
+ *
+ * @return array<string, string> Part => label.
+ */
+function brikpanel_order_print_part_labels() {
+	return array(
+		'phone'  => __( 'Customer phone number', 'brikpanel' ),
+		'email'  => __( 'Customer email address', 'brikpanel' ),
+		'images' => __( 'Product images', 'brikpanel' ),
+		'sku'    => __( 'SKU', 'brikpanel' ),
+		'pick'   => __( 'Tick boxes for picking', 'brikpanel' ),
+		'prices' => __( 'Prices and totals', 'brikpanel' ),
+	);
+}
+
+/**
+ * The card belongs to the Orders section.
+ *
+ * @param array $map Title id => section id.
+ * @return array
+ */
+function brikpanel_order_print_settings_title_map( $map ) {
+	if ( is_array( $map ) ) {
+		$map['brk_order_print_title'] = 'orders';
+	}
+	return $map;
+}
+add_filter( 'brikpanel_settings_title_section_map', 'brikpanel_order_print_settings_title_map' );
+
+/**
+ * The "Order summary" card, right under "Order custom fields": those fields
+ * print on the summary too.
+ *
+ * @param array $fields Settings fields.
+ * @return array
+ */
+function brikpanel_order_print_settings_fields( $fields ) {
+	if ( ! is_array( $fields ) ) {
+		return $fields;
+	}
+
+	$block = array(
+		array(
+			'name' => __( 'Order summary', 'brikpanel' ),
+			'type' => 'title',
+			'id'   => 'brk_order_print_title',
+			'desc' => __( 'Choose what the printed order summary shows. Print it from the orders list or from an order\'s page.', 'brikpanel' ),
+		),
+	);
+
+	$labels = brikpanel_order_print_part_labels();
+	$last   = count( $labels ) - 1;
+	$index  = 0;
+	foreach ( $labels as $part => $label ) {
+		$field = array(
+			'id'            => BRIKPANEL_ORDER_PRINT_PART_PREFIX . $part,
+			'type'          => 'checkbox',
+			'desc'          => $label,
+			'default'       => 'yes',
+			'checkboxgroup' => 0 === $index ? 'start' : ( $last === $index ? 'end' : '' ),
+		);
+		if ( 0 === $index ) {
+			$field['name'] = __( 'Show on the summary', 'brikpanel' );
+		}
+		$block[] = $field;
+		++$index;
+	}
+
+	$block[] = array(
+		'name'        => __( 'Footer text', 'brikpanel' ),
+		'id'          => BRIKPANEL_ORDER_PRINT_FOOTER_OPT,
+		'type'        => 'textarea',
+		'css'         => 'min-height:72px;width:100%;max-width:520px;',
+		'desc'        => __( 'Printed at the bottom of every order summary, for example a thank-you note or your returns address. Leave it empty to print nothing.', 'brikpanel' ),
+		'desc_tip'    => false,
+		'placeholder' => __( 'Thank you for shopping with us!', 'brikpanel' ),
+		'default'     => '',
+	);
+	$block[] = array(
+		'type' => 'sectionend',
+		'id'   => 'brk_order_print_title',
+	);
+
+	foreach ( array_values( $fields ) as $position => $field ) {
+		if ( isset( $field['type'], $field['id'] ) && 'sectionend' === $field['type'] && 'brk_order_fields_title' === $field['id'] ) {
+			$fields = array_values( $fields );
+			array_splice( $fields, $position + 1, 0, $block );
+			return $fields;
+		}
+	}
+	return array_merge( $fields, $block );
+}
+add_filter( 'brikpanel_settings_fields', 'brikpanel_order_print_settings_fields', 9 );
+
+/**
+ * The footer is kept as plain text: no markup, line breaks kept (as \n; a
+ * browser posts a textarea's lines as \r\n), at most
+ * BRIKPANEL_ORDER_PRINT_FOOTER_MAX characters.
+ *
+ * @param mixed $value     Value WooCommerce already cleaned.
+ * @param array $option    The field.
+ * @param mixed $raw_value Value as posted.
+ * @return string
+ */
+function brikpanel_order_print_sanitize_footer( $value, $option = array(), $raw_value = null ) {
+	unset( $option );
+	if ( is_scalar( $raw_value ) ) {
+		$text = (string) $raw_value;
+	} else {
+		$text = is_scalar( $value ) ? (string) $value : '';
+	}
+	$text = str_replace( array( "\r\n", "\r" ), "\n", $text );
+	return trim( mb_substr( sanitize_textarea_field( $text ), 0, BRIKPANEL_ORDER_PRINT_FOOTER_MAX ) );
+}
+add_filter( 'woocommerce_admin_settings_sanitize_option_' . BRIKPANEL_ORDER_PRINT_FOOTER_OPT, 'brikpanel_order_print_sanitize_footer', 10, 3 );
+
 // =============================================================================
 // THE DOCUMENT
 // =============================================================================
@@ -1055,16 +1269,21 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 	$number  = (string) $order->get_order_number();
 	$created = $order->get_date_created();
 	$date    = $created ? wp_date( brikpanel_datetime_format(), $created->getTimestamp() ) : '';
+	$show    = brikpanel_order_print_shown_parts();
 
 	$billing  = (string) $order->get_formatted_billing_address();
 	$shipping = $order->has_shipping_address() ? (string) $order->get_formatted_shipping_address() : '';
-	$phone    = trim( (string) $order->get_billing_phone() );
-	$email    = trim( (string) $order->get_billing_email() );
-	$ship_tel = is_callable( array( $order, 'get_shipping_phone' ) ) ? trim( (string) $order->get_shipping_phone() ) : '';
-	if ( $ship_tel === $phone ) {
+	// The same place twice prints once, under one heading (wp.org, wiztechit, 26 Nov 2026).
+	$one_address = '' !== $shipping && brikpanel_order_print_same_address( $billing, $shipping );
+	$phone       = $show['phone'] ? trim( (string) $order->get_billing_phone() ) : '';
+	$email       = $show['email'] ? trim( (string) $order->get_billing_email() ) : '';
+	$ship_tel    = $show['phone'] && is_callable( array( $order, 'get_shipping_phone' ) ) ? trim( (string) $order->get_shipping_phone() ) : '';
+	if ( '' !== $ship_tel && '' !== $phone && brikpanel_order_print_same_phone( $order, $phone, $ship_tel ) ) {
 		$ship_tel = '';
 	}
-	$extra = brikpanel_order_print_extra_fields( $order );
+	// One address block: a different shipping phone joins its contact lines.
+	$contact = array_values( array_filter( array( $phone, $one_address ? $ship_tel : '', $email ), 'strlen' ) );
+	$extra   = brikpanel_order_print_extra_fields( $order );
 
 	$details = array_filter(
 		array(
@@ -1076,8 +1295,9 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 	);
 
 	$lines  = brikpanel_order_print_lines( $order );
-	$totals = brikpanel_order_print_totals( $order );
+	$totals = $show['prices'] ? brikpanel_order_print_totals( $order ) : array();
 	$note   = trim( (string) $order->get_customer_note() );
+	$footer = brikpanel_order_print_footer_text();
 	$kicker = __( 'Order summary', 'brikpanel' );
 	?>
 	<article class="brikpanel-slip" aria-label="<?php echo esc_attr( $kicker . ' #' . $number ); ?>">
@@ -1104,7 +1324,7 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 
 		<div class="brikpanel-slip__parties">
 			<section class="brikpanel-slip__party">
-				<h2 class="brikpanel-slip__label"><?php echo esc_html__( 'Billing address', 'brikpanel' ); ?></h2>
+				<h2 class="brikpanel-slip__label"><?php echo esc_html( $one_address ? __( 'Billing and shipping address', 'brikpanel' ) : __( 'Billing address', 'brikpanel' ) ); ?></h2>
 				<?php if ( '' !== $billing ) : ?>
 					<address class="brikpanel-slip__address"><?php echo wp_kses( $billing, array( 'br' => array() ) ); ?></address>
 				<?php endif; ?>
@@ -1118,19 +1338,16 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 						<?php endforeach; ?>
 					</dl>
 				<?php endif; ?>
-				<?php if ( '' !== $phone || '' !== $email ) : ?>
+				<?php if ( $contact ) : ?>
 					<p class="brikpanel-slip__contact">
-						<?php if ( '' !== $phone ) : ?>
-							<bdi><?php echo esc_html( $phone ); ?></bdi><br>
-						<?php endif; ?>
-						<?php if ( '' !== $email ) : ?>
-							<bdi><?php echo esc_html( $email ); ?></bdi>
-						<?php endif; ?>
+						<?php foreach ( $contact as $position => $line ) : ?>
+							<?php if ( $position > 0 ) : ?><br><?php endif; ?><bdi><?php echo esc_html( $line ); ?></bdi>
+						<?php endforeach; ?>
 					</p>
 				<?php endif; ?>
 			</section>
 
-			<?php if ( '' !== $shipping ) : ?>
+			<?php if ( '' !== $shipping && ! $one_address ) : ?>
 				<section class="brikpanel-slip__party">
 					<h2 class="brikpanel-slip__label"><?php echo esc_html__( 'Shipping address', 'brikpanel' ); ?></h2>
 					<address class="brikpanel-slip__address"><?php echo wp_kses( $shipping, array( 'br' => array() ) ); ?></address>
@@ -1158,12 +1375,18 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 		<table class="brikpanel-slip__items">
 			<thead>
 				<tr>
-					<th scope="col" class="brikpanel-slip__pick"><span class="brikpanel-slip__sr"><?php echo esc_html_x( 'Picked', 'order summary column for ticking off picked items', 'brikpanel' ); ?></span></th>
+					<?php if ( $show['pick'] ) : ?>
+						<th scope="col" class="brikpanel-slip__pick"><span class="brikpanel-slip__sr"><?php echo esc_html_x( 'Picked', 'order summary column for ticking off picked items', 'brikpanel' ); ?></span></th>
+					<?php endif; ?>
 					<th scope="col" class="brikpanel-slip__product-col"><?php echo esc_html__( 'Product', 'brikpanel' ); ?></th>
-					<th scope="col" class="brikpanel-slip__sku-col"><?php echo esc_html__( 'SKU', 'brikpanel' ); ?></th>
+					<?php if ( $show['sku'] ) : ?>
+						<th scope="col" class="brikpanel-slip__sku-col"><?php echo esc_html__( 'SKU', 'brikpanel' ); ?></th>
+					<?php endif; ?>
 					<th scope="col" class="brikpanel-slip__num"><?php echo esc_html__( 'Quantity', 'brikpanel' ); ?></th>
-					<th scope="col" class="brikpanel-slip__num brikpanel-slip__price-col"><?php echo esc_html__( 'Price', 'brikpanel' ); ?></th>
-					<th scope="col" class="brikpanel-slip__num"><?php echo esc_html__( 'Total', 'brikpanel' ); ?></th>
+					<?php if ( $show['prices'] ) : ?>
+						<th scope="col" class="brikpanel-slip__num brikpanel-slip__price-col"><?php echo esc_html__( 'Price', 'brikpanel' ); ?></th>
+						<th scope="col" class="brikpanel-slip__num"><?php echo esc_html__( 'Total', 'brikpanel' ); ?></th>
+					<?php endif; ?>
 				</tr>
 			</thead>
 			<tbody>
@@ -1173,12 +1396,14 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 					$class = 'brikpanel-slip__line' . ( $line['child'] ? ' is-child' : '' ) . ( $line['refunded'] > 0 && $left <= 0 ? ' is-refunded' : '' );
 					?>
 					<tr class="<?php echo esc_attr( $class ); ?>">
-						<td class="brikpanel-slip__pick"><span class="brikpanel-slip__box" aria-hidden="true"></span></td>
+						<?php if ( $show['pick'] ) : ?>
+							<td class="brikpanel-slip__pick"><span class="brikpanel-slip__box" aria-hidden="true"></span></td>
+						<?php endif; ?>
 						<td class="brikpanel-slip__product-col">
 							<div class="brikpanel-slip__product">
-								<?php if ( '' !== $line['image'] ) : ?>
+								<?php if ( $show['images'] && '' !== $line['image'] ) : ?>
 									<img class="brikpanel-slip__thumb" src="<?php echo esc_url( $line['image'] ); ?>" alt="" width="44" height="44" loading="eager">
-								<?php else : ?>
+								<?php elseif ( $show['images'] ) : ?>
 									<span class="brikpanel-slip__thumb is-empty" aria-hidden="true"></span>
 								<?php endif; ?>
 								<div class="brikpanel-slip__product-text">
@@ -1186,13 +1411,15 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 									<?php if ( $line['options'] ) : ?>
 										<p class="brikpanel-slip__options"><bdi><?php echo esc_html( implode( ' · ', $line['options'] ) ); ?></bdi></p>
 									<?php endif; ?>
-									<?php if ( '' !== $line['sku'] ) : ?>
-										<p class="brikpanel-slip__sku-inline"><bdi><?php echo esc_html( $line['sku'] ); ?></bdi></p>
+									<?php if ( $show['sku'] && '' !== $line['sku'] ) : ?>
+										<p class="brikpanel-slip__sku-inline"><bdi><?php echo wp_kses( brikpanel_order_print_breakable( $line['sku'] ), array( 'wbr' => array() ) ); ?></bdi></p>
 									<?php endif; ?>
 								</div>
 							</div>
 						</td>
-						<td class="brikpanel-slip__sku-col"><bdi><?php echo esc_html( $line['sku'] ); ?></bdi></td>
+						<?php if ( $show['sku'] ) : ?>
+							<td class="brikpanel-slip__sku-col"><bdi><?php echo wp_kses( brikpanel_order_print_breakable( $line['sku'] ), array( 'wbr' => array() ) ); ?></bdi></td>
+						<?php endif; ?>
 						<td class="brikpanel-slip__num brikpanel-slip__qty">
 							<strong><?php echo esc_html( brikpanel_order_print_qty( $left ) ); ?></strong>
 							<?php if ( $line['refunded'] > 0 ) : ?>
@@ -1210,36 +1437,48 @@ function brikpanel_order_print_render_sheet( WC_Order $order, array $store ) {
 								</small>
 							<?php endif; ?>
 						</td>
-						<td class="brikpanel-slip__num brikpanel-slip__price-col"><?php echo wp_kses_post( $line['unit'] ); ?></td>
-						<td class="brikpanel-slip__num"><?php echo wp_kses_post( $line['total'] ); ?></td>
+						<?php if ( $show['prices'] ) : ?>
+							<td class="brikpanel-slip__num brikpanel-slip__price-col"><?php echo wp_kses_post( $line['unit'] ); ?></td>
+							<td class="brikpanel-slip__num"><?php echo wp_kses_post( $line['total'] ); ?></td>
+						<?php endif; ?>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
 		</table>
 
-		<div class="brikpanel-slip__bottom">
-			<?php if ( '' !== $note ) : ?>
-				<section class="brikpanel-slip__note">
-					<h2 class="brikpanel-slip__label"><?php echo esc_html__( 'Customer note', 'brikpanel' ); ?></h2>
-					<p><?php echo nl2br( esc_html( $note ) ); ?></p>
-				</section>
-			<?php endif; ?>
-			<table class="brikpanel-slip__totals">
-				<tbody>
-					<?php foreach ( $totals as $row ) : ?>
-						<tr class="<?php echo esc_attr( ! empty( $row['total'] ) ? 'brikpanel-slip__sum is-total' : 'brikpanel-slip__sum' ); ?>">
-							<th scope="row"><bdi><?php echo esc_html( $row['label'] ); ?></bdi></th>
-							<td>
-								<?php echo wp_kses_post( $row['value'] ); ?>
-								<?php if ( ! empty( $row['note'] ) ) : ?>
-									<small><?php echo wp_kses_post( $row['note'] ); ?></small>
-								<?php endif; ?>
-							</td>
-						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
+		<?php if ( '' !== $note || $totals ) : ?>
+			<div class="brikpanel-slip__bottom">
+				<?php if ( '' !== $note ) : ?>
+					<section class="brikpanel-slip__note">
+						<h2 class="brikpanel-slip__label"><?php echo esc_html__( 'Customer note', 'brikpanel' ); ?></h2>
+						<p><?php echo nl2br( esc_html( $note ) ); ?></p>
+					</section>
+				<?php endif; ?>
+				<?php if ( $totals ) : ?>
+					<table class="brikpanel-slip__totals">
+						<tbody>
+							<?php foreach ( $totals as $row ) : ?>
+								<tr class="<?php echo esc_attr( ! empty( $row['total'] ) ? 'brikpanel-slip__sum is-total' : 'brikpanel-slip__sum' ); ?>">
+									<th scope="row"><bdi><?php echo esc_html( $row['label'] ); ?></bdi></th>
+									<td>
+										<?php echo wp_kses_post( $row['value'] ); ?>
+										<?php if ( ! empty( $row['note'] ) ) : ?>
+											<small><?php echo wp_kses_post( $row['note'] ); ?></small>
+										<?php endif; ?>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+
+		<?php if ( '' !== $footer ) : ?>
+			<footer class="brikpanel-slip__footer">
+				<p dir="auto"><?php echo nl2br( esc_html( $footer ) ); ?></p>
+			</footer>
+		<?php endif; ?>
 	</article>
 	<?php
 }

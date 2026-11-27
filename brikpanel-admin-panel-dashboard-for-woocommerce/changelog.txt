@@ -2,6 +2,14 @@
 
 This file contains the full release history of BrikPanel. The latest releases are kept in readme.txt; older versions are archived here.
 
+= 3.3.58 (2026-11-26) =
+* New: **One feature or the full panel, from the first setup.** The welcome tour asks what you installed BrikPanel for. Keep the full panel, or keep just one feature, such as abandoned cart recovery or Google Sheets sync, with the rest of WordPress as it was. The "Full panel" button in the WordPress top bar switches at any time.
+* New: **Choose what the order summary prints.** "Show on the summary" turns the customer's phone and email, product images, SKUs, the tick boxes, and prices and totals on or off, and "Footer text" adds your own note at the bottom. Both are in WooCommerce → Settings → BrikPanel → Orders.
+* New: **The dashboard asks about orders it does not count.** When orders of the chosen dates sit in a status such as "On hold", one line above the store cards asks whether they are sales. One tap counts them, or leaves them out for good.
+* Fix: **Shipped orders stay in your figures.** Shipping statuses that other plugins add, such as "Shipped" or "Delivered", now count in Revenue, Orders and Profit once their orders turn out to be sales. Statuses that mean the order did not go through are left out, and a status you remove from the list is never added back.
+* Fix: **The order summary prints a shared address once.** When billing and shipping are the same, it prints under "Billing and shipping address". A SKU next to a long product name no longer breaks in the middle.
+* Fix: **Nothing of BrikPanel shows while it is switched off.** The WhatsApp column, the Orders explorer link and the "Search BrikPanel" item no longer appear on WooCommerce's own screens.
+
 = 3.3.57 (2026-11-24) =
 * New: **Product categories in Google Sheets.** The Products tab has a new "Categories" column and the Orders tab a "Product categories" column. A variation row shows its parent product's categories.
 * New: **Publish or draft many products at once.** The Bulk update window has a new Status group with "Publish" and "Set as draft", for selected products, a category or the whole store.

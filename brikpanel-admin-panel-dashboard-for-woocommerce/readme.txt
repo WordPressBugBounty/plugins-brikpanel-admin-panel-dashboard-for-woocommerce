@@ -4,7 +4,7 @@ Donate link: https://donate.stripe.com/14AdR9ghJcxKaAqdzbc3m00
 Tags: woocommerce dashboard, abandoned cart, cart abandonment, woocommerce bulk editor, order export
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 3.3.57
+Stable tag: 3.3.58
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -519,6 +519,14 @@ BrikPanel, written as one word and without a "c". It is pronounced like "brick p
 == Changelog ==
 The full release history of every version is in changelog.txt, included with the plugin. The most recent releases are listed below.
 
+= 3.3.58 (2026-11-26) =
+* New: **One feature or the full panel, from the first setup.** The welcome tour asks what you installed BrikPanel for. Keep the full panel, or keep just one feature, such as abandoned cart recovery or Google Sheets sync, with the rest of WordPress as it was. The "Full panel" button in the WordPress top bar switches at any time.
+* New: **Choose what the order summary prints.** "Show on the summary" turns the customer's phone and email, product images, SKUs, the tick boxes, and prices and totals on or off, and "Footer text" adds your own note at the bottom. Both are in WooCommerce → Settings → BrikPanel → Orders.
+* New: **The dashboard asks about orders it does not count.** When orders of the chosen dates sit in a status such as "On hold", one line above the store cards asks whether they are sales. One tap counts them, or leaves them out for good.
+* Fix: **Shipped orders stay in your figures.** Shipping statuses that other plugins add, such as "Shipped" or "Delivered", now count in Revenue, Orders and Profit once their orders turn out to be sales. Statuses that mean the order did not go through are left out, and a status you remove from the list is never added back.
+* Fix: **The order summary prints a shared address once.** When billing and shipping are the same, it prints under "Billing and shipping address". A SKU next to a long product name no longer breaks in the middle.
+* Fix: **Nothing of BrikPanel shows while it is switched off.** The WhatsApp column, the Orders explorer link and the "Search BrikPanel" item no longer appear on WooCommerce's own screens.
+
 = 3.3.57 (2026-11-24) =
 * New: **Product categories in Google Sheets.** The Products tab has a new "Categories" column and the Orders tab a "Product categories" column. A variation row shows its parent product's categories.
 * New: **Publish or draft many products at once.** The Bulk update window has a new Status group with "Publish" and "Set as draft", for selected products, a category or the whole store.
@@ -554,11 +562,3 @@ The full release history of every version is in changelog.txt, included with the
 * Fix: **Marketplace best sellers in your store's currency.** Product and category amounts were added up in each order's own currency; they are now converted like the Sales figure. Products are listed by sales instead of units sold, with the units under each.
 * Tweak: **No Chart.js on the dashboard.** The old marketplace pie was the last chart that needed it, so stores with BrikMarket load one file less too.
 * Fix: **BrikPanel on MailPoet and FluentCRM pages.** MailPoet removes other plugins' stylesheets and scripts from its pages, and FluentCRM their scripts, so BrikPanel's side menu lost its look and the top bar's menus and search stopped working there. BrikPanel now adds its own folder to their allow lists. On phones, MailPoet's header sits right under the top bar.
-
-= 3.3.52 (2026-11-14) =
-* New: **Customer returns.** Customers ask for a return from My Account, or as a guest with their order number and email. They choose the items and quantities, variations too, a reason and up to 5 photos, which are saved without their location data. It is off until you turn it on in WooCommerce → Settings → BrikPanel → Returns.
-* New: **A Returns page under Orders.** Approve or reject a request and mark the items as received. The refund uses WooCommerce's own refund, to the card when the payment method supports it, and puts the items back in stock. Waiting requests are counted in the menu and in "Needs attention"; the order screen has a Returns box and the orders list a badge.
-* New: **EU withdrawal button.** A setting turns the button into the EU's "Withdraw from contract here", with a separate confirm step. The customer gets an email with their statement and the date and time they sent it.
-* New: **Four return emails.** New request for you; request received, approved and rejected for the customer. Edit them in WooCommerce → Settings → Emails.
-* Fix: **Numbers no longer hide in closed sidebar menus.** A closed menu item shows the total of the numbers in its list, such as Dashboard for Updates or Products for Reviews. "Site management" and your own headings show the total of their items while closed. Open one and each number is back on its own row.
-* Fix: **A long customer name no longer pushes Total off the orders list.** When the table runs out of room, the customer column gives way first and the name ends with "…". Point at it to see the full name. Names that fit look exactly as before.

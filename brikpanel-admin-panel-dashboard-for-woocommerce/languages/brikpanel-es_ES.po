@@ -11322,8 +11322,8 @@ msgid "Kept in Revenue (not in Expenses)"
 msgstr "Dentro de los ingresos (no en los gastos)"
 
 #: front-end/orders/brikpanel-orders.php:713
-msgid "Decide which order statuses your analytics count. This drives every figure: Revenue, Orders, Average Order Value, Profit, Customer Lifetime Value and the order-rate breakdown. If you use a shipment-tracking or returns plugin that adds custom statuses (for example \"Partially shipped\", \"Delivered\" or \"Partially refunded\"), add them here so those orders stop being left out of your numbers."
-msgstr "Decide qué estados de pedido cuentan en tus analíticas. Esto determina todas las cifras: ingresos, pedidos, valor medio del pedido, beneficio, valor de vida del cliente y el desglose de la tasa de pedidos. Si usas un plugin de seguimiento de envíos o de devoluciones que añade estados personalizados (por ejemplo \"Enviado parcialmente\", \"Entregado\" o \"Reembolsado parcialmente\"), añádelos aquí para que esos pedidos dejen de quedar fuera de tus cifras."
+msgid "Decide which order statuses your analytics count. This drives every figure: Revenue, Orders, Average Order Value, Profit, Customer Lifetime Value and the order-rate breakdown. A shipping status that another plugin adds (for example \"Shipped\" or \"Delivered\") is added below by itself once its orders turn out to be paid. Add any other status that means a sale yourself, so those orders stop being left out of your numbers."
+msgstr "Decide qué estados de pedido cuentan en tus analíticas. Esto determina todas las cifras: ingresos, pedidos, valor medio del pedido, beneficio, valor de vida del cliente y el desglose de la tasa de pedidos. Un estado de envío que añade otro plugin (por ejemplo \"Enviado\" o \"Entregado\") se añade abajo por sí solo cuando se ve que sus pedidos están pagados. Añade tú mismo cualquier otro estado que signifique una venta, para que esos pedidos dejen de quedar fuera de tus cifras."
 
 #: front-end/orders/brikpanel-orders.php:716
 msgid "Statuses counted as valid sales"
@@ -11332,6 +11332,10 @@ msgstr "Estados contados como ventas válidas"
 #: front-end/orders/brikpanel-orders.php:720
 msgid "Orders in these statuses are counted as real, completed sales across Revenue, Orders, AOV, Profit and Customer Lifetime Value. Defaults to Processing and Completed, which is what WooCommerce itself treats as paid. Leave empty to keep the default."
 msgstr "Los pedidos en estos estados se cuentan como ventas reales y completadas en los ingresos, los pedidos, el AOV, el beneficio y el valor de vida del cliente. Por defecto son En proceso y Completado, que es lo que el propio WooCommerce trata como pagado. Déjalo vacío para mantener el valor predeterminado."
+
+#: front-end/orders/brikpanel-orders.php:733
+msgid "While you have not changed this list, BrikPanel adds a shipping status from another plugin to it by itself once its orders turn out to be paid. A status you remove is never added again."
+msgstr "Mientras no cambies esta lista, BrikPanel le añade por sí solo un estado de envío de otro plugin cuando se ve que sus pedidos están pagados. Un estado que quites no se vuelve a añadir nunca."
 
 #: front-end/orders/brikpanel-orders.php:726
 msgid "Statuses counted as refunds"
@@ -22599,3 +22603,292 @@ msgid ""
 msgstr ""
 "El ID de producto es obligatorio para deduplicar las filas. Las columnas "
 "marcadas como bidireccionales vuelven a WooCommerce."
+
+#. translators: %s: the one BrikPanel feature the store chose, e.g. "Abandoned
+#. cart recovery".
+#: front-end/master-switch/brikpanel-master-switch.php:207
+#, php-format
+msgid "BrikPanel is on for the whole store. Switch off to go back to just %s."
+msgstr ""
+"BrikPanel está activado para toda la tienda. Desactívalo para volver a usar "
+"solo %s."
+
+#: front-end/master-switch/brikpanel-master-switch.php:272
+msgid "Full panel"
+msgstr "Panel completo"
+
+#. translators: %s: the one BrikPanel feature the store uses, e.g. "Abandoned
+#. cart recovery".
+#: front-end/master-switch/brikpanel-master-switch.php:278
+#, php-format
+msgid ""
+"BrikPanel is on for %s only. Click to turn on the full BrikPanel admin for "
+"your store."
+msgstr ""
+"BrikPanel solo está activado para %s. Haz clic para activar la administración"
+" completa de BrikPanel en tu tienda."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:138
+msgid "Carts left at checkout, and the ones that came back"
+msgstr "Carritos abandonados en el pago y los que volvieron"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:140
+msgid "Edit price and stock right in the list"
+msgstr "Edita precio y stock directamente en la lista"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:143
+msgid "Google and Meta spend, and your true ROAS"
+msgstr "Gasto en Google y Meta, y tu ROAS real"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:144
+msgid "Suppliers and stock orders"
+msgstr "Proveedores y pedidos de stock"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:145
+msgid "Your coupons in one clear list"
+msgstr "Tus cupones en una lista clara"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:166
+#: front-end/welcome/brikpanel-welcome.php:410
+msgctxt "welcome tour button"
+msgid "Pick one"
+msgstr "Elige una"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:167
+msgctxt "welcome tour button"
+msgid "Pick a feature"
+msgstr "Elige una función"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:168
+msgctxt "welcome tour button"
+msgid "Continue"
+msgstr "Continuar"
+
+#. translators: %s: screen name, e.g. "Abandoned Carts".
+#: front-end/welcome/brikpanel-welcome-intent.php:170
+#, php-format
+msgctxt "welcome tour button"
+msgid "Open %s"
+msgstr "Abrir %s"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:171
+msgctxt "welcome tour button"
+msgid "Close"
+msgstr "Cerrar"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:172
+msgid "Your choice was not saved. Please try again."
+msgstr "Tu elección no se guardó. Inténtalo de nuevo."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:262
+msgctxt "welcome tour question, asked right after installing"
+msgid "What did you install BrikPanel for?"
+msgstr "¿Para qué instalaste BrikPanel?"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:263
+msgid "You can switch any time."
+msgstr "Puedes cambiar cuando quieras."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:272
+msgid "The full panel"
+msgstr "El panel completo"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:273
+msgid "A new, faster admin for your whole store."
+msgstr "Una administración nueva y más rápida para toda tu tienda."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:275
+msgid "Dashboard, orders, products and more"
+msgstr "Dashboard, pedidos, productos y más"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:278
+msgid "See it bigger"
+msgstr "Verlo más grande"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:288
+#: front-end/welcome/brikpanel-welcome-intent.php:312
+msgid "Just one feature"
+msgstr "Solo una función"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:289
+msgid "Your WordPress admin stays as it is."
+msgstr "Tu administración de WordPress se queda como está."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:291
+msgid "Full panel any time, in one click"
+msgstr "El panel completo cuando quieras, con un clic"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:314
+msgid "Which feature do you need?"
+msgstr "¿Qué función necesitas?"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:315
+msgid "Only this one turns on."
+msgstr "Solo se activa esa."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:317
+msgid "Everything else in your admin stays exactly as it is."
+msgstr "Todo lo demás en tu administración se queda exactamente igual."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:332
+msgid "What the full panel changes"
+msgstr "Lo que cambia el panel completo"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:333
+msgid "Screen"
+msgstr "Pantalla"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:339
+msgid "WooCommerce's own screen"
+msgstr "La pantalla propia de WooCommerce"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:340
+msgid "The same screen with BrikPanel"
+msgstr "La misma pantalla con BrikPanel"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:344
+msgid "Drag to compare WooCommerce and BrikPanel"
+msgstr "Arrastra para comparar WooCommerce y BrikPanel"
+
+#: front-end/welcome/brikpanel-welcome-intent.php:347
+msgid "Drag the line to compare."
+msgstr "Arrastra la línea para comparar."
+
+#: front-end/welcome/brikpanel-welcome-intent.php:350
+msgid "Use the full panel"
+msgstr "Usar el panel completo"
+
+#. translators: Short handwritten note in a drawing of WordPress's admin,
+#. pointing at the one menu row BrikPanel adds. Two to four words.
+#: front-end/welcome/brikpanel-welcome-sketches.php:74
+msgctxt "welcome tour handwritten note"
+msgid "just this one"
+msgstr "solo esta"
+
+#. translators: %s: the one BrikPanel feature the store picked, e.g. "Abandoned
+#. cart recovery".
+#: front-end/welcome/brikpanel-welcome.php:287
+#, php-format
+msgid ""
+"BrikPanel is on for %s only. The rest of your admin stays as it is, and the "
+"full panel is one click away in the top bar."
+msgstr ""
+"BrikPanel solo está activado para %s. El resto de tu administración se queda "
+"como está, y el panel completo está a un clic en la barra superior."
+
+#: front-end/welcome/brikpanel-welcome.php:371
+msgid ""
+"Your WordPress admin stays as it is. Open your feature below; the full panel "
+"is one click away in the top bar."
+msgstr ""
+"Tu administración de WordPress se queda como está. Abre tu función abajo; el "
+"panel completo está a un clic en la barra superior."
+
+#: includes/brikpanel-module-pages.php:407
+msgid "Part of the full panel"
+msgstr "Parte del panel completo"
+
+#. translators: %s: screen name, e.g. "Suppliers".
+#: includes/brikpanel-module-pages.php:435
+#, php-format
+msgid "%s is part of the full panel"
+msgstr "%s forma parte del panel completo"
+
+#: includes/brikpanel-module-pages.php:436
+msgid "This page is part of the full panel"
+msgstr "Esta página forma parte del panel completo"
+
+#. translators: %s: the one BrikPanel feature the store uses, e.g. "Abandoned
+#. cart recovery".
+#: includes/brikpanel-module-pages.php:440
+#, php-format
+msgid ""
+"BrikPanel runs just %s on this store. Turn on the full panel to open this "
+"page."
+msgstr ""
+"En esta tienda, BrikPanel solo funciona para %s. Activa el panel completo "
+"para abrir esta página."
+
+#. translators: %s: the one BrikPanel feature the store uses, e.g. "Abandoned
+#. cart recovery".
+#: includes/brikpanel-module-pages.php:442
+#, php-format
+msgid ""
+"BrikPanel runs just %s on this store. Ask your store administrator to turn on"
+" the full panel."
+msgstr ""
+"En esta tienda, BrikPanel solo funciona para %s. Pide al administrador de tu "
+"tienda que active el panel completo."
+
+#: includes/brikpanel-module-pages.php:449
+msgid "Turn on the full panel"
+msgstr "Activar el panel completo"
+
+#. translators: %s: screen name, e.g. "Abandoned Carts".
+#: includes/brikpanel-module-pages.php:459
+#, php-format
+msgid "Open %s"
+msgstr "Abrir %s"
+
+#: front-end/orders/brikpanel-order-print.php:1325
+msgid "Billing and shipping address"
+msgstr "Dirección de facturación y envío"
+
+#: front-end/orders/brikpanel-order-print.php:1013
+msgid "Choose what the printed order summary shows. Print it from the orders list or from an order's page."
+msgstr "Elige qué muestra el resumen del pedido impreso. Imprímelo desde la lista de pedidos o desde la página de un pedido."
+
+#: front-end/orders/brikpanel-order-print.php:974
+msgid "Customer email address"
+msgstr "Correo electrónico del cliente"
+
+#: front-end/orders/brikpanel-order-print.php:973
+msgid "Customer phone number"
+msgstr "Teléfono del cliente"
+
+#: front-end/orders/brikpanel-order-print.php:1036
+msgid "Footer text"
+msgstr "Texto del pie"
+
+#: front-end/orders/brikpanel-order-print.php:978
+msgid "Prices and totals"
+msgstr "Precios y totales"
+
+#: front-end/orders/brikpanel-order-print.php:1040
+msgid "Printed at the bottom of every order summary, for example a thank-you note or your returns address. Leave it empty to print nothing."
+msgstr "Se imprime al pie de cada resumen del pedido, por ejemplo un agradecimiento o tu dirección de devoluciones. Déjalo vacío para no imprimir nada."
+
+#: front-end/orders/brikpanel-order-print.php:1029
+msgid "Show on the summary"
+msgstr "Mostrar en el resumen"
+
+#: front-end/orders/brikpanel-order-print.php:1042
+msgid "Thank you for shopping with us!"
+msgstr "¡Gracias por tu compra!"
+
+#: front-end/orders/brikpanel-order-print.php:977
+msgid "Tick boxes for picking"
+msgstr "Casillas para marcar al preparar"
+
+#: front-end/dashboard/brikpanel-dashboard.php
+msgid "Yes, count"
+msgstr "Sí, contar"
+
+#: front-end/dashboard/brikpanel-dashboard.php
+msgctxt "orders not counted as sales: leave them out"
+msgid "No"
+msgstr "No"
+
+#. translators: %s: number of orders, e.g. "7".
+#: front-end/dashboard/brikpanel-dashboard.php
+msgid "%s order in these dates is not counted as a sale."
+msgid_plural "%s orders in these dates are not counted as sales."
+msgstr[0] "%s pedido de estas fechas no se cuenta como venta."
+msgstr[1] "%s pedidos de estas fechas no se cuentan como ventas."
+
+#. translators: %s: an order status name, e.g. "On hold" or "Partially paid".
+#: front-end/dashboard/brikpanel-dashboard.php
+msgid "It is in “%s”. Count it as a sale?"
+msgid_plural "They are in “%s”. Count them as sales?"
+msgstr[0] "Está en «%s». ¿Contarlo como venta?"
+msgstr[1] "Están en «%s». ¿Contarlos como ventas?"

@@ -95,6 +95,11 @@ function brikpanel_whatsapp_visible_for_user( $user = null ) {
 	if ( ! brikpanel_whatsapp_module_enabled() ) {
 		return false;
 	}
+	// WooCommerce's own order screens while BrikPanel is off, unless the store
+	// keeps Orders or the reports as its one feature (includes/brikpanel-one-feature.php).
+	if ( function_exists( 'brikpanel_neutralized_for' ) && brikpanel_neutralized_for( [ 'orders', 'customers' ] ) ) {
+		return false;
+	}
 	if ( ! function_exists( 'wp_get_current_user' ) ) {
 		return false;
 	}

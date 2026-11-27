@@ -820,6 +820,8 @@ function brikpanel_enqueue_custom_dashboard_assets($hook) {
             'pages_no_match'     => __('No matches found.', 'brikpanel'),
             'pages_error'        => __('Something went wrong. Please try again.', 'brikpanel'),
             'pages_loading'      => __('Loading...', 'brikpanel'),
+            // The "orders not counted as sales" question could not save its answer.
+            'uncounted_error'    => __('Something went wrong. Please try again.', 'brikpanel'),
         ],
     ]);
 }
@@ -3507,7 +3509,11 @@ function brikpanel_shell_kind() {
     if ( '' === $page ) {
         return '';
     }
-    if ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() ) {
+    // Switched off for this user: WordPress's own layout. A store that keeps one
+    // feature keeps that feature's screens in their shell
+    // (includes/brikpanel-one-feature.php).
+    if ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize()
+        && ! ( function_exists( 'brikpanel_one_feature_page_kept' ) && brikpanel_one_feature_page_kept( $page ) ) ) {
         return '';
     }
     $pages = brikpanel_shell_pages();

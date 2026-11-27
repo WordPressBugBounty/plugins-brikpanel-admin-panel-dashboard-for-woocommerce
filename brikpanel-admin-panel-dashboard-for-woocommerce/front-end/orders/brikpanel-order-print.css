@@ -324,9 +324,13 @@
 	display: none;
 }
 
+/* break-word, not anywhere: in a table "anywhere" makes the column one letter
+   wide at its narrowest, so a long product name squeezed it and split 8861661
+   over three lines (wp.org, wiztechit, 26 Nov 2026). A long code now breaks
+   only where the page put a <wbr>, after - _ . or /. */
 .brikpanel-slip__items .brikpanel-slip__sku-col {
 	font-size: 0.75rem;
-	overflow-wrap: anywhere;
+	overflow-wrap: break-word;
 }
 
 .brikpanel-slip__qty strong {
@@ -420,6 +424,22 @@
 	font-weight: 650;
 }
 
+/* ---- The store's own line (Settings › BrikPanel › Orders › Order summary) -- */
+
+.brikpanel-slip__footer {
+	margin-block-start: 1.5rem;
+	padding-block-start: 0.875rem;
+	border-block-start: 1px solid var(--brikpanel-slip-line);
+	color: var(--brikpanel-slip-muted);
+	font-size: 0.75rem;
+	text-align: center;
+}
+
+.brikpanel-slip__footer p {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
 /* ---- Narrow screens (a phone looking at the page, never paper) ------------ */
 
 @media screen and (max-width: 640px) {
@@ -509,7 +529,8 @@
 	.brikpanel-slip__head,
 	.brikpanel-slip__parties,
 	.brikpanel-slip__items tr,
-	.brikpanel-slip__bottom {
+	.brikpanel-slip__bottom,
+	.brikpanel-slip__footer {
 		break-inside: avoid;
 	}
 

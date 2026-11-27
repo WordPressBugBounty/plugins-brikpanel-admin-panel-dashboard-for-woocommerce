@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BrikPanel: WooCommerce Admin Dashboard Theme
  * Description: Beautiful and modern Shopify-style WooCommerce admin panel & dashboard, fully free, forever.
- * Version: 3.3.57
+ * Version: 3.3.58
  * Author: Brksoft
  * Author URI: https://brksoft.com/
  * Text Domain: brikpanel
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-define('BRIKPANEL_VERSION', '3.3.57');
+define('BRIKPANEL_VERSION', '3.3.58');
 define('BRIKPANEL_PATH', plugin_dir_path(__FILE__));
 define('BRIKPANEL_URL', plugin_dir_url(__FILE__));
 define('BRIKPANEL_BASENAME', plugin_basename(__FILE__));
@@ -127,6 +127,17 @@ brikpanel_require('includes/brikpanel-network-access.php');
 // deactivate BrikPanel, and their answers count as much as anyone's.
 // =============================================================================
 brikpanel_require('includes/brikpanel-exit-survey.php');
+
+// =============================================================================
+// "JUST ONE FEATURE"
+//
+// The full panel off, the feature the store installed BrikPanel for kept on
+// (includes/brikpanel-one-feature.php). Early, before any module reads its
+// toggle at file scope: the login module decides on the login page there, and
+// the access-control layer asks this file which toggles, files and menu rows
+// to leave alone.
+// =============================================================================
+brikpanel_require('includes/brikpanel-one-feature.php');
 
 // =============================================================================
 // LOAD TEXT DOMAIN
@@ -1309,6 +1320,9 @@ brikpanel_require('front-end/welcome/brikpanel-welcome.php');
 // HELPER FUNCTIONS
 // =============================================================================
 brikpanel_require('includes/brikpanel-helpers.php');
+// Shipping statuses other plugins add ("Shipped", "Kargoya verildi") join the
+// valid-sales list by themselves once their orders are paid (3.3.58).
+brikpanel_require('includes/brikpanel-status-buckets.php');
 // Numbers, percentages, money and dates: one rule on the server and in the
 // browser (field test E2/E9). Needs the date format helpers above.
 brikpanel_require('includes/brikpanel-format.php');

@@ -343,6 +343,13 @@ function brikpanel_prime_keys_admin() {
 		'brikpanel_order_numbers',
 		'brikpanel_order_numbers_used',
 
+		// Shipping statuses counted on their own (includes/brikpanel-status-buckets.php):
+		// read on admin_init for the people who read the figures. Autoloaded
+		// once written; listed for the stores where they are not written yet.
+		'brikpanel_status_buckets_auto',
+		'brikpanel_status_buckets_declined',
+		'brikpanel_status_buckets_check',
+
 		// Misc.
 		'brikpanel_ads_cache_version',
 		'brikpanel_brikmentor_live',

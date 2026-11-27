@@ -74,6 +74,10 @@ function brikpanel_order_weight_reset() {
  * @return bool
  */
 function brikpanel_order_weight_neutralized() {
+	// A store that keeps only Orders keeps this too (includes/brikpanel-one-feature.php).
+	if ( function_exists( 'brikpanel_neutralized_for' ) ) {
+		return brikpanel_neutralized_for( 'orders' );
+	}
 	return function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize();
 }
 

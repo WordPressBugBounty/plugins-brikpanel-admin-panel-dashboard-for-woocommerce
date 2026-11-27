@@ -98,7 +98,8 @@ function brikpanel_order_merge_user_can() {
  * @return bool
  */
 function brikpanel_order_merge_active() {
-	if ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() ) {
+	// Off with BrikPanel, unless the store keeps only Orders (includes/brikpanel-one-feature.php).
+	if ( function_exists( 'brikpanel_neutralized_for' ) ? brikpanel_neutralized_for( 'orders' ) : ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() ) ) {
 		return false;
 	}
 	return brikpanel_order_merge_enabled() && brikpanel_order_merge_user_can();

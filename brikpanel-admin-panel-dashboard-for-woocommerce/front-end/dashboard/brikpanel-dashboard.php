@@ -31,6 +31,11 @@ class Brikpanel_Dashboard {
 
     private $is_hpos = null;
 
+    // Whether this page view printed the box of the "orders not counted as
+    // sales" question (render_section_kpis()); the footer decides whether it
+    // may show (uncounted_footer()).
+    private $uncounted_box = false;
+
     // Whole-response cache TTL. The cache key carries
     // brikpanel_data_cache_ver(), so any order event invalidates every
     // cached payload via the shared bumper in brikpanel-helpers.php — no
@@ -159,6 +164,10 @@ class Brikpanel_Dashboard {
 
         // Batch data endpoint
         add_action( 'wp_ajax_brikpanel_dashboard_data', [ $this, 'ajax_dashboard_data' ] );
+        // The "orders not counted as sales" question: after every ask of the
+        // page has printed (they print at 10), before the phone panel decides
+        // (100), as the one-ask rules want (includes/brikpanel-asks.php).
+        add_action( 'admin_footer', [ $this, 'uncounted_footer' ], 50 );
         // Live visitors endpoint (separate for polling)
         add_action( 'wp_ajax_brikpanel_dashboard_live', [ $this, 'ajax_dashboard_live' ] );
         // Closing the new-store guide (per user).
@@ -1899,6 +1908,24 @@ class Brikpanel_Dashboard {
             'visitors'    => [ __( 'Visitors', 'brikpanel' ), 'card-visitors', 'delta-visitors', 'v' ],
             'conversion'  => [ __( 'Conversion rate', 'brikpanel' ), 'card-conversion', 'delta-conversion', 'conv' ],
         ];
+        // The question about orders in statuses nobody decided on yet (On hold,
+        // a plugin's status that is not a cargo one): above the store cards,
+        // so a phone sees it before the five cards stacked below. Printed
+        // hidden for the people who may change the list; the footer says
+        // whether this page view may show it, the figures say what to ask.
+        if ( current_user_can( 'manage_woocommerce' ) ) :
+            $this->uncounted_box = true;
+            ?>
+            <div class="brikpanel-dash-uncounted" id="brikpanel-uncounted" role="status" hidden>
+                <svg class="brikpanel-dash-uncounted__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <p class="brikpanel-dash-uncounted__text" dir="auto"><strong class="brikpanel-dash-uncounted__lead"></strong> <span class="brikpanel-dash-uncounted__detail"></span></p>
+                <span class="brikpanel-dash-uncounted__actions">
+                    <button type="button" class="brikpanel-btn brikpanel-btn--primary" data-bp-uncounted="count"><?php esc_html_e( 'Yes, count', 'brikpanel' ); ?></button>
+                    <button type="button" class="brikpanel-btn brikpanel-btn--secondary" data-bp-uncounted="skip"><?php echo esc_html_x( 'No', 'orders not counted as sales: leave them out', 'brikpanel' ); ?></button>
+                </span>
+            </div>
+            <?php
+        endif;
         ?>
             <!-- Summary Cards -->
             <div class="bp-dv-kpis" id="brikpanel-kpi-cards" data-bp-tiles>
@@ -4214,7 +4241,9 @@ class Brikpanel_Dashboard {
         // The rates themselves join the key: a deleted rate fires no hook, and
         // a copy holding converted spend must not outlive the rate behind it.
         $fx_for_key = function_exists( 'brikpanel_fx_rates_signature' ) ? brikpanel_fx_rates_signature() : '0';
-        $cache_key  = 'bp_dash_g7_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key . '_fx' . $fx_for_key;
+        // "g8": the payload carries the orders in statuses nobody decided on
+        // yet, for the question above the store cards (3.3.58).
+        $cache_key  = 'bp_dash_g8_' . $cache_ver . '_' . $range_key . '_mp' . $exclude_mp_for_key . '_sc' . $shipping_for_key . '_pf' . $fees_for_key . '_tx' . $tax_for_key . '_fl' . $fields_for_key . '_' . $locale_for_key . '_rf' . $focus_for_key . '_fx' . $fx_for_key;
         $cached    = get_transient( $cache_key );
         if ( false !== $cached ) {
             wp_send_json_success( $this->with_data_ver( $this->with_tracking_state( $this->with_today( $cached ) ), $cache_ver ) );
@@ -4567,6 +4596,9 @@ class Brikpanel_Dashboard {
             'ltv_panel'        => $ltv_panel,
             'rfm_distribution' => $rfm_distribution,
             'period'           => $dates['period'],
+            // Orders of the period in a status nobody decided on yet, for the
+            // question above the store cards (null when there are none).
+            'uncounted'        => $this->uncounted_payload( $start_gmt, $end_gmt, $exclude_mp ),
         ];
 
         /**
@@ -4592,6 +4624,68 @@ class Brikpanel_Dashboard {
         );
 
         return $payload;
+    }
+
+    /**
+     * The question above the store cards, in the viewer's language: the status
+     * with the most orders of the period nobody decided on yet. The sentence
+     * is built here because the count is known here (Russian and Polish have
+     * three plural forms); the script only places it.
+     *
+     * @param string $start_gmt  Y-m-d H:i:s (UTC).
+     * @param string $end_gmt    Y-m-d H:i:s (UTC).
+     * @param bool   $exclude_mp The Orders card's basis on a BrikMarket store.
+     * @return array{status:string,count:int,lead:string,detail:string,others:int}|null
+     */
+    private function uncounted_payload( $start_gmt, $end_gmt, $exclude_mp ) {
+        if ( ! function_exists( 'brikpanel_status_buckets_uncounted' ) ) {
+            return null;
+        }
+        $rows = brikpanel_status_buckets_uncounted( $start_gmt, $end_gmt, $exclude_mp );
+        if ( ! $rows ) {
+            return null;
+        }
+        $first = $rows[0];
+        $count = (int) $first['count'];
+        return [
+            'status' => $first['status'],
+            'count'  => $count,
+            /* translators: %s: number of orders, e.g. "7". */
+            'lead'   => sprintf( _n( '%s order in these dates is not counted as a sale.', '%s orders in these dates are not counted as sales.', $count, 'brikpanel' ), brikpanel_dash_format_count( $count ) ),
+            // The name is isolated (U+2068 ... U+2069): an Arabic status name in
+            // an English sentence otherwise turned the quotes around it.
+            /* translators: %s: an order status name, e.g. "On hold" or "Partially paid". */
+            'detail' => sprintf( _n( 'It is in “%s”. Count it as a sale?', 'They are in “%s”. Count them as sales?', $count, 'brikpanel' ), "\u{2068}" . $first['label'] . "\u{2069}" ),
+            // Statuses that wait their turn: each is asked after the one before is answered.
+            'others' => count( $rows ) - 1,
+        ];
+    }
+
+    /**
+     * Whether the question may show on this page view, decided in the footer:
+     * BrikPanel's one-ask rules (brikpanel_status_buckets_may_ask()) and orders
+     * to ask about in the period the dashboard opens with. Only then does the
+     * page count as having a box on it, so the phone panel (which decides at
+     * priority 100) does not open next to it; on a dashboard with nothing to
+     * ask about the panel keeps its page. Changing the dates later shows the
+     * question only on a page view that was allowed it.
+     *
+     * @return void
+     */
+    public function uncounted_footer() {
+        if ( ! $this->uncounted_box || ! function_exists( 'brikpanel_status_buckets_may_ask' ) || ! brikpanel_status_buckets_may_ask() ) {
+            return;
+        }
+        $pref  = self::get_range_preference();
+        $dates = $this->calculate_dates( $pref['range'], '' !== $pref['start'] ? $pref['start'] : null, '' !== $pref['end'] ? $pref['end'] : null );
+        $exclude_mp = function_exists( 'brikpanel_brikmarket_active' ) && brikpanel_brikmarket_active();
+        if ( ! brikpanel_status_buckets_uncounted( $dates['start_gmt'], $dates['end_gmt'], $exclude_mp ) ) {
+            return;
+        }
+        if ( function_exists( 'brikpanel_asks_hold' ) ) {
+            brikpanel_asks_hold( true );
+        }
+        wp_print_inline_script_tag( "(function(){var b=document.getElementById('brikpanel-uncounted');if(b){b.setAttribute('data-may-ask','1');}})();" );
     }
 
     // =========================================================================

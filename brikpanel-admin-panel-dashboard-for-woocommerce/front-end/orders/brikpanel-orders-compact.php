@@ -36,7 +36,8 @@ function brikpanel_orders_compact_enabled() {
 	}
 	$enabled = get_option( 'brikpanel_orders_enhancements', 'yes' ) !== 'no'
 		&& get_option( 'brikpanel_orders_compact_list', 'yes' ) !== 'no'
-		&& ! ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() );
+		// A store that keeps only Orders keeps the compact list (includes/brikpanel-one-feature.php).
+		&& ! ( function_exists( 'brikpanel_neutralized_for' ) ? brikpanel_neutralized_for( 'orders' ) : ( function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize() ) );
 	return $enabled;
 }
 

@@ -197,9 +197,15 @@ class Brikpanel_Master_Switch {
 			return;
 		}
 
+		// A store that came for one feature goes back to it, not to everything
+		// off (includes/brikpanel-one-feature.php).
+		$one     = function_exists( 'brikpanel_one_feature_name' ) ? brikpanel_one_feature_name() : '';
 		$tooltip = self::personal_active()
 			? __( 'BrikPanel is on for your account. Switch off to use the classic WordPress admin for yourself only.', 'brikpanel' )
-			: __( 'BrikPanel is on for the whole store. Switch off to use the classic WordPress admin.', 'brikpanel' );
+			: ( '' !== $one
+				/* translators: %s: the one BrikPanel feature the store chose, e.g. "Abandoned cart recovery". */
+				? sprintf( __( 'BrikPanel is on for the whole store. Switch off to go back to just %s.', 'brikpanel' ), $one )
+				: __( 'BrikPanel is on for the whole store. Switch off to use the classic WordPress admin.', 'brikpanel' ) );
 		?>
 		<div class="brikpanel-topbar-masterswitch" title="<?php echo esc_attr( $tooltip ); ?>">
 			<svg class="brikpanel-topbar-masterswitch-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
@@ -244,6 +250,38 @@ class Brikpanel_Master_Switch {
 
 		$on        = self::switch_state_on();
 		$personal  = self::personal_active();
+
+		// One feature only (includes/brikpanel-one-feature.php): the one button
+		// back to the full panel, with a name that says so.
+		$one = ! $on && ! $personal && function_exists( 'brikpanel_one_feature_active' ) && brikpanel_one_feature_active()
+			? brikpanel_one_feature_name()
+			: '';
+		if ( '' !== $one ) {
+			// BrikPanel's mark. Paths only: WordPress's admin bar sets width and
+			// height to auto on every element inside it, which empties a <rect>.
+			$mark = '<svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" focusable="false">'
+				. '<path fill="#ffffff" d="M4 0.5h6a3.5 3.5 0 0 1 3.5 3.5v6a3.5 3.5 0 0 1 -3.5 3.5h-6a3.5 3.5 0 0 1 -3.5 -3.5v-6a3.5 3.5 0 0 1 3.5 -3.5z"/>'
+				. '<path fill="#1e1e1e" d="M3.9 3h1.8a0.9 0.9 0 0 1 0.9 0.9v1.8a0.9 0.9 0 0 1 -0.9 0.9h-1.8a0.9 0.9 0 0 1 -0.9 -0.9v-1.8a0.9 0.9 0 0 1 0.9 -0.9zM8.3 7.4h1.8a0.9 0.9 0 0 1 0.9 0.9v1.8a0.9 0.9 0 0 1 -0.9 0.9h-1.8a0.9 0.9 0 0 1 -0.9 -0.9v-1.8a0.9 0.9 0 0 1 0.9 -0.9z"/>'
+				. '<path fill="#8a8a8a" d="M8.3 3h1.8a0.9 0.9 0 0 1 0.9 0.9v1.8a0.9 0.9 0 0 1 -0.9 0.9h-1.8a0.9 0.9 0 0 1 -0.9 -0.9v-1.8a0.9 0.9 0 0 1 0.9 -0.9zM3.9 7.4h1.8a0.9 0.9 0 0 1 0.9 0.9v1.8a0.9 0.9 0 0 1 -0.9 0.9h-1.8a0.9 0.9 0 0 1 -0.9 -0.9v-1.8a0.9 0.9 0 0 1 0.9 -0.9z"/>'
+				. '</svg>';
+			$bar->add_node( [
+				'id'    => 'brikpanel-master',
+				'title' => sprintf(
+					'<span class="ab-icon brikpanel-ab-icon brikpanel-ab-mark" aria-hidden="true">%1$s</span><span class="ab-label">%2$s</span>',
+					$mark, // Static markup.
+					esc_html__( 'Full panel', 'brikpanel' )
+				),
+				'href'  => '#',
+				'meta'  => [
+					'class'    => 'brikpanel-ab-masterswitch brikpanel-ab-full brikpanel-masterswitch-trigger',
+					/* translators: %s: the one BrikPanel feature the store uses, e.g. "Abandoned cart recovery". */
+					'title'    => sprintf( __( 'BrikPanel is on for %s only. Click to turn on the full BrikPanel admin for your store.', 'brikpanel' ), $one ),
+					'tabindex' => 0,
+				],
+			] );
+			return;
+		}
+
 		$label     = $on ? __( 'BrikPanel on', 'brikpanel' ) : __( 'BrikPanel off', 'brikpanel' );
 		if ( $personal ) {
 			$hint = $on
@@ -304,6 +342,11 @@ class Brikpanel_Master_Switch {
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only screen detection.
 		if ( '' === $page || 0 !== strpos( $page, 'brikpanel' ) ) {
 			// Native (skinned) screen — it survives the switch, so reload in place.
+			return '';
+		}
+		// A screen of the one feature the store keeps survives it too
+		// (includes/brikpanel-one-feature.php).
+		if ( function_exists( 'brikpanel_one_feature_page_belongs' ) && ! self::personal_active() && brikpanel_one_feature_page_belongs( $page ) ) {
 			return '';
 		}
 
@@ -412,6 +455,11 @@ class Brikpanel_Master_Switch {
 #wpadminbar .brikpanel-ab-icon.is-off{color:#a7aaad;}
 #wpadminbar .brikpanel-ab-icon svg{display:block;}
 #wpadminbar .brikpanel-ab-masterswitch.is-busy{opacity:.6;}
+/* One feature only: "Full panel" reads as the one button it is. */
+#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full>.ab-item{height:24px;margin:4px 6px 0;padding:0 10px 0 7px;border-radius:6px;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);color:#ffffff;font-weight:600;line-height:24px;}
+#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full>.ab-item:hover,#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full>.ab-item:focus{background:rgba(255,255,255,.18);color:#ffffff;}
+#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full .brikpanel-ab-mark{margin:0;padding:0;}
+#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full .brikpanel-ab-mark svg{width:14px;height:14px;}
 /* On phones WP hides every left-hand admin-bar item except its own toggle, which
    would bury the one control that turns BrikPanel back on. Force our node to stay
    visible and tappable (46px touch target, like WP's mobile bar) and show just
@@ -422,7 +470,18 @@ class Brikpanel_Master_Switch {
 	#wpadminbar #wp-admin-bar-brikpanel-master>.ab-item{display:flex !important;align-items:center;height:46px;padding:0 14px;}
 	#wpadminbar #wp-admin-bar-brikpanel-master .ab-label{display:none !important;}
 	#wpadminbar #wp-admin-bar-brikpanel-master .brikpanel-ab-icon svg{width:22px;height:22px;}
+	/* "Full panel" keeps its words on a phone too: an icon alone would not say what it does.
+	   WordPress 7.1 turns every phone label into a 1px screen-reader box (absolute,
+	   clipped), so the box is opened again here, not only displayed. */
+	#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full>.ab-item{height:32px;margin:7px 6px 0;padding:0 12px 0 9px;line-height:32px;}
+	#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full .ab-label{display:inline !important;position:static;width:auto;height:auto;margin:0;overflow:visible;clip-path:none;font-size:14px;white-space:nowrap;}
+	#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full .brikpanel-ab-mark svg{width:16px;height:16px;}
 }
+/* No room for the words on the bar's one row (a long language on a narrow
+   phone): the mark alone, like WordPress's other phone items. The script
+   below measures it. */
+#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full.is-icon-only .ab-label{display:none !important;}
+#wpadminbar #wp-admin-bar-brikpanel-master.brikpanel-ab-full.is-icon-only>.ab-item{padding:0 9px;}
 </style>
 <script id="brikpanel-masterswitch-js">
 (function(){
@@ -473,6 +532,34 @@ class Brikpanel_Master_Switch {
 		e.preventDefault();
 		toggle();
 	},false);
+
+	// "Full panel" keeps its words only while they fit on the bar's one row.
+	// "Komplettes Panel" on a 390px phone pushed the account item (or the node
+	// itself) to a second row: then the mark alone. Measured on block boxes,
+	// never on inline ones (Firefox gives an inline box's scrollWidth as its text).
+	function fitFull(){
+		var li=document.getElementById('wp-admin-bar-brikpanel-master');
+		var bar=document.getElementById('wpadminbar');
+		if(!li||!bar||!li.classList.contains('brikpanel-ab-full')){return;}
+		li.classList.remove('is-icon-only');
+		var top=bar.getBoundingClientRect().top;
+		var r=li.getBoundingClientRect();
+		var half=(r.height||32)/2;
+		var acct=document.getElementById('wp-admin-bar-top-secondary');
+		var a=acct?acct.getBoundingClientRect():null;
+		var wrapped=r.top-top>half||(a&&a.height>0&&a.top-top>half);
+		var overlap=a&&a.width>0&&r.left<a.right&&r.right>a.left&&r.top<a.bottom&&r.bottom>a.top;
+		if(wrapped||overlap){li.classList.add('is-icon-only');}
+	}
+	var fitQueued=false;
+	function queueFit(){
+		if(fitQueued){return;}
+		fitQueued=true;
+		window.requestAnimationFrame(function(){fitQueued=false;fitFull();});
+	}
+	fitFull();
+	window.addEventListener('resize',queueFit);
+	window.addEventListener('load',queueFit);
 })();
 </script>
 		<?php

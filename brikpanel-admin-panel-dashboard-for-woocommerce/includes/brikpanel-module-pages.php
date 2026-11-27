@@ -346,6 +346,25 @@ function brikpanel_module_off_requested() {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only page parameter.
 	$slug = isset( $_GET['module'] ) ? sanitize_key( wp_unslash( $_GET['module'] ) ) : '';
 	$page = $slug !== '' ? brikpanel_module_page( $slug ) : null;
+	// A store on one feature sends every other BrikPanel screen here
+	// (includes/brikpanel-one-feature.php), listed or not.
+	if ( ! $page && 0 === strpos( $slug, 'brikpanel' ) && function_exists( 'brikpanel_one_feature_def' ) && brikpanel_one_feature_def() ) {
+		// The names of the screens that are not in the list above.
+		$names = [
+			'brikpanel-abandoned-carts' => __( 'Abandoned Carts', 'brikpanel' ),
+			'brikpanel-expenses'        => __( 'Expenses', 'brikpanel' ),
+			'brikpanel-returns'         => __( 'Returns', 'brikpanel' ),
+		];
+		$page = [
+			'label'          => isset( $names[ $slug ] ) ? $names[ $slug ] : '',
+			'enabled'        => '__return_false',
+			'cap'            => 'manage_woocommerce',
+			'section'        => null,
+			'option'         => '',
+			'fallback'       => admin_url( 'index.php' ),
+			'fallback_label' => __( 'Back to the dashboard', 'brikpanel' ),
+		];
+	}
 	if ( ! $page || ! current_user_can( (string) $page['cap'] ) ) {
 		return null;
 	}
@@ -385,7 +404,7 @@ function brikpanel_module_off_register_page() {
 				exit;
 			}
 			// Set before admin-header.php runs, or WordPress prints an empty title.
-			$GLOBALS['title'] = (string) $req['page']['label'];
+			$GLOBALS['title'] = '' !== (string) $req['page']['label'] ? (string) $req['page']['label'] : __( 'Part of the full panel', 'brikpanel' );
 		}
 	);
 }
@@ -404,6 +423,58 @@ function brikpanel_module_off_render_page() {
 	$page    = $req['page'];
 	$label   = (string) $page['label'];
 	$neutral = function_exists( 'brikpanel_access_should_neutralize' ) && brikpanel_access_should_neutralize();
+
+	$one = function_exists( 'brikpanel_one_feature_def' ) && brikpanel_one_feature_def();
+	if ( $neutral && $one ) {
+		// The store keeps one feature (includes/brikpanel-one-feature.php): this
+		// screen is part of the full panel, one click away for an administrator.
+		$names    = function_exists( 'brikpanel_one_feature_labels' ) ? brikpanel_one_feature_labels() : [];
+		$feature  = isset( $names[ brikpanel_one_feature() ] ) ? $names[ brikpanel_one_feature() ] : '';
+		$title    = '' !== $label
+			/* translators: %s: screen name, e.g. "Suppliers". */
+			? sprintf( __( '%s is part of the full panel', 'brikpanel' ), $label )
+			: __( 'This page is part of the full panel', 'brikpanel' );
+		$can_turn = class_exists( 'Brikpanel_Master_Switch' ) && Brikpanel_Master_Switch::can_use_switch();
+		$text     = $can_turn
+			/* translators: %s: the one BrikPanel feature the store uses, e.g. "Abandoned cart recovery". */
+			? sprintf( __( 'BrikPanel runs just %s on this store. Turn on the full panel to open this page.', 'brikpanel' ), $feature )
+			/* translators: %s: the one BrikPanel feature the store uses, e.g. "Abandoned cart recovery". */
+			: sprintf( __( 'BrikPanel runs just %s on this store. Ask your store administrator to turn on the full panel.', 'brikpanel' ), $feature );
+		$settings = '';
+		$back     = function_exists( 'brikpanel_one_feature_url' ) ? brikpanel_one_feature_url( brikpanel_one_feature() ) : '';
+		$screens  = function_exists( 'brikpanel_one_feature_screen_names' ) ? brikpanel_one_feature_screen_names() : [];
+		$actions  = [];
+		if ( $can_turn ) {
+			$actions[] = [
+				'label'   => __( 'Turn on the full panel', 'brikpanel' ),
+				'url'     => '#',
+				'primary' => true,
+				// The master switch's own click handler (front-end/master-switch/).
+				'class'   => 'brikpanel-masterswitch-trigger',
+			];
+		}
+		if ( '' !== $back && isset( $screens[ brikpanel_one_feature() ] ) ) {
+			$actions[] = [
+				/* translators: %s: screen name, e.g. "Abandoned Carts". */
+				'label'   => sprintf( __( 'Open %s', 'brikpanel' ), $screens[ brikpanel_one_feature() ] ),
+				'url'     => $back,
+				'primary' => ! $can_turn,
+			];
+		} else {
+			$actions[] = [
+				'label'   => __( 'Back to the dashboard', 'brikpanel' ),
+				'url'     => admin_url( 'index.php' ),
+				'primary' => ! $can_turn,
+			];
+		}
+		brikpanel_render_notice_card( [
+			'icon'    => 'power',
+			'title'   => $title,
+			'text'    => $text,
+			'actions' => $actions,
+		] );
+		return;
+	}
 
 	if ( $neutral ) {
 		/* translators: %s: screen name, e.g. "Suppliers". */
@@ -513,7 +584,13 @@ function brikpanel_render_notice_card( array $card ) {
 						continue;
 					}
 					?>
-					<a class="brikpanel-module-off__btn<?php echo ! empty( $action['primary'] ) ? ' brikpanel-module-off__btn--primary' : ''; ?>" href="<?php echo esc_url( (string) $action['url'] ); ?>"><?php echo esc_html( (string) $action['label'] ); ?></a>
+					<?php
+					// An action that runs a script (the master switch) carries the
+					// class its click handler listens for, and reads as a button.
+					$classes  = 'brikpanel-module-off__btn' . ( ! empty( $action['primary'] ) ? ' brikpanel-module-off__btn--primary' : '' );
+					$classes .= ! empty( $action['class'] ) ? ' ' . sanitize_html_class( (string) $action['class'] ) : '';
+					?>
+					<a class="<?php echo esc_attr( $classes ); ?>" href="<?php echo esc_url( (string) $action['url'] ); ?>"<?php echo '#' === (string) $action['url'] ? ' role="button"' : ''; ?>><?php echo esc_html( (string) $action['label'] ); ?></a>
 				<?php endforeach; ?>
 			</div>
 		</div>

@@ -18,11 +18,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // "Where did you first hear about BrikPanel?" on the last panel, and its AJAX.
 require_once __DIR__ . '/brikpanel-welcome-source.php';
+// "What did you install BrikPanel for?" on the first screen, and its AJAX.
+require_once __DIR__ . '/brikpanel-welcome-intent.php';
 
 /* ── Dismiss AJAX ────────────────────────────────────────────────────────────── */
 add_action( 'wp_ajax_brikpanel_dismiss_welcome', function () {
     check_ajax_referer( 'brikpanel_welcome_nonce' );
     update_user_meta( get_current_user_id(), '_brikpanel_welcome_dismissed', BRIKPANEL_VERSION );
+    // The site's first tour is over: "What did you install BrikPanel for?" is
+    // asked once per site, whoever closed it.
+    if ( function_exists( 'brikpanel_welcome_intent_mark_asked' ) ) {
+        brikpanel_welcome_intent_mark_asked();
+    }
     // The tour was the first ask: the next one (bar the new-store guide) waits
     // its turn instead of opening on the very next page.
     if ( function_exists( 'brikpanel_ask_closed' ) ) {
@@ -67,6 +74,11 @@ function brikpanel_should_show_welcome() {
     if ( function_exists( 'brikpanel_access_is_disabled_for_user' ) && brikpanel_access_is_disabled_for_user() ) {
         return false;
     }
+    // Switched off for the store, or a store that keeps one feature: the tour
+    // shows the full panel, and its files are swept anyway.
+    if ( function_exists( 'brikpanel_master_enabled' ) && ! brikpanel_master_enabled() ) {
+        return false;
+    }
 
     $dismissed = get_user_meta( get_current_user_id(), '_brikpanel_welcome_dismissed', true );
     return empty( $dismissed );
@@ -99,17 +111,24 @@ add_action( 'admin_enqueue_scripts', function () {
         true
     );
 
+    $intent = function_exists( 'brikpanel_welcome_intent_applies' ) && brikpanel_welcome_intent_applies();
     wp_localize_script( 'brikpanel_welcome_scripts', 'brikpanelWelcome', [
         'ajax_url' => admin_url( 'admin-ajax.php' ),
         'nonce'    => wp_create_nonce( 'brikpanel_welcome_nonce' ),
-        'i18n'     => [
-            'next'          => _x( 'Next', 'welcome tour button', 'brikpanel' ),
-            'finish'        => _x( 'Finish', 'welcome tour button', 'brikpanel' ),
-            // The "where did you hear about BrikPanel" question on the last panel.
-            'source_thanks' => __( 'Thank you! Your answer was sent anonymously.', 'brikpanel' ),
-            'source_noted'  => __( 'Your note was sent too. Thank you!', 'brikpanel' ),
-            'source_sent'   => _x( 'Sent', 'welcome tour note button', 'brikpanel' ),
-        ],
+        // The first screen's nine features, for the last panel's link and button.
+        'features' => $intent ? brikpanel_welcome_intent_features() : new stdClass(),
+        'i18n'     => array_merge(
+            [
+                'next'          => _x( 'Next', 'welcome tour button', 'brikpanel' ),
+                'finish'        => _x( 'Finish', 'welcome tour button', 'brikpanel' ),
+                // The "where did you hear about BrikPanel" question on the last panel.
+                'source_thanks' => __( 'Thank you! Your answer was sent anonymously.', 'brikpanel' ),
+                'source_noted'  => __( 'Your note was sent too. Thank you!', 'brikpanel' ),
+                'source_sent'   => _x( 'Sent', 'welcome tour note button', 'brikpanel' ),
+            ],
+            // "What did you install BrikPanel for?" on the first screen.
+            $intent ? brikpanel_welcome_intent_i18n() : []
+        ),
     ] );
 } );
 
@@ -120,6 +139,15 @@ add_action( 'admin_footer', function () {
     }
 
     require_once __DIR__ . '/brikpanel-welcome-sketches.php';
+
+    // A store's first tour opens on "What did you install BrikPanel for?"
+    // (front-end/welcome/brikpanel-welcome-intent.php).
+    $intent = function_exists( 'brikpanel_welcome_intent_applies' ) && brikpanel_welcome_intent_applies();
+
+    // On a new install the last panel asks where the owner heard about
+    // BrikPanel, and the quick links shrink to one line each under it
+    // (front-end/welcome/brikpanel-welcome-source.php).
+    $ask = brikpanel_welcome_source_applies();
 
     /* ── Icons (trusted static SVG) ──────────────────────────────────────────── */
     $icon_close = '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M3 3l8 8M11 3l-8 8"/></svg>';
@@ -233,9 +261,15 @@ add_action( 'admin_footer', function () {
         [ 130, 130, '#fbfbfb', '#dadada', '#c2c2c2' ],
     ];
     ?>
-    <dialog id="brikpanel-welcome-overlay" class="brikpanel-welcome-overlay" aria-labelledby="brikpanel-welcome-title">
+    <dialog id="brikpanel-welcome-overlay" class="brikpanel-welcome-overlay" aria-labelledby="<?php echo $intent ? 'brikpanel-welcome-intent-title' : 'brikpanel-welcome-title'; ?>" data-bw-view="<?php echo $intent ? 'intent' : 'tour'; ?>">
         <div class="brikpanel-welcome-modal" tabindex="-1" data-bw-modal>
             <?php echo brikpanel_welcome_sketch_defs(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?>
+            <?php
+            if ( $intent ) {
+                // "See it bigger" of the full panel card, over both panes.
+                echo wp_kses( brikpanel_welcome_intent_compare_markup(), brikpanel_welcome_intent_kses() );
+            }
+            ?>
 
             <!-- Left: the plate and its bricks -->
             <div class="brikpanel-welcome-left" data-bw-left>
@@ -249,7 +283,19 @@ add_action( 'admin_footer', function () {
                         <span data-bw-done hidden><?php esc_html_e( 'You are all set', 'brikpanel' ); ?></span>
                     </h2>
                     <p class="brikpanel-welcome-lead" data-bw-start><?php esc_html_e( 'Four things BrikPanel does for your store. Each one lays a brick.', 'brikpanel' ); ?></p>
-                    <p class="brikpanel-welcome-lead" data-bw-done hidden><?php esc_html_e( 'Every brick is in place, and everything is already switched on.', 'brikpanel' ); ?></p>
+                    <p class="brikpanel-welcome-lead" data-bw-done data-bw-full-only hidden><?php esc_html_e( 'Every brick is in place, and everything is already switched on.', 'brikpanel' ); ?></p>
+                    <?php if ( $intent ) : ?>
+                        <?php
+                        // Just one feature: the script writes the feature's name in.
+                        $bw_one_lead = sprintf(
+                            /* translators: %s: the one BrikPanel feature the store picked, e.g. "Abandoned cart recovery". */
+                            esc_html__( 'BrikPanel is on for %s only. The rest of your admin stays as it is, and the full panel is one click away in the top bar.', 'brikpanel' ),
+                            '<b data-bw-one-name></b>'
+                        );
+                        ?>
+                        <?php // With the question on the last panel this is the one line that says where the full panel is: kept on phones too. ?>
+                        <p class="brikpanel-welcome-lead<?php echo $ask ? ' brikpanel-welcome-lead--phone' : ''; ?>" data-bw-one hidden><?php echo wp_kses( $bw_one_lead, [ 'b' => [ 'data-bw-one-name' => true ] ] ); ?></p>
+                    <?php endif; ?>
                 </div>
 
                 <div class="brikpanel-welcome-stage" aria-hidden="true" dir="ltr" data-bw-stage>
@@ -292,8 +338,13 @@ add_action( 'admin_footer', function () {
                 <p class="brikpanel-welcome-sr" aria-live="polite" data-bw-live></p>
 
                 <div class="brikpanel-welcome-panels">
+                    <?php
+                    if ( $intent ) {
+                        echo wp_kses( brikpanel_welcome_intent_markup(), brikpanel_welcome_intent_kses() );
+                    }
+                    ?>
                     <?php foreach ( $steps as $i => $step ) : ?>
-                        <section class="brikpanel-welcome-panel" data-bw-panel="<?php echo (int) $i; ?>"<?php echo 0 === $i ? '' : ' hidden'; ?>>
+                        <section class="brikpanel-welcome-panel" data-bw-panel="<?php echo (int) $i; ?>"<?php echo ( 0 === $i && ! $intent ) ? '' : ' hidden'; ?>>
                             <p class="brikpanel-welcome-kicker" data-bw-kicker><?php echo esc_html( $step['kicker'] ); ?></p>
                             <h3 class="brikpanel-welcome-heading"><?php echo esc_html( $step['title'] ); ?></h3>
                             <p class="brikpanel-welcome-text"><?php echo esc_html( $step['text'] ); ?></p>
@@ -306,12 +357,6 @@ add_action( 'admin_footer', function () {
                         </section>
                     <?php endforeach; ?>
 
-                    <?php
-                    // On a new install the last panel asks where the owner heard
-                    // about BrikPanel, and the quick links shrink to one line each
-                    // under it (front-end/welcome/brikpanel-welcome-source.php).
-                    $ask = brikpanel_welcome_source_applies();
-                    ?>
                     <section class="brikpanel-welcome-panel brikpanel-welcome-panel--done<?php echo $ask ? ' brikpanel-welcome-panel--ask' : ''; ?>" data-bw-panel="<?php echo (int) $count; ?>" hidden>
                         <p class="brikpanel-welcome-kicker brikpanel-welcome-kicker--done" data-bw-kicker><?php esc_html_e( 'All set', 'brikpanel' ); ?></p>
                         <?php if ( $ask ) : ?>
@@ -321,9 +366,12 @@ add_action( 'admin_footer', function () {
                             <p class="brikpanel-welcome-jump"><?php esc_html_e( 'Or jump straight in', 'brikpanel' ); ?></p>
                         <?php else : ?>
                             <h3 class="brikpanel-welcome-heading"><?php esc_html_e( 'You are ready to go', 'brikpanel' ); ?></h3>
-                            <p class="brikpanel-welcome-text"><?php esc_html_e( 'Everything is already switched on. Jump straight to the part you need.', 'brikpanel' ); ?></p>
+                            <p class="brikpanel-welcome-text" data-bw-full-only><?php esc_html_e( 'Everything is already switched on. Jump straight to the part you need.', 'brikpanel' ); ?></p>
+                            <?php if ( $intent ) : ?>
+                                <p class="brikpanel-welcome-text" data-bw-one hidden><?php esc_html_e( 'Your WordPress admin stays as it is. Open your feature below; the full panel is one click away in the top bar.', 'brikpanel' ); ?></p>
+                            <?php endif; ?>
                         <?php endif; ?>
-                        <ul class="brikpanel-welcome-links<?php echo $ask ? ' brikpanel-welcome-links--compact' : ''; ?>">
+                        <ul class="brikpanel-welcome-links<?php echo $ask ? ' brikpanel-welcome-links--compact' : ''; ?>" data-bw-full-only>
                             <?php foreach ( $links as $link ) : ?>
                                 <li>
                                     <a class="brikpanel-welcome-link" href="<?php echo esc_url( $link['url'] ); ?>" data-bw-cta<?php echo $link['here'] ? ' data-bw-here' : ''; ?>>
@@ -337,6 +385,21 @@ add_action( 'admin_footer', function () {
                                 </li>
                             <?php endforeach; ?>
                         </ul>
+                        <?php if ( $intent ) : ?>
+                            <?php // Just one feature: its one link, filled in by the script. ?>
+                            <ul class="brikpanel-welcome-links<?php echo $ask ? ' brikpanel-welcome-links--compact' : ''; ?>" data-bw-one-links hidden>
+                                <li>
+                                    <a class="brikpanel-welcome-link" href="#" data-bw-cta data-bw-one-link>
+                                        <span class="brikpanel-welcome-link-icon" data-bw-one-icon></span>
+                                        <span class="brikpanel-welcome-link-text">
+                                            <span class="brikpanel-welcome-link-title" data-bw-one-title></span>
+                                            <span class="brikpanel-welcome-link-desc" data-bw-one-desc></span>
+                                        </span>
+                                        <span class="brikpanel-welcome-link-cta"><?php echo esc_html_x( 'Open', 'welcome tour link', 'brikpanel' ); ?><?php echo $icon_chev; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?></span>
+                                    </a>
+                                </li>
+                            </ul>
+                        <?php endif; ?>
                     </section>
                 </div>
 
@@ -344,11 +407,11 @@ add_action( 'admin_footer', function () {
                     <button type="button" class="brikpanel-btn brikpanel-btn--link brikpanel-welcome-skip" data-bw-skip><?php esc_html_e( 'Skip tour', 'brikpanel' ); ?></button>
                     <span class="brikpanel-welcome-footer-gap"></span>
                     <button type="button" class="brikpanel-btn brikpanel-btn--secondary brikpanel-welcome-back" data-bw-prev hidden><?php echo esc_html_x( 'Back', 'welcome tour button', 'brikpanel' ); ?></button>
-                    <button type="button" class="brikpanel-btn brikpanel-btn--primary brikpanel-welcome-next" data-bw-next><span data-bw-next-label><?php echo esc_html_x( 'Next', 'welcome tour button', 'brikpanel' ); ?></span><?php echo $icon_arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?></button>
+                    <button type="button" class="brikpanel-btn brikpanel-btn--primary brikpanel-welcome-next" data-bw-next<?php echo $intent ? ' disabled' : ''; ?>><span data-bw-next-label><?php echo $intent ? esc_html_x( 'Pick one', 'welcome tour button', 'brikpanel' ) : esc_html_x( 'Next', 'welcome tour button', 'brikpanel' ); ?></span><?php echo $icon_arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?></button>
                     <?php if ( '' !== $dashboard_url ) : ?>
-                        <a class="brikpanel-btn brikpanel-btn--primary brikpanel-welcome-go" href="<?php echo esc_url( $dashboard_url ); ?>" data-bw-cta<?php echo $on_dashboard ? ' data-bw-here' : ''; ?> hidden><?php esc_html_e( 'Open your dashboard', 'brikpanel' ); ?><?php echo $icon_arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?></a>
+                        <a class="brikpanel-btn brikpanel-btn--primary brikpanel-welcome-go" href="<?php echo esc_url( $dashboard_url ); ?>" data-bw-cta<?php echo $on_dashboard ? ' data-bw-here' : ''; ?> hidden><span data-bw-go-label><?php esc_html_e( 'Open your dashboard', 'brikpanel' ); ?></span><?php echo $icon_arrow; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG. ?></a>
                     <?php else : ?>
-                        <button type="button" class="brikpanel-btn brikpanel-btn--primary brikpanel-welcome-go" data-bw-close hidden><?php esc_html_e( 'Close', 'brikpanel' ); ?></button>
+                        <button type="button" class="brikpanel-btn brikpanel-btn--primary brikpanel-welcome-go" data-bw-close hidden><span data-bw-go-label><?php esc_html_e( 'Close', 'brikpanel' ); ?></span></button>
                     <?php endif; ?>
                 </div>
             </div>

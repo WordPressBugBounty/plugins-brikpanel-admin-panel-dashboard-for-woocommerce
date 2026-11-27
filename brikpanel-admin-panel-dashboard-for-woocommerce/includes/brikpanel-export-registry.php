@@ -323,6 +323,12 @@ function brikpanel_export_core_table() {
 		'brikpanel_dc_paused_until',
 		// The day this site started counting visitor countries (3.3.40).
 		'brikpanel_visitor_countries_since',
+		// Shipping statuses BrikPanel counted on its own, the ones the merchant
+		// took out again, and the last check (3.3.58). They describe this
+		// store's statuses, so they never travel to another store.
+		'brikpanel_status_buckets_auto',
+		'brikpanel_status_buckets_declined',
+		'brikpanel_status_buckets_check',
 		// Read-only escape hatches: nothing in the plugin ever writes these,
 		// they exist to be set by hand on one site for one reason.
 		'brikpanel_modern_segments',
@@ -353,6 +359,9 @@ function brikpanel_export_core_table() {
 		// The new-store guide this admin closed on the dashboard.
 		'brikpanel_new_store_guide_dismissed',
 		'brikpanel_whatsapp_optin',
+		// Whether this admin ticked the orders list's Print column (3.3.46): one
+		// person's on/off, not an arrangement worth handing on.
+		'brikpanel_orders_print_column',
 		'brikpanel_brikcontrol_dismissed',
 		// The old-WooCommerce notice this admin closed, keyed by the version it named.
 		'brikpanel_wc_min_notice_dismissed',
